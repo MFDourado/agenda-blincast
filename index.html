@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda de Implantações — Blincast</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --black: #111111;
+    --gold: #F5B800;
+    --gold-dark: #B88A00;
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --border: #E8E6DF;
+    --text: #111111;
+    --text-muted: #888880;
+    --text-light: #BBBBB0;
+    --radius: 10px;
+    --radius-sm: 6px;
+
+    --c-previsto: #1A5FC8;
+    --c-previsto-bg: #EBF0FB;
+    --c-andamento: #0F6E56;
+    --c-andamento-bg: #E1F5EE;
+    --c-atrasado: #A32D2D;
+    --c-atrasado-bg: #FCEBEB;
+    --c-concluido: #3B6D11;
+    --c-concluido-bg: #EAF3DE;
+    --c-pendente: #B86A00;
+    --c-pendente-bg: #FEF3E0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  header { background: var(--black); padding: 0 2rem; height: 52px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); letter-spacing: 2px; font-weight: 500; }
+  .logo span { color: #444; margin: 0 8px; }
+  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; }
+  .status-dot.online { background: #2ecc71; }
+  .status-dot.loading { background: var(--gold); }
+  .status-dot.error { background: #e74c3c; }
+
+  .main { max-width: 1020px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
+  .month-nav { display: flex; align-items: center; gap: 12px; }
+  .month-label { font-size: 18px; font-weight: 600; min-width: 180px; text-align: center; }
+  .nav-btn { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all .15s; }
+  .nav-btn:hover { border-color: var(--black); color: var(--black); }
+
+  .right-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .leg-dot { width: 9px; height: 9px; border-radius: 3px; }
+  .leg-dot.previsto  { background: var(--c-previsto-bg);  border: 1px solid var(--c-previsto); }
+  .leg-dot.andamento { background: var(--c-andamento-bg); border: 1px solid var(--c-andamento); }
+  .leg-dot.atrasado  { background: var(--c-atrasado-bg);  border: 1px solid var(--c-atrasado); }
+  .leg-dot.concluido { background: var(--c-concluido-bg); border: 1px solid var(--c-concluido); }
+  .leg-dot.pendente  { background: var(--c-pendente-bg);  border: 1px solid var(--c-pendente); }
+
+  .tabs { display: flex; gap: 4px; background: var(--border); padding: 3px; border-radius: var(--radius-sm); }
+  .tab { padding: 5px 16px; border-radius: 5px; border: none; background: none; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-muted); font-weight: 500; transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  /* CALENDAR */
+  .cal-wrap { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); background: var(--black); padding: 8px 0; }
+  .cal-wd { text-align: center; font-size: 11px; font-weight: 500; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+  .cal-wd.weekend { color: var(--gold-dark); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); }
+  .cal-cell { min-height: 88px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; cursor: pointer; transition: background .1s; }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-cell:hover { background: #FAFAF7; }
+  .cal-cell.empty { background: var(--bg); cursor: default; }
+  .cal-cell.today { background: #FFFBEE; }
+  .cal-cell.selected { background: #F0F6FF; }
+  .cal-cell.today .day-n { color: var(--gold-dark); font-weight: 600; }
+  .cal-cell.selected .day-n { color: var(--c-previsto); }
+  .day-n { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+
+  .pill { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .pill.previsto  { background: var(--c-previsto-bg);  color: var(--c-previsto); }
+  .pill.andamento { background: var(--c-andamento-bg); color: var(--c-andamento); }
+  .pill.atrasado  { background: var(--c-atrasado-bg);  color: var(--c-atrasado); }
+  .pill.concluido { background: var(--c-concluido-bg); color: var(--c-concluido); }
+  .pill.pendente  { background: var(--c-pendente-bg);  color: var(--c-pendente); }
+  .more-tag { font-size: 9px; color: var(--text-light); font-family: 'DM Mono', monospace; }
+
+  /* DAY VIEW */
+  .day-view { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .day-view-header { background: var(--black); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .day-view-title { font-size: 15px; font-weight: 500; color: #fff; }
+  .day-view-date { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold); }
+  .day-body { padding: 1rem 1.25rem; }
+
+  .evt-row { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+  .evt-main { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; gap: 12px; }
+  .evt-client { font-size: 14px; font-weight: 500; }
+  .evt-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+  .badge.previsto  { background: var(--c-previsto-bg);  color: var(--c-previsto); }
+  .badge.andamento { background: var(--c-andamento-bg); color: var(--c-andamento); }
+  .badge.atrasado  { background: var(--c-atrasado-bg);  color: var(--c-atrasado); }
+  .badge.concluido { background: var(--c-concluido-bg); color: var(--c-concluido); }
+  .badge.pendente  { background: var(--c-pendente-bg);  color: var(--c-pendente); }
+
+  select.status-sel { font-size: 11px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; background: var(--surface); color: var(--text-muted); cursor: pointer; outline: none; }
+  select.status-sel:hover { border-color: var(--text-muted); }
+
+  .rm-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; font-size: 13px; color: var(--text-light); display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .rm-btn:hover { border-color: #e00; color: #e00; }
+
+  .obs-area { border-top: 1px solid var(--border); background: var(--c-pendente-bg); padding: 8px 12px; display: flex; gap: 8px; align-items: center; }
+  .obs-area input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); outline: none; }
+  .obs-area input:focus { border-color: var(--c-pendente); }
+  .obs-area .obs-label { font-size: 11px; color: var(--c-pendente); font-weight: 500; white-space: nowrap; }
+  .obs-save { padding: 4px 10px; background: var(--c-pendente); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+  .obs-save:hover { opacity: .85; }
+  .obs-text { font-size: 12px; color: var(--c-pendente); font-style: italic; }
+
+  .empty-state { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 13px; }
+
+  /* FORM */
+  .form-section { margin-top: 1.5rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1rem 1.25rem; }
+  .form-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .gold-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); display: inline-block; }
+  .form-row { display: grid; grid-template-columns: 1fr 150px 160px auto; gap: 8px; align-items: end; }
+  .field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+  input[type=text], input[type=date], select.field-sel {
+    width: 100%; height: 36px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    background: var(--surface); color: var(--text); outline: none; transition: border-color .15s;
+  }
+  input[type=text]:focus, input[type=date]:focus, select.field-sel:focus { border-color: var(--black); }
+
+  .add-btn { height: 36px; padding: 0 20px; background: var(--black); color: var(--gold); border: none; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
+  .add-btn:hover { opacity: .85; }
+  .add-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  @media (max-width: 680px) {
+    .form-row { grid-template-columns: 1fr 1fr; }
+    .add-btn { grid-column: span 2; }
+    .legend { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BLINCAST <span>|</span> OPERACIONAL</div>
+  <div class="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span id="status-txt">Conectando...</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="controls">
+    <div class="month-nav">
+      <button class="nav-btn" id="prev">&#8592;</button>
+      <div class="month-label" id="month-label"></div>
+      <button class="nav-btn" id="next">&#8594;</button>
+    </div>
+    <div class="right-controls">
+      <div class="legend">
+        <span class="leg"><span class="leg-dot previsto"></span>Previsto</span>
+        <span class="leg"><span class="leg-dot andamento"></span>Em andamento</span>
+        <span class="leg"><span class="leg-dot atrasado"></span>Atrasado</span>
+        <span class="leg"><span class="leg-dot concluido"></span>Concluído</span>
+        <span class="leg"><span class="leg-dot pendente"></span>Pendente</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" id="tab-mes" onclick="switchTab('mes')">Mensal</button>
+        <button class="tab" id="tab-dia" onclick="switchTab('dia')">Diário</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-mes"></div>
+  <div id="view-dia" style="display:none"></div>
+
+  <div class="form-section">
+    <div class="form-label"><span class="gold-dot"></span> Adicionar evento</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Cliente</label>
+        <input type="text" id="f-cliente" placeholder="Nome do cliente">
+      </div>
+      <div class="field">
+        <label>Data</label>
+        <input type="date" id="f-data">
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select class="field-sel" id="f-status">
+          <option value="previsto">Previsto</option>
+          <option value="andamento">Em andamento</option>
+          <option value="atrasado">Atrasado</option>
+          <option value="concluido">Concluído</option>
+          <option value="pendente">Pendente</option>
+        </select>
+      </div>
+      <button class="add-btn" id="add-btn" onclick="addEvt()">+ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const DAYS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const STATUS_LABEL = { previsto:'Previsto', andamento:'Em andamento', atrasado:'Atrasado', concluido:'Concluído', pendente:'Pendente' };
+
+const todayStr = new Date().toISOString().slice(0,10);
+let cur = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let selectedDate = todayStr;
+let activeTab = 'mes';
+let events = [];
+
+function setStatus(state, msg) {
+  document.getElementById('status-dot').className = 'status-dot ' + state;
+  document.getElementById('status-txt').textContent = msg;
+}
+
+async function apiGet() {
+  setStatus('loading', 'Sincronizando...');
+  try {
+    const r = await fetch(API + '?action=getAll');
+    const data = await r.json();
+    events = Array.isArray(data) ? data.filter(e => e.id && e.client && e.date && e.status) : [];
+    setStatus('online', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    render();
+  } catch(err) {
+    setStatus('error', 'Erro de conexão');
+  }
+}
+
+async function apiPost(body) {
+  setStatus('loading', 'Salvando...');
+  try {
+    await fetch(API, { method:'POST', body:JSON.stringify(body) });
+    await apiGet();
+  } catch(err) {
+    setStatus('error', 'Erro ao salvar');
+  }
+}
+
+function eventsOn(ds) { return events.filter(e => e.date === ds); }
+
+function renderMes() {
+  const first = new Date(cur.y, cur.m, 1);
+  const last  = new Date(cur.y, cur.m+1, 0);
+  const startDow = first.getDay();
+  let html = '<div class="cal-wrap"><div class="cal-weekdays">';
+  DAYS_SHORT.forEach((d,i) => { html += `<div class="cal-wd${i===0||i===6?' weekend':''}">${d}</div>`; });
+  html += '</div><div class="cal-grid">';
+  for (let i=0; i<startDow; i++) html += '<div class="cal-cell empty"></div>';
+  for (let d=1; d<=last.getDate(); d++) {
+    const ds = `${cur.y}-${String(cur.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evts = eventsOn(ds);
+    const cls = ['cal-cell', ds===todayStr?'today':'', ds===selectedDate?'selected':''].filter(Boolean).join(' ');
+    html += `<div class="${cls}" onclick="selectDay('${ds}')"><div class="day-n">${d}</div>`;
+    evts.slice(0,3).forEach(e => { html += `<div class="pill ${e.status}" title="${e.client}">${e.client}</div>`; });
+    if (evts.length>3) html += `<div class="more-tag">+${evts.length-3}</div>`;
+    html += '</div>';
+  }
+  html += '</div></div>';
+  document.getElementById('view-mes').innerHTML = html;
+}
+
+function renderDia() {
+  const evts = eventsOn(selectedDate);
+  const [y,m,d] = selectedDate.split('-');
+  const dt = new Date(+y,+m-1,+d);
+  const dateLabel = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+  let html = `<div class="day-view">
+    <div class="day-view-header">
+      <div class="day-view-title">${DAYS_FULL[dt.getDay()]}</div>
+      <div class="day-view-date">${dateLabel}</div>
+    </div><div class="day-body">`;
+
+  if (evts.length === 0) {
+    html += `<div class="empty-state">Nenhum evento neste dia.</div>`;
+  } else {
+    evts.forEach(e => {
+      const isPendente = e.status === 'pendente';
+      const obsVal = e.obs || '';
+      html += `<div class="evt-row">
+        <div class="evt-main">
+          <div class="evt-client">${e.client}</div>
+          <div class="evt-actions">
+            <span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span>
+            <select class="status-sel" onchange="changeStatus('${e.id}',this.value)">
+              <option value="">Alterar status</option>
+              <option value="previsto">Previsto</option>
+              <option value="andamento">Em andamento</option>
+              <option value="atrasado">Atrasado</option>
+              <option value="concluido">Concluído</option>
+              <option value="pendente">Pendente</option>
+            </select>
+            <button class="rm-btn" onclick="removeEvt('${e.id}')">✕</button>
+          </div>
+        </div>`;
+      if (isPendente) {
+        html += `<div class="obs-area">
+          <span class="obs-label">Obs:</span>
+          <input type="text" id="obs-${e.id}" value="${obsVal.replace(/"/g,'&quot;')}" placeholder="Descreva a pendência...">
+          <button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button>
+        </div>`;
+      } else if (obsVal) {
+        html += `<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${obsVal}</span></div>`;
+      }
+      html += '</div>';
+    });
+  }
+  html += '</div></div>';
+  document.getElementById('view-dia').innerHTML = html;
+}
+
+function selectDay(ds) {
+  selectedDate = ds;
+  const [y,m] = ds.split('-');
+  cur = { y:+y, m:+m-1 };
+  if (activeTab==='mes') switchTab('dia'); else render();
+}
+
+function switchTab(t) {
+  activeTab = t;
+  document.getElementById('tab-mes').className = 'tab'+(t==='mes'?' active':'');
+  document.getElementById('tab-dia').className = 'tab'+(t==='dia'?' active':'');
+  document.getElementById('view-mes').style.display = t==='mes'?'':'none';
+  document.getElementById('view-dia').style.display = t==='dia'?'':'none';
+  render();
+}
+
+function render() {
+  document.getElementById('month-label').textContent = `${MONTHS[cur.m]} ${cur.y}`;
+  if (activeTab==='mes') renderMes(); else renderDia();
+}
+
+document.getElementById('prev').onclick = () => {
+  if (activeTab==='mes') { cur.m--; if(cur.m<0){cur.m=11;cur.y--;} }
+  else { const d=new Date(selectedDate); d.setDate(d.getDate()-1); selectedDate=d.toISOString().slice(0,10); cur={y:d.getFullYear(),m:d.getMonth()}; }
+  render();
+};
+document.getElementById('next').onclick = () => {
+  if (activeTab==='mes') { cur.m++; if(cur.m>11){cur.m=0;cur.y++;} }
+  else { const d=new Date(selectedDate); d.setDate(d.getDate()+1); selectedDate=d.toISOString().slice(0,10); cur={y:d.getFullYear(),m:d.getMonth()}; }
+  render();
+};
+
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+async function addEvt() {
+  const c = document.getElementById('f-cliente').value.trim();
+  const d = document.getElementById('f-data').value;
+  const s = document.getElementById('f-status').value;
+  if (!c||!d) return;
+  const btn = document.getElementById('add-btn');
+  btn.disabled=true; btn.textContent='...';
+  const [y,m] = d.split('-');
+  cur={y:+y,m:+m-1}; selectedDate=d;
+  await apiPost({ action:'add', id:uid(), client:c, date:d, status:s, obs:'' });
+  document.getElementById('f-cliente').value='';
+  btn.disabled=false; btn.textContent='+ Adicionar';
+  render();
+}
+
+async function changeStatus(id, ns) {
+  if (!ns) return;
+  const evt = events.find(e=>e.id==id);
+  const obs = evt ? (evt.obs||'') : '';
+  await apiPost({ action:'update', id, status:ns, obs });
+}
+
+async function saveObs(id, status) {
+  const obs = document.getElementById('obs-'+id).value.trim();
+  await apiPost({ action:'update', id, status, obs });
+}
+
+async function removeEvt(id) { await apiPost({ action:'delete', id }); }
+
+document.getElementById('f-data').value = todayStr;
+apiGet();
+setInterval(apiGet, 30000);
+</script>
+</body>
+</html>
