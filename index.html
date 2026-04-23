@@ -143,6 +143,16 @@
   .add-btn:hover { opacity: .85; }
   .add-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+  .filter-bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:1rem; }
+  .filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border); background:none; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text-muted); cursor:pointer; transition:all .15s; font-weight:500; }
+  .filter-btn:hover { border-color:var(--text-muted); color:var(--text); }
+  .filter-btn.active { border-color:var(--black); background:var(--black); color:var(--gold); }
+  .filter-btn.f-previsto.active  { background:var(--c-previsto);  border-color:var(--c-previsto);  color:#fff; }
+  .filter-btn.f-andamento.active { background:var(--c-andamento); border-color:var(--c-andamento); color:#fff; }
+  .filter-btn.f-atrasado.active  { background:var(--c-atrasado);  border-color:var(--c-atrasado);  color:#fff; }
+  .filter-btn.f-concluido.active { background:var(--c-concluido); border-color:var(--c-concluido); color:#fff; }
+  .filter-btn.f-pendente.active  { background:var(--c-pendente);  border-color:var(--c-pendente);  color:#fff; }
+
   @media (max-width: 680px) {
     .form-row { grid-template-columns: 1fr 1fr; }
     .add-btn { grid-column: span 2; }
@@ -180,6 +190,16 @@
         <button class="tab" id="tab-dia" onclick="switchTab('dia')">Diário</button>
       </div>
     </div>
+  </div>
+
+  <div class="filter-bar">
+    <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
+    <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
+    <button class="filter-btn f-previsto" onclick="setFilter('previsto')">Previsto</button>
+    <button class="filter-btn f-andamento" onclick="setFilter('andamento')">Em andamento</button>
+    <button class="filter-btn f-atrasado" onclick="setFilter('atrasado')">Atrasado</button>
+    <button class="filter-btn f-concluido" onclick="setFilter('concluido')">Concluído</button>
+    <button class="filter-btn f-pendente" onclick="setFilter('pendente')">Pendente</button>
   </div>
 
   <div id="view-mes"></div>
@@ -224,6 +244,19 @@ let cur = { y: new Date().getFullYear(), m: new Date().getMonth() };
 let selectedDate = todayStr;
 let activeTab = 'mes';
 let events = [];
+let activeFilter = 'todos';
+
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.filter-btn${f==='todos'?':first-child':'.f-'+f}`).classList.add('active');
+  render();
+}
+
+function filteredEvents() {
+  if (activeFilter === 'todos') return events;
+  return events.filter(e => e.status === activeFilter);
+}
 
 function setStatus(state, msg) {
   document.getElementById('status-dot').className = 'status-dot ' + state;
@@ -253,7 +286,7 @@ async function apiPost(body) {
   }
 }
 
-function eventsOn(ds) { return events.filter(e => e.date === ds); }
+function eventsOn(ds) { return filteredEvents().filter(e => e.date === ds); }
 
 function renderMes() {
   const first = new Date(cur.y, cur.m, 1);
