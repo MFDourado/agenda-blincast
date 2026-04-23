@@ -4,30 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Operacional — Blincast</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-:root {
-  --black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;
-  --border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;
-  --radius:10px;--radius-sm:6px;
-  --c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;
-  --c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;
-  --c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;
-  --c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;
-  --c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;
-}
+:root{--black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;--radius:10px;--radius-sm:6px;--c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;--c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;--c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;--c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;--c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
-header{background:var(--black);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;}
+header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
 .logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:2px;font-weight:500;}
 .logo span{color:#444;margin:0 8px;}
 .status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
 .status-dot.online{background:#2ecc71;}.status-dot.loading{background:var(--gold);}.status-dot.error{background:#e74c3c;}
-.main-tabs{display:flex;background:var(--black);border-top:1px solid #222;padding:0 2rem;}
-.main-tab{padding:10px 20px;font-size:13px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif;background:none;border-left:none;border-right:none;border-top:none;}
-.main-tab:hover{color:#aaa;}
-.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.main-tabs{display:flex;background:var(--black);border-top:1px solid #1e1e1e;padding:0 2rem;}
+.main-tab{padding:14px 28px;font-size:14px;font-weight:500;color:#666;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif;background:none;border-left:none;border-right:none;border-top:none;letter-spacing:.3px;}
+.main-tab:hover{color:#bbb;background:rgba(255,255,255,.04);}.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 .main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
 .controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:12px;}
 .month-nav{display:flex;align-items:center;gap:12px;}
@@ -61,13 +52,9 @@ header{background:var(--black);padding:0 2rem;height:52px;display:flex;align-ite
 .cal-wd.weekend{color:var(--gold-dark);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
 .cal-cell{min-height:88px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;cursor:pointer;transition:background .1s;}
-.cal-cell:nth-child(7n){border-right:none;}
-.cal-cell:hover{background:#FAFAF7;}
-.cal-cell.empty{background:var(--bg);cursor:default;}
-.cal-cell.today{background:#FFFBEE;}
-.cal-cell.selected{background:#F0F6FF;}
-.cal-cell.today .day-n{color:var(--gold-dark);font-weight:600;}
-.cal-cell.selected .day-n{color:var(--c-previsto);}
+.cal-cell:nth-child(7n){border-right:none;}.cal-cell:hover{background:#FAFAF7;}
+.cal-cell.empty{background:var(--bg);cursor:default;}.cal-cell.today{background:#FFFBEE;}.cal-cell.selected{background:#F0F6FF;}
+.cal-cell.today .day-n{color:var(--gold-dark);font-weight:600;}.cal-cell.selected .day-n{color:var(--c-previsto);}
 .day-n{font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:4px;font-family:'DM Mono',monospace;}
 .pill{font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
 .pill.previsto{background:var(--c-previsto-bg);color:var(--c-previsto);}
@@ -132,8 +119,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .step-card.active-step{border-color:var(--c-andamento);background:var(--c-andamento-bg);}
 .step-number{font-size:10px;font-family:'DM Mono',monospace;color:var(--text-light);margin-bottom:4px;}
 .step-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;}
-.step-card.done .step-title{color:var(--c-concluido);}
-.step-card.active-step .step-title{color:var(--c-andamento);}
+.step-card.done .step-title{color:var(--c-concluido);}.step-card.active-step .step-title{color:var(--c-andamento);}
 .step-resp{font-size:11px;color:var(--text-muted);margin-bottom:8px;}
 .step-date-row{display:flex;align-items:center;gap:6px;}
 .step-date-label{font-size:10px;color:var(--text-light);white-space:nowrap;}
@@ -149,7 +135,34 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .proj-btn.danger:hover{border-color:#e00;color:#e00;}
 .progress-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
 .progress-bar-fill{height:100%;background:var(--c-andamento);border-radius:2px;transition:width .3s;}
-.saving-indicator{font-size:11px;color:var(--text-muted);margin-left:8px;}
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+.dash-header h2{font-size:18px;font-weight:600;}
+.dash-sync{font-size:12px;color:var(--text-muted);}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+.kpi-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1rem 1.25rem;}
+.kpi-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kpi-value{font-size:28px;font-weight:600;font-family:'DM Mono',monospace;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
+.kpi-card.previsto .kpi-value{color:var(--c-previsto);}
+.kpi-card.andamento .kpi-value{color:var(--c-andamento);}
+.kpi-card.atrasado .kpi-value{color:var(--c-atrasado);}
+.kpi-card.concluido .kpi-value{color:var(--c-concluido);}
+.kpi-card.pendente .kpi-value{color:var(--c-pendente);}
+.kpi-card.total .kpi-value{color:var(--text);}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;}
+.chart-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1.25rem;}
+.chart-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:1rem;}
+.chart-wrap{position:relative;height:240px;}
+.pipeline-table{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.pipeline-table-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;}
+.ptable{width:100%;border-collapse:collapse;}
+.ptable th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 16px;border-bottom:1px solid var(--border);}
+.ptable td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+.ptable tr:last-child td{border-bottom:none;}
+.ptable tr:hover td{background:#FAFAF7;}
+.pbar-wrap{width:100px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px;}
+.pbar-fill{height:100%;background:var(--c-andamento);border-radius:3px;}
+.pbar-fill.done{background:var(--c-concluido);}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;}
 .modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:460px;border:1px solid var(--border);}
 .modal h3{font-size:16px;font-weight:500;margin-bottom:1rem;}
@@ -158,16 +171,10 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
-@media(max-width:680px){
-  .form-row{grid-template-columns:1fr 1fr;}
-  .add-btn{grid-column:span 2;}
-  .legend{display:none;}
-  .steps-grid{grid-template-columns:1fr;}
-}
+@media(max-width:768px){.charts-grid{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr 1fr;}.add-btn{grid-column:span 2;}.legend{display:none;}.steps-grid{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(3,1fr);}}
 </style>
 </head>
 <body>
-
 <header>
   <div class="logo">BLINCAST <span>|</span> OPERACIONAL</div>
   <div class="status-bar">
@@ -175,13 +182,11 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <span id="status-txt">Conectando...</span>
   </div>
 </header>
-
 <div class="main-tabs">
   <button class="main-tab active" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
   <button class="main-tab" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+  <button class="main-tab" id="mt-dashboard" onclick="switchMainTab('dashboard')">Dashboard</button>
 </div>
-
-<!-- AGENDA -->
 <div id="page-agenda" class="main">
   <div class="controls">
     <div class="month-nav">
@@ -232,8 +237,6 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </div>
   </div>
 </div>
-
-<!-- PIPELINE -->
 <div id="page-pipeline" class="main" style="display:none">
   <div class="pipeline-header">
     <div>
@@ -244,185 +247,159 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   </div>
   <div id="projects-list"></div>
 </div>
-
-<!-- MODAL -->
+<div id="page-dashboard" class="main" style="display:none">
+  <div class="dash-header">
+    <h2>Dashboard</h2>
+    <span class="dash-sync" id="dash-sync"></span>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Eventos da agenda por status</div>
+      <div class="chart-wrap"><canvas id="chart-pizza"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Eventos por mes</div>
+      <div class="chart-wrap"><canvas id="chart-barras"></canvas></div>
+    </div>
+  </div>
+  <div class="pipeline-table">
+    <div class="pipeline-table-header">Projetos no pipeline</div>
+    <table class="ptable">
+      <thead><tr><th>Projeto</th><th>UHs</th><th>Etapa atual</th><th>Progresso</th><th>Dias</th></tr></thead>
+      <tbody id="dash-pipeline-rows"></tbody>
+    </table>
+  </div>
+</div>
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal">
     <h3>Novo projeto</h3>
     <div class="modal-field"><label>Nome do cliente</label><input type="text" id="m-nome" placeholder="Ex: Intercity Porto Maravilha"></div>
     <div class="modal-field"><label>Quantidade de UHs</label><input type="number" id="m-uhs" placeholder="Ex: 180" min="1"></div>
-    <div class="modal-field"><label>Data de início (assinatura)</label><input type="date" id="m-inicio"></div>
+    <div class="modal-field"><label>Data de inicio</label><input type="date" id="m-inicio"></div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal()">Cancelar</button>
       <button class="modal-btn primary" onclick="createProject()">Criar projeto</button>
     </div>
   </div>
 </div>
-
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
-const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const DAYS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-const STATUS_LABEL = {previsto:'Previsto',andamento:'Em andamento',atrasado:'Atrasado',concluido:'Concluído',pendente:'Pendente'};
-
-const STEPS = [
-  {id:1,title:'Assinatura de contrato',resp:'Jurídico'},
-  {id:2,title:'Vistoria técnica',resp:'Atendimento — Marta / Thaylla',remote:true},
-  {id:3,title:'Projeto técnico',resp:'Técnica — Marco / Matheus D.'},
-  {id:4,title:'Análise de compras / Almoxarifado',resp:'Almoxarifado — Marco'},
-  {id:5,title:'Montagem dos equipamentos',resp:'Montagem — Isaque'},
-  {id:6,title:'Emissão da nota fiscal',resp:'Almoxarifado — Marco (aval Matheus D.)'},
-  {id:7,title:'Solicitação de coleta — transportadora',resp:'Almoxarifado — Marco'},
-  {id:8,title:'Agendamento com cliente + previsão de entrega',resp:'Atendimento — Marta / Thaylla'},
-  {id:9,title:'Confirmação de chegada',resp:'Atendimento — Marta / Thaylla'},
-  {id:10,title:'Instalação no local',resp:'Técnico de campo'},
-  {id:11,title:'Testes e conclusão',resp:'Técnico de campo — Joyce Maciel'},
+const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const DAYS_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+const DAYS_FULL=['Domingo','Segunda-feira','Terca-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];
+const STATUS_LABEL={previsto:'Previsto',andamento:'Em andamento',atrasado:'Atrasado',concluido:'Concluido',pendente:'Pendente'};
+const STEPS=[
+  {id:1,title:'Assinatura de contrato',resp:'Juridico'},
+  {id:2,title:'Vistoria tecnica',resp:'Atendimento - Marta / Thaylla',remote:true},
+  {id:3,title:'Projeto tecnico',resp:'Tecnica - Marco / Matheus D.'},
+  {id:4,title:'Analise de compras / Almoxarifado',resp:'Almoxarifado - Marco'},
+  {id:5,title:'Montagem dos equipamentos',resp:'Montagem - Isaque'},
+  {id:6,title:'Emissao da nota fiscal',resp:'Almoxarifado - Marco (aval Matheus D.)'},
+  {id:7,title:'Solicitacao de coleta - transportadora',resp:'Almoxarifado - Marco'},
+  {id:8,title:'Agendamento com cliente + previsao de entrega',resp:'Atendimento - Marta / Thaylla'},
+  {id:9,title:'Confirmacao de chegada',resp:'Atendimento - Marta / Thaylla'},
+  {id:10,title:'Instalacao no local',resp:'Tecnico de campo'},
+  {id:11,title:'Testes e conclusao',resp:'Tecnico de campo - Joyce Maciel'},
 ];
+const todayStr=new Date().toISOString().slice(0,10);
+let cur={y:new Date().getFullYear(),m:new Date().getMonth()};
+let selectedDate=todayStr,activeTab='mes',events=[],activeFilter='todos',projects=[],saveTimer=null;
+let chartPizza=null,chartBarras=null;
 
-const todayStr = new Date().toISOString().slice(0,10);
-let cur = {y:new Date().getFullYear(),m:new Date().getMonth()};
-let selectedDate = todayStr;
-let activeTab = 'mes';
-let events = [];
-let activeFilter = 'todos';
-let projects = [];
-let saveTimer = null;
+function setStatus(s,m){document.getElementById('status-dot').className='status-dot '+s;document.getElementById('status-txt').textContent=m;}
 
-function setStatus(state,msg){
-  document.getElementById('status-dot').className='status-dot '+state;
-  document.getElementById('status-txt').textContent=msg;
-}
-
-// AGENDA API
 async function apiGet(){
   setStatus('loading','Sincronizando...');
-  try {
-    const r = await fetch(API+'?action=getAll');
-    const data = await r.json();
-    events = Array.isArray(data)?data.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
-    setStatus('online','Sincronizado · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+  try{
+    const r=await fetch(API+'?action=getAll');
+    const d=await r.json();
+    events=Array.isArray(d)?d.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
+    setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     renderAgenda();
-  } catch(err){ setStatus('error','Erro de conexão'); }
+  }catch(e){setStatus('error','Erro de conexao');}
 }
-
 async function apiPost(body){
   setStatus('loading','Salvando...');
-  try { await fetch(API,{method:'POST',body:JSON.stringify(body)}); await apiGet(); }
-  catch(err){ setStatus('error','Erro ao salvar'); }
+  try{await fetch(API,{method:'POST',body:JSON.stringify(body)});await apiGet();}
+  catch(e){setStatus('error','Erro ao salvar');}
 }
-
-// PIPELINE API
 async function loadPipeline(){
   document.getElementById('pipeline-sync').textContent='Carregando...';
-  try {
-    const r = await fetch(API+'?action=getPipeline');
-    const data = await r.json();
-    projects = Array.isArray(data) ? data.map(p=>({
-      ...p,
-      uhs: parseInt(p.uhs)||0,
-      steps: Array.isArray(p.steps) ? p.steps : STEPS.map(s=>({id:s.id,done:false,date:''}))
-    })) : [];
-    document.getElementById('pipeline-sync').textContent='Sincronizado · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  try{
+    const r=await fetch(API+'?action=getPipeline');
+    const d=await r.json();
+    projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
+    document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderPipeline();
-  } catch(err){
-    document.getElementById('pipeline-sync').textContent='Erro de conexão';
-  }
+  }catch(e){document.getElementById('pipeline-sync').textContent='Erro de conexao';}
 }
-
 async function savePipelineProject(proj){
-  try {
+  try{
     await fetch(API,{method:'POST',body:JSON.stringify({action:'savePipeline',...proj,steps:proj.steps})});
-    document.getElementById('pipeline-sync').textContent='Salvo · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  } catch(err){
-    document.getElementById('pipeline-sync').textContent='Erro ao salvar';
-  }
+    document.getElementById('pipeline-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){document.getElementById('pipeline-sync').textContent='Erro ao salvar';}
 }
+async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
 
-async function deletePipelineProject(id){
-  try { await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})}); }
-  catch(err){}
-}
-
-// MAIN TAB
 function switchMainTab(t){
-  document.getElementById('mt-agenda').className='main-tab'+(t==='agenda'?' active':'');
-  document.getElementById('mt-pipeline').className='main-tab'+(t==='pipeline'?' active':'');
-  document.getElementById('page-agenda').style.display=t==='agenda'?'':'none';
-  document.getElementById('page-pipeline').style.display=t==='pipeline'?'':'none';
-  if(t==='pipeline') loadPipeline();
+  ['agenda','pipeline','dashboard'].forEach(tab=>{
+    document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
+    document.getElementById('page-'+tab).style.display=t===tab?'':'none';
+  });
+  if(t==='pipeline')loadPipeline();
+  if(t==='dashboard')renderDashboard();
 }
-
-// FILTER
 function setFilter(f){
   activeFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector(f==='todos'?'.filter-btn:first-child':'.filter-btn.f-'+f).classList.add('active');
   renderAgenda();
 }
-function filteredEvents(){ return activeFilter==='todos'?events:events.filter(e=>e.status===activeFilter); }
-function eventsOn(ds){ return filteredEvents().filter(e=>e.date===ds); }
+function filteredEvents(){return activeFilter==='todos'?events:events.filter(e=>e.status===activeFilter);}
+function eventsOn(ds){return filteredEvents().filter(e=>e.date===ds);}
 
-// AGENDA RENDER
 function renderMes(){
   const first=new Date(cur.y,cur.m,1),last=new Date(cur.y,cur.m+1,0);
   let html='<div class="cal-wrap"><div class="cal-weekdays">';
   DAYS_SHORT.forEach((d,i)=>{html+=`<div class="cal-wd${i===0||i===6?' weekend':''}">${d}</div>`;});
   html+='</div><div class="cal-grid">';
-  for(let i=0;i<first.getDay();i++) html+='<div class="cal-cell empty"></div>';
+  for(let i=0;i<first.getDay();i++)html+='<div class="cal-cell empty"></div>';
   for(let d=1;d<=last.getDate();d++){
     const ds=`${cur.y}-${String(cur.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const evts=eventsOn(ds);
     const cls=['cal-cell',ds===todayStr?'today':'',ds===selectedDate?'selected':''].filter(Boolean).join(' ');
     html+=`<div class="${cls}" onclick="selectDay('${ds}')"><div class="day-n">${d}</div>`;
     evts.slice(0,3).forEach(e=>{html+=`<div class="pill ${e.status}" title="${e.client}">${e.client}</div>`;});
-    if(evts.length>3) html+=`<div class="more-tag">+${evts.length-3}</div>`;
+    if(evts.length>3)html+=`<div class="more-tag">+${evts.length-3}</div>`;
     html+='</div>';
   }
   html+='</div></div>';
   document.getElementById('view-mes').innerHTML=html;
 }
-
 function renderDia(){
   const evts=eventsOn(selectedDate);
   const [y,m,d]=selectedDate.split('-');
   const dt=new Date(+y,+m-1,+d);
-  const dateLabel=`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
-  let html=`<div class="day-view"><div class="day-view-header"><div class="day-view-title">${DAYS_FULL[dt.getDay()]}</div><div class="day-view-date">${dateLabel}</div></div><div class="day-body">`;
-  if(!evts.length){html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;}
-  else {
-    evts.forEach(e=>{
-      const isPendente=e.status==='pendente',obsVal=e.obs||'';
-      html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions">
-        <span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span>
-        <select class="status-sel" onchange="changeStatus('${e.id}',this.value)">
-          <option value="">Alterar</option>
-          <option value="previsto">Previsto</option>
-          <option value="andamento">Em andamento</option>
-          <option value="atrasado">Atrasado</option>
-          <option value="concluido">Concluído</option>
-          <option value="pendente">Pendente</option>
-        </select>
-        <button class="rm-btn" onclick="removeEvt('${e.id}')">✕</button>
-      </div></div>`;
-      if(isPendente) html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${obsVal.replace(/"/g,'&quot;')}" placeholder="Descreva a pendência..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
-      else if(obsVal) html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${obsVal}</span></div>`;
-      html+='</div>';
-    });
-  }
+  const dl=`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+  let html=`<div class="day-view"><div class="day-view-header"><div class="day-view-title">${DAYS_FULL[dt.getDay()]}</div><div class="day-view-date">${dl}</div></div><div class="day-body">`;
+  if(!evts.length)html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;
+  else evts.forEach(e=>{
+    const ip=e.status==='pendente',ov=e.obs||'';
+    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluido</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
+    if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
+    else if(ov)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${ov}</span></div>`;
+    html+='</div>';
+  });
   html+='</div></div>';
   document.getElementById('view-dia').innerHTML=html;
 }
-
 function renderAgenda(){
   document.getElementById('month-label').textContent=`${MONTHS[cur.m]} ${cur.y}`;
-  if(activeTab==='mes') renderMes(); else renderDia();
+  if(activeTab==='mes')renderMes();else renderDia();
 }
-
-function selectDay(ds){
-  selectedDate=ds;const [y,m]=ds.split('-');cur={y:+y,m:+m-1};
-  if(activeTab==='mes') switchTab('dia'); else renderAgenda();
-}
+function selectDay(ds){selectedDate=ds;const[y,m]=ds.split('-');cur={y:+y,m:+m-1};if(activeTab==='mes')switchTab('dia');else renderAgenda();}
 function switchTab(t){
   activeTab=t;
   document.getElementById('tab-mes').className='tab'+(t==='mes'?' active':'');
@@ -441,17 +418,15 @@ document.getElementById('next').onclick=()=>{
   else{const d=new Date(selectedDate);d.setDate(d.getDate()+1);selectedDate=d.toISOString().slice(0,10);cur={y:d.getFullYear(),m:d.getMonth()};}
   renderAgenda();
 };
-
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
-
 async function addEvt(){
   const c=document.getElementById('f-cliente').value.trim();
   const d=document.getElementById('f-data').value;
   const s=document.getElementById('f-status').value;
-  if(!c||!d) return;
+  if(!c||!d)return;
   const btn=document.getElementById('add-btn');
   btn.disabled=true;btn.textContent='...';
-  const [y,m]=d.split('-');cur={y:+y,m:+m-1};selectedDate=d;
+  const[y,m]=d.split('-');cur={y:+y,m:+m-1};selectedDate=d;
   await apiPost({action:'add',id:uid(),client:c,date:d,status:s,obs:''});
   document.getElementById('f-cliente').value='';
   btn.disabled=false;btn.textContent='+ Adicionar';
@@ -461,56 +436,34 @@ async function changeStatus(id,ns){if(!ns)return;const evt=events.find(e=>e.id==
 async function saveObs(id,status){const obs=document.getElementById('obs-'+id).value.trim();await apiPost({action:'update',id,status,obs});}
 async function removeEvt(id){await apiPost({action:'delete',id});}
 
-// PIPELINE ACTIONS
-function openModal(){
-  document.getElementById('m-nome').value='';
-  document.getElementById('m-uhs').value='';
-  document.getElementById('m-inicio').value=todayStr;
-  document.getElementById('modal').style.display='flex';
-}
+function openModal(){document.getElementById('m-nome').value='';document.getElementById('m-uhs').value='';document.getElementById('m-inicio').value=todayStr;document.getElementById('modal').style.display='flex';}
 function closeModal(){document.getElementById('modal').style.display='none';}
-
 async function createProject(){
   const nome=document.getElementById('m-nome').value.trim();
   const uhs=parseInt(document.getElementById('m-uhs').value)||0;
   const inicio=document.getElementById('m-inicio').value;
-  if(!nome) return;
+  if(!nome)return;
   const proj={id:uid(),nome,uhs,inicio,steps:STEPS.map(s=>({id:s.id,done:false,date:''}))};
-  projects.unshift(proj);
-  closeModal();
-  renderPipeline();
+  projects.unshift(proj);closeModal();renderPipeline();
   await savePipelineProject(proj);
 }
-
 async function deleteProject(id){
-  if(!confirm('Remover este projeto?')) return;
-  projects=projects.filter(p=>p.id!==id);
-  renderPipeline();
+  if(!confirm('Remover este projeto?'))return;
+  projects=projects.filter(p=>p.id!==id);renderPipeline();
   await deletePipelineProject(id);
 }
-
-function schedSave(proj){
-  document.getElementById('pipeline-sync').textContent='Salvando...';
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>savePipelineProject(proj),1500);
-}
-
+function schedSave(proj){document.getElementById('pipeline-sync').textContent='Salvando...';clearTimeout(saveTimer);saveTimer=setTimeout(()=>savePipelineProject(proj),1500);}
 function toggleStep(projId,stepId){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
   const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
-  step.done=!step.done;
-  if(step.done&&!step.date) step.date=todayStr;
-  renderPipeline();
-  schedSave(proj);
+  step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;
+  renderPipeline();schedSave(proj);
 }
-
 function updateStepDate(projId,stepId,val){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
   const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
-  step.date=val;
-  schedSave(proj);
+  step.date=val;schedSave(proj);
 }
-
 function toggleProject(id){
   const el=document.getElementById('proj-body-'+id);
   const chev=document.getElementById('chev-'+id);
@@ -519,65 +472,64 @@ function toggleProject(id){
   el.style.display=open?'none':'block';
   chev.className='chevron'+(open?'':' open');
 }
-
-function daysSince(dateStr){
-  if(!dateStr) return null;
-  return Math.floor((new Date()-new Date(dateStr))/(1000*60*60*24));
-}
+function daysSince(ds){if(!ds)return null;return Math.floor((new Date()-new Date(ds))/(1000*60*60*24));}
 
 function renderPipeline(){
   const list=document.getElementById('projects-list');
-  if(!projects.length){
-    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum projeto. Clique em "+ Novo projeto" para começar.</div>';
-    return;
-  }
+  if(!projects.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum projeto. Clique em + Novo projeto para comecar.</div>';return;}
   list.innerHTML=projects.map(proj=>{
     const doneCnt=proj.steps.filter(s=>s.done).length;
     const pct=Math.round((doneCnt/11)*100);
     const dias=daysSince(proj.inicio);
-    let daysCls='ok';
-    if(dias>=40) daysCls='danger';
-    else if(dias>=30) daysCls='warn';
-    const currentStep=proj.steps.find(s=>!s.done);
-    const currentStepTitle=currentStep?STEPS.find(s=>s.id===currentStep.id)?.title:'Concluído ✓';
-
-    const stepsHtml=STEPS.map(s=>{
+    let dc='ok';if(dias>=40)dc='danger';else if(dias>=30)dc='warn';
+    const cs=proj.steps.find(s=>!s.done);
+    const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluido';
+    const sh=STEPS.map(s=>{
       const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
-      const isActive=!ps.done&&currentStep&&currentStep.id===s.id;
-      const isRemote=s.remote&&proj.uhs<50;
-      return `<div class="step-card${ps.done?' done':isActive?' active-step':''}">
-        <div class="step-number">Etapa ${s.id}</div>
-        <div class="step-title">${s.title}${isRemote?'<span class="step-remote">Remota</span>':''}</div>
-        <div class="step-resp">${s.resp}</div>
-        <div class="step-date-row">
-          <span class="step-date-label">Data:</span>
-          <input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)">
-          <button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'✓':''}</button>
-        </div>
-      </div>`;
+      const ia=!ps.done&&cs&&cs.id===s.id;
+      const ir=s.remote&&proj.uhs<50;
+      return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-
-    return `<div class="project-card">
-      <div class="project-card-header" onclick="toggleProject('${proj.id}')">
-        <div>
-          <div class="project-name">${proj.nome}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${currentStepTitle} · ${doneCnt}/11 etapas</div>
-        </div>
-        <div class="project-meta">
-          <span class="uh-badge">${proj.uhs} UHs</span>
-          ${dias!==null?`<span class="days-badge ${daysCls}">${dias}d / 45d</span>`:''}
-          <span class="chevron" id="chev-${proj.id}">▼</span>
-        </div>
-      </div>
-      <div class="project-body" id="proj-body-${proj.id}" style="display:none">
-        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-        <div class="steps-grid">${stepsHtml}</div>
-        <div class="project-actions">
-          <button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>
-        </div>
-      </div>
-    </div>`;
+    return `<div class="project-card"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas</div></div><div class="project-meta"><span class="uh-badge">${proj.uhs} UHs</span>${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div><div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button></div></div></div>`;
   }).join('');
+}
+
+async function renderDashboard(){
+  document.getElementById('dash-sync').textContent='Carregando...';
+  if(!events.length){try{const r=await fetch(API+'?action=getAll');const d=await r.json();events=Array.isArray(d)?d.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];}catch(e){}}
+  if(!projects.length){try{const r=await fetch(API+'?action=getPipeline');const d=await r.json();projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];}catch(e){}}
+  const counts={previsto:0,andamento:0,atrasado:0,concluido:0,pendente:0};
+  const uc=new Set();
+  events.forEach(e=>{if(counts[e.status]!==undefined)counts[e.status]++;uc.add(e.client);});
+  const total=events.length;
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi-card total"><div class="kpi-label">Total eventos</div><div class="kpi-value">${total}</div><div class="kpi-sub">${uc.size} clientes</div></div>
+    <div class="kpi-card previsto"><div class="kpi-label">Previstos</div><div class="kpi-value">${counts.previsto}</div><div class="kpi-sub">${total?Math.round(counts.previsto/total*100):0}%</div></div>
+    <div class="kpi-card andamento"><div class="kpi-label">Em andamento</div><div class="kpi-value">${counts.andamento}</div><div class="kpi-sub">${total?Math.round(counts.andamento/total*100):0}%</div></div>
+    <div class="kpi-card atrasado"><div class="kpi-label">Atrasados</div><div class="kpi-value">${counts.atrasado}</div><div class="kpi-sub">${total?Math.round(counts.atrasado/total*100):0}%</div></div>
+    <div class="kpi-card concluido"><div class="kpi-label">Concluidos</div><div class="kpi-value">${counts.concluido}</div><div class="kpi-sub">${total?Math.round(counts.concluido/total*100):0}%</div></div>
+    <div class="kpi-card pendente"><div class="kpi-label">Pendentes</div><div class="kpi-value">${counts.pendente}</div><div class="kpi-sub">${projects.length} proj. pipeline</div></div>
+  `;
+  if(chartPizza)chartPizza.destroy();
+  chartPizza=new Chart(document.getElementById('chart-pizza'),{type:'doughnut',data:{labels:['Previsto','Em andamento','Atrasado','Concluido','Pendente'],datasets:[{data:[counts.previsto,counts.andamento,counts.atrasado,counts.concluido,counts.pendente],backgroundColor:['#1A5FC8','#0F6E56','#A32D2D','#3B6D11','#B86A00'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12}}}}});
+  const mc={};
+  events.forEach(e=>{const[y,m]=e.date.split('-');const k=y+'-'+m;if(!mc[k])mc[k]={previsto:0,andamento:0,atrasado:0,concluido:0,pendente:0};if(mc[k][e.status]!==undefined)mc[k][e.status]++;});
+  const sk=Object.keys(mc).sort();
+  const bl=sk.map(k=>{const[y,m]=k.split('-');return MONTHS_SHORT[+m-1]+' '+y.slice(2);});
+  if(chartBarras)chartBarras.destroy();
+  chartBarras=new Chart(document.getElementById('chart-barras'),{type:'bar',data:{labels:bl,datasets:[{label:'Previsto',data:sk.map(k=>mc[k].previsto),backgroundColor:'#1A5FC8'},{label:'Em andamento',data:sk.map(k=>mc[k].andamento),backgroundColor:'#0F6E56'},{label:'Atrasado',data:sk.map(k=>mc[k].atrasado),backgroundColor:'#A32D2D'},{label:'Concluido',data:sk.map(k=>mc[k].concluido),backgroundColor:'#3B6D11'},{label:'Pendente',data:sk.map(k=>mc[k].pendente),backgroundColor:'#B86A00'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10}}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,ticks:{font:{size:11}}}}}});
+  const tbody=document.getElementById('dash-pipeline-rows');
+  if(!projects.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Nenhum projeto no pipeline</td></tr>';}
+  else tbody.innerHTML=projects.map(proj=>{
+    const dc=proj.steps.filter(s=>s.done).length;
+    const pct=Math.round((dc/11)*100);
+    const dias=daysSince(proj.inicio);
+    const cs=proj.steps.find(s=>!s.done);
+    const st=cs?cs.id+'. '+STEPS.find(s=>s.id===cs.id)?.title:'Concluido';
+    const col=dias>=40?'var(--c-atrasado)':dias>=30?'var(--c-pendente)':'var(--c-concluido)';
+    return `<tr><td style="font-weight:500">${proj.nome}</td><td>${proj.uhs}</td><td style="font-size:12px;color:var(--text-muted)">${st}</td><td><div class="pbar-wrap"><div class="pbar-fill${pct===100?' done':''}" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text-muted)">${pct}%</span></td><td style="font-weight:500;color:${col}">${dias!==null?dias+'d':'x'}</td></tr>`;
+  }).join('');
+  document.getElementById('dash-sync').textContent='Atualizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 
 document.getElementById('f-data').value=todayStr;
