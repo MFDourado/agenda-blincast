@@ -235,7 +235,7 @@ async function apiGet() {
   try {
     const r = await fetch(API + '?action=getAll');
     const data = await r.json();
-    events = Array.isArray(data) ? data.filter(e => e.id && e.client && e.date && e.status) : [];
+    events = Array.isArray(data) ? data.filter(e => e.id && e.client && e.date && e.status).map(e => ({...e, date: e.date instanceof String ? e.date : String(e.date).slice(0,10)})) : [];
     setStatus('online', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     render();
   } catch(err) {
