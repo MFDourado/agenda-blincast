@@ -3,161 +3,167 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agenda de Implantações — Blincast</title>
+<title>Operacional — Blincast</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
-  :root {
-    --black: #111111;
-    --gold: #F5B800;
-    --gold-dark: #B88A00;
-    --bg: #F7F6F2;
-    --surface: #FFFFFF;
-    --border: #E8E6DF;
-    --text: #111111;
-    --text-muted: #888880;
-    --text-light: #BBBBB0;
-    --radius: 10px;
-    --radius-sm: 6px;
-
-    --c-previsto: #1A5FC8;
-    --c-previsto-bg: #EBF0FB;
-    --c-andamento: #0F6E56;
-    --c-andamento-bg: #E1F5EE;
-    --c-atrasado: #A32D2D;
-    --c-atrasado-bg: #FCEBEB;
-    --c-concluido: #3B6D11;
-    --c-concluido-bg: #EAF3DE;
-    --c-pendente: #B86A00;
-    --c-pendente-bg: #FEF3E0;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
-
-  header { background: var(--black); padding: 0 2rem; height: 52px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); letter-spacing: 2px; font-weight: 500; }
-  .logo span { color: #444; margin: 0 8px; }
-  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; }
-  .status-dot.online { background: #2ecc71; }
-  .status-dot.loading { background: var(--gold); }
-  .status-dot.error { background: #e74c3c; }
-
-  .main { max-width: 1020px; margin: 0 auto; padding: 2rem 1.5rem; }
-
-  .controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
-  .month-nav { display: flex; align-items: center; gap: 12px; }
-  .month-label { font-size: 18px; font-weight: 600; min-width: 180px; text-align: center; }
-  .nav-btn { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all .15s; }
-  .nav-btn:hover { border-color: var(--black); color: var(--black); }
-
-  .right-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .legend { display: flex; gap: 10px; flex-wrap: wrap; }
-  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
-  .leg-dot { width: 9px; height: 9px; border-radius: 3px; }
-  .leg-dot.previsto  { background: var(--c-previsto-bg);  border: 1px solid var(--c-previsto); }
-  .leg-dot.andamento { background: var(--c-andamento-bg); border: 1px solid var(--c-andamento); }
-  .leg-dot.atrasado  { background: var(--c-atrasado-bg);  border: 1px solid var(--c-atrasado); }
-  .leg-dot.concluido { background: var(--c-concluido-bg); border: 1px solid var(--c-concluido); }
-  .leg-dot.pendente  { background: var(--c-pendente-bg);  border: 1px solid var(--c-pendente); }
-
-  .tabs { display: flex; gap: 4px; background: var(--border); padding: 3px; border-radius: var(--radius-sm); }
-  .tab { padding: 5px 16px; border-radius: 5px; border: none; background: none; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-muted); font-weight: 500; transition: all .15s; }
-  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-
-  /* CALENDAR */
-  .cal-wrap { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); background: var(--black); padding: 8px 0; }
-  .cal-wd { text-align: center; font-size: 11px; font-weight: 500; color: #666; letter-spacing: 1px; text-transform: uppercase; }
-  .cal-wd.weekend { color: var(--gold-dark); }
-  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); }
-  .cal-cell { min-height: 88px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; cursor: pointer; transition: background .1s; }
-  .cal-cell:nth-child(7n) { border-right: none; }
-  .cal-cell:hover { background: #FAFAF7; }
-  .cal-cell.empty { background: var(--bg); cursor: default; }
-  .cal-cell.today { background: #FFFBEE; }
-  .cal-cell.selected { background: #F0F6FF; }
-  .cal-cell.today .day-n { color: var(--gold-dark); font-weight: 600; }
-  .cal-cell.selected .day-n { color: var(--c-previsto); }
-  .day-n { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
-
-  .pill { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-  .pill.previsto  { background: var(--c-previsto-bg);  color: var(--c-previsto); }
-  .pill.andamento { background: var(--c-andamento-bg); color: var(--c-andamento); }
-  .pill.atrasado  { background: var(--c-atrasado-bg);  color: var(--c-atrasado); }
-  .pill.concluido { background: var(--c-concluido-bg); color: var(--c-concluido); }
-  .pill.pendente  { background: var(--c-pendente-bg);  color: var(--c-pendente); }
-  .more-tag { font-size: 9px; color: var(--text-light); font-family: 'DM Mono', monospace; }
-
-  /* DAY VIEW */
-  .day-view { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-  .day-view-header { background: var(--black); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
-  .day-view-title { font-size: 15px; font-weight: 500; color: #fff; }
-  .day-view-date { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold); }
-  .day-body { padding: 1rem 1.25rem; }
-
-  .evt-row { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
-  .evt-main { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; gap: 12px; }
-  .evt-client { font-size: 14px; font-weight: 500; }
-  .evt-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-
-  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
-  .badge.previsto  { background: var(--c-previsto-bg);  color: var(--c-previsto); }
-  .badge.andamento { background: var(--c-andamento-bg); color: var(--c-andamento); }
-  .badge.atrasado  { background: var(--c-atrasado-bg);  color: var(--c-atrasado); }
-  .badge.concluido { background: var(--c-concluido-bg); color: var(--c-concluido); }
-  .badge.pendente  { background: var(--c-pendente-bg);  color: var(--c-pendente); }
-
-  select.status-sel { font-size: 11px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; background: var(--surface); color: var(--text-muted); cursor: pointer; outline: none; }
-  select.status-sel:hover { border-color: var(--text-muted); }
-
-  .rm-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; font-size: 13px; color: var(--text-light); display: flex; align-items: center; justify-content: center; transition: all .15s; }
-  .rm-btn:hover { border-color: #e00; color: #e00; }
-
-  .obs-area { border-top: 1px solid var(--border); background: var(--c-pendente-bg); padding: 8px 12px; display: flex; gap: 8px; align-items: center; }
-  .obs-area input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); outline: none; }
-  .obs-area input:focus { border-color: var(--c-pendente); }
-  .obs-area .obs-label { font-size: 11px; color: var(--c-pendente); font-weight: 500; white-space: nowrap; }
-  .obs-save { padding: 4px 10px; background: var(--c-pendente); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
-  .obs-save:hover { opacity: .85; }
-  .obs-text { font-size: 12px; color: var(--c-pendente); font-style: italic; }
-
-  .empty-state { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 13px; }
-
-  /* FORM */
-  .form-section { margin-top: 1.5rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1rem 1.25rem; }
-  .form-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-  .gold-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); display: inline-block; }
-  .form-row { display: grid; grid-template-columns: 1fr 150px 160px auto; gap: 8px; align-items: end; }
-  .field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
-
-  input[type=text], input[type=date], select.field-sel {
-    width: 100%; height: 36px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    background: var(--surface); color: var(--text); outline: none; transition: border-color .15s;
-  }
-  input[type=text]:focus, input[type=date]:focus, select.field-sel:focus { border-color: var(--black); }
-
-  .add-btn { height: 36px; padding: 0 20px; background: var(--black); color: var(--gold); border: none; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
-  .add-btn:hover { opacity: .85; }
-  .add-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-  .filter-bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:1rem; }
-  .filter-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border); background:none; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text-muted); cursor:pointer; transition:all .15s; font-weight:500; }
-  .filter-btn:hover { border-color:var(--text-muted); color:var(--text); }
-  .filter-btn.active { border-color:var(--black); background:var(--black); color:var(--gold); }
-  .filter-btn.f-previsto.active  { background:var(--c-previsto);  border-color:var(--c-previsto);  color:#fff; }
-  .filter-btn.f-andamento.active { background:var(--c-andamento); border-color:var(--c-andamento); color:#fff; }
-  .filter-btn.f-atrasado.active  { background:var(--c-atrasado);  border-color:var(--c-atrasado);  color:#fff; }
-  .filter-btn.f-concluido.active { background:var(--c-concluido); border-color:var(--c-concluido); color:#fff; }
-  .filter-btn.f-pendente.active  { background:var(--c-pendente);  border-color:var(--c-pendente);  color:#fff; }
-
-  @media (max-width: 680px) {
-    .form-row { grid-template-columns: 1fr 1fr; }
-    .add-btn { grid-column: span 2; }
-    .legend { display: none; }
-  }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;
+  --border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;
+  --radius:10px;--radius-sm:6px;
+  --c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;
+  --c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;
+  --c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;
+  --c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;
+  --c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+header{background:var(--black);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:2px;font-weight:500;}
+.logo span{color:#444;margin:0 8px;}
+.status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
+.status-dot.online{background:#2ecc71;}.status-dot.loading{background:var(--gold);}.status-dot.error{background:#e74c3c;}
+.main-tabs{display:flex;background:var(--black);border-top:1px solid #222;padding:0 2rem;}
+.main-tab{padding:10px 20px;font-size:13px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif;background:none;border-left:none;border-right:none;border-top:none;}
+.main-tab:hover{color:#aaa;}
+.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:12px;}
+.month-nav{display:flex;align-items:center;gap:12px;}
+.month-label{font-size:18px;font-weight:600;min-width:180px;text-align:center;}
+.nav-btn{width:32px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all .15s;}
+.nav-btn:hover{border-color:var(--black);color:var(--black);}
+.right-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+.leg-dot{width:9px;height:9px;border-radius:3px;}
+.leg-dot.previsto{background:var(--c-previsto-bg);border:1px solid var(--c-previsto);}
+.leg-dot.andamento{background:var(--c-andamento-bg);border:1px solid var(--c-andamento);}
+.leg-dot.atrasado{background:var(--c-atrasado-bg);border:1px solid var(--c-atrasado);}
+.leg-dot.concluido{background:var(--c-concluido-bg);border:1px solid var(--c-concluido);}
+.leg-dot.pendente{background:var(--c-pendente-bg);border:1px solid var(--c-pendente);}
+.tabs{display:flex;gap:4px;background:var(--border);padding:3px;border-radius:var(--radius-sm);}
+.tab{padding:5px 16px;border-radius:5px;border:none;background:none;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text-muted);font-weight:500;transition:all .15s;}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.filter-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1rem;}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;transition:all .15s;font-weight:500;}
+.filter-btn:hover{border-color:var(--text-muted);color:var(--text);}
+.filter-btn.active{border-color:var(--black);background:var(--black);color:var(--gold);}
+.filter-btn.f-previsto.active{background:var(--c-previsto);border-color:var(--c-previsto);color:#fff;}
+.filter-btn.f-andamento.active{background:var(--c-andamento);border-color:var(--c-andamento);color:#fff;}
+.filter-btn.f-atrasado.active{background:var(--c-atrasado);border-color:var(--c-atrasado);color:#fff;}
+.filter-btn.f-concluido.active{background:var(--c-concluido);border-color:var(--c-concluido);color:#fff;}
+.filter-btn.f-pendente.active{background:var(--c-pendente);border-color:var(--c-pendente);color:#fff;}
+.cal-wrap{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:var(--black);padding:8px 0;}
+.cal-wd{text-align:center;font-size:11px;font-weight:500;color:#666;letter-spacing:1px;text-transform:uppercase;}
+.cal-wd.weekend{color:var(--gold-dark);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:88px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;cursor:pointer;transition:background .1s;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell:hover{background:#FAFAF7;}
+.cal-cell.empty{background:var(--bg);cursor:default;}
+.cal-cell.today{background:#FFFBEE;}
+.cal-cell.selected{background:#F0F6FF;}
+.cal-cell.today .day-n{color:var(--gold-dark);font-weight:600;}
+.cal-cell.selected .day-n{color:var(--c-previsto);}
+.day-n{font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:4px;font-family:'DM Mono',monospace;}
+.pill{font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.pill.previsto{background:var(--c-previsto-bg);color:var(--c-previsto);}
+.pill.andamento{background:var(--c-andamento-bg);color:var(--c-andamento);}
+.pill.atrasado{background:var(--c-atrasado-bg);color:var(--c-atrasado);}
+.pill.concluido{background:var(--c-concluido-bg);color:var(--c-concluido);}
+.pill.pendente{background:var(--c-pendente-bg);color:var(--c-pendente);}
+.more-tag{font-size:9px;color:var(--text-light);font-family:'DM Mono',monospace;}
+.day-view{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.day-view-header{background:var(--black);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+.day-view-title{font-size:15px;font-weight:500;color:#fff;}
+.day-view-date{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);}
+.day-body{padding:1rem 1.25rem;}
+.evt-row{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden;}
+.evt-main{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;gap:12px;}
+.evt-client{font-size:14px;font-weight:500;}
+.evt-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;}
+.badge.previsto{background:var(--c-previsto-bg);color:var(--c-previsto);}
+.badge.andamento{background:var(--c-andamento-bg);color:var(--c-andamento);}
+.badge.atrasado{background:var(--c-atrasado-bg);color:var(--c-atrasado);}
+.badge.concluido{background:var(--c-concluido-bg);color:var(--c-concluido);}
+.badge.pendente{background:var(--c-pendente-bg);color:var(--c-pendente);}
+select.status-sel{font-size:11px;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 6px;background:var(--surface);color:var(--text-muted);cursor:pointer;outline:none;}
+.rm-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;cursor:pointer;font-size:13px;color:var(--text-light);display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.rm-btn:hover{border-color:#e00;color:#e00;}
+.obs-area{border-top:1px solid var(--border);background:var(--c-pendente-bg);padding:8px 12px;display:flex;gap:8px;align-items:center;}
+.obs-area input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;}
+.obs-label{font-size:11px;color:var(--c-pendente);font-weight:500;white-space:nowrap;}
+.obs-save{padding:4px 10px;background:var(--c-pendente);color:#fff;border:none;border-radius:var(--radius-sm);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;}
+.obs-text{font-size:12px;color:var(--c-pendente);font-style:italic;}
+.empty-state{text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;}
+.form-section{margin-top:1.5rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1rem 1.25rem;}
+.form-label{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.gold-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;}
+.form-row{display:grid;grid-template-columns:1fr 150px 160px auto;gap:8px;align-items:end;}
+.field label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;}
+input[type=text],input[type=date],input[type=number],select.field-sel{width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s;}
+input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.field-sel:focus{border-color:var(--black);}
+.add-btn{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;white-space:nowrap;}
+.add-btn:hover{opacity:.85;}.add-btn:disabled{opacity:.4;cursor:not-allowed;}
+.pipeline-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;}
+.pipeline-header h2{font-size:18px;font-weight:600;}
+.btn-new-project{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;}
+.btn-new-project:hover{opacity:.85;}
+.project-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
+.project-card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;}
+.project-card-header:hover{background:#FAFAF7;}
+.project-name{font-size:15px;font-weight:500;}
+.project-meta{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.uh-badge{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--bg);border:1px solid var(--border);color:var(--text-muted);font-family:'DM Mono',monospace;}
+.days-badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;}
+.days-badge.ok{background:var(--c-concluido-bg);color:var(--c-concluido);}
+.days-badge.warn{background:var(--c-pendente-bg);color:var(--c-pendente);}
+.days-badge.danger{background:var(--c-atrasado-bg);color:var(--c-atrasado);}
+.chevron{font-size:12px;color:var(--text-muted);transition:transform .2s;}
+.chevron.open{transform:rotate(180deg);}
+.project-body{border-top:1px solid var(--border);padding:16px;}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:16px;}
+.step-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--bg);}
+.step-card.done{border-color:var(--c-concluido);background:var(--c-concluido-bg);}
+.step-card.active-step{border-color:var(--c-andamento);background:var(--c-andamento-bg);}
+.step-number{font-size:10px;font-family:'DM Mono',monospace;color:var(--text-light);margin-bottom:4px;}
+.step-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.step-card.done .step-title{color:var(--c-concluido);}
+.step-card.active-step .step-title{color:var(--c-andamento);}
+.step-resp{font-size:11px;color:var(--text-muted);margin-bottom:8px;}
+.step-date-row{display:flex;align-items:center;gap:6px;}
+.step-date-label{font-size:10px;color:var(--text-light);white-space:nowrap;}
+.step-date-input{flex:1;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;}
+.step-date-input:focus{border-color:var(--black);}
+.step-check{width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.step-check:hover{border-color:var(--c-concluido);color:var(--c-concluido);}
+.step-card.done .step-check{background:var(--c-concluido);border-color:var(--c-concluido);color:#fff;}
+.step-remote{font-size:10px;padding:1px 6px;border-radius:3px;background:#EBF0FB;color:#1A5FC8;font-weight:500;margin-left:4px;}
+.project-actions{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);}
+.proj-btn{padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;transition:all .15s;}
+.proj-btn:hover{border-color:var(--text-muted);color:var(--text);}
+.proj-btn.danger:hover{border-color:#e00;color:#e00;}
+.progress-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:var(--c-andamento);border-radius:2px;transition:width .3s;}
+.saving-indicator{font-size:11px;color:var(--text-muted);margin-left:8px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:460px;border:1px solid var(--border);}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:1rem;}
+.modal-field{margin-bottom:12px;}
+.modal-field label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
+.modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
+.modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
+@media(max-width:680px){
+  .form-row{grid-template-columns:1fr 1fr;}
+  .add-btn{grid-column:span 2;}
+  .legend{display:none;}
+  .steps-grid{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -170,7 +176,13 @@
   </div>
 </header>
 
-<div class="main">
+<div class="main-tabs">
+  <button class="main-tab active" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
+  <button class="main-tab" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+</div>
+
+<!-- AGENDA -->
+<div id="page-agenda" class="main">
   <div class="controls">
     <div class="month-nav">
       <button class="nav-btn" id="prev">&#8592;</button>
@@ -191,7 +203,6 @@
       </div>
     </div>
   </div>
-
   <div class="filter-bar">
     <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
     <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
@@ -201,23 +212,14 @@
     <button class="filter-btn f-concluido" onclick="setFilter('concluido')">Concluído</button>
     <button class="filter-btn f-pendente" onclick="setFilter('pendente')">Pendente</button>
   </div>
-
   <div id="view-mes"></div>
   <div id="view-dia" style="display:none"></div>
-
   <div class="form-section">
     <div class="form-label"><span class="gold-dot"></span> Adicionar evento</div>
     <div class="form-row">
-      <div class="field">
-        <label>Cliente</label>
-        <input type="text" id="f-cliente" placeholder="Nome do cliente">
-      </div>
-      <div class="field">
-        <label>Data</label>
-        <input type="date" id="f-data">
-      </div>
-      <div class="field">
-        <label>Status</label>
+      <div class="field"><label>Cliente</label><input type="text" id="f-cliente" placeholder="Nome do cliente"></div>
+      <div class="field"><label>Data</label><input type="date" id="f-data"></div>
+      <div class="field"><label>Status</label>
         <select class="field-sel" id="f-status">
           <option value="previsto">Previsto</option>
           <option value="andamento">Em andamento</option>
@@ -231,199 +233,356 @@
   </div>
 </div>
 
+<!-- PIPELINE -->
+<div id="page-pipeline" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Pipeline Operacional</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="pipeline-sync"></div>
+    </div>
+    <button class="btn-new-project" onclick="openModal()">+ Novo projeto</button>
+  </div>
+  <div id="projects-list"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal">
+    <h3>Novo projeto</h3>
+    <div class="modal-field"><label>Nome do cliente</label><input type="text" id="m-nome" placeholder="Ex: Intercity Porto Maravilha"></div>
+    <div class="modal-field"><label>Quantidade de UHs</label><input type="number" id="m-uhs" placeholder="Ex: 180" min="1"></div>
+    <div class="modal-field"><label>Data de início (assinatura)</label><input type="date" id="m-inicio"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="createProject()">Criar projeto</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
-
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const DAYS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-const STATUS_LABEL = { previsto:'Previsto', andamento:'Em andamento', atrasado:'Atrasado', concluido:'Concluído', pendente:'Pendente' };
+const STATUS_LABEL = {previsto:'Previsto',andamento:'Em andamento',atrasado:'Atrasado',concluido:'Concluído',pendente:'Pendente'};
+
+const STEPS = [
+  {id:1,title:'Assinatura de contrato',resp:'Jurídico'},
+  {id:2,title:'Vistoria técnica',resp:'Atendimento — Marta / Thaylla',remote:true},
+  {id:3,title:'Projeto técnico',resp:'Técnica — Marco / Matheus D.'},
+  {id:4,title:'Análise de compras / Almoxarifado',resp:'Almoxarifado — Marco'},
+  {id:5,title:'Montagem dos equipamentos',resp:'Montagem — Isaque'},
+  {id:6,title:'Emissão da nota fiscal',resp:'Almoxarifado — Marco (aval Matheus D.)'},
+  {id:7,title:'Solicitação de coleta — transportadora',resp:'Almoxarifado — Marco'},
+  {id:8,title:'Agendamento com cliente + previsão de entrega',resp:'Atendimento — Marta / Thaylla'},
+  {id:9,title:'Confirmação de chegada',resp:'Atendimento — Marta / Thaylla'},
+  {id:10,title:'Instalação no local',resp:'Técnico de campo'},
+  {id:11,title:'Testes e conclusão',resp:'Técnico de campo — Joyce Maciel'},
+];
 
 const todayStr = new Date().toISOString().slice(0,10);
-let cur = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let cur = {y:new Date().getFullYear(),m:new Date().getMonth()};
 let selectedDate = todayStr;
 let activeTab = 'mes';
 let events = [];
 let activeFilter = 'todos';
+let projects = [];
+let saveTimer = null;
 
-function setFilter(f) {
-  activeFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.filter-btn${f==='todos'?':first-child':'.f-'+f}`).classList.add('active');
-  render();
+function setStatus(state,msg){
+  document.getElementById('status-dot').className='status-dot '+state;
+  document.getElementById('status-txt').textContent=msg;
 }
 
-function filteredEvents() {
-  if (activeFilter === 'todos') return events;
-  return events.filter(e => e.status === activeFilter);
-}
-
-function setStatus(state, msg) {
-  document.getElementById('status-dot').className = 'status-dot ' + state;
-  document.getElementById('status-txt').textContent = msg;
-}
-
-async function apiGet() {
-  setStatus('loading', 'Sincronizando...');
+// AGENDA API
+async function apiGet(){
+  setStatus('loading','Sincronizando...');
   try {
-    const r = await fetch(API + '?action=getAll');
+    const r = await fetch(API+'?action=getAll');
     const data = await r.json();
-    events = Array.isArray(data) ? data.filter(e => e.id && e.client && e.date && e.status).map(e => ({...e, date: e.date instanceof String ? e.date : String(e.date).slice(0,10)})) : [];
-    setStatus('online', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-    render();
-  } catch(err) {
-    setStatus('error', 'Erro de conexão');
-  }
+    events = Array.isArray(data)?data.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
+    setStatus('online','Sincronizado · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    renderAgenda();
+  } catch(err){ setStatus('error','Erro de conexão'); }
 }
 
-async function apiPost(body) {
-  setStatus('loading', 'Salvando...');
+async function apiPost(body){
+  setStatus('loading','Salvando...');
+  try { await fetch(API,{method:'POST',body:JSON.stringify(body)}); await apiGet(); }
+  catch(err){ setStatus('error','Erro ao salvar'); }
+}
+
+// PIPELINE API
+async function loadPipeline(){
+  document.getElementById('pipeline-sync').textContent='Carregando...';
   try {
-    await fetch(API, { method:'POST', body:JSON.stringify(body) });
-    await apiGet();
-  } catch(err) {
-    setStatus('error', 'Erro ao salvar');
+    const r = await fetch(API+'?action=getPipeline');
+    const data = await r.json();
+    projects = Array.isArray(data) ? data.map(p=>({
+      ...p,
+      uhs: parseInt(p.uhs)||0,
+      steps: Array.isArray(p.steps) ? p.steps : STEPS.map(s=>({id:s.id,done:false,date:''}))
+    })) : [];
+    document.getElementById('pipeline-sync').textContent='Sincronizado · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderPipeline();
+  } catch(err){
+    document.getElementById('pipeline-sync').textContent='Erro de conexão';
   }
 }
 
-function eventsOn(ds) { return filteredEvents().filter(e => e.date === ds); }
-
-function renderMes() {
-  const first = new Date(cur.y, cur.m, 1);
-  const last  = new Date(cur.y, cur.m+1, 0);
-  const startDow = first.getDay();
-  let html = '<div class="cal-wrap"><div class="cal-weekdays">';
-  DAYS_SHORT.forEach((d,i) => { html += `<div class="cal-wd${i===0||i===6?' weekend':''}">${d}</div>`; });
-  html += '</div><div class="cal-grid">';
-  for (let i=0; i<startDow; i++) html += '<div class="cal-cell empty"></div>';
-  for (let d=1; d<=last.getDate(); d++) {
-    const ds = `${cur.y}-${String(cur.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const evts = eventsOn(ds);
-    const cls = ['cal-cell', ds===todayStr?'today':'', ds===selectedDate?'selected':''].filter(Boolean).join(' ');
-    html += `<div class="${cls}" onclick="selectDay('${ds}')"><div class="day-n">${d}</div>`;
-    evts.slice(0,3).forEach(e => { html += `<div class="pill ${e.status}" title="${e.client}">${e.client}</div>`; });
-    if (evts.length>3) html += `<div class="more-tag">+${evts.length-3}</div>`;
-    html += '</div>';
+async function savePipelineProject(proj){
+  try {
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'savePipeline',...proj,steps:proj.steps})});
+    document.getElementById('pipeline-sync').textContent='Salvo · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  } catch(err){
+    document.getElementById('pipeline-sync').textContent='Erro ao salvar';
   }
-  html += '</div></div>';
-  document.getElementById('view-mes').innerHTML = html;
 }
 
-function renderDia() {
-  const evts = eventsOn(selectedDate);
-  const [y,m,d] = selectedDate.split('-');
-  const dt = new Date(+y,+m-1,+d);
-  const dateLabel = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
-  let html = `<div class="day-view">
-    <div class="day-view-header">
-      <div class="day-view-title">${DAYS_FULL[dt.getDay()]}</div>
-      <div class="day-view-date">${dateLabel}</div>
-    </div><div class="day-body">`;
+async function deletePipelineProject(id){
+  try { await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})}); }
+  catch(err){}
+}
 
-  if (evts.length === 0) {
-    html += `<div class="empty-state">Nenhum evento neste dia.</div>`;
-  } else {
-    evts.forEach(e => {
-      const isPendente = e.status === 'pendente';
-      const obsVal = e.obs || '';
-      html += `<div class="evt-row">
-        <div class="evt-main">
-          <div class="evt-client">${e.client}</div>
-          <div class="evt-actions">
-            <span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span>
-            <select class="status-sel" onchange="changeStatus('${e.id}',this.value)">
-              <option value="">Alterar status</option>
-              <option value="previsto">Previsto</option>
-              <option value="andamento">Em andamento</option>
-              <option value="atrasado">Atrasado</option>
-              <option value="concluido">Concluído</option>
-              <option value="pendente">Pendente</option>
-            </select>
-            <button class="rm-btn" onclick="removeEvt('${e.id}')">✕</button>
-          </div>
-        </div>`;
-      if (isPendente) {
-        html += `<div class="obs-area">
-          <span class="obs-label">Obs:</span>
-          <input type="text" id="obs-${e.id}" value="${obsVal.replace(/"/g,'&quot;')}" placeholder="Descreva a pendência...">
-          <button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button>
-        </div>`;
-      } else if (obsVal) {
-        html += `<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${obsVal}</span></div>`;
-      }
-      html += '</div>';
+// MAIN TAB
+function switchMainTab(t){
+  document.getElementById('mt-agenda').className='main-tab'+(t==='agenda'?' active':'');
+  document.getElementById('mt-pipeline').className='main-tab'+(t==='pipeline'?' active':'');
+  document.getElementById('page-agenda').style.display=t==='agenda'?'':'none';
+  document.getElementById('page-pipeline').style.display=t==='pipeline'?'':'none';
+  if(t==='pipeline') loadPipeline();
+}
+
+// FILTER
+function setFilter(f){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(f==='todos'?'.filter-btn:first-child':'.filter-btn.f-'+f).classList.add('active');
+  renderAgenda();
+}
+function filteredEvents(){ return activeFilter==='todos'?events:events.filter(e=>e.status===activeFilter); }
+function eventsOn(ds){ return filteredEvents().filter(e=>e.date===ds); }
+
+// AGENDA RENDER
+function renderMes(){
+  const first=new Date(cur.y,cur.m,1),last=new Date(cur.y,cur.m+1,0);
+  let html='<div class="cal-wrap"><div class="cal-weekdays">';
+  DAYS_SHORT.forEach((d,i)=>{html+=`<div class="cal-wd${i===0||i===6?' weekend':''}">${d}</div>`;});
+  html+='</div><div class="cal-grid">';
+  for(let i=0;i<first.getDay();i++) html+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=last.getDate();d++){
+    const ds=`${cur.y}-${String(cur.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evts=eventsOn(ds);
+    const cls=['cal-cell',ds===todayStr?'today':'',ds===selectedDate?'selected':''].filter(Boolean).join(' ');
+    html+=`<div class="${cls}" onclick="selectDay('${ds}')"><div class="day-n">${d}</div>`;
+    evts.slice(0,3).forEach(e=>{html+=`<div class="pill ${e.status}" title="${e.client}">${e.client}</div>`;});
+    if(evts.length>3) html+=`<div class="more-tag">+${evts.length-3}</div>`;
+    html+='</div>';
+  }
+  html+='</div></div>';
+  document.getElementById('view-mes').innerHTML=html;
+}
+
+function renderDia(){
+  const evts=eventsOn(selectedDate);
+  const [y,m,d]=selectedDate.split('-');
+  const dt=new Date(+y,+m-1,+d);
+  const dateLabel=`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+  let html=`<div class="day-view"><div class="day-view-header"><div class="day-view-title">${DAYS_FULL[dt.getDay()]}</div><div class="day-view-date">${dateLabel}</div></div><div class="day-body">`;
+  if(!evts.length){html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;}
+  else {
+    evts.forEach(e=>{
+      const isPendente=e.status==='pendente',obsVal=e.obs||'';
+      html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions">
+        <span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span>
+        <select class="status-sel" onchange="changeStatus('${e.id}',this.value)">
+          <option value="">Alterar</option>
+          <option value="previsto">Previsto</option>
+          <option value="andamento">Em andamento</option>
+          <option value="atrasado">Atrasado</option>
+          <option value="concluido">Concluído</option>
+          <option value="pendente">Pendente</option>
+        </select>
+        <button class="rm-btn" onclick="removeEvt('${e.id}')">✕</button>
+      </div></div>`;
+      if(isPendente) html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${obsVal.replace(/"/g,'&quot;')}" placeholder="Descreva a pendência..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
+      else if(obsVal) html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${obsVal}</span></div>`;
+      html+='</div>';
     });
   }
-  html += '</div></div>';
-  document.getElementById('view-dia').innerHTML = html;
+  html+='</div></div>';
+  document.getElementById('view-dia').innerHTML=html;
 }
 
-function selectDay(ds) {
-  selectedDate = ds;
-  const [y,m] = ds.split('-');
-  cur = { y:+y, m:+m-1 };
-  if (activeTab==='mes') switchTab('dia'); else render();
+function renderAgenda(){
+  document.getElementById('month-label').textContent=`${MONTHS[cur.m]} ${cur.y}`;
+  if(activeTab==='mes') renderMes(); else renderDia();
 }
 
-function switchTab(t) {
-  activeTab = t;
-  document.getElementById('tab-mes').className = 'tab'+(t==='mes'?' active':'');
-  document.getElementById('tab-dia').className = 'tab'+(t==='dia'?' active':'');
-  document.getElementById('view-mes').style.display = t==='mes'?'':'none';
-  document.getElementById('view-dia').style.display = t==='dia'?'':'none';
-  render();
+function selectDay(ds){
+  selectedDate=ds;const [y,m]=ds.split('-');cur={y:+y,m:+m-1};
+  if(activeTab==='mes') switchTab('dia'); else renderAgenda();
 }
-
-function render() {
-  document.getElementById('month-label').textContent = `${MONTHS[cur.m]} ${cur.y}`;
-  if (activeTab==='mes') renderMes(); else renderDia();
+function switchTab(t){
+  activeTab=t;
+  document.getElementById('tab-mes').className='tab'+(t==='mes'?' active':'');
+  document.getElementById('tab-dia').className='tab'+(t==='dia'?' active':'');
+  document.getElementById('view-mes').style.display=t==='mes'?'':'none';
+  document.getElementById('view-dia').style.display=t==='dia'?'':'none';
+  renderAgenda();
 }
-
-document.getElementById('prev').onclick = () => {
-  if (activeTab==='mes') { cur.m--; if(cur.m<0){cur.m=11;cur.y--;} }
-  else { const d=new Date(selectedDate); d.setDate(d.getDate()-1); selectedDate=d.toISOString().slice(0,10); cur={y:d.getFullYear(),m:d.getMonth()}; }
-  render();
+document.getElementById('prev').onclick=()=>{
+  if(activeTab==='mes'){cur.m--;if(cur.m<0){cur.m=11;cur.y--;}}
+  else{const d=new Date(selectedDate);d.setDate(d.getDate()-1);selectedDate=d.toISOString().slice(0,10);cur={y:d.getFullYear(),m:d.getMonth()};}
+  renderAgenda();
 };
-document.getElementById('next').onclick = () => {
-  if (activeTab==='mes') { cur.m++; if(cur.m>11){cur.m=0;cur.y++;} }
-  else { const d=new Date(selectedDate); d.setDate(d.getDate()+1); selectedDate=d.toISOString().slice(0,10); cur={y:d.getFullYear(),m:d.getMonth()}; }
-  render();
+document.getElementById('next').onclick=()=>{
+  if(activeTab==='mes'){cur.m++;if(cur.m>11){cur.m=0;cur.y++;}}
+  else{const d=new Date(selectedDate);d.setDate(d.getDate()+1);selectedDate=d.toISOString().slice(0,10);cur={y:d.getFullYear(),m:d.getMonth()};}
+  renderAgenda();
 };
 
-function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 
-async function addEvt() {
-  const c = document.getElementById('f-cliente').value.trim();
-  const d = document.getElementById('f-data').value;
-  const s = document.getElementById('f-status').value;
-  if (!c||!d) return;
-  const btn = document.getElementById('add-btn');
-  btn.disabled=true; btn.textContent='...';
-  const [y,m] = d.split('-');
-  cur={y:+y,m:+m-1}; selectedDate=d;
-  await apiPost({ action:'add', id:uid(), client:c, date:d, status:s, obs:'' });
+async function addEvt(){
+  const c=document.getElementById('f-cliente').value.trim();
+  const d=document.getElementById('f-data').value;
+  const s=document.getElementById('f-status').value;
+  if(!c||!d) return;
+  const btn=document.getElementById('add-btn');
+  btn.disabled=true;btn.textContent='...';
+  const [y,m]=d.split('-');cur={y:+y,m:+m-1};selectedDate=d;
+  await apiPost({action:'add',id:uid(),client:c,date:d,status:s,obs:''});
   document.getElementById('f-cliente').value='';
-  btn.disabled=false; btn.textContent='+ Adicionar';
-  render();
+  btn.disabled=false;btn.textContent='+ Adicionar';
+  renderAgenda();
+}
+async function changeStatus(id,ns){if(!ns)return;const evt=events.find(e=>e.id==id);const obs=evt?(evt.obs||''):'';await apiPost({action:'update',id,status:ns,obs});}
+async function saveObs(id,status){const obs=document.getElementById('obs-'+id).value.trim();await apiPost({action:'update',id,status,obs});}
+async function removeEvt(id){await apiPost({action:'delete',id});}
+
+// PIPELINE ACTIONS
+function openModal(){
+  document.getElementById('m-nome').value='';
+  document.getElementById('m-uhs').value='';
+  document.getElementById('m-inicio').value=todayStr;
+  document.getElementById('modal').style.display='flex';
+}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+async function createProject(){
+  const nome=document.getElementById('m-nome').value.trim();
+  const uhs=parseInt(document.getElementById('m-uhs').value)||0;
+  const inicio=document.getElementById('m-inicio').value;
+  if(!nome) return;
+  const proj={id:uid(),nome,uhs,inicio,steps:STEPS.map(s=>({id:s.id,done:false,date:''}))};
+  projects.unshift(proj);
+  closeModal();
+  renderPipeline();
+  await savePipelineProject(proj);
 }
 
-async function changeStatus(id, ns) {
-  if (!ns) return;
-  const evt = events.find(e=>e.id==id);
-  const obs = evt ? (evt.obs||'') : '';
-  await apiPost({ action:'update', id, status:ns, obs });
+async function deleteProject(id){
+  if(!confirm('Remover este projeto?')) return;
+  projects=projects.filter(p=>p.id!==id);
+  renderPipeline();
+  await deletePipelineProject(id);
 }
 
-async function saveObs(id, status) {
-  const obs = document.getElementById('obs-'+id).value.trim();
-  await apiPost({ action:'update', id, status, obs });
+function schedSave(proj){
+  document.getElementById('pipeline-sync').textContent='Salvando...';
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>savePipelineProject(proj),1500);
 }
 
-async function removeEvt(id) { await apiPost({ action:'delete', id }); }
+function toggleStep(projId,stepId){
+  const proj=projects.find(p=>p.id===projId);if(!proj)return;
+  const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
+  step.done=!step.done;
+  if(step.done&&!step.date) step.date=todayStr;
+  renderPipeline();
+  schedSave(proj);
+}
 
-document.getElementById('f-data').value = todayStr;
+function updateStepDate(projId,stepId,val){
+  const proj=projects.find(p=>p.id===projId);if(!proj)return;
+  const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
+  step.date=val;
+  schedSave(proj);
+}
+
+function toggleProject(id){
+  const el=document.getElementById('proj-body-'+id);
+  const chev=document.getElementById('chev-'+id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  chev.className='chevron'+(open?'':' open');
+}
+
+function daysSince(dateStr){
+  if(!dateStr) return null;
+  return Math.floor((new Date()-new Date(dateStr))/(1000*60*60*24));
+}
+
+function renderPipeline(){
+  const list=document.getElementById('projects-list');
+  if(!projects.length){
+    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum projeto. Clique em "+ Novo projeto" para começar.</div>';
+    return;
+  }
+  list.innerHTML=projects.map(proj=>{
+    const doneCnt=proj.steps.filter(s=>s.done).length;
+    const pct=Math.round((doneCnt/11)*100);
+    const dias=daysSince(proj.inicio);
+    let daysCls='ok';
+    if(dias>=40) daysCls='danger';
+    else if(dias>=30) daysCls='warn';
+    const currentStep=proj.steps.find(s=>!s.done);
+    const currentStepTitle=currentStep?STEPS.find(s=>s.id===currentStep.id)?.title:'Concluído ✓';
+
+    const stepsHtml=STEPS.map(s=>{
+      const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
+      const isActive=!ps.done&&currentStep&&currentStep.id===s.id;
+      const isRemote=s.remote&&proj.uhs<50;
+      return `<div class="step-card${ps.done?' done':isActive?' active-step':''}">
+        <div class="step-number">Etapa ${s.id}</div>
+        <div class="step-title">${s.title}${isRemote?'<span class="step-remote">Remota</span>':''}</div>
+        <div class="step-resp">${s.resp}</div>
+        <div class="step-date-row">
+          <span class="step-date-label">Data:</span>
+          <input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)">
+          <button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'✓':''}</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="project-card">
+      <div class="project-card-header" onclick="toggleProject('${proj.id}')">
+        <div>
+          <div class="project-name">${proj.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${currentStepTitle} · ${doneCnt}/11 etapas</div>
+        </div>
+        <div class="project-meta">
+          <span class="uh-badge">${proj.uhs} UHs</span>
+          ${dias!==null?`<span class="days-badge ${daysCls}">${dias}d / 45d</span>`:''}
+          <span class="chevron" id="chev-${proj.id}">▼</span>
+        </div>
+      </div>
+      <div class="project-body" id="proj-body-${proj.id}" style="display:none">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        <div class="steps-grid">${stepsHtml}</div>
+        <div class="project-actions">
+          <button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('f-data').value=todayStr;
 apiGet();
-setInterval(apiGet, 30000);
+setInterval(apiGet,30000);
 </script>
 </body>
 </html>
