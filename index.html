@@ -387,7 +387,8 @@ function renderDia(){
   if(!evts.length)html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;
   else evts.forEach(e=>{
     const ip=e.status==='pendente',ov=e.obs||'';
-    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluido</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
+    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${e.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluido</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
+    html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;display:none;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${e.id}','${e.client}','${e.status}','${e.obs||''}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${e.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
     if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
     else if(ov)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${ov}</span></div>`;
     html+='</div>';
@@ -532,6 +533,19 @@ async function renderDashboard(){
   document.getElementById('dash-sync').textContent='Atualizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 
+function toggleEditDate(id){
+  const area=document.getElementById('edit-area-'+id);
+  if(!area)return;
+  area.style.display=area.style.display==='none'||area.style.display===''?'flex':'none';
+}
+async function saveNewDate(id,client,status,obs){
+  const newDate=document.getElementById('edit-date-'+id).value;
+  if(!newDate)return;
+  await apiPost({action:'delete',id});
+  await apiPost({action:'add',id:uid(),client,date:newDate,status,obs:obs||''});
+  const[y,m]=newDate.split('-');cur={y:+y,m:+m-1};selectedDate=newDate;
+  renderAgenda();
+}
 document.getElementById('f-data').value=todayStr;
 apiGet();
 setInterval(apiGet,30000);
