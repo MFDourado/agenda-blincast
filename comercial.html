@@ -73,13 +73,14 @@ header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-ite
 .mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--black);}
 .sub-field{margin-top:8px;display:none;}
 .sub-field.show{display:block;}
-.sub-field input,.sub-field select{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
-.sub-field input:focus,.sub-field select:focus{border-color:var(--black);}
+.sub-field input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
+.sub-field input:focus{border-color:var(--black);}
+.section-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;grid-column:span 2;margin-top:4px;padding-top:12px;border-top:1px solid var(--border);}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
+.modal-btn:disabled{opacity:.4;cursor:not-allowed;}
 footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;}
-select.vendedor-sel option[value=""]{color:var(--text-muted);}
 </style>
 </head>
 <body>
@@ -98,7 +99,6 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
     </div>
     <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
   </div>
-
   <div class="filter-row">
     <span class="filter-label">Status:</span>
     <button class="filter-btn active" id="fs-todos" onclick="setFilter('status','todos')">Todos</button>
@@ -108,7 +108,7 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
     <span class="filter-label">Prioridade:</span>
     <button class="filter-btn active" id="fp-todos" onclick="setFilter('prioridade','todos')">Todas</button>
     <button class="filter-btn f-urgente" id="fp-urgente" onclick="setFilter('prioridade','urgente')">Urgente</button>
-    <button class="filter-btn f-media" id="fp-media" onclick="setFilter('prioridade','media')">Média</button>
+    <button class="filter-btn f-media" id="fp-media" onclick="setFilter('prioridade','media')">Media</button>
     <button class="filter-btn f-baixa" id="fp-baixa" onclick="setFilter('prioridade','baixa')">Baixa</button>
     <div class="filter-divider"></div>
     <span class="filter-label">Vendedor:</span>
@@ -117,13 +117,12 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
     <button class="filter-btn" id="fv-Victor Hugo" onclick="setFilter('vendedor','Victor Hugo')">Victor Hugo</button>
     <button class="filter-btn" id="fv-Victor Xavier" onclick="setFilter('vendedor','Victor Xavier')">Victor Xavier</button>
     <button class="filter-btn" id="fv-Diogo" onclick="setFilter('vendedor','Diogo')">Diogo</button>
-    <button class="filter-btn" id="fv-Andre Gama" onclick="setFilter('vendedor','Andre Gama')">André Gama</button>
+    <button class="filter-btn" id="fv-Andre Gama" onclick="setFilter('vendedor','Andre Gama')">Andre Gama</button>
   </div>
-
   <div class="cards-grid" id="cards-grid"></div>
 </div>
 
-<!-- MODAL -->
+<!-- MODAL PROSPECT -->
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal">
     <h3 id="modal-title">Novo prospect</h3>
@@ -131,7 +130,13 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
       <div class="mf full"><label>Nome do cliente *</label><input type="text" id="m-nome" placeholder="Ex: Hotel Beira Mar"></div>
       <div class="mf"><label>Cidade *</label><input type="text" id="m-cidade" placeholder="Ex: Recife"></div>
       <div class="mf"><label>CNPJ</label><input type="text" id="m-cnpj" placeholder="00.000.000/0000-00"></div>
-      <div class="mf full"><label>Contato (nome + telefone/e-mail)</label><input type="text" id="m-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
+
+      <div class="section-title">Contato</div>
+      <div class="mf full"><label>Nome do contato</label><input type="text" id="m-contato-nome" placeholder="Ex: Joao Silva"></div>
+      <div class="mf"><label>Telefone</label><input type="text" id="m-telefone" placeholder="Ex: (81) 99999-9999"></div>
+      <div class="mf"><label>Endereco</label><input type="text" id="m-endereco" placeholder="Ex: Rua das Flores, 123"></div>
+
+      <div class="section-title">Negociacao</div>
       <div class="mf"><label>Vendedor *</label>
         <select id="m-vendedor">
           <option value="">Selecione...</option>
@@ -139,14 +144,14 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
           <option value="Victor Hugo">Victor Hugo</option>
           <option value="Victor Xavier">Victor Xavier</option>
           <option value="Diogo">Diogo</option>
-          <option value="Andre Gama">André Gama</option>
+          <option value="Andre Gama">Andre Gama</option>
         </select>
       </div>
       <div class="mf"><label>Prioridade *</label>
         <select id="m-prioridade">
           <option value="">Selecione...</option>
           <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
+          <option value="media">Media</option>
           <option value="urgente">Urgente</option>
         </select>
       </div>
@@ -163,20 +168,20 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
         <div class="sub-field" id="produto-outro-wrap"><input type="text" id="m-produto-outro" placeholder="Especifique o produto..."></div>
       </div>
       <div class="mf"><label>UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
-      <div class="mf"><label>Prazo para instalação</label><input type="date" id="m-prazo"></div>
-      <div class="mf"><label>Conteúdo online?</label>
+      <div class="mf"><label>Prazo para instalacao</label><input type="date" id="m-prazo"></div>
+      <div class="mf"><label>Conteudo online?</label>
         <select id="m-conteudo" onchange="toggleConteudo()">
-          <option value="Nao">Não</option>
+          <option value="Nao">Nao</option>
           <option value="Sim">Sim</option>
         </select>
         <div class="sub-field" id="conteudo-detalhe-wrap"><input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma?"></div>
       </div>
       <div class="mf"><label>Canal corporativo?</label>
         <select id="m-corp" onchange="toggleCorp()">
-          <option value="Nao">Não</option>
+          <option value="Nao">Nao</option>
           <option value="Sim">Sim</option>
         </select>
-        <div class="sub-field" id="corp-detalhe-wrap"><input type="text" id="m-corp-detalhe" placeholder="Observação..."></div>
+        <div class="sub-field" id="corp-detalhe-wrap"><input type="text" id="m-corp-detalhe" placeholder="Observacao..."></div>
       </div>
     </div>
     <input type="hidden" id="m-edit-id">
@@ -187,10 +192,9 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
   </div>
 </div>
 
-
 <!-- MODAL CONVERSAO -->
 <div class="modal-overlay" id="conv-modal" style="display:none">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:400px">
     <h3>Contrato Assinado</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Cliente: <strong id="conv-nome"></strong></p>
     <div class="mf full">
@@ -245,8 +249,8 @@ function filtered(){
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
-
 function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Media':p==='baixa'?'Baixa':p||'';}
+function formatDateBR(ds){if(!ds)return'';const[y,m,d]=String(ds).slice(0,10).split('-');return d+'/'+m+'/'+y;}
 
 function render(){
   const grid=document.getElementById('cards-grid');
@@ -267,6 +271,8 @@ function render(){
       <div class="card-body">
         ${p.cnpj?`<div class="card-row"><span class="card-lbl">CNPJ</span><span class="card-val">${p.cnpj}</span></div>`:''}
         ${p.contato?`<div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato}</span></div>`:''}
+        ${p.telefone?`<div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${p.telefone}</span></div>`:''}
+        ${p.endereco?`<div class="card-row"><span class="card-lbl">Endereco</span><span class="card-val">${p.endereco}</span></div>`:''}
         <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' canais)':''}</span></div>
         <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
         ${p.prazo?`<div class="card-row"><span class="card-lbl">Prazo inst.</span><span class="card-val">${formatDateBR(p.prazo)}</span></div>`:''}
@@ -282,12 +288,6 @@ function render(){
   `).join('');
 }
 
-function formatDateBR(ds){
-  if(!ds)return'';
-  const[y,m,d]=String(ds).slice(0,10).split('-');
-  return d+'/'+m+'/'+y;
-}
-
 function toggleProduto(){
   const v=document.getElementById('m-produto').value;
   document.getElementById('produto-canais-wrap').className='sub-field'+(v==='HD'||v==='SD'?' show':'');
@@ -297,10 +297,8 @@ function toggleConteudo(){document.getElementById('conteudo-detalhe-wrap').class
 function toggleCorp(){document.getElementById('corp-detalhe-wrap').className='sub-field'+(document.getElementById('m-corp').value==='Sim'?' show':'');}
 
 function openModal(){
-  ['m-nome','m-cidade','m-cnpj','m-contato','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('m-produto').value='';
-  document.getElementById('m-vendedor').value='';
-  document.getElementById('m-prioridade').value='';
+  ['m-nome','m-cidade','m-cnpj','m-contato-nome','m-telefone','m-endereco','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['m-produto','m-vendedor','m-prioridade'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-conteudo').value='Nao';
   document.getElementById('m-corp').value='Nao';
   document.getElementById('m-prazo').value='';
@@ -316,7 +314,9 @@ function editar(id){
   document.getElementById('m-nome').value=p.nome||'';
   document.getElementById('m-cidade').value=p.cidade||'';
   document.getElementById('m-cnpj').value=p.cnpj||'';
-  document.getElementById('m-contato').value=p.contato||'';
+  document.getElementById('m-contato-nome').value=p.contato||'';
+  document.getElementById('m-telefone').value=p.telefone||'';
+  document.getElementById('m-endereco').value=p.endereco||'';
   document.getElementById('m-vendedor').value=p.vendedor||'';
   document.getElementById('m-prioridade').value=p.prioridade||'';
   document.getElementById('m-produto').value=p.produto||'';
@@ -347,7 +347,9 @@ async function salvar(){
   const payload={
     nome,cidade,
     cnpj:document.getElementById('m-cnpj').value.trim(),
-    contato:document.getElementById('m-contato').value.trim(),
+    contato:document.getElementById('m-contato-nome').value.trim(),
+    telefone:document.getElementById('m-telefone').value.trim(),
+    endereco:document.getElementById('m-endereco').value.trim(),
     vendedor,prioridade,
     produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('m-produto-outro').value.trim():produto,
     canais:(produto==='HD'||produto==='SD')?document.getElementById('m-canais').value:'',
@@ -383,8 +385,7 @@ function converter(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   document.getElementById('conv-id').value=id;
   document.getElementById('conv-nome').textContent=p.nome;
-  const today=new Date().toISOString().slice(0,10);
-  document.getElementById('conv-data').value=today;
+  document.getElementById('conv-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('conv-modal').style.display='flex';
 }
 
