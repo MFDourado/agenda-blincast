@@ -6,7 +6,9 @@
 <title>Comercial — Blincast</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-:root{--black:#111111;--gold:#F5B800;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--radius:10px;--radius-sm:6px;--c-prospect:#1A5FC8;--c-prospect-bg:#EBF0FB;--c-convertido:#3B6D11;--c-convertido-bg:#EAF3DE;}
+:root{--black:#111111;--gold:#F5B800;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--radius:10px;--radius-sm:6px;
+--c-prospect:#1A5FC8;--c-prospect-bg:#EBF0FB;--c-convertido:#3B6D11;--c-convertido-bg:#EAF3DE;
+--c-baixa:#3B6D11;--c-baixa-bg:#EAF3DE;--c-media:#B86A00;--c-media-bg:#FEF3E0;--c-urgente:#A32D2D;--c-urgente-bg:#FCEBEB;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
 header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
@@ -15,54 +17,69 @@ header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-ite
 .status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
 .status-dot.online{background:#2ecc71;}.status-dot.loading{background:var(--gold);}.status-dot.error{background:#e74c3c;}
-.main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem;}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;}
 .page-header h2{font-size:18px;font-weight:600;}
 .page-sync{font-size:12px;color:var(--text-muted);}
 .btn-primary{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;}
 .btn-primary:hover{opacity:.85;}
-.filter-bar{display:flex;align-items:center;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;}
-.filter-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;font-weight:500;transition:all .15s;}
+.filter-row{display:flex;align-items:center;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;}
+.filter-label{font-size:12px;color:var(--text-muted);margin-right:4px;}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;font-weight:500;transition:all .15s;}
 .filter-btn:hover{border-color:var(--text-muted);color:var(--text);}
 .filter-btn.active{border-color:var(--black);background:var(--black);color:var(--gold);}
 .filter-btn.f-prospect.active{background:var(--c-prospect);border-color:var(--c-prospect);color:#fff;}
 .filter-btn.f-convertido.active{background:var(--c-convertido);border-color:var(--c-convertido);color:#fff;}
+.filter-btn.f-urgente.active{background:var(--c-urgente);border-color:var(--c-urgente);color:#fff;}
+.filter-btn.f-media.active{background:var(--c-media);border-color:var(--c-media);color:#fff;}
+.filter-btn.f-baixa.active{background:var(--c-baixa);border-color:var(--c-baixa);color:#fff;}
+.filter-divider{width:1px;height:20px;background:var(--border);margin:0 4px;}
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
 .prospect-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
 .prospect-card.convertido{border-color:var(--c-convertido);opacity:.85;}
-.card-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
-.card-nome{font-size:15px;font-weight:500;}
-.card-cidade{font-size:12px;color:var(--text-muted);margin-top:2px;}
-.status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;flex-shrink:0;}
-.status-badge.prospect{background:var(--c-prospect-bg);color:var(--c-prospect);}
-.status-badge.convertido{background:var(--c-convertido-bg);color:var(--c-convertido);}
-.card-body{padding:12px 16px;}
-.card-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;}
-.card-label{font-size:11px;color:var(--text-muted);min-width:100px;}
-.card-value{color:var(--text);font-weight:500;}
-.card-actions{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
-.btn-sm{padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;}
+.prospect-card.urgente{border-left:3px solid var(--c-urgente);}
+.prospect-card.media{border-left:3px solid var(--c-media);}
+.prospect-card.baixa{border-left:3px solid var(--c-baixa);}
+.card-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.card-nome{font-size:14px;font-weight:500;}
+.card-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap;}
+.badge.prospect{background:var(--c-prospect-bg);color:var(--c-prospect);}
+.badge.convertido{background:var(--c-convertido-bg);color:var(--c-convertido);}
+.badge.urgente{background:var(--c-urgente-bg);color:var(--c-urgente);}
+.badge.media{background:var(--c-media-bg);color:var(--c-media);}
+.badge.baixa{background:var(--c-baixa-bg);color:var(--c-baixa);}
+.card-body{padding:10px 14px;}
+.card-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;font-size:12px;}
+.card-lbl{color:var(--text-muted);min-width:110px;flex-shrink:0;}
+.card-val{color:var(--text);font-weight:500;}
+.card-actions{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+.btn-sm{padding:4px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;}
 .btn-sm:hover{border-color:var(--text-muted);color:var(--text);}
 .btn-sm.converter{background:var(--black);color:var(--gold);border-color:var(--black);font-weight:500;}
 .btn-sm.converter:hover{opacity:.85;}
 .btn-sm.danger:hover{border-color:#e00;color:#e00;}
-.empty-state{text-align:center;padding:3rem;color:var(--text-muted);font-size:13px;}
+.empty-state{text-align:center;padding:3rem;color:var(--text-muted);font-size:13px;grid-column:span 3;}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
-.modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:520px;border:1px solid var(--border);max-height:90vh;overflow-y:auto;}
+.modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:560px;border:1px solid var(--border);max-height:92vh;overflow-y:auto;}
 .modal h3{font-size:16px;font-weight:500;margin-bottom:1.25rem;}
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.modal-field{margin-bottom:0;}
-.modal-field.full{grid-column:span 2;}
-.modal-field label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;}
-.modal-field input,.modal-field select,.modal-field textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
-.modal-field textarea{height:64px;padding:8px 10px;resize:none;}
-.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--black);}
+.mf{margin-bottom:0;}
+.mf.full{grid-column:span 2;}
+.mf label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;}
+.mf input,.mf select,.mf textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
+.mf textarea{height:60px;padding:8px 10px;resize:none;}
+.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--black);}
+.sub-field{margin-top:8px;display:none;}
+.sub-field.show{display:block;}
+.sub-field input,.sub-field select{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
+.sub-field input:focus,.sub-field select:focus{border-color:var(--black);}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
-.conteudo-detalhe{margin-top:8px;display:none;}
-.conteudo-detalhe.show{display:block;}
 footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;}
+select.vendedor-sel option[value=""]{color:var(--text-muted);}
 </style>
 </head>
 <body>
@@ -81,25 +98,60 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
     </div>
     <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
   </div>
-  <div class="filter-bar">
-    <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
-    <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
-    <button class="filter-btn f-prospect" onclick="setFilter('prospect')">Prospect</button>
-    <button class="filter-btn f-convertido" onclick="setFilter('convertido')">Convertido</button>
+
+  <div class="filter-row">
+    <span class="filter-label">Status:</span>
+    <button class="filter-btn active" id="fs-todos" onclick="setFilter('status','todos')">Todos</button>
+    <button class="filter-btn f-prospect" id="fs-prospect" onclick="setFilter('status','prospect')">Prospect</button>
+    <button class="filter-btn f-convertido" id="fs-convertido" onclick="setFilter('status','convertido')">Convertido</button>
+    <div class="filter-divider"></div>
+    <span class="filter-label">Prioridade:</span>
+    <button class="filter-btn active" id="fp-todos" onclick="setFilter('prioridade','todos')">Todas</button>
+    <button class="filter-btn f-urgente" id="fp-urgente" onclick="setFilter('prioridade','urgente')">Urgente</button>
+    <button class="filter-btn f-media" id="fp-media" onclick="setFilter('prioridade','media')">Média</button>
+    <button class="filter-btn f-baixa" id="fp-baixa" onclick="setFilter('prioridade','baixa')">Baixa</button>
+    <div class="filter-divider"></div>
+    <span class="filter-label">Vendedor:</span>
+    <button class="filter-btn active" id="fv-todos" onclick="setFilter('vendedor','todos')">Todos</button>
+    <button class="filter-btn" id="fv-Rafael" onclick="setFilter('vendedor','Rafael')">Rafael</button>
+    <button class="filter-btn" id="fv-Victor Hugo" onclick="setFilter('vendedor','Victor Hugo')">Victor Hugo</button>
+    <button class="filter-btn" id="fv-Victor Xavier" onclick="setFilter('vendedor','Victor Xavier')">Victor Xavier</button>
+    <button class="filter-btn" id="fv-Diogo" onclick="setFilter('vendedor','Diogo')">Diogo</button>
+    <button class="filter-btn" id="fv-Andre Gama" onclick="setFilter('vendedor','Andre Gama')">André Gama</button>
   </div>
+
   <div class="cards-grid" id="cards-grid"></div>
 </div>
 
+<!-- MODAL -->
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal">
     <h3 id="modal-title">Novo prospect</h3>
     <div class="modal-grid">
-      <div class="modal-field full"><label>Nome do cliente *</label><input type="text" id="m-nome" placeholder="Ex: Hotel Beira Mar"></div>
-      <div class="modal-field"><label>Cidade *</label><input type="text" id="m-cidade" placeholder="Ex: Recife"></div>
-      <div class="modal-field"><label>CNPJ</label><input type="text" id="m-cnpj" placeholder="00.000.000/0000-00"></div>
-      <div class="modal-field full"><label>Contato (nome + telefone/e-mail)</label><input type="text" id="m-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
-      <div class="modal-field"><label>Produto negociado *</label>
-        <select id="m-produto">
+      <div class="mf full"><label>Nome do cliente *</label><input type="text" id="m-nome" placeholder="Ex: Hotel Beira Mar"></div>
+      <div class="mf"><label>Cidade *</label><input type="text" id="m-cidade" placeholder="Ex: Recife"></div>
+      <div class="mf"><label>CNPJ</label><input type="text" id="m-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="mf full"><label>Contato (nome + telefone/e-mail)</label><input type="text" id="m-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
+      <div class="mf"><label>Vendedor *</label>
+        <select id="m-vendedor">
+          <option value="">Selecione...</option>
+          <option value="Rafael">Rafael</option>
+          <option value="Victor Hugo">Victor Hugo</option>
+          <option value="Victor Xavier">Victor Xavier</option>
+          <option value="Diogo">Diogo</option>
+          <option value="Andre Gama">André Gama</option>
+        </select>
+      </div>
+      <div class="mf"><label>Prioridade *</label>
+        <select id="m-prioridade">
+          <option value="">Selecione...</option>
+          <option value="baixa">Baixa</option>
+          <option value="media">Média</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </div>
+      <div class="mf"><label>Produto *</label>
+        <select id="m-produto" onchange="toggleProduto()">
           <option value="">Selecione...</option>
           <option value="HD">HD</option>
           <option value="SD">SD</option>
@@ -107,23 +159,30 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
           <option value="STR">STR</option>
           <option value="OUTROS">OUTROS</option>
         </select>
+        <div class="sub-field" id="produto-canais-wrap"><input type="number" id="m-canais" placeholder="Qtd. de canais" min="1"></div>
+        <div class="sub-field" id="produto-outro-wrap"><input type="text" id="m-produto-outro" placeholder="Especifique o produto..."></div>
       </div>
-      <div class="modal-field"><label>Quantidade de UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
-      <div class="modal-field full"><label>Conteudo online?</label>
+      <div class="mf"><label>UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
+      <div class="mf"><label>Prazo para instalação</label><input type="date" id="m-prazo"></div>
+      <div class="mf"><label>Conteúdo online?</label>
         <select id="m-conteudo" onchange="toggleConteudo()">
-          <option value="Nao">Nao</option>
+          <option value="Nao">Não</option>
           <option value="Sim">Sim</option>
         </select>
-        <div class="conteudo-detalhe" id="conteudo-detalhe-wrap">
-          <input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma / servico?" style="margin-top:6px">
-        </div>
+        <div class="sub-field" id="conteudo-detalhe-wrap"><input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma?"></div>
       </div>
-      <div class="modal-field full" id="produto-outro-wrap" style="display:none"><label>Especifique o produto</label><input type="text" id="m-produto-outro" placeholder="Descreva o produto..."></div>
+      <div class="mf"><label>Canal corporativo?</label>
+        <select id="m-corp" onchange="toggleCorp()">
+          <option value="Nao">Não</option>
+          <option value="Sim">Sim</option>
+        </select>
+        <div class="sub-field" id="corp-detalhe-wrap"><input type="text" id="m-corp-detalhe" placeholder="Observação..."></div>
+      </div>
     </div>
     <input type="hidden" id="m-edit-id">
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal()">Cancelar</button>
-      <button class="modal-btn primary" onclick="salvarProspect()">Salvar</button>
+      <button class="modal-btn primary" onclick="salvar()">Salvar</button>
     </div>
   </div>
 </div>
@@ -133,7 +192,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 <script>
 const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
 let prospects=[];
-let activeFilter='todos';
+let filters={status:'todos',prioridade:'todos',vendedor:'todos'};
 
 function setStatus(s,m){document.getElementById('status-dot').className='status-dot '+s;document.getElementById('status-txt').textContent=m;}
 
@@ -149,116 +208,144 @@ async function load(){
   }catch(e){setStatus('error','Erro de conexao');}
 }
 
-function setFilter(f){
-  activeFilter=f;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector(f==='todos'?'.filter-btn:first-child':'.filter-btn.f-'+f).classList.add('active');
+function setFilter(type,val){
+  filters[type]=val;
+  const prefix=type==='status'?'fs-':type==='prioridade'?'fp-':'fv-';
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById(prefix+(val==='todos'?'todos':val));
+  if(el)el.classList.add('active');
   render();
 }
 
 function filtered(){
-  if(activeFilter==='todos')return prospects;
-  return prospects.filter(p=>p.status===activeFilter);
+  return prospects.filter(p=>{
+    if(filters.status!=='todos'&&p.status!==filters.status)return false;
+    if(filters.prioridade!=='todos'&&p.prioridade!==filters.prioridade)return false;
+    if(filters.vendedor!=='todos'&&p.vendedor!==filters.vendedor)return false;
+    return true;
+  });
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Media':p==='baixa'?'Baixa':p||'';}
 
 function render(){
   const grid=document.getElementById('cards-grid');
   const list=filtered();
   if(!list.length){grid.innerHTML='<div class="empty-state">Nenhum prospect encontrado.</div>';return;}
   grid.innerHTML=list.map(p=>`
-    <div class="prospect-card${p.status==='convertido'?' convertido':''}">
+    <div class="prospect-card${p.status==='convertido'?' convertido':''} ${p.prioridade||''}">
       <div class="card-header">
         <div>
           <div class="card-nome">${p.nome}</div>
-          <div class="card-cidade">${p.cidade||''}</div>
+          <div class="card-sub">${p.cidade||''}${p.vendedor?' — '+p.vendedor:''}</div>
         </div>
-        <span class="status-badge ${p.status||'prospect'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
+        <div class="card-badges">
+          <span class="badge ${p.status||'prospect'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
+          ${p.prioridade?`<span class="badge ${p.prioridade}">${prioLabel(p.prioridade)}</span>`:''}
+        </div>
       </div>
       <div class="card-body">
-        ${p.cnpj?`<div class="card-row"><span class="card-label">CNPJ</span><span class="card-value">${p.cnpj}</span></div>`:''}
-        ${p.contato?`<div class="card-row"><span class="card-label">Contato</span><span class="card-value">${p.contato}</span></div>`:''}
-        <div class="card-row"><span class="card-label">Produto</span><span class="card-value">${p.produto||'-'}${p.produto==='OUTROS'&&p.conteudo_detalhe?' ('+p.conteudo_detalhe+')':''}</span></div>
-        <div class="card-row"><span class="card-label">UHs</span><span class="card-value">${p.uhs||'-'}</span></div>
-        <div class="card-row"><span class="card-label">Conteudo online</span><span class="card-value">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
+        ${p.cnpj?`<div class="card-row"><span class="card-lbl">CNPJ</span><span class="card-val">${p.cnpj}</span></div>`:''}
+        ${p.contato?`<div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato}</span></div>`:''}
+        <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' canais)':''}</span></div>
+        <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
+        ${p.prazo?`<div class="card-row"><span class="card-lbl">Prazo inst.</span><span class="card-val">${formatDateBR(p.prazo)}</span></div>`:''}
+        <div class="card-row"><span class="card-lbl">Cont. online</span><span class="card-val">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
+        <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Nao'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
       </div>
       <div class="card-actions">
         ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Converter para pipeline</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
-        ${p.status!=='convertido'?`<button class="btn-sm" onclick="editarProspect('${p.id}')">Editar</button>`:''}
+        ${p.status!=='convertido'?`<button class="btn-sm" onclick="editar('${p.id}')">Editar</button>`:''}
         <button class="btn-sm danger" onclick="remover('${p.id}')">Remover</button>
       </div>
     </div>
   `).join('');
 }
 
-function openModal(id){
-  document.getElementById('m-edit-id').value='';
-  document.getElementById('m-nome').value='';
-  document.getElementById('m-cidade').value='';
-  document.getElementById('m-cnpj').value='';
-  document.getElementById('m-contato').value='';
+function formatDateBR(ds){
+  if(!ds)return'';
+  const[y,m,d]=String(ds).slice(0,10).split('-');
+  return d+'/'+m+'/'+y;
+}
+
+function toggleProduto(){
+  const v=document.getElementById('m-produto').value;
+  document.getElementById('produto-canais-wrap').className='sub-field'+(v==='HD'||v==='SD'?' show':'');
+  document.getElementById('produto-outro-wrap').className='sub-field'+(v==='OUTROS'?' show':'');
+}
+function toggleConteudo(){document.getElementById('conteudo-detalhe-wrap').className='sub-field'+(document.getElementById('m-conteudo').value==='Sim'?' show':'');}
+function toggleCorp(){document.getElementById('corp-detalhe-wrap').className='sub-field'+(document.getElementById('m-corp').value==='Sim'?' show':'');}
+
+function openModal(){
+  ['m-nome','m-cidade','m-cnpj','m-contato','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('m-produto').value='';
-  document.getElementById('m-uhs').value='';
+  document.getElementById('m-vendedor').value='';
+  document.getElementById('m-prioridade').value='';
   document.getElementById('m-conteudo').value='Nao';
-  document.getElementById('m-conteudo-detalhe').value='';
-  document.getElementById('m-produto-outro').value='';
-  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe';
-  document.getElementById('produto-outro-wrap').style.display='none';
+  document.getElementById('m-corp').value='Nao';
+  document.getElementById('m-prazo').value='';
+  document.getElementById('m-edit-id').value='';
+  ['produto-canais-wrap','produto-outro-wrap','conteudo-detalhe-wrap','corp-detalhe-wrap'].forEach(id=>document.getElementById(id).className='sub-field');
   document.getElementById('modal-title').textContent='Novo prospect';
   document.getElementById('modal').style.display='flex';
 }
 
-function editarProspect(id){
+function editar(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   document.getElementById('m-edit-id').value=p.id;
   document.getElementById('m-nome').value=p.nome||'';
   document.getElementById('m-cidade').value=p.cidade||'';
   document.getElementById('m-cnpj').value=p.cnpj||'';
   document.getElementById('m-contato').value=p.contato||'';
+  document.getElementById('m-vendedor').value=p.vendedor||'';
+  document.getElementById('m-prioridade').value=p.prioridade||'';
   document.getElementById('m-produto').value=p.produto||'';
+  document.getElementById('m-canais').value=p.canais||'';
   document.getElementById('m-uhs').value=p.uhs||'';
+  document.getElementById('m-prazo').value=p.prazo||'';
   document.getElementById('m-conteudo').value=p.conteudo_online||'Nao';
   document.getElementById('m-conteudo-detalhe').value=p.conteudo_detalhe||'';
-  document.getElementById('produto-outro-wrap').style.display=p.produto==='OUTROS'?'block':'none';
-  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe'+(p.conteudo_online==='Sim'?' show':'');
+  document.getElementById('m-corp').value=p.canal_corporativo||'Nao';
+  document.getElementById('m-corp-detalhe').value=p.canal_corp_detalhe||'';
+  document.getElementById('m-produto-outro').value='';
+  toggleProduto();toggleConteudo();toggleCorp();
   document.getElementById('modal-title').textContent='Editar prospect';
   document.getElementById('modal').style.display='flex';
 }
 
 function closeModal(){document.getElementById('modal').style.display='none';}
 
-function toggleConteudo(){
-  const v=document.getElementById('m-conteudo').value;
-  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe'+(v==='Sim'?' show':'');
-}
-
-document.getElementById('m-produto').addEventListener('change',function(){
-  document.getElementById('produto-outro-wrap').style.display=this.value==='OUTROS'?'block':'none';
-});
-
-async function salvarProspect(){
+async function salvar(){
   const nome=document.getElementById('m-nome').value.trim();
   const cidade=document.getElementById('m-cidade').value.trim();
   const uhs=document.getElementById('m-uhs').value;
   const produto=document.getElementById('m-produto').value;
-  if(!nome||!cidade||!uhs||!produto){alert('Preencha os campos obrigatorios (*)');return;}
+  const vendedor=document.getElementById('m-vendedor').value;
+  const prioridade=document.getElementById('m-prioridade').value;
+  if(!nome||!cidade||!uhs||!produto||!vendedor||!prioridade){alert('Preencha os campos obrigatorios (*)');return;}
   const editId=document.getElementById('m-edit-id').value;
   const payload={
     nome,cidade,
     cnpj:document.getElementById('m-cnpj').value.trim(),
     contato:document.getElementById('m-contato').value.trim(),
-    produto:produto==='OUTROS'?'OUTROS — '+document.getElementById('m-produto-outro').value.trim():produto,
+    vendedor,prioridade,
+    produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('m-produto-outro').value.trim():produto,
+    canais:(produto==='HD'||produto==='SD')?document.getElementById('m-canais').value:'',
     conteudo_online:document.getElementById('m-conteudo').value,
     conteudo_detalhe:document.getElementById('m-conteudo-detalhe').value.trim(),
+    canal_corporativo:document.getElementById('m-corp').value,
+    canal_corp_detalhe:document.getElementById('m-corp-detalhe').value.trim(),
     uhs:parseInt(uhs)||0,
+    prazo:document.getElementById('m-prazo').value,
   };
   closeModal();
   setStatus('loading','Salvando...');
   try{
     if(editId){
       await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});
-    } else {
+    }else{
       await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});
     }
     await load();
@@ -279,21 +366,9 @@ async function converter(id){
   if(!confirm('Converter "'+p.nome+'" para o pipeline como contrato assinado?'))return;
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({
-      action:'converterPipeline',
-      id:p.id,
-      pid:uid(),
-      nome:p.nome,
-      uhs:p.uhs,
-      cidade:p.cidade,
-      cnpj:p.cnpj,
-      contato:p.contato,
-      produto:p.produto,
-      conteudo_online:p.conteudo_online,
-      conteudo_detalhe:p.conteudo_detalhe,
-    })});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});
     await load();
-    setStatus('online','Convertido com sucesso!');
+    setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
 }
 
