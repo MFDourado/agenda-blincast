@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comercial — Blincast</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root{--black:#111111;--gold:#F5B800;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--radius:10px;--radius-sm:6px;--c-prospect:#1A5FC8;--c-prospect-bg:#EBF0FB;--c-convertido:#3B6D11;--c-convertido-bg:#EAF3DE;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:2px;font-weight:500;}
+.logo span{color:#444;margin:0 8px;}
+.status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
+.status-dot.online{background:#2ecc71;}.status-dot.loading{background:var(--gold);}.status-dot.error{background:#e74c3c;}
+.main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;}
+.page-header h2{font-size:18px;font-weight:600;}
+.page-sync{font-size:12px;color:var(--text-muted);}
+.btn-primary{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;}
+.btn-primary:hover{opacity:.85;}
+.filter-bar{display:flex;align-items:center;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;}
+.filter-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;font-weight:500;transition:all .15s;}
+.filter-btn:hover{border-color:var(--text-muted);color:var(--text);}
+.filter-btn.active{border-color:var(--black);background:var(--black);color:var(--gold);}
+.filter-btn.f-prospect.active{background:var(--c-prospect);border-color:var(--c-prospect);color:#fff;}
+.filter-btn.f-convertido.active{background:var(--c-convertido);border-color:var(--c-convertido);color:#fff;}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
+.prospect-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.prospect-card.convertido{border-color:var(--c-convertido);opacity:.85;}
+.card-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.card-nome{font-size:15px;font-weight:500;}
+.card-cidade{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;flex-shrink:0;}
+.status-badge.prospect{background:var(--c-prospect-bg);color:var(--c-prospect);}
+.status-badge.convertido{background:var(--c-convertido-bg);color:var(--c-convertido);}
+.card-body{padding:12px 16px;}
+.card-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;}
+.card-label{font-size:11px;color:var(--text-muted);min-width:100px;}
+.card-value{color:var(--text);font-weight:500;}
+.card-actions{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+.btn-sm{padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;}
+.btn-sm:hover{border-color:var(--text-muted);color:var(--text);}
+.btn-sm.converter{background:var(--black);color:var(--gold);border-color:var(--black);font-weight:500;}
+.btn-sm.converter:hover{opacity:.85;}
+.btn-sm.danger:hover{border-color:#e00;color:#e00;}
+.empty-state{text-align:center;padding:3rem;color:var(--text-muted);font-size:13px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+.modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:520px;border:1px solid var(--border);max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:1.25rem;}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-field{margin-bottom:0;}
+.modal-field.full{grid-column:span 2;}
+.modal-field label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;height:36px;}
+.modal-field textarea{height:64px;padding:8px 10px;resize:none;}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--black);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
+.modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
+.modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
+.conteudo-detalhe{margin-top:8px;display:none;}
+.conteudo-detalhe.show{display:block;}
+footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">BLINCAST <span>|</span> COMERCIAL</div>
+  <div class="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span id="status-txt">Conectando...</span>
+  </div>
+</header>
+<div class="main">
+  <div class="page-header">
+    <div>
+      <h2>Prospects</h2>
+      <div class="page-sync" id="page-sync"></div>
+    </div>
+    <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
+  </div>
+  <div class="filter-bar">
+    <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
+    <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
+    <button class="filter-btn f-prospect" onclick="setFilter('prospect')">Prospect</button>
+    <button class="filter-btn f-convertido" onclick="setFilter('convertido')">Convertido</button>
+  </div>
+  <div class="cards-grid" id="cards-grid"></div>
+</div>
+
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal">
+    <h3 id="modal-title">Novo prospect</h3>
+    <div class="modal-grid">
+      <div class="modal-field full"><label>Nome do cliente *</label><input type="text" id="m-nome" placeholder="Ex: Hotel Beira Mar"></div>
+      <div class="modal-field"><label>Cidade *</label><input type="text" id="m-cidade" placeholder="Ex: Recife"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="m-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field full"><label>Contato (nome + telefone/e-mail)</label><input type="text" id="m-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
+      <div class="modal-field"><label>Produto negociado *</label>
+        <select id="m-produto">
+          <option value="">Selecione...</option>
+          <option value="HD">HD</option>
+          <option value="SD">SD</option>
+          <option value="STB">STB</option>
+          <option value="STR">STR</option>
+          <option value="OUTROS">OUTROS</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>Quantidade de UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
+      <div class="modal-field full"><label>Conteudo online?</label>
+        <select id="m-conteudo" onchange="toggleConteudo()">
+          <option value="Nao">Nao</option>
+          <option value="Sim">Sim</option>
+        </select>
+        <div class="conteudo-detalhe" id="conteudo-detalhe-wrap">
+          <input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma / servico?" style="margin-top:6px">
+        </div>
+      </div>
+      <div class="modal-field full" id="produto-outro-wrap" style="display:none"><label>Especifique o produto</label><input type="text" id="m-produto-outro" placeholder="Descreva o produto..."></div>
+    </div>
+    <input type="hidden" id="m-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarProspect()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<footer>&#169; 2026 Matheus Prateado</footer>
+
+<script>
+const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+let prospects=[];
+let activeFilter='todos';
+
+function setStatus(s,m){document.getElementById('status-dot').className='status-dot '+s;document.getElementById('status-txt').textContent=m;}
+
+async function load(){
+  setStatus('loading','Sincronizando...');
+  try{
+    const r=await fetch(API+'?action=getComercial');
+    const d=await r.json();
+    prospects=Array.isArray(d)?d:[];
+    setStatus('online','Sincronizado');
+    document.getElementById('page-sync').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    render();
+  }catch(e){setStatus('error','Erro de conexao');}
+}
+
+function setFilter(f){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(f==='todos'?'.filter-btn:first-child':'.filter-btn.f-'+f).classList.add('active');
+  render();
+}
+
+function filtered(){
+  if(activeFilter==='todos')return prospects;
+  return prospects.filter(p=>p.status===activeFilter);
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+function render(){
+  const grid=document.getElementById('cards-grid');
+  const list=filtered();
+  if(!list.length){grid.innerHTML='<div class="empty-state">Nenhum prospect encontrado.</div>';return;}
+  grid.innerHTML=list.map(p=>`
+    <div class="prospect-card${p.status==='convertido'?' convertido':''}">
+      <div class="card-header">
+        <div>
+          <div class="card-nome">${p.nome}</div>
+          <div class="card-cidade">${p.cidade||''}</div>
+        </div>
+        <span class="status-badge ${p.status||'prospect'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
+      </div>
+      <div class="card-body">
+        ${p.cnpj?`<div class="card-row"><span class="card-label">CNPJ</span><span class="card-value">${p.cnpj}</span></div>`:''}
+        ${p.contato?`<div class="card-row"><span class="card-label">Contato</span><span class="card-value">${p.contato}</span></div>`:''}
+        <div class="card-row"><span class="card-label">Produto</span><span class="card-value">${p.produto||'-'}${p.produto==='OUTROS'&&p.conteudo_detalhe?' ('+p.conteudo_detalhe+')':''}</span></div>
+        <div class="card-row"><span class="card-label">UHs</span><span class="card-value">${p.uhs||'-'}</span></div>
+        <div class="card-row"><span class="card-label">Conteudo online</span><span class="card-value">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
+      </div>
+      <div class="card-actions">
+        ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Converter para pipeline</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
+        ${p.status!=='convertido'?`<button class="btn-sm" onclick="editarProspect('${p.id}')">Editar</button>`:''}
+        <button class="btn-sm danger" onclick="remover('${p.id}')">Remover</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openModal(id){
+  document.getElementById('m-edit-id').value='';
+  document.getElementById('m-nome').value='';
+  document.getElementById('m-cidade').value='';
+  document.getElementById('m-cnpj').value='';
+  document.getElementById('m-contato').value='';
+  document.getElementById('m-produto').value='';
+  document.getElementById('m-uhs').value='';
+  document.getElementById('m-conteudo').value='Nao';
+  document.getElementById('m-conteudo-detalhe').value='';
+  document.getElementById('m-produto-outro').value='';
+  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe';
+  document.getElementById('produto-outro-wrap').style.display='none';
+  document.getElementById('modal-title').textContent='Novo prospect';
+  document.getElementById('modal').style.display='flex';
+}
+
+function editarProspect(id){
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  document.getElementById('m-edit-id').value=p.id;
+  document.getElementById('m-nome').value=p.nome||'';
+  document.getElementById('m-cidade').value=p.cidade||'';
+  document.getElementById('m-cnpj').value=p.cnpj||'';
+  document.getElementById('m-contato').value=p.contato||'';
+  document.getElementById('m-produto').value=p.produto||'';
+  document.getElementById('m-uhs').value=p.uhs||'';
+  document.getElementById('m-conteudo').value=p.conteudo_online||'Nao';
+  document.getElementById('m-conteudo-detalhe').value=p.conteudo_detalhe||'';
+  document.getElementById('produto-outro-wrap').style.display=p.produto==='OUTROS'?'block':'none';
+  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe'+(p.conteudo_online==='Sim'?' show':'');
+  document.getElementById('modal-title').textContent='Editar prospect';
+  document.getElementById('modal').style.display='flex';
+}
+
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+function toggleConteudo(){
+  const v=document.getElementById('m-conteudo').value;
+  document.getElementById('conteudo-detalhe-wrap').className='conteudo-detalhe'+(v==='Sim'?' show':'');
+}
+
+document.getElementById('m-produto').addEventListener('change',function(){
+  document.getElementById('produto-outro-wrap').style.display=this.value==='OUTROS'?'block':'none';
+});
+
+async function salvarProspect(){
+  const nome=document.getElementById('m-nome').value.trim();
+  const cidade=document.getElementById('m-cidade').value.trim();
+  const uhs=document.getElementById('m-uhs').value;
+  const produto=document.getElementById('m-produto').value;
+  if(!nome||!cidade||!uhs||!produto){alert('Preencha os campos obrigatorios (*)');return;}
+  const editId=document.getElementById('m-edit-id').value;
+  const payload={
+    nome,cidade,
+    cnpj:document.getElementById('m-cnpj').value.trim(),
+    contato:document.getElementById('m-contato').value.trim(),
+    produto:produto==='OUTROS'?'OUTROS — '+document.getElementById('m-produto-outro').value.trim():produto,
+    conteudo_online:document.getElementById('m-conteudo').value,
+    conteudo_detalhe:document.getElementById('m-conteudo-detalhe').value.trim(),
+    uhs:parseInt(uhs)||0,
+  };
+  closeModal();
+  setStatus('loading','Salvando...');
+  try{
+    if(editId){
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});
+    } else {
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});
+    }
+    await load();
+  }catch(e){setStatus('error','Erro ao salvar');}
+}
+
+async function remover(id){
+  if(!confirm('Remover este prospect?'))return;
+  setStatus('loading','Removendo...');
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});
+    await load();
+  }catch(e){setStatus('error','Erro ao remover');}
+}
+
+async function converter(id){
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  if(!confirm('Converter "'+p.nome+'" para o pipeline como contrato assinado?'))return;
+  setStatus('loading','Convertendo...');
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      action:'converterPipeline',
+      id:p.id,
+      pid:uid(),
+      nome:p.nome,
+      uhs:p.uhs,
+      cidade:p.cidade,
+      cnpj:p.cnpj,
+      contato:p.contato,
+      produto:p.produto,
+      conteudo_online:p.conteudo_online,
+      conteudo_detalhe:p.conteudo_detalhe,
+    })});
+    await load();
+    setStatus('online','Convertido com sucesso!');
+  }catch(e){setStatus('error','Erro ao converter');}
+}
+
+load();
+setInterval(load,60000);
+</script>
+</body>
+</html>
