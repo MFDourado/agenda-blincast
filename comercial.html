@@ -187,6 +187,24 @@ select.vendedor-sel option[value=""]{color:var(--text-muted);}
   </div>
 </div>
 
+
+<!-- MODAL CONVERSAO -->
+<div class="modal-overlay" id="conv-modal" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <h3>Contrato Assinado</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Cliente: <strong id="conv-nome"></strong></p>
+    <div class="mf full">
+      <label>Data do contrato *</label>
+      <input type="date" id="conv-data">
+    </div>
+    <input type="hidden" id="conv-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('conv-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarConversao()">Confirmar e enviar ao pipeline</button>
+    </div>
+  </div>
+</div>
+
 <footer>&#169; 2026 Matheus Prateado</footer>
 
 <script>
@@ -256,7 +274,7 @@ function render(){
         <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Nao'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
       </div>
       <div class="card-actions">
-        ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Converter para pipeline</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
+        ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Contrato Assinado</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
         ${p.status!=='convertido'?`<button class="btn-sm" onclick="editar('${p.id}')">Editar</button>`:''}
         <button class="btn-sm danger" onclick="remover('${p.id}')">Remover</button>
       </div>
@@ -361,12 +379,24 @@ async function remover(id){
   }catch(e){setStatus('error','Erro ao remover');}
 }
 
-async function converter(id){
+function converter(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
-  if(!confirm('Converter "'+p.nome+'" para o pipeline como contrato assinado?'))return;
+  document.getElementById('conv-id').value=id;
+  document.getElementById('conv-nome').textContent=p.nome;
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('conv-data').value=today;
+  document.getElementById('conv-modal').style.display='flex';
+}
+
+async function confirmarConversao(){
+  const id=document.getElementById('conv-id').value;
+  const data=document.getElementById('conv-data').value;
+  if(!data){alert('Selecione a data do contrato.');return;}
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
