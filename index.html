@@ -186,6 +186,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   <button class="main-tab active" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
   <button class="main-tab" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
   <button class="main-tab" id="mt-dashboard" onclick="switchMainTab('dashboard')">Dashboard</button>
+  <button class="main-tab" id="mt-comercial" onclick="switchMainTab('comercial')">Comercial</button>
 </div>
 <div id="page-agenda" class="main">
   <div class="controls">
@@ -271,6 +272,59 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </table>
   </div>
 </div>
+
+<!-- COMERCIAL -->
+<div id="page-comercial" class="main" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;">
+    <div><h2 style="font-size:18px;font-weight:600">Prospects</h2><div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="com-sync"></div></div>
+    <button class="btn-new-project" onclick="openComModal()">+ Novo prospect</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrar:</span>
+    <button class="filter-btn active" id="cf-todos" onclick="setComFilter('todos')">Todos</button>
+    <button class="filter-btn" id="cf-prospect" onclick="setComFilter('prospect')" style="color:var(--c-previsto)">Prospect</button>
+    <button class="filter-btn" id="cf-convertido" onclick="setComFilter('convertido')" style="color:var(--c-concluido)">Convertido</button>
+  </div>
+  <div id="com-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>
+</div>
+
+<!-- MODAL COMERCIAL -->
+<div class="modal-overlay" id="com-modal" style="display:none">
+  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto;">
+    <h3 id="com-modal-title">Novo prospect</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="cm-nome" placeholder="Ex: Hotel Beira Mar"></div>
+      <div class="modal-field"><label>Cidade *</label><input type="text" id="cm-cidade" placeholder="Ex: Recife"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="cm-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Contato</label><input type="text" id="cm-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
+      <div class="modal-field"><label>Produto *</label>
+        <select class="field-sel" id="cm-produto" onchange="toggleCmProduto()">
+          <option value="">Selecione...</option>
+          <option value="HD">HD</option>
+          <option value="SD">SD</option>
+          <option value="STB">STB</option>
+          <option value="STR">STR</option>
+          <option value="OUTROS">OUTROS</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>UHs *</label><input type="number" id="cm-uhs" placeholder="Ex: 120" min="1"></div>
+      <div class="modal-field" id="cm-outro-wrap" style="display:none;grid-column:span 2"><label>Especifique o produto</label><input type="text" id="cm-produto-outro" placeholder="Descreva..."></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Conteudo online?</label>
+        <select class="field-sel" id="cm-conteudo" onchange="toggleCmConteudo()">
+          <option value="Nao">Nao</option>
+          <option value="Sim">Sim</option>
+        </select>
+      </div>
+      <div class="modal-field" id="cm-conteudo-detalhe-wrap" style="display:none;grid-column:span 2"><label>Qual plataforma?</label><input type="text" id="cm-conteudo-detalhe" placeholder="Ex: Netflix, Globoplay..."></div>
+    </div>
+    <input type="hidden" id="cm-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeComModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarCom()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal">
     <h3>Novo projeto</h3>
@@ -344,12 +398,13 @@ async function savePipelineProject(proj){
 async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
 
 function switchMainTab(t){
-  ['agenda','pipeline','dashboard'].forEach(tab=>{
+  ['agenda','pipeline','dashboard','comercial'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
   if(t==='pipeline')loadPipeline();
   if(t==='dashboard')renderDashboard();
+  if(t==='comercial')loadComercial();
 }
 function setFilter(f){
   activeFilter=f;
@@ -546,6 +601,136 @@ async function saveNewDate(id,client,status,obs){
   const[y,m]=newDate.split('-');cur={y:+y,m:+m-1};selectedDate=newDate;
   renderAgenda();
 }
+
+// COMERCIAL
+let prospects = [];
+let comFilter = 'todos';
+
+async function loadComercial(){
+  document.getElementById('com-sync').textContent = 'Carregando...';
+  try {
+    const r = await fetch(API+'?action=getComercial');
+    const d = await r.json();
+    prospects = Array.isArray(d) ? d : [];
+    document.getElementById('com-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderComercial();
+  } catch(e) { document.getElementById('com-sync').textContent = 'Erro de conexao'; }
+}
+
+function setComFilter(f){
+  comFilter = f;
+  ['todos','prospect','convertido'].forEach(x=>{
+    const el = document.getElementById('cf-'+x);
+    if(el) el.className = 'filter-btn'+(x===f?' active':'');
+  });
+  renderComercial();
+}
+
+function renderComercial(){
+  const list = comFilter==='todos' ? prospects : prospects.filter(p=>p.status===comFilter);
+  const grid = document.getElementById('com-cards');
+  if(!list.length){ grid.innerHTML='<div class="empty-state" style="padding:3rem;grid-column:span 3">Nenhum prospect encontrado.</div>'; return; }
+  grid.innerHTML = list.map(p=>`
+    <div style="background:var(--surface);border-radius:var(--radius);border:1px solid ${p.status==='convertido'?'var(--c-concluido)':'var(--border)'};overflow:hidden;">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div>
+          <div style="font-size:14px;font-weight:500">${p.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.cidade||''}</div>
+        </div>
+        <span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;background:${p.status==='convertido'?'var(--c-concluido-bg)':'var(--c-previsto-bg)'};color:${p.status==='convertido'?'var(--c-concluido)':'var(--c-previsto)'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
+      </div>
+      <div style="padding:10px 14px;font-size:13px;">
+        ${p.cnpj?`<div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">CNPJ</span> <span style="font-weight:500">${p.cnpj}</span></div>`:''}
+        ${p.contato?`<div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Contato</span> <span style="font-weight:500">${p.contato}</span></div>`:''}
+        <div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Produto</span> <span style="font-weight:500">${p.produto||'-'}</span></div>
+        <div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">UHs</span> <span style="font-weight:500">${p.uhs||'-'}</span></div>
+        <div><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Cont. online</span> <span style="font-weight:500">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' - '+p.conteudo_detalhe:''}</span></div>
+      </div>
+      <div style="padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+        ${p.status!=='convertido'?`<button onclick="converterProspect('${p.id}')" style="padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--black);color:var(--gold);border:none;font-weight:500">Converter para pipeline</button>`:'<span style="font-size:12px;color:var(--c-concluido);font-weight:500">No pipeline</span>'}
+        ${p.status!=='convertido'?`<button onclick="editarCom('${p.id}')" style="padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted)">Editar</button>`:''}
+        <button onclick="removerCom('${p.id}')" style="padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted)">Remover</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openComModal(){
+  ['cm-nome','cm-cidade','cm-cnpj','cm-contato','cm-uhs','cm-produto-outro','cm-conteudo-detalhe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('cm-produto').value='';
+  document.getElementById('cm-conteudo').value='Nao';
+  document.getElementById('cm-edit-id').value='';
+  document.getElementById('cm-outro-wrap').style.display='none';
+  document.getElementById('cm-conteudo-detalhe-wrap').style.display='none';
+  document.getElementById('com-modal-title').textContent='Novo prospect';
+  document.getElementById('com-modal').style.display='flex';
+}
+function closeComModal(){document.getElementById('com-modal').style.display='none';}
+function toggleCmProduto(){document.getElementById('cm-outro-wrap').style.display=document.getElementById('cm-produto').value==='OUTROS'?'block':'none';}
+function toggleCmConteudo(){document.getElementById('cm-conteudo-detalhe-wrap').style.display=document.getElementById('cm-conteudo').value==='Sim'?'block':'none';}
+
+function editarCom(id){
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  document.getElementById('cm-edit-id').value=p.id;
+  document.getElementById('cm-nome').value=p.nome||'';
+  document.getElementById('cm-cidade').value=p.cidade||'';
+  document.getElementById('cm-cnpj').value=p.cnpj||'';
+  document.getElementById('cm-contato').value=p.contato||'';
+  document.getElementById('cm-produto').value=p.produto||'';
+  document.getElementById('cm-uhs').value=p.uhs||'';
+  document.getElementById('cm-conteudo').value=p.conteudo_online||'Nao';
+  document.getElementById('cm-conteudo-detalhe').value=p.conteudo_detalhe||'';
+  document.getElementById('cm-outro-wrap').style.display=p.produto==='OUTROS'?'block':'none';
+  document.getElementById('cm-conteudo-detalhe-wrap').style.display=p.conteudo_online==='Sim'?'block':'none';
+  document.getElementById('com-modal-title').textContent='Editar prospect';
+  document.getElementById('com-modal').style.display='flex';
+}
+
+async function salvarCom(){
+  const nome=document.getElementById('cm-nome').value.trim();
+  const cidade=document.getElementById('cm-cidade').value.trim();
+  const uhs=document.getElementById('cm-uhs').value;
+  const produto=document.getElementById('cm-produto').value;
+  if(!nome||!cidade||!uhs||!produto){alert('Preencha os campos obrigatorios (*)');return;}
+  const editId=document.getElementById('cm-edit-id').value;
+  const payload={
+    nome,cidade,
+    cnpj:document.getElementById('cm-cnpj').value.trim(),
+    contato:document.getElementById('cm-contato').value.trim(),
+    produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('cm-produto-outro').value.trim():produto,
+    conteudo_online:document.getElementById('cm-conteudo').value,
+    conteudo_detalhe:document.getElementById('cm-conteudo-detalhe').value.trim(),
+    uhs:parseInt(uhs)||0,
+  };
+  closeComModal();
+  try{
+    if(editId){
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});
+    } else {
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});
+    }
+    await loadComercial();
+  }catch(e){setStatus('error','Erro ao salvar');}
+}
+
+async function removerCom(id){
+  if(!confirm('Remover este prospect?'))return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});
+    await loadComercial();
+  }catch(e){setStatus('error','Erro ao remover');}
+}
+
+async function converterProspect(id){
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  if(!confirm('Converter "'+p.nome+'" para o pipeline como contrato assinado?'))return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});
+    await loadComercial();
+    alert(p.nome+' convertido para o pipeline! Voce receberá uma notificação por e-mail.');
+  }catch(e){setStatus('error','Erro ao converter');}
+}
+
 document.getElementById('f-data').value=todayStr;
 apiGet();
 setInterval(apiGet,30000);
