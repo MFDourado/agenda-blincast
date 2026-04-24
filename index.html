@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Operacional — Blincast</title>
@@ -184,12 +183,12 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   </div>
 </header>
 <div class="main-tabs">
-  <button class="main-tab active" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
-  <button class="main-tab" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+  <button class="main-tab active" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+  <button class="main-tab" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
   <button class="main-tab" id="mt-dashboard" onclick="switchMainTab('dashboard')">Dashboard</button>
   <button class="main-tab" id="mt-comercial" onclick="switchMainTab('comercial')">Comercial</button>
 </div>
-<div id="page-agenda" class="main">
+<div id="page-agenda" class="main" style="display:none">
   <div class="controls">
     <div class="month-nav">
       <button class="nav-btn" id="prev">&#8592;</button>
@@ -239,7 +238,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </div>
   </div>
 </div>
-<div id="page-pipeline" class="main" style="display:none">
+<div id="page-pipeline" class="main">
   <div class="pipeline-header">
     <div>
       <h2>Pipeline Operacional</h2>
@@ -399,7 +398,7 @@ async function savePipelineProject(proj){
 async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
 
 function switchMainTab(t){
-  ['agenda','pipeline','dashboard','comercial'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
@@ -513,8 +512,22 @@ function schedSave(proj){document.getElementById('pipeline-sync').textContent='S
 function toggleStep(projId,stepId){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
   const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
+  const foiConcluido=!step.done;
   step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;
   renderPipeline();schedSave(proj);
+  if(foiConcluido){
+    const stepInfo=STEPS.find(s=>s.id===stepId);
+    if(stepInfo){
+      fetch(API,{method:'POST',body:JSON.stringify({
+        action:'notificarEtapa',
+        projeto:proj.nome,
+        etapaId:stepId,
+        etapaTitulo:stepInfo.title,
+        responsavel:stepInfo.resp,
+        data:step.date||todayStr
+      })}).catch(()=>{});
+    }
+  }
 }
 function updateStepDate(projId,stepId,val){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
@@ -804,6 +817,7 @@ async function confirmarEnvioEmail() {
 document.getElementById('f-data').value=todayStr;
 apiGet();
 setInterval(apiGet,30000);
+loadPipeline();
 </script>
 
 <div style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Prateado</div>
