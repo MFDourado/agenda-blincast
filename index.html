@@ -546,7 +546,8 @@ function renderPipeline(){
       const ir=s.remote&&proj.uhs<50;
       return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas</div></div><div class="project-meta"><span class="uh-badge">${proj.uhs} UHs</span>${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div><div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button></div></div></div>`;
+    return `<div class="project-card"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas</div></div><div class="project-meta"><span class="uh-badge">${proj.uhs} UHs</span>${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div><div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>
+          <button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button></div></div></div>`;
   }).join('');
 }
 
@@ -731,11 +732,108 @@ async function converterProspect(id){
   }catch(e){setStatus('error','Erro ao converter');}
 }
 
+
+// EMAIL DE CONCLUSAO
+function abrirEmailConclusao(projId, projNome) {
+  document.getElementById('ec-proj-id').value = projId;
+  document.getElementById('ec-projeto').textContent = projNome;
+  document.getElementById('ec-destinatarios').value = '';
+  document.getElementById('ec-mensagem').value = '';
+  document.getElementById('ec-double-check').style.display = 'none';
+  document.getElementById('ec-confirm-btn').style.display = '';
+  document.getElementById('email-conclusao-modal').style.display = 'flex';
+}
+
+let ecTimer = null;
+
+function iniciarDoubleCheck() {
+  const dest = document.getElementById('ec-destinatarios').value.trim();
+  const msg = document.getElementById('ec-mensagem').value.trim();
+  if (!dest || !msg) { alert('Preencha os destinatarios e a mensagem.'); return; }
+  document.getElementById('ec-confirm-btn').style.display = 'none';
+  document.getElementById('ec-double-check').style.display = 'block';
+  const btn = document.getElementById('ec-sim-btn');
+  const countdown = document.getElementById('ec-countdown');
+  btn.disabled = true;
+  btn.style.cursor = 'not-allowed';
+  btn.style.opacity = '.5';
+  let secs = 2;
+  countdown.textContent = '(' + secs + 's)';
+  ecTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(ecTimer);
+      countdown.textContent = '';
+      btn.disabled = false;
+      btn.style.cursor = 'pointer';
+      btn.style.opacity = '1';
+    } else {
+      countdown.textContent = '(' + secs + 's)';
+    }
+  }, 1000);
+}
+
+function cancelarDoubleCheck() {
+  clearInterval(ecTimer);
+  document.getElementById('ec-double-check').style.display = 'none';
+  document.getElementById('ec-confirm-btn').style.display = '';
+}
+
+async function confirmarEnvioEmail() {
+  const projId = document.getElementById('ec-proj-id').value;
+  const msg = document.getElementById('ec-mensagem').value.trim();
+  const dest = document.getElementById('ec-destinatarios').value.trim();
+  const proj = projects.find(p => p.id === projId);
+  const destinatarios = dest.split(',').map(e => e.trim()).filter(Boolean);
+  document.getElementById('email-conclusao-modal').style.display = 'none';
+  document.getElementById('pipeline-sync').textContent = 'Enviando e-mail...';
+  try {
+    await fetch(API, { method: 'POST', body: JSON.stringify({
+      action: 'enviarEmailConclusao',
+      projeto: proj ? proj.nome : projId,
+      destinatarios,
+      mensagem: msg
+    })});
+    document.getElementById('pipeline-sync').textContent = 'E-mail enviado com sucesso!';
+  } catch(e) {
+    document.getElementById('pipeline-sync').textContent = 'Erro ao enviar e-mail.';
+  }
+}
+
 document.getElementById('f-data').value=todayStr;
 apiGet();
 setInterval(apiGet,30000);
 </script>
 
 <div style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Prateado</div>
+
+<!-- MODAL EMAIL CONCLUSAO -->
+<div class="modal-overlay" id="email-conclusao-modal" style="display:none">
+  <div class="modal" style="max-width:500px">
+    <h3>Enviar E-mail de Conclusao</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Projeto: <strong id="ec-projeto"></strong></p>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Destinatarios (separe por virgula)</label>
+      <input type="text" id="ec-destinatarios" placeholder="email1@blincast.com.br, email2@..." style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Mensagem</label>
+      <textarea id="ec-mensagem" rows="6" placeholder="Digite o texto do e-mail de conclusao..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:120px;"></textarea>
+    </div>
+    <input type="hidden" id="ec-proj-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('email-conclusao-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn" id="ec-confirm-btn" onclick="iniciarDoubleCheck()" style="background:var(--c-concluido);color:#fff;border-color:var(--c-concluido)">Enviar e-mail</button>
+    </div>
+    <div id="ec-double-check" style="display:none;margin-top:12px;padding:12px;background:var(--c-atrasado-bg);border-radius:var(--radius-sm);border:1px solid var(--c-atrasado)">
+      <p style="font-size:13px;color:var(--c-atrasado);font-weight:500;margin-bottom:8px">Tem certeza que deseja enviar o e-mail de conclusao?</p>
+      <div style="display:flex;gap:8px">
+        <button onclick="cancelarDoubleCheck()" style="flex:1;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Nao</button>
+        <button id="ec-sim-btn" onclick="confirmarEnvioEmail()" disabled style="flex:1;height:32px;background:var(--c-atrasado);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:not-allowed;opacity:.5" id="ec-sim-btn">Sim <span id="ec-countdown"></span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
