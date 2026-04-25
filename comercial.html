@@ -254,10 +254,55 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
       <h2>Clientes</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="cli-sync"></div>
     </div>
+    <button class="btn-primary" onclick="openNovoClienteModal()">+ Novo cliente</button>
   </div>
   <div id="cli-list"></div>
 </div>
 </div><!-- fim page-clientes -->
+
+<!-- MODAL NOVO CLIENTE -->
+<div class="modal-overlay" id="novo-cliente-modal" style="display:none">
+  <div class="modal" style="max-width:580px;max-height:92vh;overflow-y:auto;">
+    <h3>Novo cliente avulso</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field full"><label>Nome do cliente *</label><input type="text" id="nc-nome" placeholder="Ex: Hotel Beira Mar"></div>
+      <div class="modal-field"><label>Cidade *</label><input type="text" id="nc-cidade" placeholder="Ex: Recife"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="nc-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field"><label>Contato</label><input type="text" id="nc-contato" placeholder="Nome do contato"></div>
+      <div class="modal-field"><label>Telefone</label><input type="text" id="nc-telefone" placeholder="(00) 00000-0000"></div>
+      <div class="modal-field full"><label>Endereco</label><input type="text" id="nc-endereco" placeholder="Rua, numero, cidade"></div>
+      <div class="modal-field"><label>Produto *</label>
+        <select class="field-sel" id="nc-produto">
+          <option value="">Selecione...</option>
+          <option value="HD">HD</option>
+          <option value="SD">SD</option>
+          <option value="STB">STB</option>
+          <option value="STR">STR</option>
+          <option value="OUTROS">OUTROS</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>UHs *</label><input type="number" id="nc-uhs" placeholder="Ex: 120" min="1"></div>
+      <div class="modal-field"><label>Vigencia inicio *</label><input type="date" id="nc-vigencia"></div>
+      <div class="modal-field"><label>Status</label>
+        <select class="field-sel" id="nc-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+      <div style="grid-column:span 2;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+        <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Registro de criacao avulsa</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="modal-field"><label>Responsavel *</label><input type="text" id="nc-responsavel" placeholder="Seu nome"></div>
+          <div class="modal-field"><label>Motivo *</label><input type="text" id="nc-motivo" placeholder="Ex: Cliente ativo antes do sistema"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeNovoClienteModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="criarClienteAvulso()">Criar cliente</button>
+    </div>
+  </div>
+</div>
 <footer>&#169; 2026 Matheus Prateado</footer>
 
 <script>
@@ -688,6 +733,45 @@ function switchComTab(t){
     document.getElementById('com-page-'+tab).style.display=t===tab?'':'none';
   });
   if(t==='clientes') loadClientes();
+}
+
+
+function openNovoClienteModal(){
+  ['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('nc-produto').value='';
+  document.getElementById('nc-status').value='ativo';
+  document.getElementById('nc-vigencia').value=new Date().toISOString().slice(0,10);
+  document.getElementById('novo-cliente-modal').style.display='flex';
+}
+function closeNovoClienteModal(){document.getElementById('novo-cliente-modal').style.display='none';}
+
+async function criarClienteAvulso(){
+  const nome=document.getElementById('nc-nome').value.trim();
+  const cidade=document.getElementById('nc-cidade').value.trim();
+  const produto=document.getElementById('nc-produto').value;
+  const uhs=document.getElementById('nc-uhs').value;
+  const vigencia=document.getElementById('nc-vigencia').value;
+  const responsavel=document.getElementById('nc-responsavel').value.trim();
+  const motivo=document.getElementById('nc-motivo').value.trim();
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){alert('Preencha todos os campos obrigatorios (*)');return;}
+  closeNovoClienteModal();
+  setStatus('loading','Criando cliente...');
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      action:'criarCliente',id:uid(),prospectId:'avulso',
+      nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),
+      contato:document.getElementById('nc-contato').value.trim(),
+      telefone:document.getElementById('nc-telefone').value.trim(),
+      endereco:document.getElementById('nc-endereco').value.trim(),
+      produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,
+      status:document.getElementById('nc-status').value,
+      responsavel_criacao:responsavel,motivo_criacao:motivo,
+    })});
+    await loadClientes();
+    setStatus('online','Cliente criado!');
+  }catch(e){setStatus('error','Erro ao criar cliente');}
 }
 
 load();
