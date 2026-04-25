@@ -111,68 +111,42 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
     </div>
     <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
   </div>
-  <div class="filter-row">
+  <div style="display:flex;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;">
     <!-- Status -->
-    <div class="dropdown-filter" id="dd-status">
-      <div class="dropdown-trigger" id="dt-status" onclick="toggleDropdown('status', event)">
-        Status <span id="db-status"></span> <span class="arrow">▼</span>
-      </div>
-      <div class="dropdown-menu" id="dm-status">
-        <div class="dropdown-item" data-group="status" data-val="prospect" onclick="toggleFilterItem('status','prospect',this,event)">
-          <div class="dropdown-check"></div> Prospect
-        </div>
-        <div class="dropdown-item" data-group="status" data-val="convertido" onclick="toggleFilterItem('status','convertido',this,event)">
-          <div class="dropdown-check"></div> Convertido
-        </div>
-        <div class="dropdown-item" data-group="status" data-val="vistoria_solicitada" onclick="toggleFilterItem('status','vistoria_solicitada',this,event)">
-          <div class="dropdown-check"></div> Vistoria Solicitada
-        </div>
-        <div class="dropdown-item" data-group="status" data-val="vistoria_concluida" onclick="toggleFilterItem('status','vistoria_concluida',this,event)">
-          <div class="dropdown-check"></div> Vistoria Realizada
-        </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Status</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="prospect" onchange="applyFilter()" class="f-status"> Prospect</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="convertido" onchange="applyFilter()" class="f-status"> Convertido</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="vistoria_solicitada" onchange="applyFilter()" class="f-status"> Vistoria Solicitada</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="vistoria_concluida" onchange="applyFilter()" class="f-status"> Vistoria Realizada</label>
       </div>
     </div>
+    <div style="width:1px;background:var(--border);"></div>
     <!-- Prioridade -->
-    <div class="dropdown-filter" id="dd-prioridade">
-      <div class="dropdown-trigger" id="dt-prioridade" onclick="toggleDropdown('prioridade', event)">
-        Prioridade <span id="db-prioridade"></span> <span class="arrow">▼</span>
-      </div>
-      <div class="dropdown-menu" id="dm-prioridade">
-        <div class="dropdown-item" data-group="prioridade" data-val="urgente" onclick="toggleFilterItem('prioridade','urgente',this,event)">
-          <div class="dropdown-check"></div> Urgente
-        </div>
-        <div class="dropdown-item" data-group="prioridade" data-val="media" onclick="toggleFilterItem('prioridade','media',this,event)">
-          <div class="dropdown-check"></div> Media
-        </div>
-        <div class="dropdown-item" data-group="prioridade" data-val="baixa" onclick="toggleFilterItem('prioridade','baixa',this,event)">
-          <div class="dropdown-check"></div> Baixa
-        </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Prioridade</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="urgente" onchange="applyFilter()" class="f-prioridade"> Urgente</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="media" onchange="applyFilter()" class="f-prioridade"> Média</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="baixa" onchange="applyFilter()" class="f-prioridade"> Baixa</label>
       </div>
     </div>
+    <div style="width:1px;background:var(--border);"></div>
     <!-- Vendedor -->
-    <div class="dropdown-filter" id="dd-vendedor">
-      <div class="dropdown-trigger" id="dt-vendedor" onclick="toggleDropdown('vendedor', event)">
-        Vendedor <span id="db-vendedor"></span> <span class="arrow">▼</span>
-      </div>
-      <div class="dropdown-menu" id="dm-vendedor">
-        <div class="dropdown-item" data-group="vendedor" data-val="Rafael" onclick="toggleFilterItem('vendedor','Rafael',this,event)">
-          <div class="dropdown-check"></div> Rafael
-        </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Victor Hugo" onclick="toggleFilterItem('vendedor','Victor Hugo',this,event)">
-          <div class="dropdown-check"></div> Victor Hugo
-        </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Victor Xavier" onclick="toggleFilterItem('vendedor','Victor Xavier',this,event)">
-          <div class="dropdown-check"></div> Victor Xavier
-        </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Diogo" onclick="toggleFilterItem('vendedor','Diogo',this,event)">
-          <div class="dropdown-check"></div> Diogo
-        </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Andre Gama" onclick="toggleFilterItem('vendedor','Andre Gama',this,event)">
-          <div class="dropdown-check"></div> Andre Gama
-        </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Vendedor</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="Rafael" onchange="applyFilter()" class="f-vendedor"> Rafael</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="Victor Hugo" onchange="applyFilter()" class="f-vendedor"> Victor Hugo</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="Victor Xavier" onchange="applyFilter()" class="f-vendedor"> Victor Xavier</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="Diogo" onchange="applyFilter()" class="f-vendedor"> Diogo</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" value="Andre Gama" onchange="applyFilter()" class="f-vendedor"> André Gama</label>
       </div>
     </div>
-    <button class="filter-clear" id="filter-clear" onclick="clearFilters()" style="display:none">Limpar filtros</button>
+    <div style="margin-left:auto;display:flex;align-items:flex-start;">
+      <button onclick="clearFilters()" style="padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;" onmouseover="this.style.color='#e00';this.style.borderColor='#e00'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">Limpar filtros</button>
+    </div>
   </div>
   <div class="cards-grid" id="cards-grid"></div>
 </div>
