@@ -304,6 +304,24 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
   </div>
 </div>
 
+
+<!-- MODAL SOLICITAR VISTORIA -->
+<div class="modal-overlay" id="vistoria-modal" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <h3>Solicitar Vistoria Técnica</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Cliente: <strong id="vst-modal-nome"></strong></p>
+    <div class="modal-field full" style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+      <textarea id="vst-obs" rows="4" placeholder="Descreva detalhes relevantes para a vistoria (acesso, horários, contato no local, etc.)" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:100px;"></textarea>
+    </div>
+    <input type="hidden" id="vst-modal-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('vistoria-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarVistoria()">Solicitar e enviar e-mail</button>
+    </div>
+  </div>
+</div>
+
 <footer>&#169; 2026 Matheus Prateado</footer>
 
 <script>
@@ -516,11 +534,20 @@ async function confirmarConversao(){
   }catch(e){setStatus('error','Erro ao converter');}
 }
 
-async function solicitarVistoria(id){
+function solicitarVistoria(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   if(p.status==='vistoria_concluida'){alert('Vistoria ja realizada para este prospect.');return;}
-  const msg=p.status==='vistoria_solicitada'?'Vistoria ja solicitada. Deseja solicitar novamente?':'Solicitar vistoria tecnica para "'+p.nome+'"?';
-  if(!confirm(msg))return;
+  document.getElementById('vst-modal-id').value=id;
+  document.getElementById('vst-modal-nome').textContent=p.nome;
+  document.getElementById('vst-obs').value='';
+  document.getElementById('vistoria-modal').style.display='flex';
+}
+
+async function confirmarVistoria(){
+  const id=document.getElementById('vst-modal-id').value;
+  const obs=document.getElementById('vst-obs').value.trim();
+  const p=prospects.find(x=>x.id==id);if(!p)return;
+  document.getElementById('vistoria-modal').style.display='none';
   setStatus('loading','Solicitando vistoria...');
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({
@@ -533,7 +560,8 @@ async function solicitarVistoria(id){
       uhs:p.uhs||'',
       contato:p.contato||'',
       telefone:p.telefone||'',
-      endereco:p.endereco||''
+      endereco:p.endereco||'',
+      observacoes:obs
     })});
     await load();
     setStatus('online','Vistoria solicitada! E-mail enviado.');
