@@ -268,11 +268,25 @@ function setFilter(type,val){
   render();
 }
 
+function getChecked(cls){
+  return Array.from(document.querySelectorAll('.'+cls+':checked')).map(el=>el.value);
+}
+
+function applyFilter(){ render(); }
+
+function clearFilters(){
+  document.querySelectorAll('.f-status,.f-prioridade,.f-vendedor').forEach(el=>el.checked=false);
+  render();
+}
+
 function filtered(){
+  const status=getChecked('f-status');
+  const prio=getChecked('f-prioridade');
+  const vend=getChecked('f-vendedor');
   return prospects.filter(p=>{
-    if(filters.status!=='todos'&&p.status!==filters.status)return false;
-    if(filters.prioridade!=='todos'&&p.prioridade!==filters.prioridade)return false;
-    if(filters.vendedor!=='todos'&&p.vendedor!==filters.vendedor)return false;
+    if(status.length&&!status.includes(String(p.status)))return false;
+    if(prio.length&&!prio.includes(String(p.prioridade)))return false;
+    if(vend.length&&!vend.includes(String(p.vendedor)))return false;
     return true;
   });
 }
