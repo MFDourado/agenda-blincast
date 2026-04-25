@@ -114,60 +114,60 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
   <div class="filter-row">
     <!-- Status -->
     <div class="dropdown-filter" id="dd-status">
-      <div class="dropdown-trigger" id="dt-status" onclick="toggleDropdown('status')">
+      <div class="dropdown-trigger" id="dt-status" onclick="toggleDropdown('status', event)">
         Status <span id="db-status"></span> <span class="arrow">▼</span>
       </div>
       <div class="dropdown-menu" id="dm-status">
-        <div class="dropdown-item" data-group="status" data-val="prospect" onclick="toggleFilterItem('status','prospect',this)">
+        <div class="dropdown-item" data-group="status" data-val="prospect" onclick="toggleFilterItem('status','prospect',this,event)">
           <div class="dropdown-check"></div> Prospect
         </div>
-        <div class="dropdown-item" data-group="status" data-val="convertido" onclick="toggleFilterItem('status','convertido',this)">
+        <div class="dropdown-item" data-group="status" data-val="convertido" onclick="toggleFilterItem('status','convertido',this,event)">
           <div class="dropdown-check"></div> Convertido
         </div>
-        <div class="dropdown-item" data-group="status" data-val="vistoria_solicitada" onclick="toggleFilterItem('status','vistoria_solicitada',this)">
+        <div class="dropdown-item" data-group="status" data-val="vistoria_solicitada" onclick="toggleFilterItem('status','vistoria_solicitada',this,event)">
           <div class="dropdown-check"></div> Vistoria Solicitada
         </div>
-        <div class="dropdown-item" data-group="status" data-val="vistoria_concluida" onclick="toggleFilterItem('status','vistoria_concluida',this)">
+        <div class="dropdown-item" data-group="status" data-val="vistoria_concluida" onclick="toggleFilterItem('status','vistoria_concluida',this,event)">
           <div class="dropdown-check"></div> Vistoria Realizada
         </div>
       </div>
     </div>
     <!-- Prioridade -->
     <div class="dropdown-filter" id="dd-prioridade">
-      <div class="dropdown-trigger" id="dt-prioridade" onclick="toggleDropdown('prioridade')">
+      <div class="dropdown-trigger" id="dt-prioridade" onclick="toggleDropdown('prioridade', event)">
         Prioridade <span id="db-prioridade"></span> <span class="arrow">▼</span>
       </div>
       <div class="dropdown-menu" id="dm-prioridade">
-        <div class="dropdown-item" data-group="prioridade" data-val="urgente" onclick="toggleFilterItem('prioridade','urgente',this)">
+        <div class="dropdown-item" data-group="prioridade" data-val="urgente" onclick="toggleFilterItem('prioridade','urgente',this,event)">
           <div class="dropdown-check"></div> Urgente
         </div>
-        <div class="dropdown-item" data-group="prioridade" data-val="media" onclick="toggleFilterItem('prioridade','media',this)">
+        <div class="dropdown-item" data-group="prioridade" data-val="media" onclick="toggleFilterItem('prioridade','media',this,event)">
           <div class="dropdown-check"></div> Media
         </div>
-        <div class="dropdown-item" data-group="prioridade" data-val="baixa" onclick="toggleFilterItem('prioridade','baixa',this)">
+        <div class="dropdown-item" data-group="prioridade" data-val="baixa" onclick="toggleFilterItem('prioridade','baixa',this,event)">
           <div class="dropdown-check"></div> Baixa
         </div>
       </div>
     </div>
     <!-- Vendedor -->
     <div class="dropdown-filter" id="dd-vendedor">
-      <div class="dropdown-trigger" id="dt-vendedor" onclick="toggleDropdown('vendedor')">
+      <div class="dropdown-trigger" id="dt-vendedor" onclick="toggleDropdown('vendedor', event)">
         Vendedor <span id="db-vendedor"></span> <span class="arrow">▼</span>
       </div>
       <div class="dropdown-menu" id="dm-vendedor">
-        <div class="dropdown-item" data-group="vendedor" data-val="Rafael" onclick="toggleFilterItem('vendedor','Rafael',this)">
+        <div class="dropdown-item" data-group="vendedor" data-val="Rafael" onclick="toggleFilterItem('vendedor','Rafael',this,event)">
           <div class="dropdown-check"></div> Rafael
         </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Victor Hugo" onclick="toggleFilterItem('vendedor','Victor Hugo',this)">
+        <div class="dropdown-item" data-group="vendedor" data-val="Victor Hugo" onclick="toggleFilterItem('vendedor','Victor Hugo',this,event)">
           <div class="dropdown-check"></div> Victor Hugo
         </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Victor Xavier" onclick="toggleFilterItem('vendedor','Victor Xavier',this)">
+        <div class="dropdown-item" data-group="vendedor" data-val="Victor Xavier" onclick="toggleFilterItem('vendedor','Victor Xavier',this,event)">
           <div class="dropdown-check"></div> Victor Xavier
         </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Diogo" onclick="toggleFilterItem('vendedor','Diogo',this)">
+        <div class="dropdown-item" data-group="vendedor" data-val="Diogo" onclick="toggleFilterItem('vendedor','Diogo',this,event)">
           <div class="dropdown-check"></div> Diogo
         </div>
-        <div class="dropdown-item" data-group="vendedor" data-val="Andre Gama" onclick="toggleFilterItem('vendedor','Andre Gama',this)">
+        <div class="dropdown-item" data-group="vendedor" data-val="Andre Gama" onclick="toggleFilterItem('vendedor','Andre Gama',this,event)">
           <div class="dropdown-check"></div> Andre Gama
         </div>
       </div>
