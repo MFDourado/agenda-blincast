@@ -184,10 +184,23 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 </header>
 <div class="main-tabs">
   <button class="main-tab active" id="mt-pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+  <button class="main-tab" id="mt-vistoria" onclick="switchMainTab('vistoria')">Vistoria</button>
   <button class="main-tab" id="mt-agenda" onclick="switchMainTab('agenda')">Agenda</button>
   <button class="main-tab" id="mt-dashboard" onclick="switchMainTab('dashboard')">Dashboard</button>
   <button class="main-tab" id="mt-comercial" onclick="switchMainTab('comercial')">Comercial</button>
 </div>
+
+<!-- VISTORIA -->
+<div id="page-vistoria" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Vistorias Tecnicas</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vistoria-sync"></div>
+    </div>
+  </div>
+  <div id="vistoria-list"></div>
+</div>
+
 <div id="page-agenda" class="main" style="display:none">
   <div class="controls">
     <div class="month-nav">
@@ -398,11 +411,12 @@ async function savePipelineProject(proj){
 async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
 
 function switchMainTab(t){
-  ['pipeline','agenda','dashboard','comercial'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
   if(t==='pipeline')loadPipeline();
+  if(t==='vistoria')loadVistoria();
   if(t==='dashboard')renderDashboard();
   if(t==='comercial')loadComercial();
 }
@@ -812,6 +826,125 @@ async function confirmarEnvioEmail() {
   } catch(e) {
     document.getElementById('pipeline-sync').textContent = 'Erro ao enviar e-mail.';
   }
+}
+
+
+// VISTORIA
+const STEPS_VISTORIA = [
+  {id:1, title:'Vistoria solicitada', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:2, title:'Agendamento com cliente', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:3, title:'Vistoria realizada', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:4, title:'Relatorio tecnico emitido', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:5, title:'Enviado ao comercial', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+];
+
+let vistorias = [];
+let vstSaveTimer = null;
+
+async function loadVistoria(){
+  document.getElementById('vistoria-sync').textContent = 'Carregando...';
+  try {
+    const r = await fetch(API+'?action=getVistoria');
+    const d = await r.json();
+    vistorias = Array.isArray(d) ? d.map(v=>({
+      ...v,
+      steps: Array.isArray(v.steps) ? v.steps : STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))
+    })) : [];
+    document.getElementById('vistoria-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderVistoria();
+  } catch(e) { document.getElementById('vistoria-sync').textContent = 'Erro de conexao'; }
+}
+
+async function saveVistoriaProject(v){
+  try {
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveVistoria',...v,steps:v.steps})});
+    // Verificar se todas as etapas foram concluidas
+    if(v.steps.every(s=>s.done)){
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'solicitarVistoria',prospectId:v.prospectId,vistoriaId:v.id,nomeCliente:v.nomeCliente,concluir:true})}).catch(()=>{});
+    }
+    document.getElementById('vistoria-sync').textContent = 'Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) { document.getElementById('vistoria-sync').textContent = 'Erro ao salvar'; }
+}
+
+function schedSaveVistoria(v){
+  document.getElementById('vistoria-sync').textContent = 'Salvando...';
+  clearTimeout(vstSaveTimer);
+  vstSaveTimer = setTimeout(()=>saveVistoriaProject(v), 1500);
+}
+
+function toggleVistoriaStep(vId, stepId){
+  const v = vistorias.find(x=>x.id===vId); if(!v)return;
+  const step = v.steps.find(s=>s.id===stepId); if(!step)return;
+  step.done = !step.done;
+  if(step.done && !step.date) step.date = todayStr;
+  // Se todas concluidas, marcar como concluida
+  if(v.steps.every(s=>s.done)) v.status = 'concluida';
+  else v.status = 'andamento';
+  renderVistoria();
+  schedSaveVistoria(v);
+}
+
+function updateVistoriaStepDate(vId, stepId, val){
+  const v = vistorias.find(x=>x.id===vId); if(!v)return;
+  const step = v.steps.find(s=>s.id===stepId); if(!step)return;
+  step.date = val;
+  schedSaveVistoria(v);
+}
+
+function toggleVistoriaCard(id){
+  const el = document.getElementById('vst-body-'+id);
+  const chev = document.getElementById('vst-chev-'+id);
+  if(!el)return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  chev.className = 'chevron'+(open?'':' open');
+}
+
+function renderVistoria(){
+  const list = document.getElementById('vistoria-list');
+  if(!vistorias.length){
+    list.innerHTML = '<div class="empty-state" style="padding:3rem">Nenhuma vistoria solicitada.</div>';
+    return;
+  }
+  list.innerHTML = vistorias.map(v=>{
+    const doneCnt = v.steps.filter(s=>s.done).length;
+    const pct = Math.round((doneCnt/5)*100);
+    const concluida = v.status === 'concluida' || pct === 100;
+    const currentStep = v.steps.find(s=>!s.done);
+    const currentStepTitle = currentStep ? STEPS_VISTORIA.find(s=>s.id===currentStep.id)?.title : 'Concluida';
+
+    const stepsHtml = STEPS_VISTORIA.map(s=>{
+      const ps = v.steps.find(st=>st.id===s.id)||{done:false,date:''};
+      const isActive = !ps.done && currentStep && currentStep.id===s.id;
+      return `<div class="step-card${ps.done?' done':isActive?' active-step':''}">
+        <div class="step-number">Etapa ${s.id}</div>
+        <div class="step-title">${s.title}</div>
+        <div class="step-resp">${s.resp}</div>
+        <div class="step-date-row">
+          <span class="step-date-label">Data:</span>
+          <input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateVistoriaStepDate('${v.id}',${s.id},this.value)">
+          <button class="step-check" onclick="toggleVistoriaStep('${v.id}',${s.id})">${ps.done?'V':''}</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="project-card" style="${concluida?'border-color:var(--c-concluido)':''}">
+      <div class="project-card-header" onclick="toggleVistoriaCard('${v.id}')">
+        <div>
+          <div class="project-name">${v.nomeCliente}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${currentStepTitle} - ${doneCnt}/5 etapas</div>
+        </div>
+        <div class="project-meta">
+          <span class="badge ${concluida?'concluido':'andamento'}">${concluida?'Vistoria Realizada':'Em andamento'}</span>
+          <span class="chevron" id="vst-chev-${v.id}">v</span>
+        </div>
+      </div>
+      <div class="project-body" id="vst-body-${v.id}" style="display:none">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill${concluida?' done':''}" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div>
+        <div class="steps-grid">${stepsHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 document.getElementById('f-data').value=todayStr;
