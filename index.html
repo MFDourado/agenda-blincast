@@ -179,8 +179,20 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .cron-name{font-size:15px;font-weight:500;}
 .cron-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
 .cron-body{padding:16px;}
-.cron-task-row{display:grid;grid-template-columns:1fr 130px 200px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.cron-task-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);}
 .cron-task-row:last-child{border-bottom:none;}
+.cron-task-info{flex:1;min-width:160px;}
+.cron-task-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.gantt-mini-wrap{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
+.gantt-mini-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.gantt-mini-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.gantt-mini-label{font-size:11px;color:var(--text-muted);width:170px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-mini-track{flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative;min-width:100px;}
+.gantt-mini-bar{position:absolute;height:100%;border-radius:4px;top:0;}
+.gantt-mini-bar.previsto{background:var(--c-previsto-bg);border:1px solid var(--c-previsto);}
+.gantt-mini-bar.andamento{background:var(--c-andamento-bg);border:1px solid var(--c-andamento);}
+.gantt-mini-bar.concluido{background:var(--c-concluido-bg);border:1px solid var(--c-concluido);}
+.gantt-mini-bar.atrasado{background:var(--c-atrasado-bg);border:1px solid var(--c-atrasado);}
 .cron-task-name{font-size:13px;font-weight:500;}
 .cron-task-resp{font-size:11px;color:var(--text-muted);}
 .cron-date-wrap{display:flex;gap:6px;align-items:center;}
@@ -1166,6 +1178,12 @@ function renderClientes(){
           </div>
 
         </div>
+        ${(()=>{
+          const cron=cronogramas.find(cr=>cr.nomeCliente&&cr.nomeCliente.toLowerCase().trim()===c.nome.toLowerCase().trim());
+          if(!cron)return '';
+          const link='https://mfdourado.github.io/agenda-blincast/cronograma.html?id='+cron.id;
+          return '<div style="margin-top:12px;background:var(--c-previsto-bg);border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style=\"font-size:11px;font-weight:500;color:var(--c-previsto);margin-bottom:2px\">Cronograma vinculado</div><div style=\"font-size:11px;font-family:DM Mono,monospace;color:var(--c-previsto);word-break:break-all\">'+link+'</div></div><button onclick=\"navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'Link copiado!\'))\" style=\"padding:4px 12px;border:1px solid var(--c-previsto);border-radius:4px;background:none;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;color:var(--c-previsto);white-space:nowrap\">Copiar link</button></div>';
+        })()}
         <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
           <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
         </div>
@@ -1371,21 +1389,38 @@ function renderCronogramas(){
 
     const tarefasHtml=tarefas.map((t,i)=>`
       <div class="cron-task-row">
-        <div><div class="cron-task-name">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div>
-        <select class="cron-status-sel" onchange="updateCronTask('${cron.id}',${i},'status',this.value)">
-          <option value="previsto" ${t.status==='previsto'?'selected':''}>Previsto</option>
-          <option value="andamento" ${t.status==='andamento'?'selected':''}>Em andamento</option>
-          <option value="concluido" ${t.status==='concluido'?'selected':''}>Concluido</option>
-          <option value="atrasado" ${t.status==='atrasado'?'selected':''}>Atrasado</option>
-        </select>
-        <div class="cron-date-wrap">
-          <input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Data inicio">
+        <div class="cron-task-info"><div class="cron-task-name">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div>
+        <div class="cron-task-controls">
+          <select class="cron-status-sel" onchange="updateCronTask('${cron.id}',${i},'status',this.value)">
+            <option value="previsto" ${t.status==='previsto'?'selected':''}>Previsto</option>
+            <option value="andamento" ${t.status==='andamento'?'selected':''}>Em andamento</option>
+            <option value="concluido" ${t.status==='concluido'?'selected':''}>Concluido</option>
+            <option value="atrasado" ${t.status==='atrasado'?'selected':''}>Atrasado</option>
+          </select>
+          <input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio">
           <span class="cron-date-sep">→</span>
-          <input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Data fim">
+          <input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim">
         </div>
-        <div></div>
       </div>
     `).join('');
+
+    // Gantt mini — calcula range
+    const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));
+    const minD=datas.length?Math.min(...datas):null;
+    const maxD=datas.length?Math.max(...datas):null;
+    const totalD=maxD&&minD?maxD-minD:1;
+
+    const ganttMiniHtml=datas.length?`
+      <div class="gantt-mini-wrap">
+        <div class="gantt-mini-title">Linha do tempo</div>
+        ${tarefas.filter(t=>t.dataInicio).map(t=>{
+          const s=new Date(t.dataInicio).getTime()-minD;
+          const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);
+          const left=Math.max(0,Math.round((s/totalD)*100));
+          const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));
+          return '<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';
+        }).join('')}
+      </div>`:''
 
     return `<div class="cron-card">
       <div class="cron-header">
@@ -1402,6 +1437,7 @@ function renderCronogramas(){
         <div class="cron-body">
           <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
           ${tarefasHtml}
+          ${ganttMiniHtml}
           <div class="cron-link-box">
             <div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div>
