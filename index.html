@@ -761,7 +761,7 @@ function editarCom(id){
 }
 
 async function salvarCom(){
-  const nome=document.getElementById('cm-nome').value.trim();
+  const nome=document.getElementById('cron-nome').value.trim();
   const cidade=document.getElementById('cm-cidade').value.trim();
   const uhs=document.getElementById('cm-uhs').value;
   const produto=document.getElementById('cm-produto').value;
@@ -1257,7 +1257,7 @@ async function loadCronogramas(){
 }
 
 function openNovoCronModal(){
-  document.getElementById('cm-nome').value='';
+  document.getElementById('cron-nome').value='';
   document.getElementById('cm-edit-id').value='';
   document.getElementById('cron-modal-title').textContent='Novo cronograma';
   renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));
@@ -1307,7 +1307,7 @@ function getModalTasks(){
 }
 
 async function salvarCronograma(){
-  const nome=document.getElementById('cm-nome').value.trim();
+  const nome=document.getElementById('cron-nome').value.trim();
   if(!nome){alert('Informe o nome do cliente/projeto.');return;}
   const tasks=getModalTasks().filter(t=>t.nome);
   const editId=document.getElementById('cm-edit-id').value;
@@ -1548,7 +1548,7 @@ loadPipeline();
     <h3 id="cron-modal-title">Novo cronograma</h3>
     <div class="modal-field" style="margin-bottom:12px">
       <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Cliente / Projeto *</label>
-      <input type="text" id="cm-nome" placeholder="Ex: Clara Ibiúna" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <input type="text" id="cron-nome" placeholder="Ex: Clara Ibiúna" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
     </div>
     <div style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tarefas iniciais</div>
     <div id="cm-tasks-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
