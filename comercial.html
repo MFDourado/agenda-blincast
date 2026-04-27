@@ -742,6 +742,12 @@ function renderClientes(){
           </div>
 
         </div>
+        ${(()=>{
+          const cron=cronogramas.find(cr=>cr.nomeCliente&&cr.nomeCliente.toLowerCase().trim()===c.nome.toLowerCase().trim());
+          if(!cron)return '';
+          const link='https://mfdourado.github.io/agenda-blincast/cronograma.html?id='+cron.id;
+          return '<div style="margin-top:12px;background:var(--c-previsto-bg);border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style=\"font-size:11px;font-weight:500;color:var(--c-previsto);margin-bottom:2px\">Cronograma vinculado</div><div style=\"font-size:11px;font-family:DM Mono,monospace;color:var(--c-previsto);word-break:break-all\">'+link+'</div></div><button onclick=\"navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'Link copiado!\'))\" style=\"padding:4px 12px;border:1px solid var(--c-previsto);border-radius:4px;background:none;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;color:var(--c-previsto);white-space:nowrap\">Copiar link</button></div>';
+        })()}
         <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
           <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
         </div>
@@ -755,6 +761,286 @@ function toggleGradePor(id){
   const wrap = document.getElementById('cli-grade-por-wrap-'+id);
   if(wrap) wrap.style.display = chk&&chk.checked ? 'block' : 'none';
 }
+
+
+function openNovoClienteModal(){
+  ['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('nc-produto').value='';
+  document.getElementById('nc-status').value='ativo';
+  document.getElementById('nc-vigencia').value=todayStr;
+  document.getElementById('novo-cliente-modal').style.display='flex';
+}
+
+function closeNovoClienteModal(){
+  document.getElementById('novo-cliente-modal').style.display='none';
+}
+
+async function criarClienteAvulso(){
+  const nome=document.getElementById('nc-nome').value.trim();
+  const cidade=document.getElementById('nc-cidade').value.trim();
+  const produto=document.getElementById('nc-produto').value;
+  const uhs=document.getElementById('nc-uhs').value;
+  const vigencia=document.getElementById('nc-vigencia').value;
+  const responsavel=document.getElementById('nc-responsavel').value.trim();
+  const motivo=document.getElementById('nc-motivo').value.trim();
+
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){
+    alert('Preencha todos os campos obrigatorios (*)');return;
+  }
+
+  closeNovoClienteModal();
+  document.getElementById('cli-sync').textContent='Criando cliente...';
+
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      action:'criarCliente',
+      id:uid(),
+      prospectId:'avulso',
+      nome,cidade,
+      cnpj:document.getElementById('nc-cnpj').value.trim(),
+      contato:document.getElementById('nc-contato').value.trim(),
+      telefone:document.getElementById('nc-telefone').value.trim(),
+      endereco:document.getElementById('nc-endereco').value.trim(),
+      produto,uhs:parseInt(uhs)||0,
+      vigencia_inicio:vigencia,
+      status:document.getElementById('nc-status').value,
+      responsavel_criacao:responsavel,
+      motivo_criacao:motivo,
+    })});
+    await loadClientes();
+  }catch(e){
+    document.getElementById('cli-sync').textContent='Erro ao criar cliente';
+  }
+}
+
+
+// CRONOGRAMA
+let cronogramas = [];
+let cronSaveTimer = null;
+const BASE_URL = 'https://mfdourado.github.io/agenda-blincast/cronograma.html';
+const TEMPLATE_TASKS = [
+  {id:1,nome:'Configuração dos equipamentos',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
+  {id:2,nome:'Instalação física — Rack',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
+  {id:3,nome:'Infraestrutura de rede',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
+  {id:4,nome:'Testes e validação',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
+];
+
+async function loadCronogramas(){
+  document.getElementById('cron-sync').textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getCronogramas');
+    const d=await r.json();
+    cronogramas=Array.isArray(d)?d:[];
+    document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderCronogramas();
+  }catch(e){document.getElementById('cron-sync').textContent='Erro de conexao';}
+}
+
+function openNovoCronModal(){
+  document.getElementById('cron-nome').value='';
+  document.getElementById('cm-edit-id').value='';
+  document.getElementById('cron-modal-title').textContent='Novo cronograma';
+  renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));
+  document.getElementById('cron-modal').style.display='flex';
+}
+
+function closeCronModal(){document.getElementById('cron-modal').style.display='none';}
+
+function renderModalTasks(tasks){
+  const list=document.getElementById('cm-tasks-list');
+  list.innerHTML=tasks.map((t,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center" id="cm-task-${i}">
+      <input type="text" value="${t.nome}" placeholder="Nome da tarefa" id="ct-nome-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <input type="text" value="${t.responsavel}" placeholder="Responsável" id="ct-resp-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <button onclick="removeCronTask(${i})" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-light);font-size:13px;">✕</button>
+    </div>
+  `).join('');
+  list.dataset.count=tasks.length;
+}
+
+function addCronTask(){
+  const count=parseInt(document.getElementById('cm-tasks-list').dataset.count||0);
+  const newTask={id:count+1,nome:'',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'};
+  const tasks=getModalTasks();
+  tasks.push(newTask);
+  renderModalTasks(tasks);
+}
+
+function removeCronTask(idx){
+  const tasks=getModalTasks();
+  tasks.splice(idx,1);
+  renderModalTasks(tasks);
+}
+
+function getModalTasks(){
+  const list=document.getElementById('cm-tasks-list');
+  const count=parseInt(list.dataset.count||0);
+  const tasks=[];
+  for(let i=0;i<count;i++){
+    const nome=document.getElementById('ct-nome-'+i);
+    const resp=document.getElementById('ct-resp-'+i);
+    if(nome&&resp){
+      tasks.push({id:i+1,nome:nome.value.trim(),responsavel:resp.value.trim(),dataInicio:'',dataFim:'',status:'previsto'});
+    }
+  }
+  return tasks;
+}
+
+async function salvarCronograma(){
+  const nome=document.getElementById('cron-nome').value.trim();
+  if(!nome){alert('Informe o nome do cliente/projeto.');return;}
+  const tasks=getModalTasks().filter(t=>t.nome);
+  const editId=document.getElementById('cm-edit-id').value;
+  const cronId=editId||uid();
+  closeCronModal();
+  document.getElementById('cron-sync').textContent='Salvando...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cronId,clienteId:'',projetoId:'',nomeCliente:nome,tarefas:tasks})});
+    await loadCronogramas();
+  }catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}
+}
+
+function getCronLink(id){return BASE_URL+'?id='+id;}
+
+function copiarLink(id){
+  navigator.clipboard.writeText(getCronLink(id)).then(()=>{
+    const btn=document.getElementById('copy-btn-'+id);
+    if(btn){btn.textContent='Copiado!';setTimeout(()=>{btn.textContent='Copiar link';},2000);}
+  });
+}
+
+function toggleCronCard(id){
+  const el=document.getElementById('cron-body-'+id);
+  const chev=document.getElementById('cron-chev-'+id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  chev.className='chevron'+(open?'':' open');
+}
+
+function toggleCronCheck(cronId,taskIdx,checked){
+  const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;
+  cron.tarefas[taskIdx].status=checked?'concluido':'previsto';
+  // Atualizar visual em tempo real
+  const row=document.getElementById('ctr-'+cronId+'-'+taskIdx);
+  if(row){
+    const nameEl=row.querySelector('.cron-task-name');
+    if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}
+  }
+  // Atualizar barra de progresso em tempo real
+  const concluidas=cron.tarefas.filter(t=>t.status==='concluido').length;
+  const pct=cron.tarefas.length?Math.round((concluidas/cron.tarefas.length)*100):0;
+  const barEl=document.querySelector('#cron-bar-'+cronId);
+  if(barEl)barEl.style.width=pct+'%';
+  const pctEl=document.querySelector('#cron-pct-'+cronId);
+  if(pctEl)pctEl.textContent=pct+'% concluido';
+  const metaEl=document.querySelector('#cron-meta-'+cronId);
+  if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';
+  updateCronTask(cronId,taskIdx,'status',cron.tarefas[taskIdx].status);
+}
+
+function updateCronTask(cronId,taskIdx,field,val){
+  const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;
+  if(!cron.tarefas[taskIdx])return;
+  cron.tarefas[taskIdx][field]=val;
+  clearTimeout(cronSaveTimer);
+  cronSaveTimer=setTimeout(async()=>{
+    document.getElementById('cron-sync').textContent='Salvando...';
+    try{
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
+      // Sincronizar agenda
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
+      document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}
+  },1500);
+}
+
+async function deletarCronograma(id){
+  if(!confirm('Remover este cronograma?'))return;
+  await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCronograma',id})});
+  await loadCronogramas();
+}
+
+function renderCronogramas(){
+  const list=document.getElementById('cron-list');
+  if(!cronogramas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cronograma. Clique em + Novo cronograma para comecar.</div>';return;}
+  list.innerHTML=cronogramas.map(cron=>{
+    const tarefas=cron.tarefas||[];
+    const concluidas=tarefas.filter(t=>t.status==='concluido').length;
+    const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;
+    const link=getCronLink(cron.id);
+
+    const tarefasHtml=tarefas.map((t,i)=>{
+      const done=t.status==='concluido';
+      return `<div class="cron-task-row" id="ctr-${cron.id}-${i}">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0">
+          <input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)"
+            style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)">
+          <div>
+            <div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div>
+            <div class="cron-task-resp">${t.responsavel}</div>
+          </div>
+        </label>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio">
+          <span class="cron-date-sep" style="color:var(--text-muted);font-size:11px">→</span>
+          <input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim">
+        </div>
+      </div>`;
+    }).join('');
+
+    // Gantt mini — calcula range
+    const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));
+    const minD=datas.length?Math.min(...datas):null;
+    const maxD=datas.length?Math.max(...datas):null;
+    const totalD=maxD&&minD?maxD-minD:1;
+
+    const ganttMiniHtml=datas.length?`
+      <div class="gantt-mini-wrap">
+        <div class="gantt-mini-title">Linha do tempo</div>
+        ${tarefas.filter(t=>t.dataInicio).map(t=>{
+          const s=new Date(t.dataInicio).getTime()-minD;
+          const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);
+          const left=Math.max(0,Math.round((s/totalD)*100));
+          const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));
+          return '<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';
+        }).join('')}
+      </div>`:''
+
+    return `<div class="cron-card">
+      <div class="cron-header">
+        <div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')">
+          <div class="cron-name">${cron.nomeCliente}</div>
+          <div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas &mdash; ${pct}% concluido</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluido':'Em andamento'}</span>
+          <span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span>
+        </div>
+      </div>
+      <div id="cron-body-${cron.id}" style="display:none">
+        <div class="cron-body">
+          <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>
+          ${tarefasHtml}
+          ${ganttMiniHtml}
+          <div class="cron-link-box">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div>
+              <div class="cron-link-text">${link}</div>
+            </div>
+            <button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button>
+          </div>
+          <div class="cron-actions">
+            <button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 
 function switchComTab(t){
   ['prospects','clientes'].forEach(tab=>{
