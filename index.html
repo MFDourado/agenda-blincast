@@ -16,8 +16,8 @@ header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-ite
 .status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
 .status-dot.online{background:#2ecc71;}.status-dot.loading{background:var(--gold);}.status-dot.error{background:#e74c3c;}
-.main-tabs{display:flex;background:var(--black);border-top:1px solid #1e1e1e;padding:0 2rem;}
-.main-tab{padding:14px 28px;font-size:14px;font-weight:500;color:#666;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif;background:none;border-left:none;border-right:none;border-top:none;letter-spacing:.3px;}
+.main-tabs{display:flex;background:var(--black);border-top:1px solid #1e1e1e;padding:0 2rem;overflow-x:auto;}
+.main-tab{padding:14px 22px;font-size:14px;font-weight:500;color:#666;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif;background:none;border-left:none;border-right:none;border-top:none;letter-spacing:.3px;white-space:nowrap;}
 .main-tab:hover{color:#bbb;background:rgba(255,255,255,.04);}.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 .main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;}
 .controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:12px;}
@@ -243,6 +243,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   <button class="main-tab" id="mt-comercial" onclick="switchMainTab('comercial')">Comercial</button>
   <button class="main-tab" id="mt-clientes" onclick="switchMainTab('clientes')">Clientes</button>
   <button class="main-tab" id="mt-cronograma" onclick="switchMainTab('cronograma')">Cronograma</button>
+  <button class="main-tab" id="mt-ata" onclick="switchMainTab('ata')">Ata do Dia</button>
 </div>
 
 <!-- VISTORIA -->
@@ -361,6 +362,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 </div>
 
 <!-- MODAL COMERCIAL -->
+<!-- PATCH 2: Campo canais HD/SD adicionado -->
 <div class="modal-overlay" id="com-modal" style="display:none">
   <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto;">
     <h3 id="com-modal-title">Novo prospect</h3>
@@ -380,6 +382,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
         </select>
       </div>
       <div class="modal-field"><label>UHs *</label><input type="number" id="cm-uhs" placeholder="Ex: 120" min="1"></div>
+      <div class="modal-field" id="cm-canais-wrap" style="display:none;grid-column:span 2"><label>Quantidade de canais</label><input type="number" id="cm-canais" placeholder="Ex: 60" min="1"></div>
       <div class="modal-field" id="cm-outro-wrap" style="display:none;grid-column:span 2"><label>Especifique o produto</label><input type="text" id="cm-produto-outro" placeholder="Descreva..."></div>
       <div class="modal-field" style="grid-column:span 2"><label>Conteudo online?</label>
         <select class="field-sel" id="cm-conteudo" onchange="toggleCmConteudo()">
@@ -409,6 +412,72 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </div>
   </div>
 </div>
+
+<!-- ATA DO DIA -->
+<div id="page-ata" class="main" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:600">Ata do Dia</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="ata-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
+      <button class="btn-new-project" onclick="openAtaModal()">+ Novo registro</button>
+    </div>
+  </div>
+  <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:auto;">
+    <table style="width:100%;border-collapse:collapse;min-width:700px;" id="ata-table">
+      <thead>
+        <tr style="background:var(--black);">
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">No OS</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Cliente</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">UF</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Problema</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Técnico</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Status</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Observações</th>
+          <th style="padding:10px 12px;width:64px;"></th>
+        </tr>
+      </thead>
+      <tbody id="ata-tbody">
+        <tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL ATA -->
+<div class="modal-overlay" id="ata-modal" style="display:none">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h3 id="ata-modal-title">Novo registro</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field"><label>No OS / Código</label><input type="text" id="at-no" placeholder="Ex: 4521"></div>
+      <div class="modal-field"><label>Data *</label><input type="date" id="at-data"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" placeholder="Nome do cliente"></div>
+      <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase"></div>
+      <div class="modal-field"><label>Técnico</label><input type="text" id="at-tecnico" placeholder="Nome do técnico"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
+      <div class="modal-field"><label>Status *</label>
+        <select class="field-sel" id="at-status">
+          <option value="feito">Feito</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="pendente">Pendente</option>
+          <option value="retornar">Retornar</option>
+          <option value="acompanhar">Acompanhar</option>
+          <option value="planejado">Planejado</option>
+          <option value="em_atraso">Em atraso</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2"><label>Observações</label><input type="text" id="at-obs" placeholder="Informações complementares"></div>
+    </div>
+    <input type="hidden" id="at-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeAtaModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarAta()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
 const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -458,25 +527,34 @@ async function loadPipeline(forceRender){
     const d=await r.json();
     projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
     document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    // Só re-renderiza se nenhum card estiver aberto, ou se forceRender=true
     const algumAberto=document.querySelectorAll('.project-body[style*="display: block"], .project-body[style*="display:block"]').length>0;
-    if(!algumAberto||forceRender){
-      renderPipeline();
-    } else {
-      document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    }
+    if(!algumAberto||forceRender){renderPipeline();}
+    else{document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   }catch(e){document.getElementById('pipeline-sync').textContent='Erro de conexao';}
 }
+
+// PATCH 1: Bug corrigido — payload explícito sem spread duplicado
 async function savePipelineProject(proj){
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'savePipeline',...proj,steps:proj.steps})});
+    const payload={
+      action:'savePipeline',
+      id:proj.id,
+      nome:proj.nome,
+      uhs:proj.uhs,
+      canais:proj.canais||'',
+      produto:proj.produto||'',
+      cidade:proj.cidade||'',
+      inicio:proj.inicio||'',
+      steps:proj.steps
+    };
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     document.getElementById('pipeline-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){document.getElementById('pipeline-sync').textContent='Erro ao salvar';}
 }
 async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
 
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
@@ -486,6 +564,7 @@ function switchMainTab(t){
   if(t==='comercial')loadComercial();
   if(t==='clientes')loadClientes();
   if(t==='cronograma')loadCronogramas();
+  if(t==='ata')loadAta();
 }
 function setFilter(f){
   activeFilter=f;
@@ -524,7 +603,7 @@ function renderDia(){
   else evts.forEach(e=>{
     const ip=e.status==='pendente',ov=e.obs||'';
     html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${e.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluido</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
-    html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;display:none;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${e.id}','${e.client}','${e.status}','${e.obs||''}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${e.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
+    html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${e.id}','${e.client}','${e.status}','${e.obs||''}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${e.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
     if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
     else if(ov)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${ov}</span></div>`;
     html+='</div>';
@@ -599,14 +678,7 @@ function toggleStep(projId,stepId){
   if(foiConcluido){
     const stepInfo=STEPS.find(s=>s.id===stepId);
     if(stepInfo){
-      fetch(API,{method:'POST',body:JSON.stringify({
-        action:'notificarEtapa',
-        projeto:proj.nome,
-        etapaId:stepId,
-        etapaTitulo:stepInfo.title,
-        responsavel:stepInfo.resp,
-        data:step.date||todayStr
-      })}).catch(()=>{});
+      fetch(API,{method:'POST',body:JSON.stringify({action:'notificarEtapa',projeto:proj.nome,etapaId:stepId,etapaTitulo:stepInfo.title,responsavel:stepInfo.resp,data:step.date||todayStr})}).catch(()=>{});
     }
   }
 }
@@ -635,14 +707,15 @@ function renderPipeline(){
     let dc='ok';if(dias>=40)dc='danger';else if(dias>=30)dc='warn';
     const cs=proj.steps.find(s=>!s.done);
     const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluido';
+    // PATCH 2: badge de canais no pipeline
+    const canalBadge=(proj.produto==='HD'||proj.produto==='SD')&&proj.canais?`<span class="uh-badge" style="background:var(--c-previsto-bg);border-color:var(--c-previsto);color:var(--c-previsto)">${proj.canais} canais</span>`:'';
     const sh=STEPS.map(s=>{
       const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
       const ia=!ps.done&&cs&&cs.id===s.id;
       const ir=s.remote&&proj.uhs<50;
       return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas</div></div><div class="project-meta"><span class="uh-badge">${proj.uhs} UHs</span>${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div><div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>
-          <button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button></div></div></div>`;
+    return `<div class="project-card"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas</div></div><div class="project-meta"><span class="uh-badge">${proj.uhs} UHs</span>${canalBadge}${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div><div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button><button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button></div></div></div>`;
   }).join('');
 }
 
@@ -699,34 +772,34 @@ async function saveNewDate(id,client,status,obs){
 }
 
 // COMERCIAL
-let prospects = [];
-let comFilter = 'todos';
+let prospects=[];
+let comFilter='todos';
 
 async function loadComercial(){
-  document.getElementById('com-sync').textContent = 'Carregando...';
-  try {
-    const r = await fetch(API+'?action=getComercial');
-    const d = await r.json();
-    prospects = Array.isArray(d) ? d : [];
-    document.getElementById('com-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('com-sync').textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getComercial');
+    const d=await r.json();
+    prospects=Array.isArray(d)?d:[];
+    document.getElementById('com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderComercial();
-  } catch(e) { document.getElementById('com-sync').textContent = 'Erro de conexao'; }
+  }catch(e){document.getElementById('com-sync').textContent='Erro de conexao';}
 }
 
 function setComFilter(f){
-  comFilter = f;
+  comFilter=f;
   ['todos','prospect','convertido'].forEach(x=>{
-    const el = document.getElementById('cf-'+x);
-    if(el) el.className = 'filter-btn'+(x===f?' active':'');
+    const el=document.getElementById('cf-'+x);
+    if(el)el.className='filter-btn'+(x===f?' active':'');
   });
   renderComercial();
 }
 
 function renderComercial(){
-  const list = comFilter==='todos' ? prospects : prospects.filter(p=>p.status===comFilter);
-  const grid = document.getElementById('com-cards');
-  if(!list.length){ grid.innerHTML='<div class="empty-state" style="padding:3rem;grid-column:span 3">Nenhum prospect encontrado.</div>'; return; }
-  grid.innerHTML = list.map(p=>`
+  const list=comFilter==='todos'?prospects:prospects.filter(p=>p.status===comFilter);
+  const grid=document.getElementById('com-cards');
+  if(!list.length){grid.innerHTML='<div class="empty-state" style="padding:3rem;grid-column:span 3">Nenhum prospect encontrado.</div>';return;}
+  grid.innerHTML=list.map(p=>`
     <div style="background:var(--surface);border-radius:var(--radius);border:1px solid ${p.status==='convertido'?'var(--c-concluido)':'var(--border)'};overflow:hidden;">
       <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
         <div>
@@ -739,6 +812,7 @@ function renderComercial(){
         ${p.cnpj?`<div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">CNPJ</span> <span style="font-weight:500">${p.cnpj}</span></div>`:''}
         ${p.contato?`<div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Contato</span> <span style="font-weight:500">${p.contato}</span></div>`:''}
         <div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Produto</span> <span style="font-weight:500">${p.produto||'-'}</span></div>
+        ${(p.produto==='HD'||p.produto==='SD')&&p.canais?`<div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Canais</span> <span style="font-weight:500;color:var(--c-previsto)">${p.canais}</span></div>`:''}
         <div style="margin-bottom:4px"><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">UHs</span> <span style="font-weight:500">${p.uhs||'-'}</span></div>
         <div><span style="font-size:11px;color:var(--text-muted);min-width:90px;display:inline-block">Cont. online</span> <span style="font-weight:500">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' - '+p.conteudo_detalhe:''}</span></div>
       </div>
@@ -752,17 +826,23 @@ function renderComercial(){
 }
 
 function openComModal(){
-  ['cm-nome','cm-cidade','cm-cnpj','cm-contato','cm-uhs','cm-produto-outro','cm-conteudo-detalhe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['cm-nome','cm-cidade','cm-cnpj','cm-contato','cm-uhs','cm-canais','cm-produto-outro','cm-conteudo-detalhe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('cm-produto').value='';
   document.getElementById('cm-conteudo').value='Nao';
   document.getElementById('cm-edit-id').value='';
   document.getElementById('cm-outro-wrap').style.display='none';
+  document.getElementById('cm-canais-wrap').style.display='none';
   document.getElementById('cm-conteudo-detalhe-wrap').style.display='none';
   document.getElementById('com-modal-title').textContent='Novo prospect';
   document.getElementById('com-modal').style.display='flex';
 }
 function closeComModal(){document.getElementById('com-modal').style.display='none';}
-function toggleCmProduto(){document.getElementById('cm-outro-wrap').style.display=document.getElementById('cm-produto').value==='OUTROS'?'block':'none';}
+// PATCH 2: toggleCmProduto exibe canais para HD/SD
+function toggleCmProduto(){
+  const v=document.getElementById('cm-produto').value;
+  document.getElementById('cm-outro-wrap').style.display=v==='OUTROS'?'block':'none';
+  document.getElementById('cm-canais-wrap').style.display=(v==='HD'||v==='SD')?'block':'none';
+}
 function toggleCmConteudo(){document.getElementById('cm-conteudo-detalhe-wrap').style.display=document.getElementById('cm-conteudo').value==='Sim'?'block':'none';}
 
 function editarCom(id){
@@ -774,16 +854,18 @@ function editarCom(id){
   document.getElementById('cm-contato').value=p.contato||'';
   document.getElementById('cm-produto').value=p.produto||'';
   document.getElementById('cm-uhs').value=p.uhs||'';
+  document.getElementById('cm-canais').value=p.canais||'';
   document.getElementById('cm-conteudo').value=p.conteudo_online||'Nao';
   document.getElementById('cm-conteudo-detalhe').value=p.conteudo_detalhe||'';
   document.getElementById('cm-outro-wrap').style.display=p.produto==='OUTROS'?'block':'none';
+  document.getElementById('cm-canais-wrap').style.display=(p.produto==='HD'||p.produto==='SD')?'block':'none';
   document.getElementById('cm-conteudo-detalhe-wrap').style.display=p.conteudo_online==='Sim'?'block':'none';
   document.getElementById('com-modal-title').textContent='Editar prospect';
   document.getElementById('com-modal').style.display='flex';
 }
 
 async function salvarCom(){
-  const nome=document.getElementById('cron-nome').value.trim();
+  const nome=document.getElementById('cm-nome').value.trim();
   const cidade=document.getElementById('cm-cidade').value.trim();
   const uhs=document.getElementById('cm-uhs').value;
   const produto=document.getElementById('cm-produto').value;
@@ -794,302 +876,184 @@ async function salvarCom(){
     cnpj:document.getElementById('cm-cnpj').value.trim(),
     contato:document.getElementById('cm-contato').value.trim(),
     produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('cm-produto-outro').value.trim():produto,
+    canais:(produto==='HD'||produto==='SD')?parseInt(document.getElementById('cm-canais').value)||0:0,
     conteudo_online:document.getElementById('cm-conteudo').value,
     conteudo_detalhe:document.getElementById('cm-conteudo-detalhe').value.trim(),
     uhs:parseInt(uhs)||0,
   };
   closeComModal();
   try{
-    if(editId){
-      await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});
-    } else {
-      await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});
-    }
+    if(editId){await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});}
+    else{await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});}
     await loadComercial();
   }catch(e){setStatus('error','Erro ao salvar');}
 }
 
 async function removerCom(id){
   if(!confirm('Remover este prospect?'))return;
-  try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});
-    await loadComercial();
-  }catch(e){setStatus('error','Erro ao remover');}
+  try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});await loadComercial();}
+  catch(e){setStatus('error','Erro ao remover');}
 }
 
 async function converterProspect(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   if(!confirm('Converter "'+p.nome+'" para o pipeline como contrato assinado?'))return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',canais:p.canais||0,conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});
     await loadComercial();
-    alert(p.nome+' convertido para o pipeline! Voce receberá uma notificação por e-mail.');
+    alert(p.nome+' convertido para o pipeline!');
   }catch(e){setStatus('error','Erro ao converter');}
 }
 
-
 // EMAIL DE CONCLUSAO
-function abrirEmailConclusao(projId, projNome) {
-  document.getElementById('ec-proj-id').value = projId;
-  document.getElementById('ec-projeto').textContent = projNome;
-  document.getElementById('ec-destinatarios').value = '';
-  document.getElementById('ec-mensagem').value = '';
-  document.getElementById('ec-double-check').style.display = 'none';
-  document.getElementById('ec-confirm-btn').style.display = '';
-  document.getElementById('email-conclusao-modal').style.display = 'flex';
+function abrirEmailConclusao(projId,projNome){
+  document.getElementById('ec-proj-id').value=projId;
+  document.getElementById('ec-projeto').textContent=projNome;
+  document.getElementById('ec-destinatarios').value='';
+  document.getElementById('ec-mensagem').value='';
+  document.getElementById('ec-double-check').style.display='none';
+  document.getElementById('ec-confirm-btn').style.display='';
+  document.getElementById('email-conclusao-modal').style.display='flex';
 }
-
-let ecTimer = null;
-
-function iniciarDoubleCheck() {
-  const dest = document.getElementById('ec-destinatarios').value.trim();
-  const msg = document.getElementById('ec-mensagem').value.trim();
-  if (!dest || !msg) { alert('Preencha os destinatarios e a mensagem.'); return; }
-  document.getElementById('ec-confirm-btn').style.display = 'none';
-  document.getElementById('ec-double-check').style.display = 'block';
-  const btn = document.getElementById('ec-sim-btn');
-  const countdown = document.getElementById('ec-countdown');
-  btn.disabled = true;
-  btn.style.cursor = 'not-allowed';
-  btn.style.opacity = '.5';
-  let secs = 2;
-  countdown.textContent = '(' + secs + 's)';
-  ecTimer = setInterval(() => {
-    secs--;
-    if (secs <= 0) {
-      clearInterval(ecTimer);
-      countdown.textContent = '';
-      btn.disabled = false;
-      btn.style.cursor = 'pointer';
-      btn.style.opacity = '1';
-    } else {
-      countdown.textContent = '(' + secs + 's)';
-    }
-  }, 1000);
+let ecTimer=null;
+function iniciarDoubleCheck(){
+  const dest=document.getElementById('ec-destinatarios').value.trim();
+  const msg=document.getElementById('ec-mensagem').value.trim();
+  if(!dest||!msg){alert('Preencha os destinatarios e a mensagem.');return;}
+  document.getElementById('ec-confirm-btn').style.display='none';
+  document.getElementById('ec-double-check').style.display='block';
+  const btn=document.getElementById('ec-sim-btn');
+  const countdown=document.getElementById('ec-countdown');
+  btn.disabled=true;btn.style.cursor='not-allowed';btn.style.opacity='.5';
+  let secs=2;countdown.textContent='('+secs+'s)';
+  ecTimer=setInterval(()=>{secs--;if(secs<=0){clearInterval(ecTimer);countdown.textContent='';btn.disabled=false;btn.style.cursor='pointer';btn.style.opacity='1';}else{countdown.textContent='('+secs+'s)';}},1000);
 }
-
-function cancelarDoubleCheck() {
-  clearInterval(ecTimer);
-  document.getElementById('ec-double-check').style.display = 'none';
-  document.getElementById('ec-confirm-btn').style.display = '';
+function cancelarDoubleCheck(){clearInterval(ecTimer);document.getElementById('ec-double-check').style.display='none';document.getElementById('ec-confirm-btn').style.display='';}
+async function confirmarEnvioEmail(){
+  const projId=document.getElementById('ec-proj-id').value;
+  const msg=document.getElementById('ec-mensagem').value.trim();
+  const dest=document.getElementById('ec-destinatarios').value.trim();
+  const proj=projects.find(p=>p.id===projId);
+  const destinatarios=dest.split(',').map(e=>e.trim()).filter(Boolean);
+  document.getElementById('email-conclusao-modal').style.display='none';
+  document.getElementById('pipeline-sync').textContent='Enviando e-mail...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'enviarEmailConclusao',projeto:proj?proj.nome:projId,destinatarios,mensagem:msg})});
+    document.getElementById('pipeline-sync').textContent='E-mail enviado com sucesso!';
+  }catch(e){document.getElementById('pipeline-sync').textContent='Erro ao enviar e-mail.';}
 }
-
-async function confirmarEnvioEmail() {
-  const projId = document.getElementById('ec-proj-id').value;
-  const msg = document.getElementById('ec-mensagem').value.trim();
-  const dest = document.getElementById('ec-destinatarios').value.trim();
-  const proj = projects.find(p => p.id === projId);
-  const destinatarios = dest.split(',').map(e => e.trim()).filter(Boolean);
-  document.getElementById('email-conclusao-modal').style.display = 'none';
-  document.getElementById('pipeline-sync').textContent = 'Enviando e-mail...';
-  try {
-    await fetch(API, { method: 'POST', body: JSON.stringify({
-      action: 'enviarEmailConclusao',
-      projeto: proj ? proj.nome : projId,
-      destinatarios,
-      mensagem: msg
-    })});
-    document.getElementById('pipeline-sync').textContent = 'E-mail enviado com sucesso!';
-  } catch(e) {
-    document.getElementById('pipeline-sync').textContent = 'Erro ao enviar e-mail.';
-  }
-}
-
 
 // VISTORIA
-const STEPS_VISTORIA = [
-  {id:1, title:'Vistoria solicitada', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
-  {id:2, title:'Agendamento com cliente', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
-  {id:3, title:'Vistoria realizada', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
-  {id:4, title:'Relatorio tecnico emitido', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
-  {id:5, title:'Enviado ao comercial', resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+const STEPS_VISTORIA=[
+  {id:1,title:'Vistoria solicitada',resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:2,title:'Agendamento com cliente',resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:3,title:'Vistoria realizada',resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:4,title:'Relatorio tecnico emitido',resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
+  {id:5,title:'Enviado ao comercial',resp:'SAC — Joyce / Marta / Thaylla / Gustavo'},
 ];
-
-let vistorias = [];
-let vstSaveTimer = null;
+let vistorias=[];
+let vstSaveTimer=null;
 
 async function loadVistoria(){
-  document.getElementById('vistoria-sync').textContent = 'Carregando...';
-  try {
-    const r = await fetch(API+'?action=getVistoria');
-    const d = await r.json();
-    vistorias = Array.isArray(d) ? d.map(v=>({
-      ...v,
-      steps: Array.isArray(v.steps) ? v.steps : STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))
-    })) : [];
-    document.getElementById('vistoria-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  } catch(e) { document.getElementById('vistoria-sync').textContent = 'Erro de conexao'; return; }
-  try {
-    renderVistoria();
-  } catch(e2) { 
-    console.error('renderVistoria erro:', e2);
-    document.getElementById('vistoria-sync').textContent = 'Erro ao renderizar: '+e2.message;
-  }
+  document.getElementById('vistoria-sync').textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getVistoria');
+    const d=await r.json();
+    vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];
+    document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexao';return;}
+  try{renderVistoria();}catch(e2){document.getElementById('vistoria-sync').textContent='Erro ao renderizar: '+e2.message;}
 }
 
 async function saveVistoriaProject(v){
-  try {
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveVistoria',...v,steps:v.steps})});
-    // Verificar se todas as etapas foram concluidas
+  try{
+    // PATCH 1 aplicado aqui também: payload explícito
+    const payload={action:'saveVistoria',id:v.id,nomeCliente:v.nomeCliente,prospectId:v.prospectId||'',status:v.status||'andamento',contato:v.contato||'',telefone:v.telefone||'',cidade:v.cidade||'',cnpj:v.cnpj||'',endereco:v.endereco||'',produto:v.produto||'',conteudo_online:v.conteudo_online||'',steps:v.steps};
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     if(v.steps.every(s=>s.done)){
       await fetch(API,{method:'POST',body:JSON.stringify({action:'solicitarVistoria',prospectId:v.prospectId,vistoriaId:v.id,nomeCliente:v.nomeCliente,concluir:true})}).catch(()=>{});
     }
-    document.getElementById('vistoria-sync').textContent = 'Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  } catch(e) { document.getElementById('vistoria-sync').textContent = 'Erro ao salvar'; }
+    document.getElementById('vistoria-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){document.getElementById('vistoria-sync').textContent='Erro ao salvar';}
 }
+function schedSaveVistoria(v){document.getElementById('vistoria-sync').textContent='Salvando...';clearTimeout(vstSaveTimer);vstSaveTimer=setTimeout(()=>saveVistoriaProject(v),1500);}
 
-function schedSaveVistoria(v){
-  document.getElementById('vistoria-sync').textContent = 'Salvando...';
-  clearTimeout(vstSaveTimer);
-  vstSaveTimer = setTimeout(()=>saveVistoriaProject(v), 1500);
-}
-
-function toggleVistoriaStep(vId, stepId){
-  const v = vistorias.find(x=>x.id===vId); if(!v)return;
-  const step = v.steps.find(s=>s.id===stepId); if(!step)return;
-  step.done = !step.done;
-  if(step.done && !step.date) step.date = todayStr;
-  // Se todas concluidas, marcar como concluida
-  if(v.steps.every(s=>s.done)) v.status = 'concluida';
-  else v.status = 'andamento';
+function toggleVistoriaStep(vId,stepId){
+  const v=vistorias.find(x=>x.id===vId);if(!v)return;
+  const step=v.steps.find(s=>s.id===stepId);if(!step)return;
+  step.done=!step.done;
+  if(step.done&&!step.date)step.date=todayStr;
+  if(v.steps.every(s=>s.done))v.status='concluida';
+  else v.status='andamento';
   renderVistoria();
   schedSaveVistoria(v);
 }
-
-function updateVistoriaStepDate(vId, stepId, val){
-  const v = vistorias.find(x=>x.id===vId); if(!v)return;
-  const step = v.steps.find(s=>s.id===stepId); if(!step)return;
-  step.date = val;
-  schedSaveVistoria(v);
+function updateVistoriaStepDate(vId,stepId,val){
+  const v=vistorias.find(x=>x.id===vId);if(!v)return;
+  const step=v.steps.find(s=>s.id===stepId);if(!step)return;
+  step.date=val;schedSaveVistoria(v);
 }
-
 function toggleVistoriaCard(id){
-  const el = document.getElementById('vst-body-'+id);
-  const chev = document.getElementById('vst-chev-'+id);
+  const el=document.getElementById('vst-body-'+id);
+  const chev=document.getElementById('vst-chev-'+id);
   if(!el)return;
-  const open = el.style.display !== 'none';
-  el.style.display = open ? 'none' : 'block';
-  chev.className = 'chevron'+(open?'':' open');
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  chev.className='chevron'+(open?'':' open');
 }
 
 function renderVistoria(){
-  const list = document.getElementById('vistoria-list');
-  if(!vistorias.length){
-    list.innerHTML = '<div class="empty-state" style="padding:3rem">Nenhuma vistoria solicitada.</div>';
-    return;
-  }
-  list.innerHTML = vistorias.map(v=>{
-    const doneCnt = v.steps.filter(s=>s.done).length;
-    const pct = Math.round((doneCnt/5)*100);
-    const concluida = v.status === 'concluida' || pct === 100;
-    const currentStep = v.steps.find(s=>!s.done);
-    const currentStepTitle = currentStep ? STEPS_VISTORIA.find(s=>s.id===currentStep.id)?.title : 'Concluida';
-
-    const stepsHtml = STEPS_VISTORIA.map(s=>{
-      const ps = v.steps.find(st=>st.id===s.id)||{done:false,date:''};
-      const isActive = !ps.done && currentStep && currentStep.id===s.id;
-      return `<div class="step-card${ps.done?' done':isActive?' active-step':''}">
-        <div class="step-number">Etapa ${s.id}</div>
-        <div class="step-title">${s.title}</div>
-        <div class="step-resp">${s.resp}</div>
-        <div class="step-date-row">
-          <span class="step-date-label">Data:</span>
-          <input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateVistoriaStepDate('${v.id}',${s.id},this.value)">
-          <button class="step-check" onclick="toggleVistoriaStep('${v.id}',${s.id})">${ps.done?'V':''}</button>
-        </div>
-      </div>`;
+  const list=document.getElementById('vistoria-list');
+  if(!vistorias.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria solicitada.</div>';return;}
+  list.innerHTML=vistorias.map(v=>{
+    const doneCnt=v.steps.filter(s=>s.done).length;
+    const pct=Math.round((doneCnt/5)*100);
+    const concluida=v.status==='concluida'||pct===100;
+    const currentStep=v.steps.find(s=>!s.done);
+    const currentStepTitle=currentStep?STEPS_VISTORIA.find(s=>s.id===currentStep.id)?.title:'Concluida';
+    const stepsHtml=STEPS_VISTORIA.map(s=>{
+      const ps=v.steps.find(st=>st.id===s.id)||{done:false,date:''};
+      const isActive=!ps.done&&currentStep&&currentStep.id===s.id;
+      return `<div class="step-card${ps.done?' done':isActive?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateVistoriaStepDate('${v.id}',${s.id},this.value)"><button class="step-check" onclick="toggleVistoriaStep('${v.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-
-    return `<div class="project-card" style="${concluida?'border-color:var(--c-concluido)':''}">
-      <div class="project-card-header" onclick="toggleVistoriaCard('${v.id}')">
-        <div>
-          <div class="project-name">${v.nomeCliente}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${currentStepTitle} - ${doneCnt}/5 etapas</div>
-        </div>
-        <div class="project-meta">
-          <span class="badge ${concluida?'concluido':'andamento'}">${concluida?'Vistoria Realizada':'Em andamento'}</span>
-          <span class="chevron" id="vst-chev-${v.id}">v</span>
-        </div>
-      </div>
-      <div class="project-body" id="vst-body-${v.id}" style="display:none">
-        <div class="progress-bar-wrap"><div class="progress-bar-fill${concluida?' done':''}" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div>
-        ${(v.contato||v.telefone||v.cidade||v.cnpj||v.endereco||v.produto)?`
-        <div style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:12px;border:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px">Dados do cliente</div>
-          ${v.contato?'<span style="font-size:12px"><span style="color:var(--text-muted)">Contato:</span> <b>'+v.contato+'</b></span>':''}
-          ${v.telefone?'<span style="font-size:12px"><span style="color:var(--text-muted)">Tel:</span> <b>'+v.telefone+'</b></span>':''}
-          ${v.cidade?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cidade:</span> <b>'+v.cidade+'</b></span>':''}
-          ${v.cnpj?'<span style="font-size:12px"><span style="color:var(--text-muted)">CNPJ:</span> <b>'+v.cnpj+'</b></span>':''}
-          ${v.endereco?'<span style="font-size:12px"><span style="color:var(--text-muted)">Endere&ccedil;o:</span> <b>'+v.endereco+'</b></span>':''}
-          ${v.produto?'<span style="font-size:12px"><span style="color:var(--text-muted)">Produto:</span> <b>'+v.produto+'</b></span>':''}
-          ${v.conteudo_online&&v.conteudo_online!=='Nao'?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cont. online:</span> <b>'+v.conteudo_online+'</b></span>':''}
-        </div>`:''}
-        <div class="steps-grid">${stepsHtml}</div>
-      </div>
-    </div>`;
+    return `<div class="project-card" style="${concluida?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleVistoriaCard('${v.id}')"><div><div class="project-name">${v.nomeCliente}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${currentStepTitle} - ${doneCnt}/5 etapas</div></div><div class="project-meta"><span class="badge ${concluida?'concluido':'andamento'}">${concluida?'Vistoria Realizada':'Em andamento'}</span><span class="chevron" id="vst-chev-${v.id}">v</span></div></div><div class="project-body" id="vst-body-${v.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill${concluida?' done':''}" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div>${(v.contato||v.telefone||v.cidade||v.cnpj||v.endereco||v.produto)?`<div style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:12px;border:1px solid var(--border)"><div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px">Dados do cliente</div>${v.contato?'<span style="font-size:12px"><span style="color:var(--text-muted)">Contato:</span> <b>'+v.contato+'</b></span>':''}${v.telefone?'<span style="font-size:12px"><span style="color:var(--text-muted)">Tel:</span> <b>'+v.telefone+'</b></span>':''}${v.cidade?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cidade:</span> <b>'+v.cidade+'</b></span>':''}${v.cnpj?'<span style="font-size:12px"><span style="color:var(--text-muted)">CNPJ:</span> <b>'+v.cnpj+'</b></span>':''}${v.endereco?'<span style="font-size:12px"><span style="color:var(--text-muted)">Endere&ccedil;o:</span> <b>'+v.endereco+'</b></span>':''}${v.produto?'<span style="font-size:12px"><span style="color:var(--text-muted)">Produto:</span> <b>'+v.produto+'</b></span>':''}${v.conteudo_online&&v.conteudo_online!=='Nao'?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cont. online:</span> <b>'+v.conteudo_online+'</b></span>':''}</div>`:''}  <div class="steps-grid">${stepsHtml}</div></div></div>`;
   }).join('');
 }
 
-
 // CLIENTES
-let clientes = [];
-let cliSaveTimer = null;
+let clientes=[];
+let cliSaveTimer=null;
 
 async function loadClientes(){
-  const syncEl = document.getElementById('cli-sync');
-  if(syncEl) syncEl.textContent = 'Carregando...';
-  try {
-    const r = await fetch(API+'?action=getClientes');
-    const d = await r.json();
-    clientes = Array.isArray(d) ? d : [];
-    if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const syncEl=document.getElementById('cli-sync');
+  if(syncEl)syncEl.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getClientes');
+    const d=await r.json();
+    clientes=Array.isArray(d)?d:[];
+    if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderClientes();
-  } catch(e) { if(syncEl) syncEl.textContent = 'Erro de conexao'; }
+  }catch(e){if(syncEl)syncEl.textContent='Erro de conexao';}
 }
 
 async function saveCliente(clienteId){
-  const cli = clientes.find(c=>c.id===clienteId); if(!cli)return;
-  const get = id => { const el=document.getElementById(id); return el?el.value:''; };
-  const getChk = id => { const el=document.getElementById(id); return el?el.checked:false; };
-
-  const gradeAnexada = getChk('cli-grade-'+clienteId);
-  const gradePor = get('cli-grade-por-'+clienteId);
-  const produto = (cli.produto||'').toUpperCase();
-  const precisaGrade = produto.includes('HD')||produto.includes('SD');
-
-  if(precisaGrade && gradeAnexada && !gradePor.trim()){
-    alert('Informe quem anexou a grade.');
-    return;
-  }
-  if(precisaGrade && !gradeAnexada){
-    if(!confirm('A grade de canais nao foi marcada como anexada. Deseja salvar mesmo assim?'))return;
-  }
-
-  const payload = {
-    action: 'saveCliente',
-    id: clienteId,
-    nome: cli.nome,
-    data_instalacao: get('cli-instalacao-'+clienteId),
-    tecnico: get('cli-tecnico-'+clienteId),
-    nf_envio: get('cli-nf-'+clienteId),
-    os_instalacao: get('cli-os-'+clienteId),
-    status: get('cli-status-'+clienteId),
-    observacoes: get('cli-obs-'+clienteId),
-    grade_anexada: gradeAnexada,
-    grade_por: gradePor,
-    link_contrato: get('cli-link-contrato-'+clienteId),
-    link_projeto: get('cli-link-projeto-'+clienteId),
-  };
-
-  const btn = document.getElementById('cli-save-btn-'+clienteId);
-  if(btn){ btn.textContent='Salvando...'; btn.disabled=true; }
-  try {
+  const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;
+  const get=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};
+  const gradeAnexada=getChk('cli-grade-'+clienteId);
+  const gradePor=get('cli-grade-por-'+clienteId);
+  const produto=(cli.produto||'').toUpperCase();
+  const precisaGrade=produto.includes('HD')||produto.includes('SD');
+  if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}
+  if(precisaGrade&&!gradeAnexada){if(!confirm('A grade de canais nao foi marcada como anexada. Deseja salvar mesmo assim?'))return;}
+  const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};
+  const btn=document.getElementById('cli-save-btn-'+clienteId);
+  if(btn){btn.textContent='Salvando...';btn.disabled=true;}
+  try{
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     await loadClientes();
-    if(btn){ btn.textContent='Salvo!'; setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000); }
-  } catch(e) {
-    if(btn){ btn.textContent='Erro'; btn.disabled=false; }
-  }
+    if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}
+  }catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}
 }
 
 function toggleCliCard(id){
@@ -1100,44 +1064,31 @@ function toggleCliCard(id){
   el.style.display=open?'none':'block';
   chev.className='chevron'+(open?'':' open');
 }
-
-function formatDateBRCli(ds){
-  if(!ds)return'';
-  const s=String(ds).slice(0,10).split('-');
-  if(s.length<3)return ds;
-  return s[2]+'/'+s[1]+'/'+s[0];
-}
+function formatDateBRCli(ds){if(!ds)return'';const s=String(ds).slice(0,10).split('-');if(s.length<3)return ds;return s[2]+'/'+s[1]+'/'+s[0];}
 
 function renderClientes(){
-  const list = document.getElementById('cli-list');
+  const list=document.getElementById('cli-list');
   if(!list)return;
-  if(!clientes.length){
-    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente ainda. Os clientes aparecem aqui quando um prospect e convertido.</div>';
-    return;
-  }
-
-  const CAMINHO_GRADE = 'Z:\\CLIENTES\\GRADE DE CANAIS';
-
-  list.innerHTML = clientes.map(c=>{
-    const produto = (c.produto||'').toUpperCase();
-    const precisaGrade = produto.includes('HD')||produto.includes('SD');
-    const gradeAnexada = c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;
-
+  if(!clientes.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente ainda.</div>';return;}
+  const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';
+  list.innerHTML=clientes.map(c=>{
+    const produto=(c.produto||'').toUpperCase();
+    const precisaGrade=produto.includes('HD')||produto.includes('SD');
+    const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;
     return `<div class="project-card" style="${c.status==='inativo'?'opacity:.7':''}">
       <div class="project-card-header" onclick="toggleCliCard('${c.id}')">
         <div>
           <div class="project-name">${c.nome}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} &mdash; ${c.produto||''} &mdash; ${c.uhs||''} UHs</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} &mdash; ${c.produto||''} &mdash; ${c.uhs||''} UHs${precisaGrade&&c.canais?' &mdash; '+c.canais+' canais':''}</div>
         </div>
         <div class="project-meta">
           <span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>
-          ${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}" title="${gradeAnexada?'Grade anexada':'Grade pendente'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}
+          ${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}
           <span class="chevron" id="cli-chev-${c.id}">▼</span>
         </div>
       </div>
       <div class="project-body" id="cli-body-${c.id}" style="display:none">
         <div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
-
           <div class="step-card done">
             <div class="step-number">Dados do cliente</div>
             <div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div>
@@ -1147,8 +1098,8 @@ function renderClientes(){
             <div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>
             ${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}</div>`:''}
             ${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}
+            ${precisaGrade&&c.canais?`<div style="font-size:12px;margin-top:2px"><b>Canais:</b> <span style="color:var(--c-previsto);font-weight:600">${c.canais}</span></div>`:''}
           </div>
-
           <div class="step-card">
             <div class="step-number">Instalação</div>
             <div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch">
@@ -1158,7 +1109,6 @@ function renderClientes(){
               <input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
             </div>
           </div>
-
           <div class="step-card">
             <div class="step-number">Documentos</div>
             <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
@@ -1168,7 +1118,6 @@ function renderClientes(){
               <input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
             </div>
           </div>
-
           <div class="step-card">
             <div class="step-number">Links</div>
             <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
@@ -1178,20 +1127,16 @@ function renderClientes(){
               <input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
             </div>
           </div>
-
           ${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}">
-            <div class="step-number">Grade de Canais ${precisaGrade?'<span style=\"color:#e00\">*</span>':''}</div>
+            <div class="step-number">Grade de Canais <span style="color:#e00">*</span></div>
             <div style="margin-top:6px;font-size:11px;font-style:italic;color:var(--text-muted);margin-bottom:8px">Acesse e anexe na pasta Clientes a grade:</div>
             <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin-bottom:8px;cursor:pointer;word-break:break-all" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))" title="Clique para copiar">${CAMINHO_GRADE} 📋</div>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px">
-              <input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada
-            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label>
             <div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}">
               <label style="font-size:11px;color:var(--text-muted)">Anexado por *</label>
               <input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px">
             </div>
           </div>`:''}
-
           <div class="step-card">
             <div class="step-number">Status e Observações</div>
             <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
@@ -1204,14 +1149,7 @@ function renderClientes(){
               <textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea>
             </div>
           </div>
-
         </div>
-        ${(()=>{
-          const cron=cronogramas.find(cr=>cr.nomeCliente&&cr.nomeCliente.toLowerCase().trim()===c.nome.toLowerCase().trim());
-          if(!cron)return '';
-          const link='https://mfdourado.github.io/BlinTrack — Operacional/cronograma.html?id='+cron.id;
-          return '<div style="margin-top:12px;background:var(--c-previsto-bg);border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style=\"font-size:11px;font-weight:500;color:var(--c-previsto);margin-bottom:2px\">Cronograma vinculado</div><div style=\"font-size:11px;font-family:DM Mono,monospace;color:var(--c-previsto);word-break:break-all\">'+link+'</div></div><button onclick=\"navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'Link copiado!\'))\" style=\"padding:4px 12px;border:1px solid var(--c-previsto);border-radius:4px;background:none;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;color:var(--c-previsto);white-space:nowrap\">Copiar link</button></div>';
-        })()}
         <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
           <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
         </div>
@@ -1221,25 +1159,19 @@ function renderClientes(){
 }
 
 function toggleGradePor(id){
-  const chk = document.getElementById('cli-grade-'+id);
-  const wrap = document.getElementById('cli-grade-por-wrap-'+id);
-  if(wrap) wrap.style.display = chk&&chk.checked ? 'block' : 'none';
+  const chk=document.getElementById('cli-grade-'+id);
+  const wrap=document.getElementById('cli-grade-por-wrap-'+id);
+  if(wrap)wrap.style.display=chk&&chk.checked?'block':'none';
 }
 
-
 function openNovoClienteModal(){
-  ['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.value='';
-  });
+  ['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('nc-produto').value='';
   document.getElementById('nc-status').value='ativo';
   document.getElementById('nc-vigencia').value=todayStr;
   document.getElementById('novo-cliente-modal').style.display='flex';
 }
-
-function closeNovoClienteModal(){
-  document.getElementById('novo-cliente-modal').style.display='none';
-}
+function closeNovoClienteModal(){document.getElementById('novo-cliente-modal').style.display='none';}
 
 async function criarClienteAvulso(){
   const nome=document.getElementById('nc-nome').value.trim();
@@ -1249,42 +1181,20 @@ async function criarClienteAvulso(){
   const vigencia=document.getElementById('nc-vigencia').value;
   const responsavel=document.getElementById('nc-responsavel').value.trim();
   const motivo=document.getElementById('nc-motivo').value.trim();
-
-  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){
-    alert('Preencha todos os campos obrigatorios (*)');return;
-  }
-
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){alert('Preencha todos os campos obrigatorios (*)');return;}
   closeNovoClienteModal();
   document.getElementById('cli-sync').textContent='Criando cliente...';
-
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({
-      action:'criarCliente',
-      id:uid(),
-      prospectId:'avulso',
-      nome,cidade,
-      cnpj:document.getElementById('nc-cnpj').value.trim(),
-      contato:document.getElementById('nc-contato').value.trim(),
-      telefone:document.getElementById('nc-telefone').value.trim(),
-      endereco:document.getElementById('nc-endereco').value.trim(),
-      produto,uhs:parseInt(uhs)||0,
-      vigencia_inicio:vigencia,
-      status:document.getElementById('nc-status').value,
-      responsavel_criacao:responsavel,
-      motivo_criacao:motivo,
-    })});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});
     await loadClientes();
-  }catch(e){
-    document.getElementById('cli-sync').textContent='Erro ao criar cliente';
-  }
+  }catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}
 }
 
-
 // CRONOGRAMA
-let cronogramas = [];
-let cronSaveTimer = null;
-const BASE_URL = 'https://mfdourado.github.io/BlinTrack — Operacional/cronograma.html';
-const TEMPLATE_TASKS = [
+let cronogramas=[];
+let cronSaveTimer=null;
+const BASE_URL='https://mfdourado.github.io/agenda-blincast/cronograma.html';
+const TEMPLATE_TASKS=[
   {id:1,nome:'Configuração dos equipamentos',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
   {id:2,nome:'Instalação física — Rack',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
   {id:3,nome:'Infraestrutura de rede',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
@@ -1309,7 +1219,6 @@ function openNovoCronModal(){
   renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));
   document.getElementById('cron-modal').style.display='flex';
 }
-
 function closeCronModal(){document.getElementById('cron-modal').style.display='none';}
 
 function renderModalTasks(tasks){
@@ -1324,20 +1233,8 @@ function renderModalTasks(tasks){
   list.dataset.count=tasks.length;
 }
 
-function addCronTask(){
-  const count=parseInt(document.getElementById('cm-tasks-list').dataset.count||0);
-  const newTask={id:count+1,nome:'',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'};
-  const tasks=getModalTasks();
-  tasks.push(newTask);
-  renderModalTasks(tasks);
-}
-
-function removeCronTask(idx){
-  const tasks=getModalTasks();
-  tasks.splice(idx,1);
-  renderModalTasks(tasks);
-}
-
+function addCronTask(){const count=parseInt(document.getElementById('cm-tasks-list').dataset.count||0);const tasks=getModalTasks();tasks.push({id:count+1,nome:'',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'});renderModalTasks(tasks);}
+function removeCronTask(idx){const tasks=getModalTasks();tasks.splice(idx,1);renderModalTasks(tasks);}
 function getModalTasks(){
   const list=document.getElementById('cm-tasks-list');
   const count=parseInt(list.dataset.count||0);
@@ -1345,9 +1242,7 @@ function getModalTasks(){
   for(let i=0;i<count;i++){
     const nome=document.getElementById('ct-nome-'+i);
     const resp=document.getElementById('ct-resp-'+i);
-    if(nome&&resp){
-      tasks.push({id:i+1,nome:nome.value.trim(),responsavel:resp.value.trim(),dataInicio:'',dataFim:'',status:'previsto'});
-    }
+    if(nome&&resp)tasks.push({id:i+1,nome:nome.value.trim(),responsavel:resp.value.trim(),dataInicio:'',dataFim:'',status:'previsto'});
   }
   return tasks;
 }
@@ -1367,14 +1262,12 @@ async function salvarCronograma(){
 }
 
 function getCronLink(id){return BASE_URL+'?id='+id;}
-
 function copiarLink(id){
   navigator.clipboard.writeText(getCronLink(id)).then(()=>{
     const btn=document.getElementById('copy-btn-'+id);
     if(btn){btn.textContent='Copiado!';setTimeout(()=>{btn.textContent='Copiar link';},2000);}
   });
 }
-
 function toggleCronCard(id){
   const el=document.getElementById('cron-body-'+id);
   const chev=document.getElementById('cron-chev-'+id);
@@ -1387,21 +1280,13 @@ function toggleCronCard(id){
 function toggleCronCheck(cronId,taskIdx,checked){
   const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;
   cron.tarefas[taskIdx].status=checked?'concluido':'previsto';
-  // Atualizar visual em tempo real
   const row=document.getElementById('ctr-'+cronId+'-'+taskIdx);
-  if(row){
-    const nameEl=row.querySelector('.cron-task-name');
-    if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}
-  }
-  // Atualizar barra de progresso em tempo real
+  if(row){const nameEl=row.querySelector('.cron-task-name');if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}}
   const concluidas=cron.tarefas.filter(t=>t.status==='concluido').length;
   const pct=cron.tarefas.length?Math.round((concluidas/cron.tarefas.length)*100):0;
-  const barEl=document.querySelector('#cron-bar-'+cronId);
-  if(barEl)barEl.style.width=pct+'%';
-  const pctEl=document.querySelector('#cron-pct-'+cronId);
-  if(pctEl)pctEl.textContent=pct+'% concluido';
-  const metaEl=document.querySelector('#cron-meta-'+cronId);
-  if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';
+  const barEl=document.querySelector('#cron-bar-'+cronId);if(barEl)barEl.style.width=pct+'%';
+  const pctEl=document.querySelector('#cron-pct-'+cronId);if(pctEl)pctEl.textContent=pct+'% concluido';
+  const metaEl=document.querySelector('#cron-meta-'+cronId);if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';
   updateCronTask(cronId,taskIdx,'status',cron.tarefas[taskIdx].status);
 }
 
@@ -1414,7 +1299,6 @@ function updateCronTask(cronId,taskIdx,field,val){
     document.getElementById('cron-sync').textContent='Salvando...';
     try{
       await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
-      // Sincronizar agenda
       await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
       document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}
@@ -1435,121 +1319,38 @@ function renderCronogramas(){
     const concluidas=tarefas.filter(t=>t.status==='concluido').length;
     const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;
     const link=getCronLink(cron.id);
-
     const tarefasHtml=tarefas.map((t,i)=>{
       const done=t.status==='concluido';
-      return `<div class="cron-task-row" id="ctr-${cron.id}-${i}">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0">
-          <input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)"
-            style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)">
-          <div>
-            <div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div>
-            <div class="cron-task-resp">${t.responsavel}</div>
-          </div>
-        </label>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio">
-          <span class="cron-date-sep" style="color:var(--text-muted);font-size:11px">→</span>
-          <input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim">
-        </div>
-      </div>`;
+      return `<div class="cron-task-row" id="ctr-${cron.id}-${i}"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)"><div><div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div></label><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio"><span class="cron-date-sep" style="color:var(--text-muted);font-size:11px">→</span><input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim"></div></div>`;
     }).join('');
-
-    // Gantt mini — calcula range
     const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));
     const minD=datas.length?Math.min(...datas):null;
     const maxD=datas.length?Math.max(...datas):null;
     const totalD=maxD&&minD?maxD-minD:1;
-
-    const ganttMiniHtml=datas.length?`
-      <div class="gantt-mini-wrap">
-        <div class="gantt-mini-title">Linha do tempo</div>
-        ${tarefas.filter(t=>t.dataInicio).map(t=>{
-          const s=new Date(t.dataInicio).getTime()-minD;
-          const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);
-          const left=Math.max(0,Math.round((s/totalD)*100));
-          const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));
-          return '<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';
-        }).join('')}
-      </div>`:''
-
-    return `<div class="cron-card">
-      <div class="cron-header">
-        <div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')">
-          <div class="cron-name">${cron.nomeCliente}</div>
-          <div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas &mdash; ${pct}% concluido</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluido':'Em andamento'}</span>
-          <span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span>
-        </div>
-      </div>
-      <div id="cron-body-${cron.id}" style="display:none">
-        <div class="cron-body">
-          <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>
-          ${tarefasHtml}
-          ${ganttMiniHtml}
-          <div class="cron-link-box">
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div>
-              <div class="cron-link-text">${link}</div>
-            </div>
-            <button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button>
-          </div>
-          <div class="cron-actions">
-            <button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
+    const ganttMiniHtml=datas.length?`<div class="gantt-mini-wrap"><div class="gantt-mini-title">Linha do tempo</div>${tarefas.filter(t=>t.dataInicio).map(t=>{const s=new Date(t.dataInicio).getTime()-minD;const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);const left=Math.max(0,Math.round((s/totalD)*100));const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));return'<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';}).join('')}</div>`:''
+    return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')"><div class="cron-name">${cron.nomeCliente}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas &mdash; ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluido':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button></div></div></div></div>`;
   }).join('');
 }
 
 // PESQUISA DE SATISFAÇÃO
 let surveyRatings={1:0,2:0,3:0};
-
 function checkSurvey(){
   const last=localStorage.getItem('blincast_survey_date');
   const now=new Date();
   if(!last){localStorage.setItem('blincast_survey_date',now.toISOString());return;}
   const lastDate=new Date(last);
   const diffDays=(now-lastDate)/(1000*60*60*24);
-  if(diffDays>=30){
-    setTimeout(()=>{document.getElementById('survey-overlay').style.display='flex';},3000);
-  }
+  if(diffDays>=30){setTimeout(()=>{document.getElementById('survey-overlay').style.display='flex';},3000);}
 }
-
-function setStar(q,val){
-  surveyRatings[q]=val;
-  const stars=document.getElementById('stars-'+q).querySelectorAll('.star-btn');
-  stars.forEach((s,i)=>s.classList.toggle('sel',i<val));
-  checkSurveyReady();
-}
-
-function checkSurveyReady(){
-  const ready=surveyRatings[1]>0&&surveyRatings[2]>0&&surveyRatings[3]>0;
-  document.getElementById('survey-submit').disabled=!ready;
-}
-
-function skipSurvey(){
-  document.getElementById('survey-overlay').style.display='none';
-  localStorage.setItem('blincast_survey_date',new Date().toISOString());
-}
-
+function setStar(q,val){surveyRatings[q]=val;const stars=document.getElementById('stars-'+q).querySelectorAll('.star-btn');stars.forEach((s,i)=>s.classList.toggle('sel',i<val));checkSurveyReady();}
+function checkSurveyReady(){document.getElementById('survey-submit').disabled=!(surveyRatings[1]>0&&surveyRatings[2]>0&&surveyRatings[3]>0);}
+function skipSurvey(){document.getElementById('survey-overlay').style.display='none';localStorage.setItem('blincast_survey_date',new Date().toISOString());}
 async function submitSurvey(){
   const obs=document.getElementById('survey-obs').value.trim();
   document.getElementById('survey-overlay').style.display='none';
   localStorage.setItem('blincast_survey_date',new Date().toISOString());
-  // Enviar para o Apps Script como log
-  try{
-    await fetch(API,{method:'POST',body:JSON.stringify({
-      action:'logSatisfacao',
-      data:new Date().toISOString().slice(0,10),
-      q1:surveyRatings[1],q2:surveyRatings[2],q3:surveyRatings[3],obs
-    })});
-  }catch(e){}
+  try{await fetch(API,{method:'POST',body:JSON.stringify({action:'logSatisfacao',data:new Date().toISOString().slice(0,10),q1:surveyRatings[1],q2:surveyRatings[2],q3:surveyRatings[3],obs})});}catch(e){}
 }
-
 checkSurvey();
 
 // NOVA VISTORIA
@@ -1559,34 +1360,17 @@ function openNovaVistoriaModal(){
   document.getElementById('nv-telefone').value='';
   document.getElementById('nv-obs').value='';
   document.getElementById('nv-cliente-id').value='';
-  // Popular select com clientes
   const sel=document.getElementById('nv-cliente');
   sel.innerHTML='<option value="">Selecione um cliente...</option>';
-  clientes.forEach(c=>{
-    const opt=document.createElement('option');
-    opt.value=c.id;
-    opt.textContent=c.nome+(c.cidade?' — '+c.cidade:'');
-    opt.dataset.nome=c.nome;
-    opt.dataset.contato=c.contato||'';
-    opt.dataset.telefone=c.telefone||'';
-    sel.appendChild(opt);
-  });
+  clientes.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.nome+(c.cidade?' — '+c.cidade:'');opt.dataset.nome=c.nome;opt.dataset.contato=c.contato||'';opt.dataset.telefone=c.telefone||'';sel.appendChild(opt);});
   document.getElementById('nova-vistoria-modal').style.display='flex';
 }
-
 function closeNovaVistoriaModal(){document.getElementById('nova-vistoria-modal').style.display='none';}
-
 function preencherDadosVistoria(){
   const sel=document.getElementById('nv-cliente');
   const opt=sel.options[sel.selectedIndex];
-  if(opt&&opt.value){
-    document.getElementById('nv-nome').value=opt.dataset.nome||'';
-    document.getElementById('nv-contato').value=opt.dataset.contato||'';
-    document.getElementById('nv-telefone').value=opt.dataset.telefone||'';
-    document.getElementById('nv-cliente-id').value=opt.value;
-  }
+  if(opt&&opt.value){document.getElementById('nv-nome').value=opt.dataset.nome||'';document.getElementById('nv-contato').value=opt.dataset.contato||'';document.getElementById('nv-telefone').value=opt.dataset.telefone||'';document.getElementById('nv-cliente-id').value=opt.value;}
 }
-
 async function criarNovaVistoria(){
   const nome=document.getElementById('nv-nome').value.trim();
   if(!nome){alert('Informe o nome do cliente.');return;}
@@ -1597,35 +1381,22 @@ async function criarNovaVistoria(){
   closeNovaVistoriaModal();
   document.getElementById('vistoria-sync').textContent='Criando vistoria...';
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({
-      action:'solicitarVistoria',
-      prospectId:clienteId||uid(),
-      vistoriaId:uid(),
-      nomeCliente:nome,
-      cidade:'',produto:'',uhs:'',
-      contato,telefone,endereco:'',
-      observacoes:obs,
-      origem:'operacional'
-    })});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'solicitarVistoria',prospectId:clienteId||uid(),vistoriaId:uid(),nomeCliente:nome,cidade:'',produto:'',uhs:'',contato,telefone,endereco:'',observacoes:obs,origem:'operacional'})});
     await loadVistoria();
   }catch(e){document.getElementById('vistoria-sync').textContent='Erro ao criar vistoria';}
 }
 
-// SINCRONIZAR CLIENTES
 async function sincronizarPipeline(){
-  const btn = document.querySelector('[onclick="sincronizarPipeline()"]');
+  const btn=document.querySelector('[onclick="sincronizarPipeline()"]');
   if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}
   try{
-    const r = await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarPipeline'})});
-    const d = await r.json();
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarPipeline'})});
+    const d=await r.json();
     await loadPipeline(true);
     if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}
-    if(d.atualizados>0) alert(d.atualizados+' projeto(s) atualizado(s) com dados do Comercial!');
+    if(d.atualizados>0)alert(d.atualizados+' projeto(s) atualizado(s) com dados do Comercial!');
     else alert('Todos os projetos já estão com dados atualizados.');
-  }catch(e){
-    if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}
-    alert('Erro ao sincronizar.');
-  }
+  }catch(e){if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}alert('Erro ao sincronizar.');}
 }
 
 async function sincronizarClientes(){
@@ -1636,12 +1407,96 @@ async function sincronizarClientes(){
     const d=await r.json();
     await loadClientes();
     if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}
-    if(d.criados>0) alert(d.criados+' cliente(s) importado(s) com sucesso!');
+    if(d.criados>0)alert(d.criados+' cliente(s) importado(s) com sucesso!');
     else alert('Todos os clientes já estão sincronizados.');
-  }catch(e){
-    if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}
-    alert('Erro ao sincronizar.');
-  }
+  }catch(e){if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}alert('Erro ao sincronizar.');}
+}
+
+// PATCH 3: ATA DO DIA
+let ataRegistros=[];
+const ATA_STATUS_LABEL={feito:'Feito',em_andamento:'Em andamento',pendente:'Pendente',retornar:'Retornar',acompanhar:'Acompanhar',planejado:'Planejado',em_atraso:'Em atraso'};
+const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'}};
+
+async function loadAta(){
+  document.getElementById('ata-sync').textContent='Carregando...';
+  document.getElementById('ata-filtro-data').value=todayStr;
+  try{
+    const r=await fetch(API+'?action=getAta');
+    const d=await r.json();
+    ataRegistros=Array.isArray(d)?d:[];
+    document.getElementById('ata-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderAta();
+  }catch(e){document.getElementById('ata-sync').textContent='Erro de conexao';}
+}
+
+function renderAta(){
+  const filtroData=document.getElementById('ata-filtro-data').value;
+  const lista=filtroData?ataRegistros.filter(r=>r.data===filtroData):ataRegistros;
+  const tbody=document.getElementById('ata-tbody');
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para esta data.</td></tr>';return;}
+  tbody.innerHTML=lista.map(r=>{
+    const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
+    const sl=ATA_STATUS_LABEL[r.status]||r.status;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 12px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted)">${r.no||'—'}</td>
+      <td style="padding:10px 12px;font-size:13px;font-weight:500">${r.cliente||'—'}</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:center">${r.estado||'—'}</td>
+      <td style="padding:10px 12px;font-size:12px;color:var(--text-muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.problema||'—'}</td>
+      <td style="padding:10px 12px;font-size:12px">${r.tecnico||'—'}</td>
+      <td style="padding:10px 12px"><span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;background:${sc.bg};color:${sc.c}">${sl}</span></td>
+      <td style="padding:10px 12px;font-size:12px;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.obs||'—'}</td>
+      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+        <button onclick="editarAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:4px">✎</button>
+        <button onclick="removerAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openAtaModal(){
+  ['at-no','at-cliente','at-estado','at-tecnico','at-problema','at-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('at-data').value=todayStr;
+  document.getElementById('at-status').value='em_andamento';
+  document.getElementById('at-edit-id').value='';
+  document.getElementById('ata-modal-title').textContent='Novo registro';
+  document.getElementById('ata-modal').style.display='flex';
+}
+function closeAtaModal(){document.getElementById('ata-modal').style.display='none';}
+
+function editarAta(id){
+  const r=ataRegistros.find(x=>x.id==id);if(!r)return;
+  document.getElementById('at-edit-id').value=r.id;
+  document.getElementById('at-no').value=r.no||'';
+  document.getElementById('at-data').value=r.data||todayStr;
+  document.getElementById('at-cliente').value=r.cliente||'';
+  document.getElementById('at-estado').value=r.estado||'';
+  document.getElementById('at-tecnico').value=r.tecnico||'';
+  document.getElementById('at-problema').value=r.problema||'';
+  document.getElementById('at-status').value=r.status||'em_andamento';
+  document.getElementById('at-obs').value=r.obs||'';
+  document.getElementById('ata-modal-title').textContent='Editar registro';
+  document.getElementById('ata-modal').style.display='flex';
+}
+
+async function salvarAta(){
+  const cliente=document.getElementById('at-cliente').value.trim();
+  const problema=document.getElementById('at-problema').value.trim();
+  const status=document.getElementById('at-status').value;
+  if(!cliente||!problema)return alert('Preencha Cliente e Problema.');
+  const editId=document.getElementById('at-edit-id').value;
+  const payload={no:document.getElementById('at-no').value.trim(),data:document.getElementById('at-data').value||todayStr,cliente,estado:document.getElementById('at-estado').value.trim().toUpperCase(),tecnico:document.getElementById('at-tecnico').value.trim(),problema,status,obs:document.getElementById('at-obs').value.trim()};
+  closeAtaModal();
+  try{
+    if(editId){await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAta',id:editId,...payload})});}
+    else{await fetch(API,{method:'POST',body:JSON.stringify({action:'addAta',id:uid(),...payload})});}
+    await loadAta();
+  }catch(e){setStatus('error','Erro ao salvar ata');}
+}
+
+async function removerAta(id){
+  if(!confirm('Remover este registro da ata?'))return;
+  try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteAta',id})});await loadAta();}
+  catch(e){setStatus('error','Erro ao remover');}
 }
 
 document.getElementById('f-data').value=todayStr;
@@ -1651,7 +1506,6 @@ loadPipeline();
 </script>
 
 <div style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Prateado</div>
-
 
 <!-- CLIENTES -->
 <div id="page-clientes" class="main" style="display:none">
@@ -1711,7 +1565,6 @@ loadPipeline();
     </div>
   </div>
 </div>
-
 
 <!-- CRONOGRAMA -->
 <div id="page-cronograma" class="main" style="display:none">
@@ -1792,7 +1645,6 @@ loadPipeline();
   </div>
 </div>
 
-
 <!-- MODAL NOVA VISTORIA -->
 <div class="modal-overlay" id="nova-vistoria-modal" style="display:none">
   <div class="modal" style="max-width:460px">
@@ -1851,7 +1703,7 @@ loadPipeline();
       <p style="font-size:13px;color:var(--c-atrasado);font-weight:500;margin-bottom:8px">Tem certeza que deseja enviar o e-mail de conclusao?</p>
       <div style="display:flex;gap:8px">
         <button onclick="cancelarDoubleCheck()" style="flex:1;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Nao</button>
-        <button id="ec-sim-btn" onclick="confirmarEnvioEmail()" disabled style="flex:1;height:32px;background:var(--c-atrasado);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:not-allowed;opacity:.5" id="ec-sim-btn">Sim <span id="ec-countdown"></span></button>
+        <button id="ec-sim-btn" onclick="confirmarEnvioEmail()" disabled style="flex:1;height:32px;background:var(--c-atrasado);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:not-allowed;opacity:.5">Sim <span id="ec-countdown"></span></button>
       </div>
     </div>
   </div>
