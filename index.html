@@ -448,14 +448,20 @@ async function apiPost(body){
   try{await fetch(API,{method:'POST',body:JSON.stringify(body)});await apiGet();}
   catch(e){setStatus('error','Erro ao salvar');}
 }
-async function loadPipeline(){
+async function loadPipeline(forceRender){
   document.getElementById('pipeline-sync').textContent='Carregando...';
   try{
     const r=await fetch(API+'?action=getPipeline');
     const d=await r.json();
     projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
     document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    renderPipeline();
+    // Só re-renderiza se nenhum card estiver aberto, ou se forceRender=true
+    const algumAberto=document.querySelectorAll('.project-body[style*="display: block"], .project-body[style*="display:block"]').length>0;
+    if(!algumAberto||forceRender){
+      renderPipeline();
+    } else {
+      document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
   }catch(e){document.getElementById('pipeline-sync').textContent='Erro de conexao';}
 }
 async function savePipelineProject(proj){
