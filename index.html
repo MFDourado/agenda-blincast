@@ -252,6 +252,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <h2>Vistorias Técnicas</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vistoria-sync"></div>
     </div>
+    <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
   </div>
   <div id="vistoria-list"></div>
 </div>
@@ -998,6 +999,17 @@ function renderVistoria(){
       </div>
       <div class="project-body" id="vst-body-${v.id}" style="display:none">
         <div class="progress-bar-wrap"><div class="progress-bar-fill${concluida?' done':''}" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div>
+        ${(proj.contato||proj.telefone||proj.cidade||proj.cnpj||proj.endereco||proj.produto)?`
+        <div style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:12px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px">Dados do cliente</div>
+          ${proj.contato?'<span style="font-size:12px"><span style="color:var(--text-muted)">Contato:</span> <b>'+proj.contato+'</b></span>':''}
+          ${proj.telefone?'<span style="font-size:12px"><span style="color:var(--text-muted)">Tel:</span> <b>'+proj.telefone+'</b></span>':''}
+          ${proj.cidade?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cidade:</span> <b>'+proj.cidade+'</b></span>':''}
+          ${proj.cnpj?'<span style="font-size:12px"><span style="color:var(--text-muted)">CNPJ:</span> <b>'+proj.cnpj+'</b></span>':''}
+          ${proj.endereco?'<span style="font-size:12px"><span style="color:var(--text-muted)">Endere&ccedil;o:</span> <b>'+proj.endereco+'</b></span>':''}
+          ${proj.produto?'<span style="font-size:12px"><span style="color:var(--text-muted)">Produto:</span> <b>'+proj.produto+'</b></span>':''}
+          ${proj.conteudo_online&&proj.conteudo_online!=='Nao'?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cont. online:</span> <b>'+proj.conteudo_online+'</b></span>':''}
+        </div>`:''}
         <div class="steps-grid">${stepsHtml}</div>
       </div>
     </div>`;
@@ -1356,6 +1368,27 @@ function toggleCronCard(id){
   chev.className='chevron'+(open?'':' open');
 }
 
+function toggleCronCheck(cronId,taskIdx,checked){
+  const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;
+  cron.tarefas[taskIdx].status=checked?'concluido':'previsto';
+  // Atualizar visual em tempo real
+  const row=document.getElementById('ctr-'+cronId+'-'+taskIdx);
+  if(row){
+    const nameEl=row.querySelector('.cron-task-name');
+    if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}
+  }
+  // Atualizar barra de progresso em tempo real
+  const concluidas=cron.tarefas.filter(t=>t.status==='concluido').length;
+  const pct=cron.tarefas.length?Math.round((concluidas/cron.tarefas.length)*100):0;
+  const barEl=document.querySelector('#cron-bar-'+cronId);
+  if(barEl)barEl.style.width=pct+'%';
+  const pctEl=document.querySelector('#cron-pct-'+cronId);
+  if(pctEl)pctEl.textContent=pct+'% concluido';
+  const metaEl=document.querySelector('#cron-meta-'+cronId);
+  if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';
+  updateCronTask(cronId,taskIdx,'status',cron.tarefas[taskIdx].status);
+}
+
 function updateCronTask(cronId,taskIdx,field,val){
   const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;
   if(!cron.tarefas[taskIdx])return;
@@ -1387,22 +1420,24 @@ function renderCronogramas(){
     const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;
     const link=getCronLink(cron.id);
 
-    const tarefasHtml=tarefas.map((t,i)=>`
-      <div class="cron-task-row">
-        <div class="cron-task-info"><div class="cron-task-name">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div>
-        <div class="cron-task-controls">
-          <select class="cron-status-sel" onchange="updateCronTask('${cron.id}',${i},'status',this.value)">
-            <option value="previsto" ${t.status==='previsto'?'selected':''}>Previsto</option>
-            <option value="andamento" ${t.status==='andamento'?'selected':''}>Em andamento</option>
-            <option value="concluido" ${t.status==='concluido'?'selected':''}>Concluido</option>
-            <option value="atrasado" ${t.status==='atrasado'?'selected':''}>Atrasado</option>
-          </select>
+    const tarefasHtml=tarefas.map((t,i)=>{
+      const done=t.status==='concluido';
+      return `<div class="cron-task-row" id="ctr-${cron.id}-${i}">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0">
+          <input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)"
+            style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)">
+          <div>
+            <div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div>
+            <div class="cron-task-resp">${t.responsavel}</div>
+          </div>
+        </label>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio">
-          <span class="cron-date-sep">→</span>
+          <span class="cron-date-sep" style="color:var(--text-muted);font-size:11px">→</span>
           <input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim">
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
 
     // Gantt mini — calcula range
     const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));
@@ -1426,7 +1461,7 @@ function renderCronogramas(){
       <div class="cron-header">
         <div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')">
           <div class="cron-name">${cron.nomeCliente}</div>
-          <div class="cron-meta">${tarefas.length} etapas &mdash; ${pct}% concluido</div>
+          <div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas &mdash; ${pct}% concluido</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluido':'Em andamento'}</span>
@@ -1435,7 +1470,7 @@ function renderCronogramas(){
       </div>
       <div id="cron-body-${cron.id}" style="display:none">
         <div class="cron-body">
-          <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>
           ${tarefasHtml}
           ${ganttMiniHtml}
           <div class="cron-link-box">
@@ -1500,6 +1535,83 @@ async function submitSurvey(){
 }
 
 checkSurvey();
+
+// NOVA VISTORIA
+function openNovaVistoriaModal(){
+  document.getElementById('nv-nome').value='';
+  document.getElementById('nv-contato').value='';
+  document.getElementById('nv-telefone').value='';
+  document.getElementById('nv-obs').value='';
+  document.getElementById('nv-cliente-id').value='';
+  // Popular select com clientes
+  const sel=document.getElementById('nv-cliente');
+  sel.innerHTML='<option value="">Selecione um cliente...</option>';
+  clientes.forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.id;
+    opt.textContent=c.nome+(c.cidade?' — '+c.cidade:'');
+    opt.dataset.nome=c.nome;
+    opt.dataset.contato=c.contato||'';
+    opt.dataset.telefone=c.telefone||'';
+    sel.appendChild(opt);
+  });
+  document.getElementById('nova-vistoria-modal').style.display='flex';
+}
+
+function closeNovaVistoriaModal(){document.getElementById('nova-vistoria-modal').style.display='none';}
+
+function preencherDadosVistoria(){
+  const sel=document.getElementById('nv-cliente');
+  const opt=sel.options[sel.selectedIndex];
+  if(opt&&opt.value){
+    document.getElementById('nv-nome').value=opt.dataset.nome||'';
+    document.getElementById('nv-contato').value=opt.dataset.contato||'';
+    document.getElementById('nv-telefone').value=opt.dataset.telefone||'';
+    document.getElementById('nv-cliente-id').value=opt.value;
+  }
+}
+
+async function criarNovaVistoria(){
+  const nome=document.getElementById('nv-nome').value.trim();
+  if(!nome){alert('Informe o nome do cliente.');return;}
+  const clienteId=document.getElementById('nv-cliente-id').value;
+  const contato=document.getElementById('nv-contato').value.trim();
+  const telefone=document.getElementById('nv-telefone').value.trim();
+  const obs=document.getElementById('nv-obs').value.trim();
+  closeNovaVistoriaModal();
+  document.getElementById('vistoria-sync').textContent='Criando vistoria...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      action:'solicitarVistoria',
+      prospectId:clienteId||uid(),
+      vistoriaId:uid(),
+      nomeCliente:nome,
+      cidade:'',produto:'',uhs:'',
+      contato,telefone,endereco:'',
+      observacoes:obs,
+      origem:'operacional'
+    })});
+    await loadVistoria();
+  }catch(e){document.getElementById('vistoria-sync').textContent='Erro ao criar vistoria';}
+}
+
+// SINCRONIZAR CLIENTES
+async function sincronizarClientes(){
+  const btn=document.querySelector('[onclick="sincronizarClientes()"]');
+  if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarClientes'})});
+    const d=await r.json();
+    await loadClientes();
+    if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}
+    if(d.criados>0) alert(d.criados+' cliente(s) importado(s) com sucesso!');
+    else alert('Todos os clientes já estão sincronizados.');
+  }catch(e){
+    if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}
+    alert('Erro ao sincronizar.');
+  }
+}
+
 document.getElementById('f-data').value=todayStr;
 apiGet();
 setInterval(apiGet,30000);
@@ -1516,7 +1628,10 @@ loadPipeline();
       <h2>Clientes</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="cli-sync"></div>
     </div>
-    <button class="btn-new-project" onclick="openNovoClienteModal()">+ Novo cliente</button>
+    <div style="display:flex;gap:8px">
+      <button onclick="sincronizarClientes()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar</button>
+      <button class="btn-new-project" onclick="openNovoClienteModal()">+ Novo cliente</button>
+    </div>
   </div>
   <div id="cli-list"></div>
 </div>
@@ -1641,6 +1756,43 @@ loadPipeline();
     <div class="survey-actions">
       <button class="survey-skip" onclick="skipSurvey()">Responder depois</button>
       <button class="survey-submit" id="survey-submit" onclick="submitSurvey()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL NOVA VISTORIA -->
+<div class="modal-overlay" id="nova-vistoria-modal" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <h3>Nova Vistoria Técnica</h3>
+    <div class="modal-field" style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Vincular a um cliente</label>
+      <select class="field-sel" id="nv-cliente" onchange="preencherDadosVistoria()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="">Selecione um cliente...</option>
+      </select>
+    </div>
+    <div class="modal-field" style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Nome do cliente *</label>
+      <input type="text" id="nv-nome" placeholder="Ex: Hotel Beira Mar" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Contato</label>
+        <input type="text" id="nv-contato" placeholder="Nome do contato" style="width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Telefone</label>
+        <input type="text" id="nv-telefone" placeholder="(00) 00000-0000" style="width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+      <textarea id="nv-obs" placeholder="Detalhes relevantes para a vistoria..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;height:70px;"></textarea>
+    </div>
+    <input type="hidden" id="nv-cliente-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeNovaVistoriaModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="criarNovaVistoria()">Criar vistoria</button>
     </div>
   </div>
 </div>
