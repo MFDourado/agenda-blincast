@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Operacional — Blincast</title>
+<title>BlinTrack — Operacional</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -229,7 +229,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 </head>
 <body>
 <header>
-  <div class="logo">BLINCAST <span>|</span> OPERACIONAL</div>
+  <div class="logo">BlinTrack <span style="color:#444;margin:0 8px">|</span> Operacional</div>
   <div class="status-bar">
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-txt">Conectando...</span>
@@ -313,7 +313,10 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <h2>Pipeline Operacional</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="pipeline-sync"></div>
     </div>
-    <button class="btn-new-project" onclick="openModal()">+ Novo projeto</button>
+    <div style="display:flex;gap:8px">
+      <button onclick="sincronizarPipeline()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar dados</button>
+      <button class="btn-new-project" onclick="openModal()">+ Novo projeto</button>
+    </div>
   </div>
   <div id="projects-list"></div>
 </div>
@@ -1010,16 +1013,16 @@ function renderVistoria(){
       </div>
       <div class="project-body" id="vst-body-${v.id}" style="display:none">
         <div class="progress-bar-wrap"><div class="progress-bar-fill${concluida?' done':''}" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div>
-        ${(proj.contato||proj.telefone||proj.cidade||proj.cnpj||proj.endereco||proj.produto)?`
+        ${(v.contato||v.telefone||v.cidade||v.cnpj||v.endereco||v.produto)?`
         <div style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:12px;border:1px solid var(--border)">
           <div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:2px">Dados do cliente</div>
-          ${proj.contato?'<span style="font-size:12px"><span style="color:var(--text-muted)">Contato:</span> <b>'+proj.contato+'</b></span>':''}
-          ${proj.telefone?'<span style="font-size:12px"><span style="color:var(--text-muted)">Tel:</span> <b>'+proj.telefone+'</b></span>':''}
-          ${proj.cidade?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cidade:</span> <b>'+proj.cidade+'</b></span>':''}
-          ${proj.cnpj?'<span style="font-size:12px"><span style="color:var(--text-muted)">CNPJ:</span> <b>'+proj.cnpj+'</b></span>':''}
-          ${proj.endereco?'<span style="font-size:12px"><span style="color:var(--text-muted)">Endere&ccedil;o:</span> <b>'+proj.endereco+'</b></span>':''}
-          ${proj.produto?'<span style="font-size:12px"><span style="color:var(--text-muted)">Produto:</span> <b>'+proj.produto+'</b></span>':''}
-          ${proj.conteudo_online&&proj.conteudo_online!=='Nao'?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cont. online:</span> <b>'+proj.conteudo_online+'</b></span>':''}
+          ${v.contato?'<span style="font-size:12px"><span style="color:var(--text-muted)">Contato:</span> <b>'+v.contato+'</b></span>':''}
+          ${v.telefone?'<span style="font-size:12px"><span style="color:var(--text-muted)">Tel:</span> <b>'+v.telefone+'</b></span>':''}
+          ${v.cidade?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cidade:</span> <b>'+v.cidade+'</b></span>':''}
+          ${v.cnpj?'<span style="font-size:12px"><span style="color:var(--text-muted)">CNPJ:</span> <b>'+v.cnpj+'</b></span>':''}
+          ${v.endereco?'<span style="font-size:12px"><span style="color:var(--text-muted)">Endere&ccedil;o:</span> <b>'+v.endereco+'</b></span>':''}
+          ${v.produto?'<span style="font-size:12px"><span style="color:var(--text-muted)">Produto:</span> <b>'+v.produto+'</b></span>':''}
+          ${v.conteudo_online&&v.conteudo_online!=='Nao'?'<span style="font-size:12px"><span style="color:var(--text-muted)">Cont. online:</span> <b>'+v.conteudo_online+'</b></span>':''}
         </div>`:''}
         <div class="steps-grid">${stepsHtml}</div>
       </div>
@@ -1142,6 +1145,8 @@ function renderClientes(){
             <div style="font-size:12px;margin-top:2px"><b>Telefone:</b> ${c.telefone||'—'}</div>
             <div style="font-size:12px;margin-top:2px"><b>Endereço:</b> ${c.endereco||'—'}</div>
             <div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>
+            ${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}</div>`:''}
+            ${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}
           </div>
 
           <div class="step-card">
@@ -1204,7 +1209,7 @@ function renderClientes(){
         ${(()=>{
           const cron=cronogramas.find(cr=>cr.nomeCliente&&cr.nomeCliente.toLowerCase().trim()===c.nome.toLowerCase().trim());
           if(!cron)return '';
-          const link='https://mfdourado.github.io/agenda-blincast/cronograma.html?id='+cron.id;
+          const link='https://mfdourado.github.io/BlinTrack — Operacional/cronograma.html?id='+cron.id;
           return '<div style="margin-top:12px;background:var(--c-previsto-bg);border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style=\"font-size:11px;font-weight:500;color:var(--c-previsto);margin-bottom:2px\">Cronograma vinculado</div><div style=\"font-size:11px;font-family:DM Mono,monospace;color:var(--c-previsto);word-break:break-all\">'+link+'</div></div><button onclick=\"navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'Link copiado!\'))\" style=\"padding:4px 12px;border:1px solid var(--c-previsto);border-radius:4px;background:none;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;color:var(--c-previsto);white-space:nowrap\">Copiar link</button></div>';
         })()}
         <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
@@ -1278,7 +1283,7 @@ async function criarClienteAvulso(){
 // CRONOGRAMA
 let cronogramas = [];
 let cronSaveTimer = null;
-const BASE_URL = 'https://mfdourado.github.io/agenda-blincast/cronograma.html';
+const BASE_URL = 'https://mfdourado.github.io/BlinTrack — Operacional/cronograma.html';
 const TEMPLATE_TASKS = [
   {id:1,nome:'Configuração dos equipamentos',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
   {id:2,nome:'Instalação física — Rack',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},
@@ -1607,6 +1612,22 @@ async function criarNovaVistoria(){
 }
 
 // SINCRONIZAR CLIENTES
+async function sincronizarPipeline(){
+  const btn = document.querySelector('[onclick="sincronizarPipeline()"]');
+  if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarPipeline'})});
+    const d = await r.json();
+    await loadPipeline(true);
+    if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}
+    if(d.atualizados>0) alert(d.atualizados+' projeto(s) atualizado(s) com dados do Comercial!');
+    else alert('Todos os projetos já estão com dados atualizados.');
+  }catch(e){
+    if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}
+    alert('Erro ao sincronizar.');
+  }
+}
+
 async function sincronizarClientes(){
   const btn=document.querySelector('[onclick="sincronizarClientes()"]');
   if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}
