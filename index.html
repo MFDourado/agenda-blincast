@@ -1035,8 +1035,7 @@ async function loadAta(){
   document.getElementById('ata-sync').textContent='Carregando...';
   // Sem filtro de data por padrão — mostra todos os não-feitos
   try{
-    const ctrlAta=new AbortController();setTimeout(()=>ctrlAta.abort(),10000);
-    const r=await fetch(API+'?action=getAta',{signal:ctrlAta.signal});
+    const r=await fetch(API+'?action=getAta');
     const d=await r.json();
     ataRegistros=Array.isArray(d)?d.filter(r=>r&&r.id&&String(r.id).trim()!='').map(r=>{
       const n={};
