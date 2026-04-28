@@ -1092,9 +1092,9 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
       <td style="padding:2px 3px;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
-        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="">
+        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px;margin-bottom:1px;">Concl.</div>
-        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="">
+        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
       </td>
     </tr>`;
   }).join('');;;
