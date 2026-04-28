@@ -1051,7 +1051,7 @@ function renderAta(){
       <td style="padding:4px 6px;white-space:nowrap;vertical-align:middle;">
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:2px;">✎</button><button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:#e00;">✕</button>
       </td>
-      <td style="padding:3px 4px;"><input type="date" value="${r.dt_abertura||}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
+      <td style="padding:3px 4px;"><input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
       <td style="padding:4px 6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap">${r.no||'—'}</td>
       <td style="padding:4px 6px;font-size:12px;font-weight:500;white-space:nowrap">${r.cliente||'—'}</td>
       <td style="padding:4px 4px;font-size:11px;text-align:center">${r.estado||'—'}</td>
@@ -1069,7 +1069,7 @@ function renderAta(){
         </select>
       </td>
       <td style="padding:4px 6px;font-size:11px;color:var(--text-muted);max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${r.obs||'—'}</td>
-      <td style="padding:3px 4px;"><input type="date" value="${r.dt_conclusao||}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
+      <td style="padding:3px 4px;"><input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
     </tr>`;
   }).join('');
 }
