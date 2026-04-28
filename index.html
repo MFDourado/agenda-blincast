@@ -1046,7 +1046,17 @@ function renderAta(){
       <td style="padding:10px 12px;font-size:12px;color:var(--text-muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.problema||'—'}</td>
       <td style="padding:10px 12px;font-size:12px">${r.tecnico||'—'}</td>
       <td style="padding:10px 12px;font-size:12px;color:var(--text-muted)">${r.ajudante||'—'}</td>
-      <td style="padding:10px 12px"><span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;background:${sc.bg};color:${sc.c}">${sl}</span></td>
+      <td style="padding:6px 8px">
+        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:11px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:20px;padding:3px 8px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;appearance:none;-webkit-appearance:none;">
+          <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
+          <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
+          <option value="pendente" ${r.status==='pendente'?'selected':''}>Pendente</option>
+          <option value="retornar" ${r.status==='retornar'?'selected':''}>Retornar</option>
+          <option value="acompanhar" ${r.status==='acompanhar'?'selected':''}>Acompanhar</option>
+          <option value="planejado" ${r.status==='planejado'?'selected':''}>Planejado</option>
+          <option value="em_atraso" ${r.status==='em_atraso'?'selected':''}>Em atraso</option>
+        </select>
+      </td>
       <td style="padding:10px 12px;font-size:12px;color:var(--text-muted);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.obs||'—'}</td>
       <td style="padding:10px 12px;text-align:center;white-space:nowrap">
         <button onclick="editarAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:4px">✎</button>
@@ -1117,6 +1127,24 @@ async function removerAta(id){
   if(!confirm('Remover este registro?'))return;
   try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteAta',id})});await loadAta();}
   catch(e){setStatus('error','Erro ao remover');}
+}
+
+async function alterarAtaStatus(id, novoStatus, selEl){
+  // Atualiza visual imediatamente
+  const sc=ATA_STATUS_COLOR[novoStatus]||{bg:'var(--border)',c:'var(--text-muted)'};
+  selEl.style.background=sc.bg;
+  selEl.style.color=sc.c;
+  selEl.style.borderColor=sc.c;
+  // Atualiza local
+  const reg=ataRegistros.find(r=>String(r.id)===String(id));
+  if(reg) reg.status=novoStatus;
+  // Salva no Sheet
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAtaStatus',id,status:novoStatus})});
+    document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('ata-sync').textContent='Erro ao salvar';
+  }
 }
 
 function exportarAtaCSV(){
