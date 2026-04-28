@@ -1092,9 +1092,9 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
       <td style="padding:2px 3px;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
-        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="${INP}">
+        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="">
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px;margin-bottom:1px;">Concl.</div>
-        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="${INP}">
+        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="">
       </td>
     </tr>`;
   }).join('');;;
