@@ -360,7 +360,20 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   </div>
   <div class="pipeline-table">
     <div class="pipeline-table-header">Projetos no pipeline</div>
-    <table class="ptable"><thead><tr><th>Projeto</th><th>UHs</th><th>Etapa atual</th><th>Progresso</th><th>Dias</th></tr></thead><tbody id="dash-pipeline-rows"></tbody></table>
+    <table class="ptable"><thead>
+        <tr style="background:var(--black);">
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:5%;"></th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:10%;text-align:left">No OS</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:14%;text-align:left">Cliente</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:3%;text-align:left">UF</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:20%;text-align:left">Problema</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:13%;text-align:left">Técnico / Aj.</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:11%;text-align:left">Status</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:12%;text-align:left">Obs</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:6%;text-align:left">Aber.</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 6px;text-transform:uppercase;width:6%;text-align:left">Concl.</th>
+        </tr>
+      </thead>tbody id="dash-pipeline-rows"></tbody></table>
   </div>
 </div>
 
@@ -463,8 +476,8 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </select>
     <button onclick="limparFiltrosAta()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar filtros</button>
   </div>
-  <div class="ata-table-wrap" style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;">
-    <table style="width:100%;border-collapse:collapse;">
+  <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead>
         <tr style="background:var(--black);">
           <th style="padding:8px 6px;width:60px;"></th>
@@ -1046,19 +1059,18 @@ function renderAta(){
   if(!lista.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
-    const sl=ATA_STATUS_LABEL[r.status]||r.status;
     return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:4px 6px;white-space:nowrap;vertical-align:middle;">
-        <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:2px;">✎</button><button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:#e00;">✕</button>
+      <td style="padding:3px 4px;white-space:nowrap;">
+        <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
+        <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
       </td>
-      <td style="padding:3px 4px;"><input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
-      <td style="padding:4px 6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap">${r.no||'—'}</td>
-      <td style="padding:4px 6px;font-size:12px;font-weight:500;white-space:nowrap">${r.cliente||'—'}</td>
-      <td style="padding:4px 4px;font-size:11px;text-align:center">${r.estado||'—'}</td>
-      <td style="padding:4px 6px;font-size:11px;color:var(--text-muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.problema||''}">${r.problema||'—'}</td>
-      <td style="padding:4px 6px;font-size:11px;white-space:nowrap">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
+      <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
+      <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.problema||''}">${r.problema||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
       <td style="padding:3px 4px;">
-        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:12px;padding:2px 6px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;appearance:none;-webkit-appearance:none;max-width:110px;">
+        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
           <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
           <option value="pendente" ${r.status==='pendente'?'selected':''}>Pendente</option>
@@ -1068,10 +1080,11 @@ function renderAta(){
           <option value="em_atraso" ${r.status==='em_atraso'?'selected':''}>Em atraso</option>
         </select>
       </td>
-      <td style="padding:4px 6px;font-size:11px;color:var(--text-muted);max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${r.obs||'—'}</td>
-      <td style="padding:3px 4px;"><input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
+      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
+      <td style="padding:2px 3px;"><input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="${INP}"></td>
+      <td style="padding:2px 3px;"><input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="${INP}"></td>
     </tr>`;
-  }).join('');
+  }).join('');;
 }
 
 function limparFiltrosAta(){
