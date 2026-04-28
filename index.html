@@ -634,12 +634,18 @@ function switchMainTab(t){
 async function apiGet(){
   setStatus('loading','Sincronizando...');
   try{
-    const r=await fetch(API+'?action=getAll');
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(API+'?action=getAll',{signal:ctrl.signal});
+    clearTimeout(timer);
     const d=await r.json();
     events=Array.isArray(d)?d.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
     setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     renderAgenda();
-  }catch(e){setStatus('error','Erro de conexao');}
+  }catch(e){
+    if(e.name==='AbortError'){setStatus('error','Timeout — verifique o AppScript');}
+    else{setStatus('error','Erro de conexao');}
+  }
 }
 async function apiPost(body){
   setStatus('loading','Salvando...');
@@ -741,7 +747,8 @@ async function saveNewDate(id,client,status,obs){
 async function loadPipeline(forceRender){
   document.getElementById('pipeline-sync').textContent='Carregando...';
   try{
-    const r=await fetch(API+'?action=getPipeline');
+    const ctrl2=new AbortController();setTimeout(()=>ctrl2.abort(),10000);
+    const r=await fetch(API+'?action=getPipeline',{signal:ctrl2.signal});
     const d=await r.json();
     projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
     document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -1028,7 +1035,8 @@ async function loadAta(){
   document.getElementById('ata-sync').textContent='Carregando...';
   // Sem filtro de data por padrão — mostra todos os não-feitos
   try{
-    const r=await fetch(API+'?action=getAta');
+    const ctrlAta=new AbortController();setTimeout(()=>ctrlAta.abort(),10000);
+    const r=await fetch(API+'?action=getAta',{signal:ctrlAta.signal});
     const d=await r.json();
     ataRegistros=Array.isArray(d)?d.filter(r=>r&&r.id&&String(r.id).trim()!='').map(r=>{
       const n={};
@@ -1042,7 +1050,10 @@ async function loadAta(){
     sel.innerHTML='<option value="">Todos os técnicos</option>'+tecnicos.map(t=>`<option value="${t}" ${valAtual===t?'selected':''}>${t}</option>`).join('');
     document.getElementById('ata-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderAta();
-  }catch(e){document.getElementById('ata-sync').textContent='Erro de conexao';}
+  }catch(e){
+    const msg=e.name==='AbortError'?'Timeout — verifique o AppScript':'Erro de conexao';
+    document.getElementById('ata-sync').textContent=msg;
+  }
 }
 
 function renderAta(){
