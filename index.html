@@ -229,6 +229,11 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   body{background:#fff!important;}
   input,textarea,select{border:none!important;outline:none!important;}
 }
+/* Scroll horizontal da Ata */
+#page-ata .ata-table-wrap::-webkit-scrollbar{height:6px;}
+#page-ata .ata-table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:3px;}
+#page-ata .ata-table-wrap::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px;}
+#page-ata .ata-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--black);}
 @media(max-width:768px){.charts-grid{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr 1fr;}.add-btn{grid-column:span 2;}.legend{display:none;}.steps-grid{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(3,1fr);}.pipeline-boxes{grid-template-columns:1fr 1fr;}}
 
 /* Autocomplete orçamento */
@@ -458,25 +463,24 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </select>
     <button onclick="limparFiltrosAta()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar filtros</button>
   </div>
-  <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:auto;">
-    <table style="width:100%;border-collapse:collapse;min-width:1200px;">
+  <div class="ata-table-wrap" style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;">
+    <table style="width:100%;border-collapse:collapse;">
       <thead>
         <tr style="background:var(--black);">
-          <th style="padding:10px 8px;width:70px;"></th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Abertura</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">No OS</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Cliente</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">UF</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Problema</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Técnico</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Ajudante</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Status</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase">Obs</th>
-          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 8px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Conclusão</th>
+          <th style="padding:8px 6px;width:60px;"></th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Dt.Aber.</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">No OS</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Cliente</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">UF</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Problema</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Técnico / Ajudante</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Status</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Obs</th>
+          <th style="text-align:left;font-size:10px;font-weight:600;color:#888;padding:8px 6px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap">Dt.Concl.</th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
-        <tr><td colspan="11" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
+        <tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1039,26 +1043,22 @@ function renderAta(){
   if(filtroStatus)lista=lista.filter(r=>String(r.status||'').trim()===filtroStatus);
   if(filtroTecnico)lista=lista.filter(r=>String(r.tecnico||'').trim()===filtroTecnico);
   const tbody=document.getElementById('ata-tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     const sl=ATA_STATUS_LABEL[r.status]||r.status;
     return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:6px 8px;white-space:nowrap;vertical-align:middle;">
-        <button onclick="editarAta('${r.id}')" title="Editar" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:3px;">✎</button><button onclick="removerAta('${r.id}')" title="Excluir" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00;">✕</button>
+      <td style="padding:4px 6px;white-space:nowrap;vertical-align:middle;">
+        <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:2px;">✎</button><button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:none;cursor:pointer;color:#e00;">✕</button>
       </td>
-      <td style="padding:4px 6px;">
-        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)"
-          style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px 4px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:26px;width:110px;">
-      </td>
-      <td style="padding:8px 8px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted)">${r.no||'—'}</td>
-      <td style="padding:8px 8px;font-size:12px;font-weight:500">${r.cliente||'—'}</td>
-      <td style="padding:8px 6px;font-size:11px;text-align:center">${r.estado||'—'}</td>
-      <td style="padding:8px 8px;font-size:11px;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.problema||'—'}</td>
-      <td style="padding:8px 8px;font-size:11px">${r.tecnico||'—'}</td>
-      <td style="padding:8px 8px;font-size:11px;color:var(--text-muted)">${r.ajudante||'—'}</td>
-      <td style="padding:4px 6px">
-        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:11px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:20px;padding:3px 8px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;appearance:none;-webkit-appearance:none;max-width:120px;">
+      <td style="padding:3px 4px;"><input type="date" value="${r.dt_abertura||}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
+      <td style="padding:4px 6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap">${r.no||'—'}</td>
+      <td style="padding:4px 6px;font-size:12px;font-weight:500;white-space:nowrap">${r.cliente||'—'}</td>
+      <td style="padding:4px 4px;font-size:11px;text-align:center">${r.estado||'—'}</td>
+      <td style="padding:4px 6px;font-size:11px;color:var(--text-muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.problema||''}">${r.problema||'—'}</td>
+      <td style="padding:4px 6px;font-size:11px;white-space:nowrap">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
+      <td style="padding:3px 4px;">
+        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:12px;padding:2px 6px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;appearance:none;-webkit-appearance:none;max-width:110px;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
           <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
           <option value="pendente" ${r.status==='pendente'?'selected':''}>Pendente</option>
@@ -1068,11 +1068,8 @@ function renderAta(){
           <option value="em_atraso" ${r.status==='em_atraso'?'selected':''}>Em atraso</option>
         </select>
       </td>
-      <td style="padding:8px 8px;font-size:11px;color:var(--text-muted);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.obs||'—'}</td>
-      <td style="padding:4px 6px;">
-        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)"
-          style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px 4px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:26px;width:110px;">
-      </td>
+      <td style="padding:4px 6px;font-size:11px;color:var(--text-muted);max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${r.obs||'—'}</td>
+      <td style="padding:3px 4px;"><input type="date" value="${r.dt_conclusao||}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 3px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:24px;width:94px;"></td>
     </tr>`;
   }).join('');
 }
