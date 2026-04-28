@@ -462,6 +462,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <table style="width:100%;border-collapse:collapse;min-width:800px;">
       <thead>
         <tr style="background:var(--black);">
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Abertura</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">No OS</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Cliente</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">UF</th>
@@ -470,11 +471,12 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Ajudante</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Status</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Obs</th>
+          <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Conclusão</th>
           <th style="padding:10px 12px;width:64px;"></th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
+        <tr><td colspan="11" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
       </tbody>
     </table>
   </div>
@@ -485,6 +487,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto;">
     <h3 id="ata-modal-title">Novo registro</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field"><label>Data de abertura</label><input type="date" id="at-dt-abertura"></div>
       <div class="modal-field"><label>No OS / Código</label><input type="text" id="at-no" placeholder="Ex: 4521"></div>
       <div class="modal-field"><label>Data *</label><input type="date" id="at-data"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" placeholder="Nome do cliente"></div>
@@ -504,6 +507,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       </div>
       <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Observações</label><input type="text" id="at-obs" placeholder="Informações complementares"></div>
+      <div class="modal-field"><label>Data de conclusão</label><input type="date" id="at-dt-conclusao"></div>
     </div>
     <input type="hidden" id="at-edit-id">
     <div class="modal-actions">
@@ -1040,6 +1044,10 @@ function renderAta(){
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     const sl=ATA_STATUS_LABEL[r.status]||r.status;
     return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 8px;">
+        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)"
+          style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:28px;width:120px;">
+      </td>
       <td style="padding:10px 12px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted)">${r.no||'—'}</td>
       <td style="padding:10px 12px;font-size:13px;font-weight:500">${r.cliente||'—'}</td>
       <td style="padding:10px 12px;font-size:12px;text-align:center">${r.estado||'—'}</td>
@@ -1058,6 +1066,10 @@ function renderAta(){
         </select>
       </td>
       <td style="padding:10px 12px;font-size:12px;color:var(--text-muted);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.obs||'—'}</td>
+      <td style="padding:6px 8px;">
+        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)"
+          style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:28px;width:120px;">
+      </td>
       <td style="padding:10px 12px;text-align:center;white-space:nowrap">
         <button onclick="editarAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:4px">✎</button>
         <button onclick="removerAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">×</button>
@@ -1074,7 +1086,7 @@ function limparFiltrosAta(){
 }
 
 function openAtaModal(){
-  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-problema','at-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-problema','at-obs','at-dt-abertura','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
@@ -1095,6 +1107,8 @@ function editarAta(id){
   document.getElementById('at-problema').value=r.problema||'';
   document.getElementById('at-status').value=r.status||'em_andamento';
   document.getElementById('at-obs').value=r.obs||'';
+  document.getElementById('at-dt-abertura').value=r.dt_abertura||'';
+  document.getElementById('at-dt-conclusao').value=r.dt_conclusao||'';
   document.getElementById('ata-modal-title').textContent='Editar registro';
   document.getElementById('ata-modal').style.display='flex';
 }
@@ -1113,7 +1127,9 @@ async function salvarAta(){
     tecnico:document.getElementById('at-tecnico').value.trim(),
     ajudante:document.getElementById('at-ajudante').value.trim(),
     problema,status,
-    obs:document.getElementById('at-obs').value.trim()
+    obs:document.getElementById('at-obs').value.trim(),
+    dt_abertura:document.getElementById('at-dt-abertura').value||'',
+    dt_conclusao:document.getElementById('at-dt-conclusao').value||''
   };
   closeAtaModal();
   try{
@@ -1121,6 +1137,15 @@ async function salvarAta(){
     else{await fetch(API,{method:'POST',body:JSON.stringify({action:'addAta',id:uid(),...payload})});}
     await loadAta();
   }catch(e){setStatus('error','Erro ao salvar ata');}
+}
+
+async function alterarAtaData(id, campo, valor){
+  const reg=ataRegistros.find(r=>String(r.id)===String(id));
+  if(reg) reg[campo]=valor;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAtaData',id,campo,valor})});
+    document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){document.getElementById('ata-sync').textContent='Erro ao salvar';}
 }
 
 async function removerAta(id){
