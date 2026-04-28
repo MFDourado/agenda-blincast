@@ -1171,7 +1171,7 @@ function buildOrcTables(){
 }
 function renderOrcMatRows(){
   const tm=document.getElementById('orc-mat-tbody');
-  tm.innerHTML=Array.from({length:orcMatLinhas},(_,i)=>`<tr id="orc-mat-row-${i}"><td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="orc-ac-wrap-${i}"><input type="text" id="orc-m-desc-${i}" oninput="buildOrcAcList(${i},this.value)" onblur="setTimeout(()=>fecharOrcAc(${i}),200)" placeholder="Digite para buscar..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="orc-ac-list-${i}" style="display:none"></div></div></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-m-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-m-val-${i}" min="0" step="0.01" placeholder="0.00" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td><td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-m-tot-${i}">R$ 0,00</td><td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-m-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td></tr>`).join('');
+  tm.innerHTML=Array.from({length:orcMatLinhas},(_,i)=>`<tr id="orc-mat-row-${i}"><td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="orc-ac-wrap-${i}"><input type="text" id="orc-m-desc-${i}" oninput="buildOrcAcList(${i},this.value)" onblur="setTimeout(()=>fecharOrcAc(${i}),300)" placeholder="Digite para buscar..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="orc-ac-list-${i}" style="display:none"></div></div></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-m-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-m-val-${i}" min="0" step="0.01" placeholder="0.00" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td><td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-m-tot-${i}">R$ 0,00</td><td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-m-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td></tr>`).join('');
   // Linha do botão "+"
   const tfoot=document.getElementById('orc-mat-tfoot-btn');
   if(tfoot)tfoot.innerHTML=`<tr class="orc-no-print"><td colspan="5" style="border:1px dashed #ccc;padding:4px;text-align:center;"><button onclick="adicionarLinhaMat()" style="border:none;background:none;cursor:pointer;font-size:18px;color:#888;line-height:1;" title="Adicionar linha de material">＋</button></td></tr>`;
@@ -1249,9 +1249,10 @@ function buildOrcAcList(idx, val){
   if(!q){list.innerHTML='';list.style.display='none';return;}
   const matches = ORC_PRODUTOS.filter(p=>p.d.toUpperCase().includes(q)).slice(0,15);
   if(!matches.length){list.innerHTML='';list.style.display='none';return;}
-  list.innerHTML = matches.map((p,i)=>
-    `<div class="orc-ac-item" onmousedown="selecionarOrcProd(${idx},${JSON.stringify(p.d)},${p.v})">${p.d} — R$ ${p.v.toFixed(2).replace('.',',')}</div>`
-  ).join('');
+  list.innerHTML = matches.map((p,i)=>{
+    const safeDesc = p.d.replace(/'/g,"\\'");
+    return `<div class="orc-ac-item" data-idx="${idx}" data-desc="${p.d.replace(/"/g,'&quot;')}" data-val="${p.v}" onmousedown="event.preventDefault();selecionarOrcProdEl(this)">${p.d} — R$ ${p.v.toFixed(2).replace('.',',')}</div>`;
+  }).join('');
   list.style.display='block';
 }
 
@@ -1260,14 +1261,21 @@ function selecionarOrcProd(idx, desc, val){
   const val_el  = document.getElementById('orc-m-val-'+idx);
   const list    = document.getElementById('orc-ac-list-'+idx);
   if(desc_el) desc_el.value = desc;
-  if(val_el)  { val_el.value = val.toFixed(2); }
-  if(list)    list.style.display='none';
+  if(val_el)  { val_el.value = val; }  // número puro para input type=number
+  if(list)    { list.innerHTML=''; list.style.display='none'; }
   calcOrcamento();
 }
 
 function fecharOrcAc(idx){
   const list=document.getElementById('orc-ac-list-'+idx);
   if(list)list.style.display='none';
+}
+
+function selecionarOrcProdEl(el){
+  const idx  = el.dataset.idx;
+  const desc = el.dataset.desc;
+  const val  = parseFloat(el.dataset.val);
+  selecionarOrcProd(idx, desc, val);
 }
 
 </script>
