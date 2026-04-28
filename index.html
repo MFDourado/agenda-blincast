@@ -459,7 +459,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <button onclick="limparFiltrosAta()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar filtros</button>
   </div>
   <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:auto;">
-    <table style="width:100%;border-collapse:collapse;min-width:800px;">
+    <table style="width:100%;border-collapse:collapse;min-width:1200px;">
       <thead>
         <tr style="background:var(--black);">
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Abertura</th>
@@ -472,7 +472,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Status</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase">Obs</th>
           <th style="text-align:left;font-size:11px;font-weight:500;color:#666;padding:10px 12px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Dt. Conclusão</th>
-          <th style="padding:10px 12px;width:64px;"></th>
+          <th style="padding:10px 12px;width:80px;"></th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
@@ -1039,7 +1039,7 @@ function renderAta(){
   if(filtroStatus)lista=lista.filter(r=>String(r.status||'').trim()===filtroStatus);
   if(filtroTecnico)lista=lista.filter(r=>String(r.tecnico||'').trim()===filtroTecnico);
   const tbody=document.getElementById('ata-tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     const sl=ATA_STATUS_LABEL[r.status]||r.status;
@@ -1070,9 +1070,9 @@ function renderAta(){
         <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)"
           style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:28px;width:120px;">
       </td>
-      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
-        <button onclick="editarAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);margin-right:4px">✎</button>
-        <button onclick="removerAta('${r.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">×</button>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap;min-width:80px;">
+        <button onclick="editarAta('${r.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);display:block;width:100%;margin-bottom:4px;">✎ Editar</button>
+        <button onclick="removerAta('${r.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00;display:block;width:100%;">✕ Excluir</button>
       </td>
     </tr>`;
   }).join('');
