@@ -321,7 +321,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
       <div class="modal-field"><label>CNPJ</label><input type="text" id="nc-cnpj" placeholder="00.000.000/0000-00"></div>
       <div class="modal-field"><label>Contato</label><input type="text" id="nc-contato" placeholder="Nome do contato"></div>
       <div class="modal-field"><label>Telefone</label><input type="text" id="nc-telefone" placeholder="(00) 00000-0000"></div>
-      <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="nc-endereco" placeholder="Rua, número, cidade"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Endereço *</label><input type="text" id="nc-endereco" placeholder="Rua, número, cidade"></div>
       <div class="modal-field"><label>Produto *</label>
         <select class="field-sel" id="nc-produto">
           <option value="">Selecione...</option>
@@ -439,7 +439,7 @@ function render(){
       <div class="card-header">
         <div>
           <div class="card-nome">${p.nome}</div>
-          <div class="card-sub">${p.cidade||''}${p.vendedor?' — '+p.vendedor:''}</div>
+          <div class="card-sub">${p.cidade||''}${p.produto?' — '+p.produto:''} ${p.uhs?'— '+p.uhs+' UHs':''}${p.vendedor?' — '+p.vendedor:''}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">📍 ${p.endereco||'—'}</div>
         </div>
         <div class="card-badges">
           <span class="badge ${p.status||'prospect'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
@@ -720,6 +720,7 @@ function renderClientes(){
         <div>
           <div class="project-name">${c.nome}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} &mdash; ${c.produto||''} &mdash; ${c.uhs||''} UHs</div>
+          <div style="font-size:11px;color:#bbb;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 ${c.endereco||'—'}</div>
         </div>
         <div class="project-meta">
           <span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>
@@ -1188,7 +1189,8 @@ async function salvarEdicaoCliente(){
   const id=document.getElementById('ec-edit-id').value;
   if(!id)return;
   const nome=document.getElementById('ec-nome').value.trim();
-  if(!nome){alert('Nome é obrigatório.');return;}
+  const endEdit=document.getElementById('ec-endereco').value.trim();
+  if(!nome||!endEdit){alert('Nome e Endereço são obrigatórios.');return;}
   const payload={
     action:'editarCliente', id, nome,
     cidade:document.getElementById('ec-cidade').value.trim(),
@@ -1223,7 +1225,7 @@ setInterval(load,60000);
       <div class="mf"><label>CNPJ</label><input type="text" id="ec-cnpj"></div>
       <div class="mf"><label>Contato</label><input type="text" id="ec-contato"></div>
       <div class="mf"><label>Telefone</label><input type="text" id="ec-telefone"></div>
-      <div class="mf full"><label>Endereço</label><input type="text" id="ec-endereco"></div>
+      <div class="mf full"><label>Endereço *</label><input type="text" id="ec-endereco"></div>
       <div class="mf"><label>Produto</label>
         <select id="ec-produto">
           <option value="">Selecione...</option>
