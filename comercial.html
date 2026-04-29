@@ -96,6 +96,54 @@ header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-ite
 .com-tab:hover{color:#bbb;}
 .com-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;}
+
+.project-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
+.project-card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;}
+.project-card-header:hover{background:#FAFAF7;}
+.project-name{font-size:15px;font-weight:500;}
+.project-meta{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.project-body{border-top:1px solid var(--border);padding:16px;}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:16px;}
+.step-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--bg);}
+.step-card.done{border-color:var(--c-concluido);background:var(--c-concluido-bg);}
+.step-card.active-step{border-color:var(--c-andamento);background:var(--c-andamento-bg);}
+.step-number{font-size:10px;font-family:'DM Mono',monospace;color:var(--text-light,#BBBBB0);margin-bottom:4px;}
+.step-date-row{display:flex;align-items:center;gap:6px;}
+.step-date-input{flex:1;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;}
+.chevron{font-size:12px;color:var(--text-muted);transition:transform .2s;}
+.chevron.open{transform:rotate(180deg);}
+.btn-new-project{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;}
+.btn-new-project:hover{opacity:.85;}
+.proj-btn{padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;}
+.proj-btn:hover{border-color:var(--text-muted);color:var(--text);}
+.proj-btn.danger:hover{border-color:#e00;color:#e00;}
+.cron-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
+.cron-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);}
+.cron-name{font-size:15px;font-weight:500;}
+.cron-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.cron-body{padding:16px;}
+.cron-task-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);}
+.cron-task-row:last-child{border-bottom:none;}
+.cron-task-name{font-size:13px;font-weight:500;}
+.cron-task-resp{font-size:11px;color:var(--text-muted);}
+.cron-date-input{height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;width:110px;}
+.cron-link-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;}
+.cron-link-text{font-size:12px;font-family:'DM Mono',monospace;word-break:break-all;}
+.cron-copy-btn{padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:none;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);white-space:nowrap;}
+.cron-actions{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:8px;}
+.gantt-mini-wrap{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
+.gantt-mini-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.gantt-mini-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.gantt-mini-label{font-size:11px;color:var(--text-muted);width:170px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-mini-track{flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative;min-width:100px;}
+.gantt-mini-bar{position:absolute;height:100%;border-radius:4px;top:0;}
+.gantt-mini-bar.previsto{background:#EBF0FB;border:1px solid #1A5FC8;}
+.gantt-mini-bar.andamento{background:#E1F5EE;border:1px solid #0F6E56;}
+.gantt-mini-bar.concluido{background:#EAF3DE;border:1px solid #3B6D11;}
+.c-concluido{color:#3B6D11;} .c-concluido-bg{background:#EAF3DE;}
+.c-andamento{color:#0F6E56;} .c-pendente{color:#B86A00;}
+.progress-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:#0F6E56;border-radius:2px;transition:width .3s;}
 </style>
 </head>
 <body>
@@ -748,7 +796,12 @@ function renderClientes(){
           const link='https://mfdourado.github.io/agenda-blincast/cronograma.html?id='+cron.id;
           return '<div style="margin-top:12px;background:var(--c-previsto-bg);border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style=\"font-size:11px;font-weight:500;color:var(--c-previsto);margin-bottom:2px\">Cronograma vinculado</div><div style=\"font-size:11px;font-family:DM Mono,monospace;color:var(--c-previsto);word-break:break-all\">'+link+'</div></div><button onclick=\"navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'Link copiado!\'))\" style=\"padding:4px 12px;border:1px solid var(--c-previsto);border-radius:4px;background:none;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;color:var(--c-previsto);white-space:nowrap\">Copiar link</button></div>';
         })()}
-        <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+        <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;">
+            <button onclick="abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
+            <button onclick="toggleInativarCliente('${c.id}','${c.status}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${c.status==='inativo'?'var(--c-concluido)':'var(--c-pendente)'};">${c.status==='inativo'?'✓ Reativar':'⊘ Inativar'}</button>
+            <button onclick="excluirCliente('${c.id}','${c.nome}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
+          </div>
           <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
         </div>
       </div>
@@ -1089,8 +1142,106 @@ async function criarClienteAvulso(){
   }catch(e){setStatus('error','Erro ao criar cliente');}
 }
 
+async function toggleInativarCliente(id, statusAtual){
+  const novoStatus = statusAtual === 'inativo' ? 'ativo' : 'inativo';
+  const acao = novoStatus === 'inativo' ? 'inativar' : 'reativar';
+  if(!confirm('Deseja '+acao+' este cliente?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCliente',id,status:novoStatus})});
+    await loadClientes();
+  }catch(e){alert('Erro ao '+acao+' cliente.');}
+}
+
+async function excluirCliente(id, nome){
+  if(!confirm('Excluir permanentemente "'+nome+'"? Esta ação não pode ser desfeita.')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCliente',id})});
+    await loadClientes();
+  }catch(e){alert('Erro ao excluir cliente.');}
+}
+
+function abrirEditarCliente(id){
+  const c=clientes.find(x=>String(x.id)===String(id));
+  if(!c)return;
+  document.getElementById('ec-edit-id').value=c.id;
+  document.getElementById('ec-nome').value=c.nome||'';
+  document.getElementById('ec-cidade').value=c.cidade||'';
+  document.getElementById('ec-cnpj').value=c.cnpj||'';
+  document.getElementById('ec-contato').value=c.contato||'';
+  document.getElementById('ec-telefone').value=c.telefone||'';
+  document.getElementById('ec-endereco').value=c.endereco||'';
+  document.getElementById('ec-produto').value=c.produto||'';
+  document.getElementById('ec-uhs').value=c.uhs||'';
+  document.getElementById('ec-vigencia').value=c.vigencia_inicio||'';
+  document.getElementById('ec-status').value=c.status||'ativo';
+  document.getElementById('ec-observacoes').value=c.observacoes||'';
+  document.getElementById('editar-cliente-modal').style.display='flex';
+}
+
+async function salvarEdicaoCliente(){
+  const id=document.getElementById('ec-edit-id').value;
+  if(!id)return;
+  const nome=document.getElementById('ec-nome').value.trim();
+  if(!nome){alert('Nome é obrigatório.');return;}
+  const payload={
+    action:'editarCliente', id, nome,
+    cidade:document.getElementById('ec-cidade').value.trim(),
+    cnpj:document.getElementById('ec-cnpj').value.trim(),
+    contato:document.getElementById('ec-contato').value.trim(),
+    telefone:document.getElementById('ec-telefone').value.trim(),
+    endereco:document.getElementById('ec-endereco').value.trim(),
+    produto:document.getElementById('ec-produto').value,
+    uhs:document.getElementById('ec-uhs').value,
+    vigencia_inicio:document.getElementById('ec-vigencia').value,
+    status:document.getElementById('ec-status').value,
+    observacoes:document.getElementById('ec-observacoes').value.trim(),
+  };
+  document.getElementById('editar-cliente-modal').style.display='none';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await loadClientes();
+  }catch(e){alert('Erro ao salvar.');}
+}
+
 load();
 setInterval(load,60000);
 </script>
+
+<!-- MODAL EDITAR CLIENTE -->
+<div class="modal-overlay" id="editar-cliente-modal" style="display:none">
+  <div class="modal" style="max-width:580px;">
+    <h3>Editar cliente</h3>
+    <div class="modal-grid">
+      <div class="mf full"><label>Nome *</label><input type="text" id="ec-nome"></div>
+      <div class="mf"><label>Cidade</label><input type="text" id="ec-cidade"></div>
+      <div class="mf"><label>CNPJ</label><input type="text" id="ec-cnpj"></div>
+      <div class="mf"><label>Contato</label><input type="text" id="ec-contato"></div>
+      <div class="mf"><label>Telefone</label><input type="text" id="ec-telefone"></div>
+      <div class="mf full"><label>Endereço</label><input type="text" id="ec-endereco"></div>
+      <div class="mf"><label>Produto</label>
+        <select id="ec-produto">
+          <option value="">Selecione...</option>
+          <option value="HD">HD</option><option value="SD">SD</option>
+          <option value="STB">STB</option><option value="STR">STR</option>
+          <option value="OUTROS">OUTROS</option>
+        </select>
+      </div>
+      <div class="mf"><label>UHs</label><input type="number" id="ec-uhs" min="1"></div>
+      <div class="mf"><label>Vigência início</label><input type="date" id="ec-vigencia"></div>
+      <div class="mf"><label>Status</label>
+        <select id="ec-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+      <div class="mf full"><label>Observações</label><textarea id="ec-observacoes"></textarea></div>
+    </div>
+    <input type="hidden" id="ec-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('editar-cliente-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarEdicaoCliente()">Salvar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
