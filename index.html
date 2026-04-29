@@ -1012,11 +1012,57 @@ function formatDateBRCli(ds){if(!ds)return'';const s=String(ds).slice(0,10).spli
 function toggleGradePor(id){const chk=document.getElementById('cli-grade-'+id);const wrap=document.getElementById('cli-grade-por-wrap-'+id);if(wrap)wrap.style.display=chk&&chk.checked?'block':'none';}
 function renderClientes(){const list=document.getElementById('cli-list');if(!list)return;if(!clientes.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente ainda.</div>';return;}const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=clientes.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${c.id}')"><div><div class="project-name">${c.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} — ${c.produto||''} — ${c.uhs||''} UHs</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}</div>`:''}${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label><input type="text" id="cli-link-contrato-${c.id}" value="${c.link_contrato||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <div style="display:flex;gap:8px;">
+    <button onclick="abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
     <button onclick="toggleInativarCliente('${c.id}','${c.status}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${c.status==='inativo'?'var(--c-concluido)':'var(--c-pendente)'};">${c.status==='inativo'?'✓ Reativar':'⊘ Inativar'}</button>
     <button onclick="excluirCliente('${c.id}','${c.nome}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
   </div>
   <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
 </div></div></div>`;}).join('');}
+function abrirEditarCliente(id){
+  const c=clientes.find(x=>String(x.id)===String(id));
+  if(!c)return;
+  document.getElementById('ec-edit-id').value=c.id;
+  document.getElementById('ec-nome').value=c.nome||'';
+  document.getElementById('ec-cidade').value=c.cidade||'';
+  document.getElementById('ec-cnpj').value=c.cnpj||'';
+  document.getElementById('ec-contato').value=c.contato||'';
+  document.getElementById('ec-telefone').value=c.telefone||'';
+  document.getElementById('ec-endereco').value=c.endereco||'';
+  document.getElementById('ec-produto').value=c.produto||'';
+  document.getElementById('ec-uhs').value=c.uhs||'';
+  document.getElementById('ec-vigencia').value=c.vigencia_inicio||'';
+  document.getElementById('ec-status').value=c.status||'ativo';
+  document.getElementById('ec-observacoes').value=c.observacoes||'';
+  document.getElementById('editar-cliente-modal').style.display='flex';
+}
+
+async function salvarEdicaoCliente(){
+  const id=document.getElementById('ec-edit-id').value;
+  if(!id)return;
+  const nome=document.getElementById('ec-nome').value.trim();
+  if(!nome){alert('Nome é obrigatório.');return;}
+  const payload={
+    action:'editarCliente',
+    id,
+    nome,
+    cidade:document.getElementById('ec-cidade').value.trim(),
+    cnpj:document.getElementById('ec-cnpj').value.trim(),
+    contato:document.getElementById('ec-contato').value.trim(),
+    telefone:document.getElementById('ec-telefone').value.trim(),
+    endereco:document.getElementById('ec-endereco').value.trim(),
+    produto:document.getElementById('ec-produto').value,
+    uhs:document.getElementById('ec-uhs').value,
+    vigencia_inicio:document.getElementById('ec-vigencia').value,
+    status:document.getElementById('ec-status').value,
+    observacoes:document.getElementById('ec-observacoes').value.trim(),
+  };
+  document.getElementById('editar-cliente-modal').style.display='none';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await loadClientes();
+  }catch(e){alert('Erro ao salvar.');}
+}
+
 async function toggleInativarCliente(id, statusAtual){
   const novoStatus = statusAtual === 'inativo' ? 'ativo' : 'inativo';
   const acao = novoStatus === 'inativo' ? 'inativar' : 'reativar';
@@ -1536,5 +1582,44 @@ function selecionarOrcProdEl(el){
 </div>
 
 <div class="orc-no-print" style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Prateado</div>
+
+<!-- MODAL EDITAR CLIENTE -->
+<div class="modal-overlay" id="editar-cliente-modal" style="display:none">
+  <div class="modal" style="max-width:580px;max-height:92vh;overflow-y:auto;">
+    <h3>Editar cliente</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field" style="grid-column:span 2"><label>Nome *</label><input type="text" id="ec-nome" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Cidade</label><input type="text" id="ec-cidade" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="ec-cnpj" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Contato</label><input type="text" id="ec-contato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Telefone</label><input type="text" id="ec-telefone" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="ec-endereco" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Produto</label>
+        <select id="ec-produto" class="field-sel" style="width:100%;height:36px;">
+          <option value="">Selecione...</option>
+          <option value="HD">HD</option><option value="SD">SD</option>
+          <option value="STB">STB</option><option value="STR">STR</option>
+          <option value="OUTROS">OUTROS</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>UHs</label><input type="number" id="ec-uhs" min="1" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Vigência início</label><input type="date" id="ec-vigencia" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Status</label>
+        <select id="ec-status" class="field-sel" style="width:100%;height:36px;">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2"><label>Observações</label>
+        <textarea id="ec-observacoes" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:70px;"></textarea>
+      </div>
+    </div>
+    <input type="hidden" id="ec-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('editar-cliente-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarEdicaoCliente()">Salvar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
