@@ -165,7 +165,10 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
       <h2>Prospects</h2>
       <div class="page-sync" id="page-sync"></div>
     </div>
-    <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="prospects-busca" placeholder="🔍 Buscar prospect..." oninput="renderProspects()" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <button class="btn-primary" onclick="openModal()">+ Novo prospect</button>
+    </div>
   </div>
   <div style="display:flex;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;">
     <!-- Status -->
@@ -697,14 +700,17 @@ function formatDateBRCli(ds){
 function renderClientes(){
   const list = document.getElementById('cli-list');
   if(!list)return;
-  if(!clientes.length){
-    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente ainda. Os clientes aparecem aqui quando um prospect e convertido.</div>';
+  const buscaEl=document.getElementById('clientes-busca');
+  const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
+  let listaFiltrada=buscaTxt?clientes.filter(c=>(c.nome||'').toLowerCase().includes(buscaTxt)||(c.cidade||'').toLowerCase().includes(buscaTxt)):clientes;
+  if(!listaFiltrada.length){
+    list.innerHTML='<div class="empty-state" style="padding:3rem">'+(buscaTxt?'Nenhum resultado para "'+buscaTxt+'"':"Nenhum cliente ainda.")+'</div>';
     return;
   }
 
   const CAMINHO_GRADE = 'Z:\\CLIENTES\\GRADE DE CANAIS';
 
-  list.innerHTML = clientes.map(c=>{
+  list.innerHTML = listaFiltrada.map(c=>{
     const produto = (c.produto||'').toUpperCase();
     const precisaGrade = produto.includes('HD')||produto.includes('SD');
     const gradeAnexada = c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;
