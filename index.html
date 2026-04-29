@@ -459,18 +459,28 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     </div>
   </div>
   <!-- Filtros -->
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;position:relative;">
     <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
-    <select id="ata-filtro-status" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
-      <option value="">Todos os status</option>
-      <option value="feito">Feito</option>
-      <option value="em_andamento">Em andamento</option>
-      <option value="pendente">Pendente</option>
-      <option value="retornar">Retornar</option>
-      <option value="acompanhar">Acompanhar</option>
-      <option value="planejado">Planejado</option>
-      <option value="em_atraso">Em atraso</option>
-    </select>
+    <!-- Dropdown multi-select de status -->
+    <div style="position:relative;" id="ata-status-wrap">
+      <button onclick="toggleAtaStatusMenu()" id="ata-status-btn" style="height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+        <span id="ata-status-label">Ocultar: Feito</span><span>▾</span>
+      </button>
+      <div id="ata-status-menu" style="display:none;position:absolute;top:36px;left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:999;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.1);padding:6px 0;">
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()">
+          <input type="checkbox" id="ata-excluir-feito" checked onchange="renderAta()"> Ocultar registros "Feito"
+        </label>
+        <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+        <div style="padding:4px 12px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Mostrar apenas:</div>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="em_andamento" onchange="renderAta()"> Em andamento</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="pendente" onchange="renderAta()"> Pendente</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="retornar" onchange="renderAta()"> Retornar</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="acompanhar" onchange="renderAta()"> Acompanhar</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="planejado" onchange="renderAta()"> Planejado</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="em_atraso" onchange="renderAta()"> Em atraso</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="feito" onchange="renderAta()"> Feito</label>
+      </div>
+    </div>
     <select id="ata-filtro-tecnico" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
       <option value="">Todos os técnicos</option>
     </select>
@@ -1079,14 +1089,42 @@ async function loadAta(){
   }
 }
 
+function toggleAtaStatusMenu(){
+  const menu=document.getElementById('ata-status-menu');
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+// Fechar o menu ao clicar fora
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('ata-status-wrap');
+  if(wrap&&!wrap.contains(e.target)){
+    const menu=document.getElementById('ata-status-menu');
+    if(menu)menu.style.display='none';
+  }
+});
+
 function renderAta(){
   const filtroData=document.getElementById('ata-filtro-data').value;
-  const filtroStatus=document.getElementById('ata-filtro-status').value;
   const filtroTecnico=document.getElementById('ata-filtro-tecnico').value;
+  const excluirFeito=document.getElementById('ata-excluir-feito')?.checked;
+  const statusSelecionados=[...document.querySelectorAll('.ata-status-chk:checked')].map(c=>c.value);
+
+  // Atualizar label do botão
+  const btn=document.getElementById('ata-status-label');
+  if(btn){
+    if(statusSelecionados.length>0) btn.textContent='Status: '+statusSelecionados.length+' selecionado(s)';
+    else if(excluirFeito) btn.textContent='Ocultar: Feito';
+    else btn.textContent='Todos os status';
+  }
+
   let lista=ataRegistros;
-  // Bug fix: compara strings normalizadas
   if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
-  if(filtroStatus)lista=lista.filter(r=>String(r.status||'').trim()===filtroStatus);
+  // Se há status selecionados no multi-select, filtrar por eles
+  if(statusSelecionados.length>0){
+    lista=lista.filter(r=>statusSelecionados.includes(String(r.status||'').trim()));
+  } else if(excluirFeito){
+    // Padrão: ocultar feito
+    lista=lista.filter(r=>String(r.status||'').trim()!=='feito');
+  }
   if(filtroTecnico)lista=lista.filter(r=>String(r.tecnico||'').trim()===filtroTecnico);
   const tbody=document.getElementById('ata-tbody');
   if(!lista.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
@@ -1126,8 +1164,10 @@ function renderAta(){
 
 function limparFiltrosAta(){
   document.getElementById('ata-filtro-data').value='';
-  document.getElementById('ata-filtro-status').value='';
   document.getElementById('ata-filtro-tecnico').value='';
+  document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
+  const excl=document.getElementById('ata-excluir-feito');
+  if(excl)excl.checked=true; // volta ao padrão: ocultar feito
   renderAta();
 }
 
@@ -1201,20 +1241,29 @@ async function removerAta(id){
 }
 
 async function alterarAtaStatus(id, novoStatus, selEl){
-  // Atualiza visual imediatamente
   const sc=ATA_STATUS_COLOR[novoStatus]||{bg:'var(--border)',c:'var(--text-muted)'};
   selEl.style.background=sc.bg;
   selEl.style.color=sc.c;
   selEl.style.borderColor=sc.c;
-  // Atualiza local
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg.status=novoStatus;
-  // Salva no Sheet
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAtaStatus',id,status:novoStatus})});
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
     document.getElementById('ata-sync').textContent='Erro ao salvar';
+  }
+  // Se marcou como feito e o filtro padrão está ativo (ocultar feito), remove da tela
+  const excluirFeito=document.getElementById('ata-excluir-feito')?.checked;
+  const statusSelecionados=[...document.querySelectorAll('.ata-status-chk:checked')].map(c=>c.value);
+  if(novoStatus==='feito' && excluirFeito && statusSelecionados.length===0){
+    // Animar saída da linha
+    const row=selEl.closest('tr');
+    if(row){
+      row.style.transition='opacity .4s';
+      row.style.opacity='0';
+      setTimeout(()=>renderAta(), 450);
+    }
   }
 }
 
