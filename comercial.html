@@ -439,7 +439,7 @@ function render(){
       <div class="card-header">
         <div>
           <div class="card-nome">${p.nome}</div>
-          <div class="card-sub">${p.cidade||''}${p.produto?' — '+p.produto:''} ${p.uhs?'— '+p.uhs+' UHs':''}${p.vendedor?' — '+p.vendedor:''}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">📍 ${p.endereco||'—'}</div>
+          <div class="card-sub">${p.cidade||''}${p.produto?' — '+p.produto:''} ${p.uhs?'— '+p.uhs+' UHs':''}${p.vendedor?' — '+p.vendedor:''}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">📍 ${p.endereco||'—'}</div><div style="font-size:11px;color:var(--text-muted);margin-top:1px;">👤 ${p.contato||'—'}</div>
         </div>
         <div class="card-badges">
           <span class="badge ${p.status||'prospect'}">${p.status==='convertido'?'Convertido':'Prospect'}</span>
@@ -448,9 +448,9 @@ function render(){
       </div>
       <div class="card-body">
         ${p.cnpj?`<div class="card-row"><span class="card-lbl">CNPJ</span><span class="card-val">${p.cnpj}</span></div>`:''}
-        ${p.contato?`<div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato}</span></div>`:''}
-        ${p.telefone?`<div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${p.telefone}</span></div>`:''}
-        ${p.endereco?`<div class="card-row"><span class="card-lbl">Endereco</span><span class="card-val">${p.endereco}</span></div>`:''}
+        <div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato||'—'}</span></div>
+        <div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${p.telefone||'—'}</span></div>
+        <div class="card-row"><span class="card-lbl">Endereço</span><span class="card-val">${p.endereco||'—'}</span></div>
         <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' canais)':''}</span></div>
         <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
         ${p.prazo?`<div class="card-row"><span class="card-lbl">Prazo inst.</span><span class="card-val">${formatDateBR(p.prazo)}</span></div>`:''}
@@ -524,7 +524,10 @@ async function salvar(){
   const produto=document.getElementById('m-produto').value;
   const vendedor=document.getElementById('m-vendedor').value;
   const prioridade=document.getElementById('m-prioridade').value;
-  if(!nome||!cidade||!uhs||!produto||!vendedor||!prioridade){alert('Preencha os campos obrigatorios (*)');return;}
+  const contato_val=document.getElementById('m-contato-nome').value.trim();
+  const telefone_val=document.getElementById('m-telefone').value.trim();
+  const endereco_val=document.getElementById('m-endereco').value.trim();
+  if(!nome||!cidade||!uhs||!produto||!vendedor||!prioridade||!contato_val||!telefone_val||!endereco_val){alert('Preencha todos os campos obrigatórios (*): Nome, Cidade, Contato, Telefone, Endereço, Produto, UHs, Vendedor e Prioridade');return;}
   const editId=document.getElementById('m-edit-id').value;
   const payload={
     nome,cidade,
@@ -721,6 +724,7 @@ function renderClientes(){
           <div class="project-name">${c.nome}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} &mdash; ${c.produto||''} &mdash; ${c.uhs||''} UHs</div>
           <div style="font-size:11px;color:#bbb;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 ${c.endereco||'—'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">👤 ${c.contato||'—'}${c.telefone?' — '+c.telefone:''}</div>
         </div>
         <div class="project-meta">
           <span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>
