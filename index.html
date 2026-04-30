@@ -1487,7 +1487,14 @@ function initOrcamento(){
 function fmtBRL(v){return'R$ '+(+v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function buildOrcTables(){
   const tb=document.getElementById('orc-custos-tbody');
-  tb.innerHTML=ORC_CUSTOS.map((c,i)=>`<tr><td style="border:1px solid #ccc;padding:3px 6px;">${c.desc?`<span style="font-size:11px">${c.desc}</span>`:`<input type="text" id="orc-c-desc-${i}" placeholder="Descrição" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;">`}</td><td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-c-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-c-val-${i}" value="${c.valor||''}" min="0" step="0.01" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td><td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-c-tot-${i}">R$ 0,00</td><td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-c-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td></tr>`).join('');
+  tb.innerHTML=ORC_CUSTOS.map((c,i)=>`<tr id="orc-custo-row-${i}">
+    <td style="border:1px solid #ccc;padding:3px 6px;">${c.desc?`<span style="font-size:11px">${c.desc}</span>`:`<input type="text" id="orc-c-desc-${i}" placeholder="Descrição" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;">`}</td>
+    <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-c-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
+    <td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-c-val-${i}" value="${c.valor||''}" min="0" step="0.01" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td>
+    <td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-c-tot-${i}">R$ 0,00</td>
+    <td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-c-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td>
+    <td style="border:none;padding:2px 2px;width:20px;" class="orc-no-print"><button onclick="limparLinhaOrc('c',${i})" title="Limpar linha" style="border:none;background:none;cursor:pointer;color:#ccc;font-size:14px;line-height:1;padding:0;">✕</button></td>
+  </tr>`).join('');
   renderOrcMatRows();
 }
 function renderOrcMatRows(){
