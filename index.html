@@ -814,7 +814,25 @@ function renderPipeline(){
     const cs=proj.steps.find(s=>!s.done);
     const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluido';
     const concluido=pct===100;
-    const sh=STEPS.map(s=>{
+    const produtoInfo=(proj.produto==='HD'||proj.produto==='SD')?`
+  <div class="step-card" style="border-color:var(--c-previsto)">
+    <div class="step-number">Dados do projeto</div>
+    <div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>
+    <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${proj.endereco||'—'}</div>
+    <div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;">
+      <b style="white-space:nowrap">Qtd. canais:</b>
+      <input type="number" min="0" placeholder="Ex: 15"
+        value="${proj.canais||''}"
+        onchange="salvarCanaisPipeline('${proj.id}',this.value)"
+        style="width:70px;height:26px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Mono',monospace;outline:none;">
+    </div>
+  </div>`:proj.produto?`
+  <div class="step-card" style="border-color:var(--c-previsto)">
+    <div class="step-number">Dados do projeto</div>
+    <div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>
+    <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${proj.endereco||'—'}</div>
+  </div>`:'';
+const sh=STEPS.map(s=>{
       const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
       const ia=!ps.done&&cs&&cs.id===s.id;
       const ir=s.remote&&proj.uhs<50;
@@ -840,6 +858,24 @@ async function deleteProject(id){
   projects=projects.filter(p=>p.id!==id);renderPipeline();
   await deletePipelineProject(id);
 }
+async function salvarCanaisPipeline(projId, valor){
+  const proj=projects.find(p=>p.id===projId);
+  if(!proj)return;
+  proj.canais=valor;
+  document.getElementById('pipeline-sync').textContent='Salvando canais...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      action:'savePipeline',id:proj.id,nome:proj.nome,uhs:proj.uhs,
+      inicio:proj.inicio,steps:proj.steps,canais:valor,
+      cidade:proj.cidade||'',cnpj:proj.cnpj||'',contato:proj.contato||'',
+      telefone:proj.telefone||'',endereco:proj.endereco||'',
+      produto:proj.produto||'',conteudo_online:proj.conteudo_online||''
+    })});
+    document.getElementById('pipeline-sync').textContent='Canais salvos - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderPipeline();
+  }catch(e){document.getElementById('pipeline-sync').textContent='Erro ao salvar';}
+}
+
 function schedSave(proj){document.getElementById('pipeline-sync').textContent='Salvando...';clearTimeout(saveTimer);saveTimer=setTimeout(()=>savePipelineProject(proj),1500);}
 function toggleStep(projId,stepId){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
