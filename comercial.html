@@ -607,11 +607,11 @@ async function confirmarVistoria(){
       vistoriaId:uid(),
       nomeCliente:p.nome,
       cidade:p.cidade||'',
-      produto:p.produto||'',
+      produto:produto||p.produto||'',
       uhs:p.uhs||'',
       contato:p.contato||'',
       telefone:p.telefone||'',
-      endereco:p.endereco||'',
+      endereco:endereco||p.endereco||'',
       observacoes:obs
     })});
     await load();
