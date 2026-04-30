@@ -401,7 +401,8 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="cm-nome" placeholder="Ex: Hotel Beira Mar"></div>
       <div class="modal-field"><label>Cidade *</label><input type="text" id="cm-cidade" placeholder="Ex: Recife"></div>
       <div class="modal-field"><label>CNPJ</label><input type="text" id="cm-cnpj" placeholder="00.000.000/0000-00"></div>
-      <div class="modal-field" style="grid-column:span 2"><label>Contato</label><input type="text" id="cm-contato" placeholder="Ex: Joao Silva - (81) 99999-9999"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Contato (nome e telefone) *</label><input type="text" id="cm-contato" placeholder="Ex: João Silva - (81) 99999-9999"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Endereço completo *</label><input type="text" id="cm-endereco" placeholder="Rua, número, bairro, cidade, UF"></div>
       <div class="modal-field"><label>Produto *</label>
         <select class="field-sel" id="cm-produto" onchange="toggleCmProduto()">
           <option value="">Selecione...</option>
@@ -1029,7 +1030,8 @@ async function salvarCom(){
   const uhs=document.getElementById('cm-uhs').value;
   const produto=document.getElementById('cm-produto').value;
   const endCom=document.getElementById('cm-endereco')?.value.trim();
-  if(!nome||!cidade||!uhs||!produto||!endCom){alert('Preencha os campos obrigatorios (*): Nome, Cidade, Endereço, Produto e UHs');return;}
+  const contatoCom=document.getElementById('cm-contato')?.value.trim();
+  if(!nome||!cidade||!uhs||!produto||!endCom||!contatoCom){alert('Preencha todos os campos obrigatórios (*): Nome, Cidade, Endereço, Contato, Produto e UHs');return;}
   const editId=document.getElementById('cm-edit-id').value;
   const payload={nome,cidade,cnpj:document.getElementById('cm-cnpj').value.trim(),contato:document.getElementById('cm-contato').value.trim(),produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('cm-produto-outro').value.trim():produto,conteudo_online:document.getElementById('cm-conteudo').value,conteudo_detalhe:document.getElementById('cm-conteudo-detalhe').value.trim(),uhs:parseInt(uhs)||0};
   closeComModal();
@@ -1110,7 +1112,9 @@ async function salvarEdicaoCliente(){
   if(!id)return;
   const nome=document.getElementById('ec-nome').value.trim();
   const endEdit=document.getElementById('ec-endereco').value.trim();
-  if(!nome||!endEdit){alert('Nome e Endereço são obrigatórios.');return;}
+  const contatoEdit=document.getElementById('ec-contato').value.trim();
+  const telefoneEdit=document.getElementById('ec-telefone').value.trim();
+  if(!nome||!endEdit||!contatoEdit||!telefoneEdit){alert('Nome, Endereço, Contato e Telefone são obrigatórios.');return;}
   const payload={
     action:'editarCliente',
     id,
@@ -1154,7 +1158,9 @@ async function excluirCliente(id, nome){
 function openNovoClienteModal(){['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('nc-produto').value='';document.getElementById('nc-status').value='ativo';document.getElementById('nc-vigencia').value=todayStr;document.getElementById('novo-cliente-modal').style.display='flex';}
 function closeNovoClienteModal(){document.getElementById('novo-cliente-modal').style.display='none';}
 async function criarClienteAvulso(){const nome=document.getElementById('nc-nome').value.trim();const cidade=document.getElementById('nc-cidade').value.trim();const produto=document.getElementById('nc-produto').value;const uhs=document.getElementById('nc-uhs').value;const vigencia=document.getElementById('nc-vigencia').value;const responsavel=document.getElementById('nc-responsavel').value.trim();const motivo=document.getElementById('nc-motivo').value.trim();const endereco_val=document.getElementById('nc-endereco').value.trim();
-  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val){alert('Preencha todos os campos obrigatorios (*)');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
+  const contato_val=document.getElementById('nc-contato').value.trim();
+  const telefone_val=document.getElementById('nc-telefone').value.trim();
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val||!contato_val||!telefone_val){alert('Preencha todos os campos obrigatórios (*)');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
 
 // ===================== CRONOGRAMA =====================
 let cronogramas=[],cronSaveTimer=null;
@@ -1571,8 +1577,8 @@ function selecionarOrcProdEl(el){
       <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="nc-nome" placeholder="Ex: Hotel Beira Mar"></div>
       <div class="modal-field"><label>Cidade *</label><input type="text" id="nc-cidade" placeholder="Ex: Recife"></div>
       <div class="modal-field"><label>CNPJ</label><input type="text" id="nc-cnpj" placeholder="00.000.000/0000-00"></div>
-      <div class="modal-field"><label>Contato</label><input type="text" id="nc-contato" placeholder="Nome do contato"></div>
-      <div class="modal-field"><label>Telefone</label><input type="text" id="nc-telefone" placeholder="(00) 00000-0000"></div>
+      <div class="modal-field"><label>Contato (nome) *</label><input type="text" id="nc-contato" placeholder="Nome do contato"></div>
+      <div class="modal-field"><label>Telefone *</label><input type="text" id="nc-telefone" placeholder="(00) 00000-0000"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço *</label><input type="text" id="nc-endereco" placeholder="Rua, número, cidade"></div>
       <div class="modal-field"><label>Produto *</label>
         <select class="field-sel" id="nc-produto"><option value="">Selecione...</option><option value="HD">HD</option><option value="SD">SD</option><option value="STB">STB</option><option value="STR">STR</option><option value="OUTROS">OUTROS</option></select>
@@ -1668,8 +1674,8 @@ function selecionarOrcProdEl(el){
       <div class="modal-field" style="grid-column:span 2"><label>Nome *</label><input type="text" id="ec-nome" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Cidade</label><input type="text" id="ec-cidade" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>CNPJ</label><input type="text" id="ec-cnpj" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
-      <div class="modal-field"><label>Contato</label><input type="text" id="ec-contato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
-      <div class="modal-field"><label>Telefone</label><input type="text" id="ec-telefone" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Contato (nome) *</label><input type="text" id="ec-contato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>Telefone *</label><input type="text" id="ec-telefone" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="ec-endereco" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Produto</label>
         <select id="ec-produto" class="field-sel" style="width:100%;height:36px;">
