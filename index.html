@@ -1509,15 +1509,21 @@ function adicionarLinhaMat(){orcMatLinhas++;renderOrcMatRows();}
 
 function limparLinhaOrc(tipo, idx){
   if(tipo==='m'){
+    const row=document.getElementById('orc-mat-row-'+idx);
+    if(row)row.style.display='none';
+    // Zerar valores para não entrar no cálculo
     const desc=document.getElementById('orc-m-desc-'+idx);
     const qtd=document.getElementById('orc-m-qtd-'+idx);
     const val=document.getElementById('orc-m-val-'+idx);
     const obs=document.getElementById('orc-m-obs-'+idx);
     if(desc)desc.value='';if(qtd)qtd.value='';if(val)val.value='';if(obs)obs.value='';
   } else {
+    const row=document.getElementById('orc-custo-row-'+idx);
+    if(row)row.style.display='none';
     const qtd=document.getElementById('orc-c-qtd-'+idx);
+    const val=document.getElementById('orc-c-val-'+idx);
     const obs=document.getElementById('orc-c-obs-'+idx);
-    if(qtd)qtd.value='';if(obs)obs.value='';
+    if(qtd)qtd.value='';if(val)val.value='';if(obs)obs.value='';
   }
   calcOrcamento();
 }
