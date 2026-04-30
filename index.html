@@ -1125,6 +1125,12 @@ function renderClientes(){
   </div>
   <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
 </div></div></div>`;}).join('');}
+function toggleEcCanais(){
+  const prod=document.getElementById('ec-produto').value;
+  const wrap=document.getElementById('ec-canais-wrap');
+  if(wrap)wrap.style.display=(prod==='HD'||prod==='SD')?'block':'none';
+}
+
 function abrirEditarCliente(id){
   const c=clientes.find(x=>String(x.id)===String(id));
   if(!c)return;
@@ -1137,9 +1143,11 @@ function abrirEditarCliente(id){
   document.getElementById('ec-endereco').value=c.endereco||'';
   document.getElementById('ec-produto').value=c.produto||'';
   document.getElementById('ec-uhs').value=c.uhs||'';
+  document.getElementById('ec-canais').value=c.canais||'';
   document.getElementById('ec-vigencia').value=c.vigencia_inicio||'';
   document.getElementById('ec-status').value=c.status||'ativo';
   document.getElementById('ec-observacoes').value=c.observacoes||'';
+  toggleEcCanais();
   document.getElementById('editar-cliente-modal').style.display='flex';
 }
 
@@ -1162,6 +1170,7 @@ async function salvarEdicaoCliente(){
     endereco:document.getElementById('ec-endereco').value.trim(),
     produto:document.getElementById('ec-produto').value,
     uhs:document.getElementById('ec-uhs').value,
+    canais:document.getElementById('ec-canais')?.value||'',
     vigencia_inicio:document.getElementById('ec-vigencia').value,
     status:document.getElementById('ec-status').value,
     observacoes:document.getElementById('ec-observacoes').value.trim(),
@@ -1732,7 +1741,7 @@ function selecionarOrcProdEl(el){
       <div class="modal-field"><label>Telefone *</label><input type="text" id="ec-telefone" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="ec-endereco" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Produto</label>
-        <select id="ec-produto" class="field-sel" style="width:100%;height:36px;">
+        <select id="ec-produto" class="field-sel" style="width:100%;height:36px;" onchange="toggleEcCanais()">
           <option value="">Selecione...</option>
           <option value="HD">HD</option><option value="SD">SD</option>
           <option value="STB">STB</option><option value="STR">STR</option>
@@ -1740,6 +1749,7 @@ function selecionarOrcProdEl(el){
         </select>
       </div>
       <div class="modal-field"><label>UHs</label><input type="number" id="ec-uhs" min="1" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field" id="ec-canais-wrap" style="display:none"><label>Qtd. de canais</label><input type="number" id="ec-canais" min="1" placeholder="Ex: 15" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Vigência início</label><input type="date" id="ec-vigencia" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Status</label>
         <select id="ec-status" class="field-sel" style="width:100%;height:36px;">
