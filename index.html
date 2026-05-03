@@ -224,10 +224,26 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .survey-submit:disabled{opacity:.4;cursor:not-allowed;}
 /* Print */
 @media print{
+  @page{
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
   header,.main-tabs,#page-pipeline,#page-vistoria,#page-agenda,#page-dashboard,#page-comercial,#page-clientes,#page-cronograma,#page-ata,.orc-toolbar,.survey-overlay,.orc-no-print{display:none!important;}
   #page-orcamento{display:block!important;max-width:100%!important;padding:0!important;}
-  body{background:#fff!important;}
-  input,textarea,select{border:none!important;outline:none!important;}
+  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  input,textarea,select{border:none!important;outline:none!important;background:transparent!important;}
+  #orc-print-area{
+    border:none!important;box-shadow:none!important;padding:0!important;
+    font-size:9px!important;line-height:1.3!important;
+  }
+  #orc-print-area table{font-size:9px!important;margin-bottom:4px!important;}
+  #orc-print-area td,#orc-print-area th{padding:2px 4px!important;}
+  #orc-print-area input,#orc-print-area textarea,#orc-print-area select{font-size:9px!important;}
+  #orc-print-area textarea{min-height:20px!important;}
+  #orc-print-area img{height:28px!important;}
+  /* Tentar caber em uma página */
+  html,body{height:auto!important;}
+  #orc-print-area{page-break-inside:avoid;break-inside:avoid;}
 }
 /* Scroll horizontal da Ata */
 #page-ata .ata-table-wrap::-webkit-scrollbar{height:6px;}
@@ -462,6 +478,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   </div>
   <!-- Filtros -->
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;position:relative;">
+    <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
     <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
     <!-- Dropdown multi-select de status -->
     <div style="position:relative;" id="ata-status-wrap">
@@ -557,10 +574,12 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <button onclick="exportarOrcamentoPDF()" style="height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;">⬇ Exportar PDF</button>
     </div>
   </div>
-  <div id="orc-print-area" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:32px;font-family:Arial,sans-serif;font-size:12px;color:#111;max-width:820px;margin:0 auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="font-size:22px;font-weight:900;letter-spacing:-1px;">Blincast</div>
-      <div style="font-size:14px;font-weight:700;">ORÇAMENTO DE SERVIÇOS OPERACIONAIS</div>
+  <div id="orc-print-area" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;font-family:Arial,sans-serif;font-size:11px;color:#111;max-width:820px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:3px solid #111;">
+      <img src="data:image/png;base64,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" style="height:36px;object-fit:contain;" alt="Blincast">
+      <div style="text-align:right;">
+        <div style="font-size:12px;font-weight:800;color:#111;letter-spacing:1px;">ORÇAMENTO DE SERVIÇOS OPERACIONAIS</div>
+      </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;width:180px;white-space:nowrap">NOME DO CLIENTE:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-cliente" type="text" placeholder="Nome do cliente" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
@@ -1271,6 +1290,7 @@ document.addEventListener('click',function(e){
 });
 
 function renderAta(){
+  const filtroCliente=document.getElementById('ata-filtro-cliente')?.value.trim().toLowerCase()||'';
   const filtroData=document.getElementById('ata-filtro-data').value;
   const filtroTecnico=document.getElementById('ata-filtro-tecnico').value;
   const excluirFeito=document.getElementById('ata-excluir-feito')?.checked;
@@ -1290,6 +1310,7 @@ function renderAta(){
     const db=String(b.data||'').trim();
     return da.localeCompare(db);
   });
+  if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
   if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
   // Se há status selecionados no multi-select, filtrar por eles
   if(statusSelecionados.length>0){
@@ -1336,6 +1357,7 @@ function renderAta(){
 }
 
 function limparFiltrosAta(){
+  const fc=document.getElementById('ata-filtro-cliente');if(fc)fc.value='';
   document.getElementById('ata-filtro-data').value='';
   document.getElementById('ata-filtro-tecnico').value='';
   document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
@@ -1551,6 +1573,11 @@ function exportarOrcamentoPDF(){
   const nomeCliente=document.getElementById('orc-cliente')?.value.trim()||'';
   const nomeArquivo='Orçamento Blincast 2026'+(nomeCliente?' - '+nomeCliente:'');
   document.title=nomeArquivo;
+  // Injetar CSS para suprimir header/footer do browser (URL e título)
+  const styleId='print-suppress';
+  let styleEl=document.getElementById(styleId);
+  if(!styleEl){styleEl=document.createElement('style');styleEl.id=styleId;document.head.appendChild(styleEl);}
+  styleEl.textContent='@page{margin:10mm 12mm!important;}@media print{html{-webkit-print-color-adjust:exact;}}';
   const area=document.getElementById('orc-print-area');
   const inputs=area.querySelectorAll('input,textarea,select');
   const spans=[];
