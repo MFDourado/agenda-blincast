@@ -2015,6 +2015,7 @@ function iniciarApp(){
         document.getElementById('login-overlay').style.display='none';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
+        apiGet();setInterval(apiGet,30000);loadPipeline();
         return;
       }
     }
