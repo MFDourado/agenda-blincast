@@ -1180,11 +1180,14 @@ function renderCronogramas(){
 
 
 function switchComTab(t){
-  ['prospects','clientes'].forEach(tab=>{
-    document.getElementById('ct-'+tab).className='com-tab'+(t===tab?' active':'');
-    document.getElementById('com-page-'+tab).style.display=t===tab?'':'none';
+  ['prospects','clientes','poc'].forEach(tab=>{
+    const btn=document.getElementById('ct-'+tab);
+    const pg=document.getElementById('com-page-'+tab);
+    if(btn) btn.className='com-tab'+(t===tab?' active':'');
+    if(pg) pg.style.display=t===tab?'block':'none';
   });
   if(t==='clientes') loadClientes();
+  if(t==='poc') loadPocComercial();
 }
 
 
