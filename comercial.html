@@ -1359,6 +1359,7 @@ function renderPocComercial(){
           <button onclick="event.stopPropagation();editarPoc('${p.id}')" class="proj-btn">✎ Editar</button>
           <button onclick="event.stopPropagation();exportarTermoPoc('${p.id}')" style="padding:5px 14px;border:1px solid var(--black);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--black);color:var(--gold);">⬇ Exportar Termo</button>
           <button onclick="event.stopPropagation();cancelarPoc('${p.id}')" class="proj-btn danger">⊘ Cancelar PoC</button>
+          <button onclick="event.stopPropagation();deletarPoc('${p.id}','${p.prospect_nome}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
         </div>
       </div>
     </div>`;
@@ -1478,6 +1479,14 @@ async function cancelarPoc(id){
     await fetch(API,{method:'POST',body:JSON.stringify({...p,action:'updatePoc',id,status:'cancelado'})});
     await loadPocComercial();
   }catch(e){alert('Erro ao cancelar.');}
+}
+
+async function deletarPoc(id, nome){
+  if(!confirm('Excluir permanentemente a PoC de "'+nome+'"? Esta ação não pode ser desfeita.'))return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePoc',id})});
+    await loadPocComercial();
+  }catch(e){alert('Erro ao excluir PoC.');}
 }
 
 function exportarTermoPoc(id){
