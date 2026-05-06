@@ -144,6 +144,26 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 .c-andamento{color:#0F6E56;} .c-pendente{color:#B86A00;}
 .progress-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
 .progress-bar-fill{height:100%;background:#0F6E56;border-radius:2px;transition:width .3s;}
+
+#login-overlay{position:fixed;inset:0;background:#111;display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.login-logo{text-align:center;margin-bottom:1.5rem;}
+.login-logo img{height:40px;object-fit:contain;}
+.login-title{font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px;}
+.login-sub{font-size:12px;color:#555;text-align:center;margin-bottom:1.5rem;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.login-field input{width:100%;height:42px;background:#111;border:1px solid #333;border-radius:8px;padding:0 14px;font-size:14px;font-family:"DM Sans",sans-serif;color:#fff;outline:none;transition:border-color .15s;box-sizing:border-box;}
+.login-field input:focus{border-color:#F5B800;}
+.login-btn{width:100%;height:42px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:14px;font-family:"DM Sans",sans-serif;font-weight:600;cursor:pointer;margin-top:6px;transition:opacity .15s;}
+.login-btn:hover{opacity:.88;}
+.login-btn:disabled{opacity:.4;cursor:not-allowed;}
+.login-error{font-size:12px;color:#e74c3c;text-align:center;margin-top:10px;min-height:18px;}
+.login-forgot{font-size:12px;color:#555;text-align:center;margin-top:14px;}
+.login-forgot a{color:#888;cursor:pointer;text-decoration:underline;}
+.login-forgot a:hover{color:#F5B800;}
+.login-user-badge{position:fixed;bottom:12px;left:16px;font-size:11px;font-family:"DM Mono",monospace;color:#444;z-index:100;}
+
 </style>
 </head>
 <body>
@@ -157,6 +177,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 <div style="display:flex;background:var(--black);border-top:1px solid #1e1e1e;padding:0 2rem;">
   <button class="com-tab active" id="ct-prospects" onclick="switchComTab('prospects')">Prospects</button>
   <button class="com-tab" id="ct-clientes" onclick="switchComTab('clientes')">Clientes</button>
+  <button class="com-tab" id="ct-poc" onclick="switchComTab('poc')">PoC</button>
 </div>
 <div id="com-page-prospects">
 <div class="main">
@@ -1240,6 +1261,338 @@ async function salvarEdicaoCliente(){
 
 load();
 setInterval(load,60000);
+
+// ===================== PoC COMERCIAL =====================
+let pocComercial = [];
+
+async function loadPocComercial(){
+  document.getElementById('poc-com-sync').textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getPoc');
+    const d=await r.json();
+    pocComercial=Array.isArray(d)?d:[];
+    document.getElementById('poc-com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderPocComercial();
+  }catch(e){document.getElementById('poc-com-sync').textContent='Erro de conexao';}
+}
+
+function renderPocComercial(){
+  const busca=(document.getElementById('poc-com-busca')?.value||'').toLowerCase();
+  let lista=busca?pocComercial.filter(p=>(p.prospect_nome||'').toLowerCase().includes(busca)):pocComercial;
+  const el=document.getElementById('poc-com-list');
+  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma PoC registrada.</div>';return;}
+  el.innerHTML=lista.map(p=>{
+    const diasEnvio=p.data_envio?Math.floor((new Date()-new Date(p.data_envio))/(1000*60*60*24)):null;
+    const alerta=diasEnvio!==null&&diasEnvio>=30;
+    return `<div class="project-card" style="${alerta?'border-color:var(--c-atrasado)':''}">
+      <div class="project-card-header" onclick="togglePocCard('${p.id}')">
+        <div>
+          <div class="project-name">${p.prospect_nome||'—'}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+            ${p.equipamento||'—'} | Vendedor: ${p.vendedor||'—'}
+          </div>
+          <div style="font-size:11px;color:#bbb;margin-top:1px">📍 ${p.endereco||'—'}</div>
+        </div>
+        <div class="project-meta">
+          ${alerta?'<span class="badge atrasado">⚠ +30 dias</span>':
+            (diasEnvio!==null?`<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--c-concluido-bg);color:var(--c-concluido)">${diasEnvio}d</span>`:'')}
+          ${p.data_envio?`<span style="font-size:11px;color:var(--text-muted)">Envio: ${p.data_envio}</span>`:''}
+          <span class="chevron" id="poc-chev-${p.id}">▼</span>
+        </div>
+      </div>
+      <div class="project-body" id="poc-body-${p.id}" style="display:none">
+        <div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+          <div class="step-card done">
+            <div class="step-number">Dados</div>
+            <div style="font-size:12px;margin-top:4px"><b>Equipamento:</b> ${p.equipamento}</div>
+            <div style="font-size:12px;margin-top:2px"><b>Telefone:</b> ${p.telefone||'—'}</div>
+            ${p.conteudo_online==='Sim'?`<div style="font-size:12px;margin-top:2px"><b>Conteúdo:</b> ${p.conteudo_detalhe||'Sim'}</div>`:''}
+          </div>
+          <div class="step-card">
+            <div class="step-number">Datas</div>
+            <div style="font-size:12px;margin-top:4px"><b>Envio:</b> ${p.data_envio||'—'}</div>
+            <div style="font-size:12px;margin-top:2px"><b>Retorno:</b> ${p.prazo_retorno||'—'}</div>
+            ${diasEnvio!==null?`<div style="font-size:12px;margin-top:2px;color:${alerta?'var(--c-atrasado)':'var(--c-concluido)'};font-weight:500">${diasEnvio} dias desde envio</div>`:''}
+          </div>
+          <div class="step-card">
+            <div class="step-number">Instalação</div>
+            <div style="font-size:12px;margin-top:4px"><b>Tipo:</b> ${p.tipo_instalacao||'—'}</div>
+            <div style="font-size:12px;margin-top:2px"><b>TVs:</b> ${p.qtd_tvs||'—'} | Android: ${p.android||'—'}</div>
+            <div style="font-size:12px;margin-top:2px"><b>Conexão:</b> ${p.conexao||'—'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);">
+          <button onclick="event.stopPropagation();editarPoc('${p.id}')" class="proj-btn">✎ Editar</button>
+          <button onclick="event.stopPropagation();exportarTermoPoc('${p.id}')" style="padding:5px 14px;border:1px solid var(--black);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--black);color:var(--gold);">⬇ Exportar Termo</button>
+          <button onclick="event.stopPropagation();cancelarPoc('${p.id}')" class="proj-btn danger">⊘ Cancelar PoC</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togglePocCard(id){
+  const el=document.getElementById('poc-body-'+id);
+  const chev=document.getElementById('poc-chev-'+id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  chev.className='chevron'+(open?'':' open');
+}
+
+function togglePocConteudo(){
+  const v=document.getElementById('poc-conteudo').value;
+  document.getElementById('poc-conteudo-detalhe-wrap').style.display=v==='Sim'?'block':'none';
+}
+
+function openPocModal(){
+  ['poc-prospect','poc-endereco','poc-telefone','poc-conteudo-detalhe','poc-qtd-tvs','poc-rack-canais','poc-gestao-wifi'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  ['poc-data-envio','poc-prazo-retorno'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('poc-equipamento').value='';
+  document.getElementById('poc-conteudo').value='Nao';
+  document.getElementById('poc-conteudo-detalhe-wrap').style.display='none';
+  document.getElementById('poc-tipo-instalacao').value='';
+  document.getElementById('poc-android').value='';
+  document.getElementById('poc-conexao').value='';
+  document.getElementById('poc-rack-existente').value='Nao possui';
+  document.getElementById('poc-rack-instalar').value='Nao sera instalado';
+  document.getElementById('poc-reset-checkin').checked=false;
+  document.getElementById('poc-edit-id').value='';
+  // Popular vendedores
+  const selV=document.getElementById('poc-vendedor');
+  const vendedores=[...new Set(prospects.map(p=>p.vendedor).filter(Boolean))].sort();
+  selV.innerHTML='<option value="">Selecione...</option>'+vendedores.map(v=>`<option value="${v}">${v}</option>`).join('');
+  document.getElementById('poc-modal-title').textContent='Nova PoC';
+  document.getElementById('poc-modal').style.display='flex';
+}
+
+function closePocModal(){document.getElementById('poc-modal').style.display='none';}
+
+function editarPoc(id){
+  const p=pocComercial.find(x=>String(x.id)===String(id));if(!p)return;
+  document.getElementById('poc-edit-id').value=p.id;
+  document.getElementById('poc-prospect').value=p.prospect_nome||'';
+  document.getElementById('poc-endereco').value=p.endereco||'';
+  document.getElementById('poc-equipamento').value=p.equipamento||'';
+  document.getElementById('poc-telefone').value=p.telefone||'';
+  document.getElementById('poc-data-envio').value=p.data_envio||'';
+  document.getElementById('poc-prazo-retorno').value=p.prazo_retorno||'';
+  document.getElementById('poc-conteudo').value=p.conteudo_online||'Nao';
+  document.getElementById('poc-conteudo-detalhe').value=p.conteudo_detalhe||'';
+  document.getElementById('poc-conteudo-detalhe-wrap').style.display=p.conteudo_online==='Sim'?'block':'none';
+  document.getElementById('poc-tipo-instalacao').value=p.tipo_instalacao||'';
+  document.getElementById('poc-android').value=p.android||'';
+  document.getElementById('poc-qtd-tvs').value=p.qtd_tvs||'';
+  document.getElementById('poc-conexao').value=p.conexao||'';
+  document.getElementById('poc-rack-existente').value=p.rack_existente||'Nao possui';
+  document.getElementById('poc-rack-canais').value=p.rack_canais||'';
+  document.getElementById('poc-rack-instalar').value=p.rack_instalar||'Nao sera instalado';
+  document.getElementById('poc-gestao-wifi').value=p.gestao_wifi||'';
+  document.getElementById('poc-reset-checkin').checked=p.reset_checkin===true||p.reset_checkin==='TRUE';
+  // Popular vendedores
+  const selV=document.getElementById('poc-vendedor');
+  const vendedores=[...new Set(prospects.map(q=>q.vendedor).filter(Boolean))].sort();
+  selV.innerHTML='<option value="">Selecione...</option>'+vendedores.map(v=>`<option value="${v}" ${v===p.vendedor?'selected':''}>${v}</option>`).join('');
+  document.getElementById('poc-modal-title').textContent='Editar PoC';
+  document.getElementById('poc-modal').style.display='flex';
+}
+
+async function salvarPoc(){
+  const prospect=document.getElementById('poc-prospect').value.trim();
+  const endereco=document.getElementById('poc-endereco').value.trim();
+  const equipamento=document.getElementById('poc-equipamento').value;
+  const telefone=document.getElementById('poc-telefone').value.trim();
+  const dataEnvio=document.getElementById('poc-data-envio').value;
+  const prazoRetorno=document.getElementById('poc-prazo-retorno').value;
+  const vendedor=document.getElementById('poc-vendedor').value;
+  const tipoInst=document.getElementById('poc-tipo-instalacao').value;
+  const android=document.getElementById('poc-android').value;
+  const qtdTvs=document.getElementById('poc-qtd-tvs').value;
+  const conexao=document.getElementById('poc-conexao').value;
+  if(!prospect||!endereco||!equipamento||!telefone||!dataEnvio||!prazoRetorno||!vendedor||!tipoInst||!android||!qtdTvs||!conexao){
+    alert('Preencha todos os campos obrigatórios (*).');return;
+  }
+  const editId=document.getElementById('poc-edit-id').value;
+  const payload={
+    action:editId?'updatePoc':'addPoc',
+    id:editId||uid(),
+    prospect_nome:prospect, endereco, equipamento, telefone,
+    data_envio:dataEnvio, prazo_retorno:prazoRetorno, vendedor,
+    conteudo_online:document.getElementById('poc-conteudo').value,
+    conteudo_detalhe:document.getElementById('poc-conteudo-detalhe').value.trim(),
+    tipo_instalacao:tipoInst, android, qtd_tvs:qtdTvs, conexao,
+    rack_existente:document.getElementById('poc-rack-existente').value,
+    rack_canais:document.getElementById('poc-rack-canais').value,
+    rack_instalar:document.getElementById('poc-rack-instalar').value,
+    gestao_wifi:document.getElementById('poc-gestao-wifi').value.trim(),
+    reset_checkin:document.getElementById('poc-reset-checkin').checked,
+    status:'ativo'
+  };
+  closePocModal();
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await loadPocComercial();
+  }catch(e){alert('Erro ao salvar PoC.');}
+}
+
+async function cancelarPoc(id){
+  if(!confirm('Cancelar esta PoC?'))return;
+  const p=pocComercial.find(x=>String(x.id)===String(id));if(!p)return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({...p,action:'updatePoc',id,status:'cancelado'})});
+    await loadPocComercial();
+  }catch(e){alert('Erro ao cancelar.');}
+}
+
+function exportarTermoPoc(id){
+  const p=pocComercial.find(x=>String(x.id)===String(id));if(!p)return;
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  // Gerar termo como HTML para impressão
+  const termoHtml=`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:20mm;}
+h1{font-size:14px;text-align:center;font-weight:bold;}
+h2{font-size:12px;margin-top:16px;}
+p{margin:6px 0;line-height:1.6;}
+.campo{border-bottom:1px solid #000;display:inline-block;min-width:200px;}
+.logo{height:36px;margin-bottom:10px;}
+.assinaturas{margin-top:40px;display:flex;justify-content:space-between;}
+.ass-bloco{text-align:center;width:45%;}
+.ass-linha{border-top:1px solid #000;margin-top:40px;padding-top:4px;}
+table{width:100%;border-collapse:collapse;margin:10px 0;}
+td{padding:4px 6px;border:1px solid #ccc;font-size:10px;}
+</style></head><body>
+<div style="text-align:center;margin-bottom:16px;">
+  <img src="data:image/png;base64,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" class="logo" alt="Blincast">
+  <h1>TERMO DE PROVA DE CONCEITO (PoC)</h1>
+</div>
+<p>Por este instrumento,</p>
+<p><b>BLINCAST MEDIA S.A.</b>, pessoa jurídica de direito privado, com sede na Rua Jardim Botânico, 518, 4º andar, Jardim Botânico, Rio de Janeiro/RJ, CEP: 22.461-000, inscrita no CNPJ/MF sob o n. 31.952.078/0001-30, doravante denominada como "(Blincast)";</p>
+<p><b>${p.prospect_nome}</b>, sediada no <b>${p.endereco}</b>, doravante denominada como "(Contratante)";</p>
+<h2>CLÁUSULA 1 - DO OBJETO</h2>
+<p>1.1. Prova de Conceito "(PoC)" da solução Streamblink realizada pela Blincast à Contratante em <b>${p.endereco}</b>, de acordo com as especificações detalhadas no Anexo I.</p>
+<h2>CLÁUSULA 2 - DO USO</h2>
+<p>2.1. A Blincast concorda em fornecer à Contratante o direito de avaliar e testar a solução proposta durante a PoC, exclusivamente para fins internos e de avaliação.</p>
+<p>2.2. A Contratante concorda em colaborar ativamente, fornecendo informações e recursos necessários.</p>
+<p>2.3. Ambas as partes concordam em manter confidencialidade sobre todas as informações e resultados obtidos.</p>
+<p>2.4. Somente os técnicos da Blincast poderão realizar manutenções nos equipamentos.</p>
+<p>2.5. A Contratante obriga-se a manter os equipamentos seguros e em perfeito estado de conservação.</p>
+<p>2.6. Em caso de danos por culpa da Contratante, esta concorda em pagar R$500,00 por equipamento danificado.</p>
+<h2>CLÁUSULA 3 – DURAÇÃO E TÉRMINO</h2>
+<p>3.1. A implantação da PoC terá início em <b>${p.data_envio}</b>, com término em <b>${p.prazo_retorno}</b>.</p>
+<p>3.2. Ambas as partes têm o direito de encerrar a PoC a qualquer tempo mediante notificação por escrito.</p>
+<h2>CLÁUSULA 4 - CONDIÇÕES GERAIS</h2>
+<p>4.1. A realização da PoC será feita sem qualquer compensação financeira.</p>
+<p>4.2. A Contratante reconhece que este termo não adquire nenhum direito de propriedade intelectual.</p>
+<p>4.6. Foro da Comarca da Capital do Estado do Rio de Janeiro.</p>
+<p style="margin-top:16px;">Rio de Janeiro, ${hoje}</p>
+<div class="assinaturas">
+  <div class="ass-bloco"><div class="ass-linha">BLINCAST MEDIA S.A.</div></div>
+  <div class="ass-bloco"><div class="ass-linha">${p.prospect_nome}<br><small>(CONTRATANTE)</small></div></div>
+</div>
+<div style="margin-top:30px;display:flex;justify-content:space-between;">
+  <div style="width:45%;text-align:center;"><div style="border-top:1px solid #000;margin-top:30px;padding-top:4px;">Testemunha<br>Nome:<br>CPF:</div></div>
+  <div style="width:45%;text-align:center;"><div style="border-top:1px solid #000;margin-top:30px;padding-top:4px;">Testemunha<br>Nome:<br>CPF:</div></div>
+</div>
+
+<div style="page-break-before:always;margin-top:20px;">
+<h1>TERMO DE PROVA DE CONCEITO — Anexo 01</h1>
+<table>
+  <tr><td><b>Onde será realizado:</b></td><td>${p.endereco}</td></tr>
+  <tr><td><b>Data início e fim:</b></td><td>${p.data_envio} a ${p.prazo_retorno}</td></tr>
+  <tr><td><b>Tipo de instalação:</b></td><td>${p.tipo_instalacao}</td></tr>
+  <tr><td><b>Todas TVs são Android?</b></td><td>${p.android}</td></tr>
+  <tr><td><b>Quantidade de televisões:</b></td><td>${p.qtd_tvs}</td></tr>
+  <tr><td><b>Tipo de conexão:</b></td><td>${p.conexao}</td></tr>
+  <tr><td><b>Rack Blincast existente?</b></td><td>${p.rack_existente}</td></tr>
+  <tr><td><b>Rack de quantos canais?</b></td><td>${p.rack_canais||'—'}</td></tr>
+  <tr><td><b>Será instalado Rack?</b></td><td>${p.rack_instalar}</td></tr>
+  <tr><td><b>Empresa gestão WIFI:</b></td><td>${p.gestao_wifi||'—'}</td></tr>
+  <tr><td><b>Autorizado integração Reset check in/out?</b></td><td>${p.reset_checkin?'Sim':'Não'}</td></tr>
+  ${p.conteudo_online==='Sim'?`<tr><td><b>Conteúdo online:</b></td><td>${p.conteudo_detalhe||'Sim'}</td></tr>`:''}
+</table>
+</div>
+</body></html>`;
+  const w=window.open('','_blank');
+  if(w){
+    w.document.write(termoHtml);
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+  }
+  // Nome do arquivo
+  document.title='Termo PoC - '+p.prospect_nome;
+  setTimeout(()=>{document.title='BlinTrack — Comercial';},2000);
+}
+
+
+
+// ===================== LOGIN COMERCIAL =====================
+const LOGIN_API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+const PERFIS_COMERCIAL = ['admin','comercial'];
+let usuarioLogado = null;
+
+function iniciarApp(){
+  try{
+    const sess = sessionStorage.getItem('blintrack_user');
+    if(sess){
+      const u = JSON.parse(sess);
+      if(PERFIS_COMERCIAL.includes(u.perfil)){
+        usuarioLogado = u;
+        document.getElementById('login-overlay').style.display='none';
+        document.getElementById('login-user-badge').style.display='block';
+        document.getElementById('login-user-badge').textContent='👤 '+u.nome;
+        load();
+        return;
+      }
+    }
+  }catch(e){}
+  document.getElementById('login-overlay').style.display='flex';
+}
+
+async function fazerLogin(){
+  const usuario = document.getElementById('login-usuario').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  if(!usuario||!senha){errEl.textContent='Preencha usuário e senha.';return;}
+  errEl.textContent='';
+  btn.disabled=true;btn.textContent='Verificando...';
+  try{
+    const r = await fetch(LOGIN_API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
+    const d = await r.json();
+    if(d.ok && PERFIS_COMERCIAL.includes(d.perfil)){
+      usuarioLogado = d;
+      sessionStorage.setItem('blintrack_user', JSON.stringify(d));
+      document.getElementById('login-overlay').style.display='none';
+      document.getElementById('login-user-badge').style.display='block';
+      document.getElementById('login-user-badge').textContent='👤 '+d.nome;
+      load();
+    } else if(d.ok && !PERFIS_COMERCIAL.includes(d.perfil)){
+      errEl.textContent='Seu perfil não tem acesso ao Comercial.';
+    } else {
+      errEl.textContent = d.erro||'Usuário ou senha incorretos.';
+    }
+  }catch(e){
+    errEl.textContent='Erro de conexão. Tente novamente.';
+  }
+  btn.disabled=false;btn.textContent='Entrar';
+}
+
+async function esqueceuSenha(){
+  const usuario = document.getElementById('login-usuario').value.trim();
+  if(!usuario){document.getElementById('login-error').textContent='Digite seu usuário primeiro.';return;}
+  try{
+    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'esqueceuSenha',usuario,sistema:'Comercial'})});
+    document.getElementById('login-error').style.color='#2ecc71';
+    document.getElementById('login-error').textContent='Solicitação enviada! O administrador foi notificado.';
+  }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
+}
+
+document.addEventListener('DOMContentLoaded', iniciarApp);
+
 </script>
 
 <!-- MODAL EDITAR CLIENTE -->
@@ -1278,5 +1631,151 @@ setInterval(load,60000);
     </div>
   </div>
 </div>
+
+<!-- PoC COMERCIAL -->
+<div id="com-page-poc" style="display:none">
+<div class="main">
+  <div class="page-header">
+    <div>
+      <h2>PoC — Prova de Conceito</h2>
+      <div class="page-sync" id="poc-com-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="poc-com-busca" placeholder="🔍 Buscar..." oninput="renderPocComercial()"
+        style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <button class="btn-primary" onclick="openPocModal()">+ Nova PoC</button>
+    </div>
+  </div>
+  <div id="poc-com-list"></div>
+</div>
+</div>
+
+<!-- MODAL NOVA/EDITAR PoC -->
+<div class="modal-overlay" id="poc-modal" style="display:none">
+  <div class="modal" style="max-width:640px;max-height:92vh;overflow-y:auto;">
+    <h3 id="poc-modal-title">Nova PoC</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field" style="grid-column:span 2">
+        <label>Prospect / Cliente *</label>
+        <input type="text" id="poc-prospect" placeholder="Nome do prospect ou cliente">
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label>Endereço completo *</label>
+        <input type="text" id="poc-endereco" placeholder="Rua, número, cidade, UF">
+      </div>
+      <div class="modal-field">
+        <label>Equipamento *</label>
+        <select id="poc-equipamento" class="field-sel" style="width:100%;height:36px;">
+          <option value="">Selecione...</option>
+          <option value="ZTE">ZTE</option>
+          <option value="Prime">Prime</option>
+          <option value="ZTE + Prime">ZTE + Prime</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Telefone *</label>
+        <input type="text" id="poc-telefone" placeholder="(00) 00000-0000">
+      </div>
+      <div class="modal-field">
+        <label>Data de envio *</label>
+        <input type="date" id="poc-data-envio">
+      </div>
+      <div class="modal-field">
+        <label>Prazo para retorno *</label>
+        <input type="date" id="poc-prazo-retorno">
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label>Vendedor *</label>
+        <select id="poc-vendedor" class="field-sel" style="width:100%;height:36px;">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label>Conteúdo online</label>
+        <select id="poc-conteudo" class="field-sel" style="width:100%;height:36px;" onchange="togglePocConteudo()">
+          <option value="Nao">Não</option>
+          <option value="Sim">Sim</option>
+        </select>
+      </div>
+      <div class="modal-field" id="poc-conteudo-detalhe-wrap" style="display:none;grid-column:span 2">
+        <label>Qual plataforma?</label>
+        <input type="text" id="poc-conteudo-detalhe" placeholder="Ex: Netflix, Globoplay...">
+      </div>
+      <!-- Campos do Anexo I (Termo) -->
+      <div style="grid-column:span 2;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Dados para o Termo (Anexo I)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="modal-field">
+            <label>Tipo de instalação *</label>
+            <select id="poc-tipo-instalacao" class="field-sel" style="width:100%;height:36px;">
+              <option value="">Selecione...</option>
+              <option value="Direto na TV">Direto na TV</option>
+              <option value="Uso Setup Box">Uso Setup Box</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>TVs são Android? *</label>
+            <select id="poc-android" class="field-sel" style="width:100%;height:36px;">
+              <option value="">Selecione...</option>
+              <option value="Sim">Sim</option>
+              <option value="Não">Não</option>
+              <option value="Parcialmente">Parcialmente</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>Qtd. de televisões *</label>
+            <input type="number" id="poc-qtd-tvs" min="1" placeholder="Ex: 10">
+          </div>
+          <div class="modal-field">
+            <label>Tipo de conexão *</label>
+            <select id="poc-conexao" class="field-sel" style="width:100%;height:36px;">
+              <option value="">Selecione...</option>
+              <option value="WIFI">WIFI</option>
+              <option value="Cabo de Rede">Cabo de Rede</option>
+              <option value="WIFI e Cabo">WIFI e Cabo</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>Rack Blincast existente?</label>
+            <select id="poc-rack-existente" class="field-sel" style="width:100%;height:36px;">
+              <option value="Nao possui">Não possui</option>
+              <option value="HD">HD</option>
+              <option value="SD">SD</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>Rack de quantos canais?</label>
+            <input type="number" id="poc-rack-canais" min="0" placeholder="Ex: 30">
+          </div>
+          <div class="modal-field">
+            <label>Será instalado Rack?</label>
+            <select id="poc-rack-instalar" class="field-sel" style="width:100%;height:36px;">
+              <option value="Nao sera instalado">Não será instalado</option>
+              <option value="HD">HD</option>
+              <option value="SD">SD</option>
+              <option value="IP">IP</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>Empresa gestão WIFI</label>
+            <input type="text" id="poc-gestao-wifi" placeholder="Ex: Totvs, Opera...">
+          </div>
+          <div class="modal-field" style="grid-column:span 2">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="poc-reset-checkin" style="width:15px;height:15px;">
+              Autorizado integração para Reset no check in/out
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="poc-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closePocModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarPoc()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
