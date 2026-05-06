@@ -1186,6 +1186,7 @@ function renderClientes(){
   const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=listaFiltrada.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${c.id}')"><div><div class="project-name">${c.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} — ${c.produto||''}${c.canais?' ('+c.canais+' canais)':''} — ${c.uhs||''} UHs</div><div style="font-size:11px;color:var(--text-light,#bbb);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${c.endereco||''}</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}${c.canais?' ('+c.canais+' canais)':''}</div>`:''}${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label><input type="text" id="cli-link-contrato-${c.id}" value="${c.link_contrato||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <div style="display:flex;gap:8px;">
     <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
+    ${c.status!=='inativo'?`<button onclick="event.stopPropagation();iniciarDistrato('${c.nome}','${c.cnpj||''}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
     <button onclick="event.stopPropagation();toggleInativarCliente('${c.id}','${c.status}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${c.status==='inativo'?'var(--c-concluido)':'var(--c-pendente)'};">${c.status==='inativo'?'✓ Reativar':'⊘ Inativar'}</button>
     <button onclick="event.stopPropagation();excluirCliente('${c.id}','${c.nome}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
   </div>
@@ -1246,6 +1247,46 @@ async function salvarEdicaoCliente(){
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     await loadClientes();
   }catch(e){alert('Erro ao salvar.');}
+}
+
+function iniciarDistrato(nome, cnpj){
+  // Pré-preencher o modal de distrato com os dados do cliente
+  document.getElementById('dt-cliente-busca').value = nome;
+  document.getElementById('dt-cliente-nome').value = nome;
+  document.getElementById('dt-cliente-cnpj').value = cnpj||'';
+  document.getElementById('dt-data-solicitacao').value = todayStr;
+  document.getElementById('dt-equipamento').value = '';
+  document.getElementById('dt-os').value = '';
+  document.getElementById('dt-data-retirada').value = '';
+  document.getElementById('dt-data-cancelamento').value = '';
+  document.getElementById('dt-juridico').checked = false;
+  document.getElementById('dt-chegada').checked = false;
+  document.getElementById('dt-obs').value = '';
+  document.getElementById('dt-edit-id').value = '';
+  document.getElementById('distrato-modal-title').textContent = 'Novo distrato — '+nome;
+  // Abrir modal de distrato
+  document.getElementById('distrato-modal').style.display = 'flex';
+  // Ao salvar, redirecionar para aba distrato
+  window._distratoRedirect = true;
+}
+
+function iniciarDistrato(nome, cnpj){
+  // Limpar modal
+  ['dt-equipamento','dt-os','dt-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['dt-data-retirada','dt-data-cancelamento'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('dt-juridico').checked=false;
+  document.getElementById('dt-chegada').checked=false;
+  document.getElementById('dt-edit-id').value='';
+  // Pré-preencher com dados do cliente
+  document.getElementById('dt-cliente-busca').value=nome;
+  document.getElementById('dt-cliente-nome').value=nome;
+  document.getElementById('dt-cliente-cnpj').value=cnpj||'';
+  document.getElementById('dt-data-solicitacao').value=todayStr;
+  document.getElementById('distrato-modal-title').textContent='Novo distrato — '+nome;
+  // Marcar que veio de cliente (para redirecionar após salvar)
+  window._distratoRedirect=true;
+  // Abrir modal
+  document.getElementById('distrato-modal').style.display='flex';
 }
 
 async function toggleInativarCliente(id, statusAtual){
@@ -1856,7 +1897,22 @@ async function salvarDistrato(){
   closeDistratoModal();
   try{
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
-    await loadDistrato();
+    // Se veio da aba clientes, redirecionar para Distrato
+    if(window._distratoRedirect){
+      window._distratoRedirect=false;
+      switchMainTab('distrato');
+      await loadDistrato();
+      setTimeout(()=>{
+        const cards=document.querySelectorAll('#distrato-list .project-card');
+        if(cards.length){
+          cards[0].scrollIntoView({behavior:'smooth'});
+          cards[0].style.boxShadow='0 0 0 3px #F5B800';
+          setTimeout(()=>{cards[0].style.boxShadow='';},3000);
+        }
+      },500);
+    } else {
+      await loadDistrato();
+    }
   }catch(e){alert('Erro ao salvar distrato.');}
 }
 
@@ -1869,6 +1925,20 @@ async function concluirDistrato(id){
   }catch(e){alert('Erro ao concluir.');}
 }
 
+async function concluirDistrato(id){
+  if(!confirm('Concluir este distrato? O cliente será automaticamente movido para inativo.'))return;
+  const d=distratos.find(x=>String(x.id)===String(id));if(!d)return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'updateDistrato',id,status:'concluido',...d})});
+    await loadDistrato();
+    // Atualizar lista de clientes em memória se já carregada
+    if(clientes.length){
+      const cli=clientes.find(c=>c.nome===d.cliente_nome);
+      if(cli){cli.status='inativo';}
+    }
+    alert('Distrato concluído! '+d.cliente_nome+' foi movido para inativo.');
+  }catch(e){alert('Erro ao concluir.');}
+}
 async function cancelarDistrato(id){
   if(!confirm('Cancelar este distrato (cliente desistiu)?'))return;
   const d=distratos.find(x=>String(x.id)===String(id));if(!d)return;
