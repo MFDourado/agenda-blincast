@@ -167,6 +167,37 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 </style>
 </head>
 <body>
+
+<div id="login-overlay" style="position:fixed;inset:0;background:#111;display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.5);">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <img src="data:image/png;base64,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" style="height:40px;object-fit:contain;" alt="Blincast">
+    </div>
+    <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px;">BlinTrack Comercial</div>
+    <div style="font-size:12px;color:#555;text-align:center;margin-bottom:1.5rem;">Acesso restrito à equipe Blincast</div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Usuário</label>
+      <input type="text" id="login-usuario" placeholder="seu.usuario" autocomplete="username"
+        style="width:100%;height:42px;background:#111;border:1px solid #333;border-radius:8px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:#fff;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Senha</label>
+      <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')fazerLogin()"
+        style="width:100%;height:42px;background:#111;border:1px solid #333;border-radius:8px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:#fff;outline:none;box-sizing:border-box;">
+    </div>
+    <button id="login-btn" onclick="fazerLogin()"
+      style="width:100%;height:42px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;margin-top:6px;">
+      Entrar
+    </button>
+    <div id="login-error" style="font-size:12px;color:#e74c3c;text-align:center;margin-top:10px;min-height:18px;"></div>
+    <div style="font-size:12px;color:#555;text-align:center;margin-top:14px;">
+      <a onclick="esqueceuSenha()" style="color:#888;cursor:pointer;text-decoration:underline;">Esqueci minha senha</a>
+    </div>
+  </div>
+</div>
+<div id="login-user-badge" style="position:fixed;bottom:12px;left:16px;font-size:11px;font-family:'DM Mono',monospace;color:#444;z-index:100;display:none;"></div>
+
 <header>
   <div class="logo">BlinTrack <span style="color:#444;margin:0 8px">|</span> Comercial</div>
   <div class="status-bar">
