@@ -306,6 +306,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 <header>
   <div class="logo">BlinTrack <span style="color:#444;margin:0 8px">|</span> Operacional</div>
   <div class="status-bar">
+    <button onclick="forceRefresh()" title="Recarregar sistema" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">↻ Refresh</button>
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-txt">Conectando...</span>
   </div>
@@ -1261,6 +1262,17 @@ async function salvarEdicaoCliente(){
   }catch(e){alert('Erro ao salvar.');}
 }
 
+function forceRefresh(){
+  // Limpar sessão de retry e forçar reload completo
+  window._pipelineRetry=false;
+  location.reload(true);
+}
+
+function forceRefresh(){
+  window._pipelineRetry=false;
+  location.reload(true);
+}
+
 function iniciarDistrato(nome, cnpj){
   // Pré-preencher o modal de distrato com os dados do cliente
   document.getElementById('dt-cliente-busca').value = nome;
@@ -2027,7 +2039,7 @@ function iniciarApp(){
         document.getElementById('login-overlay').style.display='none';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
-        apiGet();setInterval(apiGet,30000);loadPipeline();
+        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);
         return;
       }
     }
