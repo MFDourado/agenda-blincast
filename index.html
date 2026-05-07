@@ -709,11 +709,11 @@ function switchMainTab(t){
 }
 
 // ===================== AGENDA =====================
-async function apiGet(){
-  setStatus('loading','Sincronizando...');
+async function apiGet(tentativa=1){
+  setStatus('loading', tentativa===1?'Sincronizando...':'Reconectando... (tentativa '+tentativa+')');
   try{
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(),10000);
+    const timer=setTimeout(()=>ctrl.abort(),20000);
     const r=await fetch(API+'?action=getAll',{signal:ctrl.signal});
     clearTimeout(timer);
     const d=await r.json();
@@ -721,8 +721,12 @@ async function apiGet(){
     setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     renderAgenda();
   }catch(e){
-    if(e.name==='AbortError'){setStatus('error','Timeout — verifique o AppScript');}
-    else{setStatus('error','Erro de conexao');}
+    if(tentativa<3){
+      setStatus('loading','Aguardando AppScript... ('+tentativa+'/3)');
+      setTimeout(()=>apiGet(tentativa+1), 5000);
+    } else {
+      setStatus('error','Erro de conexão — F5 para tentar novamente');
+    }
   }
 }
 async function apiPost(body){
@@ -833,7 +837,15 @@ async function loadPipeline(forceRender){
     const algumAberto=document.querySelectorAll('.project-body[style*="display: block"],.project-body[style*="display:block"]').length>0;
     if(!algumAberto||forceRender)renderPipeline();
     else document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){document.getElementById('pipeline-sync').textContent='Erro de conexao';}
+  }catch(e){
+    if(!window._pipelineRetry){
+      window._pipelineRetry=true;
+      document.getElementById('pipeline-sync').textContent='Reconectando... aguarde';
+      setTimeout(()=>{window._pipelineRetry=false;sincronizarPipeline();},6000);
+    } else {
+      document.getElementById('pipeline-sync').textContent='Erro de conexão — clique em Sincronizar';
+    }
+  }
 }
 async function savePipelineProject(proj){
   try{
