@@ -1426,6 +1426,7 @@ function editarPoc(id){
   document.getElementById('poc-rack-instalar').value=p.rack_instalar||'Nao sera instalado';
   document.getElementById('poc-gestao-wifi').value=p.gestao_wifi||'';
   document.getElementById('poc-reset-checkin').checked=p.reset_checkin===true||p.reset_checkin==='TRUE';
+  document.getElementById('poc-email-vendedor').value=p.email_vendedor||'';
   // Popular vendedores
   const selV=document.getElementById('poc-vendedor');
   const vendedores=[...new Set(prospects.map(q=>q.vendedor).filter(Boolean))].sort();
@@ -1446,7 +1447,8 @@ async function salvarPoc(){
   const android=document.getElementById('poc-android').value;
   const qtdTvs=document.getElementById('poc-qtd-tvs').value;
   const conexao=document.getElementById('poc-conexao').value;
-  if(!prospect||!endereco||!equipamento||!telefone||!dataEnvio||!prazoRetorno||!vendedor||!tipoInst||!android||!qtdTvs||!conexao){
+  const emailVendedor=document.getElementById('poc-email-vendedor').value.trim();
+  if(!prospect||!endereco||!equipamento||!telefone||!dataEnvio||!prazoRetorno||!vendedor||!tipoInst||!android||!qtdTvs||!conexao||!emailVendedor){
     alert('Preencha todos os campos obrigatórios (*).');return;
   }
   const editId=document.getElementById('poc-edit-id').value;
@@ -1463,6 +1465,7 @@ async function salvarPoc(){
     rack_instalar:document.getElementById('poc-rack-instalar').value,
     gestao_wifi:document.getElementById('poc-gestao-wifi').value.trim(),
     reset_checkin:document.getElementById('poc-reset-checkin').checked,
+    email_vendedor: emailVendedor,
     status:'ativo'
   };
   closePocModal();
@@ -1718,6 +1721,10 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
       <div class="modal-field">
         <label>Telefone *</label>
         <input type="text" id="poc-telefone" placeholder="(00) 00000-0000">
+      </div>
+      <div class="modal-field">
+        <label>Seu e-mail (para alerta de 35 dias) *</label>
+        <input type="email" id="poc-email-vendedor" placeholder="vendedor@blincast.com.br">
       </div>
       <div class="modal-field">
         <label>Data de envio *</label>
