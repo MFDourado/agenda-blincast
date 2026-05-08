@@ -277,6 +277,26 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .login-forgot a:hover{color:#F5B800;}
 .login-user-badge{position:fixed;bottom:12px;left:16px;font-size:11px;font-family:"DM Mono",monospace;color:#444;z-index:100;}
 
+
+/* ===== PESQUISA DE SATISFAÇÃO ===== */
+#survey-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:3000;padding:1rem;}
+.survey-modal{background:var(--surface);border-radius:var(--radius);padding:2rem;width:100%;max-width:480px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.2);}
+.survey-header{text-align:center;margin-bottom:1.5rem;}
+.survey-header h3{font-size:17px;font-weight:700;margin-bottom:6px;}
+.survey-header p{font-size:12px;color:var(--text-muted);}
+.survey-question{margin-bottom:1.25rem;}
+.survey-question label{font-size:13px;font-weight:500;display:block;margin-bottom:10px;color:var(--text);}
+.stars{display:flex;gap:6px;}
+.star-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid var(--border);background:none;font-size:18px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.star-btn:hover,.star-btn.selected{background:#F5B800;border-color:#F5B800;}
+.survey-obs{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:80px;margin-top:4px;box-sizing:border-box;}
+.survey-obs:focus{border-color:var(--gold);}
+.survey-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;}
+.survey-skip{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer;}
+.survey-submit{padding:8px 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;}
+.survey-submit:hover{opacity:.85;}
+.survey-submit:disabled{opacity:.4;cursor:not-allowed;}
+
 </style>
 </head>
 <body>
@@ -2039,7 +2059,8 @@ function iniciarApp(){
         document.getElementById('login-overlay').style.display='none';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
-        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);
+        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(verificarSurvey,5000);
+        setTimeout(verificarSurvey,5000);
         return;
       }
     }
@@ -2092,6 +2113,66 @@ async function esqueceuSenha(){
 
 // Iniciar app assim que o documento carregar
 document.addEventListener('DOMContentLoaded', iniciarApp);
+
+
+// ===================== PESQUISA DE SATISFAÇÃO =====================
+const SURVEY_KEY = 'blintrack_survey_last';
+const SURVEY_INTERVAL_DIAS = 30;
+let surveyRespostas = {1:0, 2:0, 3:0};
+
+function verificarSurvey(){
+  // Só mostrar se estiver logado
+  if(!usuarioLogado) return;
+  const ultimo = localStorage.getItem(SURVEY_KEY);
+  if(ultimo){
+    const diasPassados = Math.floor((Date.now()-parseInt(ultimo))/(1000*60*60*24));
+    if(diasPassados < SURVEY_INTERVAL_DIAS) return;
+  }
+  // Mostrar após 30 segundos de uso
+  setTimeout(()=>{
+    document.getElementById('survey-overlay').style.display='flex';
+  }, 30000);
+}
+
+function setStar(pergunta, valor){
+  surveyRespostas[pergunta] = valor;
+  const btns = document.querySelectorAll('#stars-'+pergunta+' .star-btn');
+  btns.forEach((b,i)=>b.classList.toggle('selected', i < valor));
+  // Habilitar botão se todas respondidas
+  const todas = surveyRespostas[1]>0 && surveyRespostas[2]>0 && surveyRespostas[3]>0;
+  document.getElementById('survey-submit-btn').disabled = !todas;
+}
+
+function fecharSurvey(adiar=false){
+  document.getElementById('survey-overlay').style.display='none';
+  if(!adiar){
+    // Se enviou, só mostra no próximo mês
+    localStorage.setItem(SURVEY_KEY, Date.now().toString());
+  }
+  // Se adiou, tenta novamente em 3 dias
+}
+
+async function enviarSurvey(){
+  const obs = document.getElementById('survey-obs').value.trim();
+  const usuario = usuarioLogado?.nome || 'Desconhecido';
+  const payload = {
+    token: API_TOKEN,
+    action: 'logSatisfacao',
+    usuario,
+    p1: surveyRespostas[1],
+    p2: surveyRespostas[2],
+    p3: surveyRespostas[3],
+    obs,
+    data: new Date().toLocaleDateString('pt-BR')
+  };
+  document.getElementById('survey-submit-btn').disabled=true;
+  document.getElementById('survey-submit-btn').textContent='Enviando...';
+  try{
+    await fetch(API, {method:'POST', body:JSON.stringify(payload)});
+  }catch(e){}
+  fecharSurvey(false);
+  document.getElementById('survey-submit-btn').textContent='Enviar resposta';
+}
 
 </script>
 
@@ -2313,6 +2394,56 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
     <input type="text" id="poc-busca" placeholder="🔍 Buscar..." oninput="renderPocOperacional()" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
   </div>
   <div id="poc-list"></div>
+</div>
+
+
+<!-- PESQUISA DE SATISFAÇÃO -->
+<div id="survey-overlay" style="display:none">
+  <div class="survey-modal">
+    <div class="survey-header">
+      <div style="font-size:24px;margin-bottom:8px">📋</div>
+      <h3>Pesquisa de satisfação</h3>
+      <p>Leva menos de 1 minuto e nos ajuda a melhorar o sistema</p>
+    </div>
+    <div class="survey-question">
+      <label>1. Como você avalia o BlinTrack no geral?</label>
+      <div class="stars" id="stars-1">
+        <button class="star-btn" onclick="setStar(1,1)" title="1">⭐</button>
+        <button class="star-btn" onclick="setStar(1,2)" title="2">⭐</button>
+        <button class="star-btn" onclick="setStar(1,3)" title="3">⭐</button>
+        <button class="star-btn" onclick="setStar(1,4)" title="4">⭐</button>
+        <button class="star-btn" onclick="setStar(1,5)" title="5">⭐</button>
+      </div>
+    </div>
+    <div class="survey-question">
+      <label>2. O sistema é fácil de usar no dia a dia?</label>
+      <div class="stars" id="stars-2">
+        <button class="star-btn" onclick="setStar(2,1)" title="1">⭐</button>
+        <button class="star-btn" onclick="setStar(2,2)" title="2">⭐</button>
+        <button class="star-btn" onclick="setStar(2,3)" title="3">⭐</button>
+        <button class="star-btn" onclick="setStar(2,4)" title="4">⭐</button>
+        <button class="star-btn" onclick="setStar(2,5)" title="5">⭐</button>
+      </div>
+    </div>
+    <div class="survey-question">
+      <label>3. As funcionalidades atendem à sua operação?</label>
+      <div class="stars" id="stars-3">
+        <button class="star-btn" onclick="setStar(3,1)" title="1">⭐</button>
+        <button class="star-btn" onclick="setStar(3,2)" title="2">⭐</button>
+        <button class="star-btn" onclick="setStar(3,3)" title="3">⭐</button>
+        <button class="star-btn" onclick="setStar(3,4)" title="4">⭐</button>
+        <button class="star-btn" onclick="setStar(3,5)" title="5">⭐</button>
+      </div>
+    </div>
+    <div class="survey-question">
+      <label>Comentários e sugestões <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
+      <textarea class="survey-obs" id="survey-obs" placeholder="Tem alguma sugestão de melhoria?"></textarea>
+    </div>
+    <div class="survey-actions">
+      <button class="survey-skip" onclick="fecharSurvey(true)">Responder depois</button>
+      <button class="survey-submit" id="survey-submit-btn" onclick="enviarSurvey()" disabled>Enviar resposta</button>
+    </div>
+  </div>
 </div>
 
 </body>
