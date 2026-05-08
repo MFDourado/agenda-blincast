@@ -291,7 +291,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
         <select id="m-prioridade">
           <option value="">Selecione...</option>
           <option value="baixa">Baixa</option>
-          <option value="media">Media</option>
+          <option value="media">Média</option>
           <option value="urgente">Urgente</option>
         </select>
       </div>
@@ -309,16 +309,16 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
       </div>
       <div class="mf"><label>UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
       <div class="mf"><label>Prazo para instalacao</label><input type="date" id="m-prazo"></div>
-      <div class="mf"><label>Conteudo online?</label>
+      <div class="mf"><label>Conteúdo online?</label>
         <select id="m-conteudo" onchange="toggleConteudo()">
-          <option value="Nao">Nao</option>
+          <option value="Não">Não</option>
           <option value="Sim">Sim</option>
         </select>
         <div class="sub-field" id="conteudo-detalhe-wrap"><input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma?"></div>
       </div>
       <div class="mf"><label>Canal corporativo?</label>
         <select id="m-corp" onchange="toggleCorp()">
-          <option value="Nao">Nao</option>
+          <option value="Não">Não</option>
           <option value="Sim">Sim</option>
         </select>
         <div class="sub-field" id="corp-detalhe-wrap"><input type="text" id="m-corp-detalhe" placeholder="Observacao..."></div>
@@ -458,7 +458,7 @@ async function load(){
     setStatus('online','Sincronizado');
     document.getElementById('page-sync').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     render();
-  }catch(e){setStatus('error','Erro de conexao');}
+  }catch(e){setStatus('error','Erro de conexão');}
 }
 
 function setFilter(type,val){
@@ -494,7 +494,7 @@ function filtered(){
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
-function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Media':p==='baixa'?'Baixa':p||'';}
+function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Média':p==='baixa'?'Baixa':p||'';}
 function formatDateBR(ds){if(!ds)return'';const[y,m,d]=String(ds).slice(0,10).split('-');return d+'/'+m+'/'+y;}
 
 function render(){
@@ -521,8 +521,8 @@ function render(){
         <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' canais)':''}</span></div>
         <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
         ${p.prazo?`<div class="card-row"><span class="card-lbl">Prazo inst.</span><span class="card-val">${formatDateBR(p.prazo)}</span></div>`:''}
-        <div class="card-row"><span class="card-lbl">Cont. online</span><span class="card-val">${p.conteudo_online||'Nao'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
-        <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Nao'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
+        <div class="card-row"><span class="card-lbl">Cont. online</span><span class="card-val">${p.conteudo_online||'Não'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
+        <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Não'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
       </div>
       <div class="card-actions">
         ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Contrato Assinado</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
@@ -548,8 +548,8 @@ function toggleCorp(){document.getElementById('corp-detalhe-wrap').className='su
 function openModal(){
   ['m-nome','m-cidade','m-cnpj','m-contato-nome','m-telefone','m-endereco','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['m-produto','m-vendedor','m-prioridade'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('m-conteudo').value='Nao';
-  document.getElementById('m-corp').value='Nao';
+  document.getElementById('m-conteudo').value='Não';
+  document.getElementById('m-corp').value='Não';
   document.getElementById('m-prazo').value='';
   document.getElementById('m-edit-id').value='';
   ['produto-canais-wrap','produto-outro-wrap','conteudo-detalhe-wrap','corp-detalhe-wrap'].forEach(id=>document.getElementById(id).className='sub-field');
@@ -572,9 +572,9 @@ function editar(id){
   document.getElementById('m-canais').value=p.canais||'';
   document.getElementById('m-uhs').value=p.uhs||'';
   document.getElementById('m-prazo').value=p.prazo||'';
-  document.getElementById('m-conteudo').value=p.conteudo_online||'Nao';
+  document.getElementById('m-conteudo').value=p.conteudo_online||'Não';
   document.getElementById('m-conteudo-detalhe').value=p.conteudo_detalhe||'';
-  document.getElementById('m-corp').value=p.canal_corporativo||'Nao';
+  document.getElementById('m-corp').value=p.canal_corporativo||'Não';
   document.getElementById('m-corp-detalhe').value=p.canal_corp_detalhe||'';
   document.getElementById('m-produto-outro').value='';
   toggleProduto();toggleConteudo();toggleCorp();
@@ -709,7 +709,7 @@ async function loadClientes(){
     clientes = Array.isArray(d) ? d : [];
     if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderClientes();
-  } catch(e) { if(syncEl) syncEl.textContent = 'Erro de conexao'; }
+  } catch(e) { if(syncEl) syncEl.textContent = 'Erro de conexão'; }
 }
 
 async function saveCliente(clienteId){
@@ -924,7 +924,7 @@ async function criarClienteAvulso(){
   const motivo=document.getElementById('nc-motivo').value.trim();
 
   if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){
-    alert('Preencha todos os campos obrigatorios (*)');return;
+    alert('Preencha todos os campos obrigatórios (*)');return;
   }
 
   closeNovoClienteModal();
@@ -972,7 +972,7 @@ async function loadCronogramas(){
     cronogramas=Array.isArray(d)?d:[];
     document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderCronogramas();
-  }catch(e){document.getElementById('cron-sync').textContent='Erro de conexao';}
+  }catch(e){document.getElementById('cron-sync').textContent='Erro de conexão';}
 }
 
 function openNovoCronModal(){
@@ -1210,7 +1210,7 @@ async function criarClienteAvulso(){
   const vigencia=document.getElementById('nc-vigencia').value;
   const responsavel=document.getElementById('nc-responsavel').value.trim();
   const motivo=document.getElementById('nc-motivo').value.trim();
-  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){alert('Preencha todos os campos obrigatorios (*)');return;}
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo){alert('Preencha todos os campos obrigatórios (*)');return;}
   closeNovoClienteModal();
   setStatus('loading','Criando cliente...');
   try{
@@ -1307,7 +1307,7 @@ async function loadPocComercial(){
     pocComercial=Array.isArray(d)?d:[];
     document.getElementById('poc-com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderPocComercial();
-  }catch(e){document.getElementById('poc-com-sync').textContent='Erro de conexao';}
+  }catch(e){document.getElementById('poc-com-sync').textContent='Erro de conexão';}
 }
 
 function renderPocComercial(){
@@ -1386,13 +1386,13 @@ function openPocModal(){
   });
   ['poc-data-envio','poc-prazo-retorno'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('poc-equipamento').value='';
-  document.getElementById('poc-conteudo').value='Nao';
+  document.getElementById('poc-conteudo').value='Não';
   document.getElementById('poc-conteudo-detalhe-wrap').style.display='none';
   document.getElementById('poc-tipo-instalacao').value='';
   document.getElementById('poc-android').value='';
   document.getElementById('poc-conexao').value='';
-  document.getElementById('poc-rack-existente').value='Nao possui';
-  document.getElementById('poc-rack-instalar').value='Nao sera instalado';
+  document.getElementById('poc-rack-existente').value='Não possui';
+  document.getElementById('poc-rack-instalar').value='Não será instalado';
   document.getElementById('poc-reset-checkin').checked=false;
   document.getElementById('poc-edit-id').value='';
   // Popular vendedores
@@ -1414,16 +1414,16 @@ function editarPoc(id){
   document.getElementById('poc-telefone').value=p.telefone||'';
   document.getElementById('poc-data-envio').value=p.data_envio||'';
   document.getElementById('poc-prazo-retorno').value=p.prazo_retorno||'';
-  document.getElementById('poc-conteudo').value=p.conteudo_online||'Nao';
+  document.getElementById('poc-conteudo').value=p.conteudo_online||'Não';
   document.getElementById('poc-conteudo-detalhe').value=p.conteudo_detalhe||'';
   document.getElementById('poc-conteudo-detalhe-wrap').style.display=p.conteudo_online==='Sim'?'block':'none';
   document.getElementById('poc-tipo-instalacao').value=p.tipo_instalacao||'';
   document.getElementById('poc-android').value=p.android||'';
   document.getElementById('poc-qtd-tvs').value=p.qtd_tvs||'';
   document.getElementById('poc-conexao').value=p.conexao||'';
-  document.getElementById('poc-rack-existente').value=p.rack_existente||'Nao possui';
+  document.getElementById('poc-rack-existente').value=p.rack_existente||'Não possui';
   document.getElementById('poc-rack-canais').value=p.rack_canais||'';
-  document.getElementById('poc-rack-instalar').value=p.rack_instalar||'Nao sera instalado';
+  document.getElementById('poc-rack-instalar').value=p.rack_instalar||'Não será instalado';
   document.getElementById('poc-gestao-wifi').value=p.gestao_wifi||'';
   document.getElementById('poc-reset-checkin').checked=p.reset_checkin===true||p.reset_checkin==='TRUE';
   document.getElementById('poc-email-vendedor').value=p.email_vendedor||'';
@@ -1743,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
       <div class="modal-field" style="grid-column:span 2">
         <label>Conteúdo online</label>
         <select id="poc-conteudo" class="field-sel" style="width:100%;height:36px;" onchange="togglePocConteudo()">
-          <option value="Nao">Não</option>
+          <option value="Não">Não</option>
           <option value="Sim">Sim</option>
         </select>
       </div>
@@ -1788,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
           <div class="modal-field">
             <label>Rack Blincast existente?</label>
             <select id="poc-rack-existente" class="field-sel" style="width:100%;height:36px;">
-              <option value="Nao possui">Não possui</option>
+              <option value="Não possui">Não possui</option>
               <option value="HD">HD</option>
               <option value="SD">SD</option>
             </select>
@@ -1800,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
           <div class="modal-field">
             <label>Será instalado Rack?</label>
             <select id="poc-rack-instalar" class="field-sel" style="width:100%;height:36px;">
-              <option value="Nao sera instalado">Não será instalado</option>
+              <option value="Não será instalado">Não será instalado</option>
               <option value="HD">HD</option>
               <option value="SD">SD</option>
               <option value="IP">IP</option>
