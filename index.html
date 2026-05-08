@@ -616,8 +616,8 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Preencha os campos e exporte em PDF</div>
     </div>
     <div style="display:flex;gap:8px;">
-      <button onclick="limparOrcamento()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar</button>
-      <button onclick="exportarOrcamentoPDF()" style="height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;">⬇ Exportar PDF</button>
+      <button onclick="limparOrçamento()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar</button>
+      <button onclick="exportarOrçamentoPDF()" style="height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;">⬇ Exportar PDF</button>
     </div>
   </div>
   <div id="orc-print-area" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;font-family:Arial,sans-serif;font-size:11px;color:#111;max-width:820px;margin:0 auto;">
@@ -635,7 +635,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">DATA DO SERVIÇO:</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-data-servico" type="date" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:100%;"></td><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">DATA DO ORÇAMENTO:</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-data-orcamento" type="date" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:100%;"></td></tr>
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">TÉCNICO RESPONSÁVEL:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-tecnico" type="text" placeholder="Nome do técnico" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">NOME DO ORÇAMENTISTA:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-orçamentista" type="text" placeholder="Nome do orçamentista" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
-      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">TEMPO DE EXECUÇÃO (Horas):</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-horas" type="number" min="0" step="0.5" placeholder="Ex: 4" oninput="calcOrcamento()" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td><td style="border:1px solid #999;padding:4px 8px;font-weight:700;">VALOR TOTAL DO ORÇAMENTO:</td><td style="border:1px solid #999;padding:4px 8px;font-weight:700;" id="orc-total-header">R$ 0,00</td></tr>
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">TEMPO DE EXECUÇÃO (Horas):</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-horas" type="number" min="0" step="0.5" placeholder="Ex: 4" oninput="calcOrçamento()" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td><td style="border:1px solid #999;padding:4px 8px;font-weight:700;">VALOR TOTAL DO ORÇAMENTO:</td><td style="border:1px solid #999;padding:4px 8px;font-weight:700;" id="orc-total-header">R$ 0,00</td></tr>
     </table>
     <div style="margin-bottom:8px;"><div style="font-weight:700;margin-bottom:4px;">DESCRIÇÃO RESUMIDA DO SERVIÇO A SER EXECUTADO:</div><div style="border:1px solid #999;min-height:50px;padding:4px 8px;"><textarea id="orc-descricao" placeholder="Descreva o serviço..." style="width:100%;min-height:44px;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;resize:vertical;"></textarea></div></div>
     <div style="border:1px solid #999;padding:6px 10px;background:#fffbe6;font-size:11px;text-align:center;margin-bottom:12px;"><b>Atenção!</b> Orçamento estimado conforme solicitação, descrição e localização dos serviços, podendo sofrer alteração se identificado não conformidade no momento da execução em relação as informações recebidas.<br>Esse orçamento possui 30 dias de validade a contar da DATA DO ORÇAMENTO.</div>
@@ -668,19 +668,19 @@ const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agos
 const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const DAYS_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
 const DAYS_FULL=['Domingo','Segunda-feira','Terca-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];
-const STATUS_LABEL={previsto:'Previsto',andamento:'Em andamento',atrasado:'Atrasado',concluido:'Concluido',pendente:'Pendente'};
+const STATUS_LABEL={previsto:'Previsto',andamento:'Em andamento',atrasado:'Atrasado',concluido:'Concluído',pendente:'Pendente'};
 const STEPS=[
   {id:1,title:'Assinatura de contrato',resp:'Juridico'},
-  {id:2,title:'Vistoria tecnica',resp:'Atendimento - Marta / Thaylla',remote:true},
-  {id:3,title:'Projeto tecnico',resp:'Tecnica - Marco / Matheus D.'},
-  {id:4,title:'Analise de compras / Almoxarifado',resp:'Almoxarifado - Marco'},
+  {id:2,title:'Vistoria técnica',resp:'Atendimento - Marta / Thaylla',remote:true},
+  {id:3,title:'Projeto técnico',resp:'Tecnica - Marco / Matheus D.'},
+  {id:4,title:'Análise de compras / Almoxarifado',resp:'Almoxarifado - Marco'},
   {id:5,title:'Montagem dos equipamentos',resp:'Montagem - Isaque'},
-  {id:6,title:'Emissao da nota fiscal',resp:'Almoxarifado - Marco (aval Matheus D.)'},
-  {id:7,title:'Solicitacao de coleta - transportadora',resp:'Almoxarifado - Marco'},
-  {id:8,title:'Agendamento com cliente + previsao de entrega',resp:'Atendimento - Marta / Thaylla'},
-  {id:9,title:'Confirmacao de chegada',resp:'Atendimento - Marta / Thaylla'},
-  {id:10,title:'Instalacao no local',resp:'Tecnico de campo'},
-  {id:11,title:'Testes e conclusao',resp:'Tecnico de campo - Joyce Maciel'},
+  {id:6,title:'Emissão da nota fiscal',resp:'Almoxarifado - Marco (aval Matheus D.)'},
+  {id:7,title:'Solicitação de coleta — transportadora',resp:'Almoxarifado - Marco'},
+  {id:8,title:'Agendamento com cliente + previsão de entrega',resp:'Atendimento - Marta / Thaylla'},
+  {id:9,title:'Confirmação de chegada',resp:'Atendimento - Marta / Thaylla'},
+  {id:10,title:'Instalação no local',resp:'Tecnico de campo'},
+  {id:11,title:'Testes e conclusão',resp:'Tecnico de campo - Joyce Maciel'},
 ];
 const todayStr=new Date().toISOString().slice(0,10);
 let cur={y:new Date().getFullYear(),m:new Date().getMonth()};
@@ -704,7 +704,7 @@ function switchMainTab(t){
   if(t==='clientes')loadClientes();
   if(t==='cronograma')loadCronogramas();
   if(t==='ata')loadAta();
-  if(t==='orcamento')initOrcamento();
+  if(t==='orcamento')initOrçamento();
   if(t==='distrato')loadDistrato();
   if(t==='poc')loadPocOperacional();
 }
@@ -770,7 +770,7 @@ function renderDia(){
   if(!evts.length)html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;
   else evts.forEach(e=>{
     const ip=e.status==='pendente',ov=e.obs||'';
-    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${e.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluido</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
+    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${e.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
     html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${e.id}','${e.client}','${e.status}','${e.obs||''}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${e.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
     if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
     else if(ov)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${ov}</span></div>`;
@@ -891,7 +891,7 @@ function renderPipeline(){
     const dias=daysSince(proj.inicio);
     let dc='ok';if(dias>=40)dc='danger';else if(dias>=30)dc='warn';
     const cs=proj.steps.find(s=>!s.done);
-    const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluido';
+    const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluído';
     const concluido=pct===100;
     const produtoInfo=(proj.produto==='HD'||proj.produto==='SD')?`
   <div class="step-card" style="border-color:var(--c-previsto)">
@@ -959,10 +959,10 @@ function schedSave(proj){document.getElementById('pipeline-sync').textContent='S
 function toggleStep(projId,stepId){
   const proj=projects.find(p=>p.id===projId);if(!proj)return;
   const step=proj.steps.find(s=>s.id===stepId);if(!step)return;
-  const foiConcluido=!step.done;
+  const foiConcluído=!step.done;
   step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;
   renderPipeline();schedSave(proj);
-  if(foiConcluido){
+  if(foiConcluído){
     const stepInfo=STEPS.find(s=>s.id===stepId);
     if(stepInfo){fetch(API,{method:'POST',body:JSON.stringify({action:'notificarEtapa',projeto:proj.nome,etapaId:stepId,etapaTitulo:stepInfo.title,responsavel:stepInfo.resp,data:step.date||todayStr})}).catch(()=>{});}
   }
@@ -1069,7 +1069,7 @@ async function renderDashboard(){
 let prospects=[],comFilter='todos';
 async function loadComercial(){
   document.getElementById('com-sync').textContent='Carregando...';
-  try{const r=await fetch(API+'?action=getComercial');const d=await r.json();prospects=Array.isArray(d)?d:[];document.getElementById('com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderComercial();}catch(e){document.getElementById('com-sync').textContent='Erro de conexao';}
+  try{const r=await fetch(API+'?action=getComercial');const d=await r.json();prospects=Array.isArray(d)?d:[];document.getElementById('com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderComercial();}catch(e){document.getElementById('com-sync').textContent='Erro de conexão';}
 }
 function setComFilter(f){
   comFilter=f;
@@ -1169,7 +1169,7 @@ async function confirmarEnvioEmail(){const projId=document.getElementById('ec-pr
 // ===================== VISTORIA =====================
 const STEPS_VISTORIA=[{id:1,title:'Vistoria solicitada',resp:'SAC'},{id:2,title:'Agendamento com cliente',resp:'SAC'},{id:3,title:'Vistoria realizada',resp:'SAC'},{id:4,title:'Relatorio tecnico emitido',resp:'SAC'},{id:5,title:'Enviado ao comercial',resp:'SAC'}];
 let vistorias=[],vstSaveTimer=null;
-async function loadVistoria(){document.getElementById('vistoria-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getVistoria');const d=await r.json();vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderVistoria();}catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexao';}}
+async function loadVistoria(){document.getElementById('vistoria-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getVistoria');const d=await r.json();vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderVistoria();}catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}}
 async function saveVistoriaProject(v){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'saveVistoria',id:v.id,prospectId:v.prospectId,nomeCliente:v.nomeCliente,status:v.status,steps:v.steps})});document.getElementById('vistoria-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('vistoria-sync').textContent='Erro ao salvar';}}
 function schedSaveVistoria(v){document.getElementById('vistoria-sync').textContent='Salvando...';clearTimeout(vstSaveTimer);vstSaveTimer=setTimeout(()=>saveVistoriaProject(v),1500);}
 function toggleVistoriaStep(vId,stepId){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;if(v.steps.every(s=>s.done))v.status='concluida';else v.status='andamento';renderVistoria();schedSaveVistoria(v);}
@@ -1185,7 +1185,7 @@ const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:f
 
 // ===================== CLIENTES =====================
 let clientes=[],cliSaveTimer=null;
-async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexao';}}
+async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
 async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify(payload)});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
 function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);const chev=document.getElementById('cli-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
 function formatDateBRCli(ds){if(!ds)return'';const s=String(ds).slice(0,10).split('-');if(s.length<3)return ds;return s[2]+'/'+s[1]+'/'+s[0];}
@@ -1342,7 +1342,7 @@ async function criarClienteAvulso(){const nome=document.getElementById('nc-nome'
 let cronogramas=[],cronSaveTimer=null;
 const BASE_URL='https://mfdourado.github.io/agenda-blincast/cronograma.html';
 const TEMPLATE_TASKS=[{id:1,nome:'Configuração dos equipamentos',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:2,nome:'Instalação física — Rack',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:3,nome:'Infraestrutura de rede',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:4,nome:'Testes e validação',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'}];
-async function loadCronogramas(){document.getElementById('cron-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getCronogramas');const d=await r.json();cronogramas=Array.isArray(d)?d:[];document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro de conexao';}}
+async function loadCronogramas(){document.getElementById('cron-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getCronogramas');const d=await r.json();cronogramas=Array.isArray(d)?d:[];document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro de conexão';}}
 function openNovoCronModal(){document.getElementById('cron-nome').value='';document.getElementById('cm-edit-id').value='';document.getElementById('cron-modal-title').textContent='Novo cronograma';renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));document.getElementById('cron-modal').style.display='flex';}
 function closeCronModal(){document.getElementById('cron-modal').style.display='none';}
 function renderModalTasks(tasks){const list=document.getElementById('cm-tasks-list');list.innerHTML=tasks.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center"><input type="text" value="${t.nome}" placeholder="Nome da tarefa" id="ct-nome-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><input type="text" value="${t.responsavel}" placeholder="Responsável" id="ct-resp-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><button onclick="removeCronTask(${i})" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-light);font-size:13px;">✕</button></div>`).join('');list.dataset.count=tasks.length;}
@@ -1357,7 +1357,7 @@ function toggleCronCheck(cronId,taskIdx,checked){const cron=cronogramas.find(c=>
 function updateCronTask(cronId,taskIdx,field,val){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;if(!cron.tarefas[taskIdx])return;cron.tarefas[taskIdx][field]=val;clearTimeout(cronSaveTimer);cronSaveTimer=setTimeout(async()=>{document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}},1500);}
 async function deletarCronograma(id){if(!confirm('Remover este cronograma?'))return;await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCronograma',id})});await loadCronogramas();}
 function renderCronogramas(){const list=document.getElementById('cron-list');if(!cronogramas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cronograma.</div>';return;}list.innerHTML=cronogramas.map(cron=>{const tarefas=cron.tarefas||[];const concluidas=tarefas.filter(t=>t.status==='concluido').length;const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;const link=getCronLink(cron.id);const tarefasHtml=tarefas.map((t,i)=>{const done=t.status==='concluido';return `<div class="cron-task-row" id="ctr-${cron.id}-${i}"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)"><div><div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div></label><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio"><span style="color:var(--text-muted);font-size:11px">→</span><input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim"></div></div>`;}).join('');const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));const minD=datas.length?Math.min(...datas):null;const maxD=datas.length?Math.max(...datas):null;const totalD=maxD&&minD?maxD-minD:1;const ganttMiniHtml=datas.length?`<div class="gantt-mini-wrap"><div class="gantt-mini-title">Linha do tempo</div>${tarefas.filter(t=>t.dataInicio).map(t=>{const s=new Date(t.dataInicio).getTime()-minD;const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);const left=Math.max(0,Math.round((s/totalD)*100));const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));return'<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';}).join('')}</div>`:''
-return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')"><div class="cron-name">${cron.nomeCliente}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas — ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluido':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button></div></div></div></div>`;}).join('');}
+return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')"><div class="cron-name">${cron.nomeCliente}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas — ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluído':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button></div></div></div></div>`;}).join('');}
 
 // ===================== ATA DO DIA =====================
 let ataRegistros=[];
@@ -1383,7 +1383,7 @@ async function loadAta(){
     document.getElementById('ata-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderAta();
   }catch(e){
-    const msg=e.name==='AbortError'?'Timeout — verifique o AppScript':'Erro de conexao';
+    const msg=e.name==='AbortError'?'Timeout — verifique o AppScript':'Erro de conexão';
     document.getElementById('ata-sync').textContent=msg;
   }
 }
@@ -1611,20 +1611,20 @@ const ORC_CUSTOS=[
 ];
 let orcMatLinhas=6;
 let orcIniciado=false;
-function initOrcamento(){
+function initOrçamento(){
   if(orcIniciado)return;orcIniciado=true;
   orcMatLinhas=6;
   buildOrcTables();
   document.getElementById('orc-data-orcamento').value=todayStr;
-  calcOrcamento();
+  calcOrçamento();
 }
 function fmtBRL(v){return'R$ '+(+v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function buildOrcTables(){
   const tb=document.getElementById('orc-custos-tbody');
   tb.innerHTML=ORC_CUSTOS.map((c,i)=>`<tr id="orc-custo-row-${i}">
     <td style="border:1px solid #ccc;padding:3px 6px;">${c.desc?`<span style="font-size:11px">${c.desc}</span>`:`<input type="text" id="orc-c-desc-${i}" placeholder="Descrição" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;">`}</td>
-    <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-c-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
-    <td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-c-val-${i}" value="${c.valor||''}" min="0" step="0.01" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td>
+    <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-c-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrçamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
+    <td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-c-val-${i}" value="${c.valor||''}" min="0" step="0.01" oninput="calcOrçamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td>
     <td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-c-tot-${i}">R$ 0,00</td>
     <td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-c-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td>
     <td style="border:none;padding:2px 2px;width:20px;" class="orc-no-print"><button onclick="limparLinhaOrc('c',${i})" title="Limpar linha" style="border:none;background:none;cursor:pointer;color:#ccc;font-size:14px;line-height:1;padding:0;">✕</button></td>
@@ -1633,11 +1633,11 @@ function buildOrcTables(){
 }
 function renderOrcMatRows(){
   const tm=document.getElementById('orc-mat-tbody');
-  tm.innerHTML=Array.from({length:orcMatLinhas},(_,i)=>`<tr id="orc-mat-row-${i}"><td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="orc-ac-wrap-${i}"><input type="text" id="orc-m-desc-${i}" oninput="buildOrcAcList(${i},this.value)" onblur="setTimeout(()=>fecharOrcAc(${i}),300)" placeholder="Digite para buscar..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="orc-ac-list-${i}" style="display:none"></div></div></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-m-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrcamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-m-val-${i}" min="0" step="0.01" placeholder="0.00" oninput="calcOrcamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td><td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-m-tot-${i}">R$ 0,00</td><td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-m-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td><td style="border:none;padding:2px 4px;" class="orc-no-print"><button onclick="limparLinhaOrc('m',${i})" title="Limpar linha" style="border:none;background:none;cursor:pointer;color:#ccc;font-size:13px;padding:0 4px;">✕</button></td></tr>`).join('');
+  tm.innerHTML=Array.from({length:orcMatLinhas},(_,i)=>`<tr id="orc-mat-row-${i}"><td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="orc-ac-wrap-${i}"><input type="text" id="orc-m-desc-${i}" oninput="buildOrcAcList(${i},this.value)" onblur="setTimeout(()=>fecharOrcAc(${i}),300)" placeholder="Digite para buscar..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="orc-ac-list-${i}" style="display:none"></div></div></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-m-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrçamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td><td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><input type="number" id="orc-m-val-${i}" min="0" step="0.01" placeholder="0.00" oninput="calcOrçamento()" style="width:80px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td><td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-m-tot-${i}">R$ 0,00</td><td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="orc-m-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td><td style="border:none;padding:2px 4px;" class="orc-no-print"><button onclick="limparLinhaOrc('m',${i})" title="Limpar linha" style="border:none;background:none;cursor:pointer;color:#ccc;font-size:13px;padding:0 4px;">✕</button></td></tr>`).join('');
   // Linha do botão "+"
   const tfoot=document.getElementById('orc-mat-tfoot-btn');
   if(tfoot)tfoot.innerHTML=`<tr class="orc-no-print"><td colspan="5" style="border:1px dashed #ccc;padding:4px;text-align:center;"><button onclick="adicionarLinhaMat()" style="border:none;background:none;cursor:pointer;font-size:18px;color:#888;line-height:1;" title="Adicionar linha de material">＋</button></td></tr>`;
-  calcOrcamento();
+  calcOrçamento();
 }
 function adicionarLinhaMat(){orcMatLinhas++;renderOrcMatRows();}
 
@@ -1659,9 +1659,9 @@ function limparLinhaOrc(tipo, idx){
     const obs=document.getElementById('orc-c-obs-'+idx);
     if(qtd)qtd.value='';if(val)val.value='';if(obs)obs.value='';
   }
-  calcOrcamento();
+  calcOrçamento();
 }
-function calcOrcamento(){
+function calcOrçamento(){
   let totalCustos=0;
   ORC_CUSTOS.forEach((_,i)=>{const qtd=parseFloat(document.getElementById('orc-c-qtd-'+i)?.value)||0;const val=parseFloat(document.getElementById('orc-c-val-'+i)?.value)||0;const tot=qtd*val;const el=document.getElementById('orc-c-tot-'+i);if(el)el.textContent=fmtBRL(tot);totalCustos+=tot;});
   let totalMat=0;
@@ -1672,7 +1672,7 @@ function calcOrcamento(){
   document.getElementById('orc-total-final').textContent=fmtBRL(total);
   document.getElementById('orc-total-header').textContent=fmtBRL(total);
 }
-function limparOrcamento(){
+function limparOrçamento(){
   if(!confirm('Limpar todo o orçamento?'))return;
   ['orc-cliente','orc-cnpj','orc-endereco','orc-cidade','orc-uf','orc-data-servico','orc-tecnico','orc-orçamentista','orc-horas','orc-descricao','orc-obs-servicos','orc-obs-mat'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('orc-data-orcamento').value=todayStr;
@@ -1681,7 +1681,7 @@ function limparOrcamento(){
   orcMatLinhas=6;
   renderOrcMatRows();
 }
-function exportarOrcamentoPDF(){
+function exportarOrçamentoPDF(){
   const nomeCliente=document.getElementById('orc-cliente')?.value.trim()||'';
   const nomeArquivo='Orçamento Blincast 2026'+(nomeCliente?' - '+nomeCliente:'');
   document.title=nomeArquivo;
@@ -1752,7 +1752,7 @@ function selecionarOrcProd(idx, desc, val){
   if(desc_el) desc_el.value = desc;
   if(val_el)  { val_el.value = val; }  // número puro para input type=number
   if(list)    { list.innerHTML=''; list.style.display='none'; }
-  calcOrcamento();
+  calcOrçamento();
 }
 
 function fecharOrcAc(idx){
@@ -1781,7 +1781,7 @@ async function loadDistrato(){
     document.getElementById('distrato-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderDistrato();
   }catch(e){
-    document.getElementById('distrato-sync').textContent = 'Erro de conexao';
+    document.getElementById('distrato-sync').textContent = 'Erro de conexão';
   }
 }
 
@@ -1983,7 +1983,7 @@ async function loadPocOperacional(){
     pocRegistros=Array.isArray(d)?d:[];
     document.getElementById('poc-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderPocOperacional();
-  }catch(e){document.getElementById('poc-sync').textContent='Erro de conexao';}
+  }catch(e){document.getElementById('poc-sync').textContent='Erro de conexão';}
 }
 
 function renderPocOperacional(){
@@ -2280,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
         <input type="text" id="dt-os" placeholder="Ex: 15837">
       </div>
       <div class="modal-field"><label>Data para retirada</label><input type="date" id="dt-data-retirada"></div>
-      <div class="modal-field"><label>Data cancelamento operadora</label><input type="date" id="dt-data-cancelamento"></div>
+      <div class="modal-field"><label>Data cancelamento da operadora</label><input type="date" id="dt-data-cancelamento"></div>
       <div class="modal-field" style="grid-column:span 2">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;">
           <input type="checkbox" id="dt-juridico" style="width:16px;height:16px;">
