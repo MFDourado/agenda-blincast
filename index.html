@@ -262,6 +262,32 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .login-user-badge{position:fixed;bottom:12px;left:16px;font-size:11px;font-family:"DM Mono",monospace;color:#444;z-index:100;}
 
 
+
+/* ── SURVEY ── */
+#survey-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:3000;padding:1rem;}
+.survey-box{background:#1a1a1a;border-radius:14px;padding:2rem;width:100%;max-width:460px;border:1px solid #2a2a2a;box-shadow:0 24px 60px rgba(0,0,0,.4);}
+.survey-box h3{font-size:16px;font-weight:700;color:#fff;text-align:center;margin-bottom:4px;}
+.survey-box p{font-size:12px;color:#666;text-align:center;margin-bottom:1.5rem;}
+.survey-q{margin-bottom:1.25rem;}
+.survey-q label{font-size:13px;font-weight:500;color:#ccc;display:block;margin-bottom:8px;}
+.s-stars{display:flex;gap:6px;}
+.s-star{width:36px;height:36px;border-radius:8px;border:1.5px solid #333;background:none;font-size:17px;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;}
+.s-star:hover,.s-star.on{background:#F5B800;border-color:#F5B800;}
+.survey-obs{width:100%;border:1px solid #333;border-radius:8px;padding:10px;font-size:13px;font-family:'DM Sans',sans-serif;background:#111;color:#fff;outline:none;resize:vertical;min-height:72px;margin-top:4px;box-sizing:border-box;}
+.survey-obs:focus{border-color:#F5B800;}
+.survey-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
+.survey-later{padding:7px 14px;border:1px solid #333;border-radius:7px;background:none;font-size:12px;font-family:'DM Sans',sans-serif;color:#666;cursor:pointer;}
+.survey-send{padding:7px 18px;background:#F5B800;color:#111;border:none;border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;}
+.survey-send:disabled{opacity:.35;cursor:not-allowed;}
+/* Tela de obrigado */
+.survey-thanks{display:none;text-align:center;padding:.5rem 0;}
+.survey-thanks .ty-icon{font-size:40px;margin-bottom:12px;}
+.survey-thanks h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;}
+.survey-thanks p{font-size:12px;color:#666;margin-bottom:16px;}
+.survey-thanks button{padding:7px 18px;background:none;border:1px solid #333;border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:#666;cursor:pointer;}
+.survey-progress{height:3px;background:#333;border-radius:2px;margin-top:12px;overflow:hidden;}
+.survey-progress-bar{height:3px;background:#F5B800;border-radius:2px;width:0%;transition:width linear;}
+
 </style>
 </head>
 <body>
@@ -269,9 +295,9 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 <div id="login-overlay">
   <div class="login-box">
     <div class="login-logo">
-      <img src="data:image/png;base64,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" alt="Blincast">
+      <img src="data:image/png;base64,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" alt="Blincast">
     </div>
-    <div class="login-title">BlinTrack Operacional</div>
+    <div class="login-title">Blin<span style="color:#F5B800">Track</span> Operacional</div>
     <div class="login-sub">Acesso restrito à equipe Blincast</div>
     <div class="login-field">
       <label>Usuário</label>
@@ -289,7 +315,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 <div class="login-user-badge" id="login-user-badge" style="display:none"></div>
 
 <header>
-  <div class="logo">BlinTrack <span style="color:#444;margin:0 8px">|</span> Operacional</div>
+  <div class="logo">Blin<span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> Operacional</div>
   <div class="status-bar">
     <button onclick="forceRefresh()" title="Recarregar sistema" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">↻ Refresh</button>
     <div class="status-dot loading" id="status-dot"></div>
@@ -650,6 +676,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 <script>
 
 // ===================== LOGIN =====================
+const API_TOKEN='3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9';
 const LOGIN_API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
 const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
@@ -664,7 +691,7 @@ function iniciarApp(){
         document.getElementById('login-overlay').style.display='none';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
-        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);
+        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);setTimeout(sVerificar,5000);
         return;
       }
     }
@@ -689,7 +716,7 @@ async function fazerLogin(){
       document.getElementById('login-overlay').style.display='none';
       document.getElementById('login-user-badge').style.display='block';
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
-      apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);
+      apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -705,7 +732,7 @@ async function esqueceuSenha(){
   const usuario = document.getElementById('login-usuario').value.trim();
   if(!usuario){document.getElementById('login-error').textContent='Digite seu usuário primeiro.';return;}
   try{
-    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'esqueceuSenha',usuario,sistema:'Operacional'})});
+    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'esqueceuSenha',usuario,sistema:'Operacional'})});
     document.getElementById('login-error').style.color='#2ecc71';
     document.getElementById('login-error').textContent='Solicitação enviada! O administrador foi notificado.';
   }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
@@ -761,22 +788,24 @@ function switchMainTab(t){
 
 // ===================== AGENDA =====================
 async function apiGet(tentativa=1){
-  setStatus('loading', tentativa===1?'Sincronizando...':'Reconectando... (tentativa '+tentativa+')');
+  if(tentativa===1) setStatus('loading','Sincronizando...');
   try{
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(API+'?action=getAll',{signal:ctrl.signal});
+    const timer=setTimeout(()=>ctrl.abort(),25000);
+    const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getAll',{signal:ctrl.signal});
     clearTimeout(timer);
     const d=await r.json();
+    if(d && d.error){throw new Error(d.error);}
     events=Array.isArray(d)?d.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
     setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     renderAgenda();
   }catch(e){
-    if(tentativa<3){
+    if(tentativa<4){
       setStatus('loading','Aguardando AppScript... ('+tentativa+'/3)');
-      setTimeout(()=>apiGet(tentativa+1), 5000);
+      setTimeout(()=>apiGet(tentativa+1), 8000);
     } else {
-      setStatus('error','Erro de conexão — F5 para tentar novamente');
+      setStatus('error','Erro de conexão');
+      setTimeout(()=>apiGet(1), 30000); // tenta novamente após 30s
     }
   }
 }
@@ -881,7 +910,7 @@ async function loadPipeline(forceRender){
   document.getElementById('pipeline-sync').textContent='Carregando...';
   try{
     const ctrl2=new AbortController();setTimeout(()=>ctrl2.abort(),10000);
-    const r=await fetch(API+'?action=getPipeline',{signal:ctrl2.signal});
+    const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getPipeline',{signal:ctrl2.signal});
     const d=await r.json();
     projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
     document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -889,23 +918,25 @@ async function loadPipeline(forceRender){
     if(!algumAberto||forceRender)renderPipeline();
     else document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
-    if(!window._pipelineRetry){
-      window._pipelineRetry=true;
-      document.getElementById('pipeline-sync').textContent='Reconectando... aguarde';
-      setTimeout(()=>{window._pipelineRetry=false;sincronizarPipeline();},6000);
+    window._pipeRetries = (window._pipeRetries||0) + 1;
+    if(window._pipeRetries < 4){
+      document.getElementById('pipeline-sync').textContent='Reconectando... ('+window._pipeRetries+'/3)';
+      setTimeout(()=>sincronizarPipeline(), 8000);
     } else {
-      document.getElementById('pipeline-sync').textContent='Erro de conexão — clique em Sincronizar';
+      window._pipeRetries = 0;
+      document.getElementById('pipeline-sync').textContent='Erro ao carregar — clique em Sincronizar';
+      pipelineLoaded=false;
     }
   }
 }
 async function savePipelineProject(proj){
   try{
     const payload={action:'savePipeline',id:proj.id,nome:proj.nome,uhs:proj.uhs,inicio:proj.inicio,steps:proj.steps};
-    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});
     document.getElementById('pipeline-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){document.getElementById('pipeline-sync').textContent='Erro ao salvar';}
 }
-async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePipeline',id})});}catch(e){}}
+async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deletePipeline',id})});}catch(e){}}
 function daysSince(ds){if(!ds)return null;return Math.floor((new Date()-new Date(ds))/(1000*60*60*24));}
 
 // Boxes Pipeline
@@ -1014,7 +1045,7 @@ function toggleStep(projId,stepId){
   renderPipeline();schedSave(proj);
   if(foiConcluído){
     const stepInfo=STEPS.find(s=>s.id===stepId);
-    if(stepInfo){fetch(API,{method:'POST',body:JSON.stringify({action:'notificarEtapa',projeto:proj.nome,etapaId:stepId,etapaTitulo:stepInfo.title,responsavel:stepInfo.resp,data:step.date||todayStr})}).catch(()=>{});}
+    if(stepInfo){fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'notificarEtapa',projeto:proj.nome,etapaId:stepId,etapaTitulo:stepInfo.title,responsavel:stepInfo.resp,data:step.date||todayStr})}).catch(()=>{});}
   }
 }
 function updateStepDate(projId,stepId,val){
@@ -1035,7 +1066,7 @@ function toggleProject(id){
 async function renderDashboard(){
   document.getElementById('dash-sync').textContent='Carregando...';
   if(!projects.length){
-    try{const r=await fetch(API+'?action=getPipeline');const d=await r.json();projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];}catch(e){}
+    try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getPipeline');const d=await r.json();projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];}catch(e){}
   }
   const total=projects.length;
   const concluidos=projects.filter(p=>p.steps.every(s=>s.done));
@@ -1119,7 +1150,7 @@ async function renderDashboard(){
 let prospects=[],comFilter='todos';
 async function loadComercial(){
   document.getElementById('com-sync').textContent='Carregando...';
-  try{const r=await fetch(API+'?action=getComercial');const d=await r.json();prospects=Array.isArray(d)?d:[];document.getElementById('com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderComercial();}catch(e){document.getElementById('com-sync').textContent='Erro de conexão';}
+  try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getComercial');const d=await r.json();prospects=Array.isArray(d)?d:[];document.getElementById('com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderComercial();}catch(e){document.getElementById('com-sync').textContent='Erro de conexão';}
 }
 function setComFilter(f){
   comFilter=f;
@@ -1200,13 +1231,13 @@ async function salvarCom(){
   const editId=document.getElementById('cm-edit-id').value;
   const payload={nome,cidade,cnpj:document.getElementById('cm-cnpj').value.trim(),contato:document.getElementById('cm-contato').value.trim(),produto:produto==='OUTROS'?'OUTROS - '+document.getElementById('cm-produto-outro').value.trim():produto,conteudo_online:document.getElementById('cm-conteudo').value,conteudo_detalhe:document.getElementById('cm-conteudo-detalhe').value.trim(),uhs:parseInt(uhs)||0};
   closeComModal();
-  try{if(editId){await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});}else{await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});}await loadComercial();}catch(e){setStatus('error','Erro ao salvar');}
+  try{if(editId){await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'updateComercial',id:editId,...payload})});}else{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'addComercial',id:uid(),...payload})});}await loadComercial();}catch(e){setStatus('error','Erro ao salvar');}
 }
-async function removerCom(id){if(!confirm('Remover este prospect?'))return;try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});await loadComercial();}catch(e){setStatus('error','Erro ao remover');}}
+async function removerCom(id){if(!confirm('Remover este prospect?'))return;try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteComercial',id})});await loadComercial();}catch(e){setStatus('error','Erro ao remover');}}
 async function converterProspect(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   if(!confirm('Converter "'+p.nome+'" para o pipeline?'))return;
-  try{await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',canais:p.canais||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});await loadComercial();alert(p.nome+' convertido para o pipeline!');}catch(e){setStatus('error','Erro ao converter');}
+  try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',canais:p.canais||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||''})});await loadComercial();alert(p.nome+' convertido para o pipeline!');}catch(e){setStatus('error','Erro ao converter');}
 }
 
 // ===================== EMAIL CONCLUSAO =====================
@@ -1214,13 +1245,13 @@ function abrirEmailConclusao(projId,projNome){document.getElementById('ec-proj-i
 let ecTimer=null;
 function iniciarDoubleCheck(){const dest=document.getElementById('ec-destinatarios').value.trim();const msg=document.getElementById('ec-mensagem').value.trim();if(!dest||!msg){alert('Preencha os destinatarios e a mensagem.');return;}document.getElementById('ec-confirm-btn').style.display='none';document.getElementById('ec-double-check').style.display='block';const btn=document.getElementById('ec-sim-btn');const countdown=document.getElementById('ec-countdown');btn.disabled=true;btn.style.cursor='not-allowed';btn.style.opacity='.5';let secs=2;countdown.textContent='('+secs+'s)';ecTimer=setInterval(()=>{secs--;if(secs<=0){clearInterval(ecTimer);countdown.textContent='';btn.disabled=false;btn.style.cursor='pointer';btn.style.opacity='1';}else{countdown.textContent='('+secs+'s)';}},1000);}
 function cancelarDoubleCheck(){clearInterval(ecTimer);document.getElementById('ec-double-check').style.display='none';document.getElementById('ec-confirm-btn').style.display='';}
-async function confirmarEnvioEmail(){const projId=document.getElementById('ec-proj-id').value;const msg=document.getElementById('ec-mensagem').value.trim();const dest=document.getElementById('ec-destinatarios').value.trim();const proj=projects.find(p=>p.id===projId);const destinatarios=dest.split(',').map(e=>e.trim()).filter(Boolean);document.getElementById('email-conclusao-modal').style.display='none';document.getElementById('pipeline-sync').textContent='Enviando e-mail...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'enviarEmailConclusao',projeto:proj?proj.nome:projId,destinatarios,mensagem:msg})});document.getElementById('pipeline-sync').textContent='E-mail enviado!';}catch(e){document.getElementById('pipeline-sync').textContent='Erro ao enviar e-mail.';}}
+async function confirmarEnvioEmail(){const projId=document.getElementById('ec-proj-id').value;const msg=document.getElementById('ec-mensagem').value.trim();const dest=document.getElementById('ec-destinatarios').value.trim();const proj=projects.find(p=>p.id===projId);const destinatarios=dest.split(',').map(e=>e.trim()).filter(Boolean);document.getElementById('email-conclusao-modal').style.display='none';document.getElementById('pipeline-sync').textContent='Enviando e-mail...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'enviarEmailConclusao',projeto:proj?proj.nome:projId,destinatarios,mensagem:msg})});document.getElementById('pipeline-sync').textContent='E-mail enviado!';}catch(e){document.getElementById('pipeline-sync').textContent='Erro ao enviar e-mail.';}}
 
 // ===================== VISTORIA =====================
 const STEPS_VISTORIA=[{id:1,title:'Vistoria solicitada',resp:'SAC'},{id:2,title:'Agendamento com cliente',resp:'SAC'},{id:3,title:'Vistoria realizada',resp:'SAC'},{id:4,title:'Relatorio tecnico emitido',resp:'SAC'},{id:5,title:'Enviado ao comercial',resp:'SAC'}];
 let vistorias=[],vstSaveTimer=null;
-async function loadVistoria(){document.getElementById('vistoria-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getVistoria');const d=await r.json();vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderVistoria();}catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}}
-async function saveVistoriaProject(v){try{await fetch(API,{method:'POST',body:JSON.stringify({action:'saveVistoria',id:v.id,prospectId:v.prospectId,nomeCliente:v.nomeCliente,status:v.status,steps:v.steps})});document.getElementById('vistoria-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('vistoria-sync').textContent='Erro ao salvar';}}
+async function loadVistoria(){document.getElementById('vistoria-sync').textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getVistoria');const d=await r.json();vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderVistoria();}catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}}
+async function saveVistoriaProject(v){try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveVistoria',id:v.id,prospectId:v.prospectId,nomeCliente:v.nomeCliente,status:v.status,steps:v.steps})});document.getElementById('vistoria-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('vistoria-sync').textContent='Erro ao salvar';}}
 function schedSaveVistoria(v){document.getElementById('vistoria-sync').textContent='Salvando...';clearTimeout(vstSaveTimer);vstSaveTimer=setTimeout(()=>saveVistoriaProject(v),1500);}
 function toggleVistoriaStep(vId,stepId){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;if(v.steps.every(s=>s.done))v.status='concluida';else v.status='andamento';renderVistoria();schedSaveVistoria(v);}
 function updateVistoriaStepDate(vId,stepId,val){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.date=val;schedSaveVistoria(v);}
@@ -1235,8 +1266,8 @@ const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:f
 
 // ===================== CLIENTES =====================
 let clientes=[],cliSaveTimer=null;
-async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
-async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify(payload)});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
+async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
+async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
 function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);const chev=document.getElementById('cli-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
 function formatDateBRCli(ds){if(!ds)return'';const s=String(ds).slice(0,10).split('-');if(s.length<3)return ds;return s[2]+'/'+s[1]+'/'+s[0];}
 function toggleGradePor(id){const chk=document.getElementById('cli-grade-'+id);const wrap=document.getElementById('cli-grade-por-wrap-'+id);if(wrap)wrap.style.display=chk&&chk.checked?'block':'none';}
@@ -1307,7 +1338,7 @@ async function salvarEdicaoCliente(){
   };
   document.getElementById('editar-cliente-modal').style.display='none';
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});
     await loadClientes();
   }catch(e){alert('Erro ao salvar.');}
 }
@@ -1368,7 +1399,7 @@ async function toggleInativarCliente(id, statusAtual){
   const acao = novoStatus === 'inativo' ? 'inativar' : 'reativar';
   if(!confirm('Deseja '+acao+' este cliente?')) return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCliente',id,status:novoStatus})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCliente',id,status:novoStatus})});
     await loadClientes();
   }catch(e){alert('Erro ao '+acao+' cliente.');}
 }
@@ -1376,7 +1407,7 @@ async function toggleInativarCliente(id, statusAtual){
 async function excluirCliente(id, nome){
   if(!confirm('Excluir permanentemente "'+nome+'"? Esta ação não pode ser desfeita.')) return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCliente',id})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteCliente',id})});
     await loadClientes();
   }catch(e){alert('Erro ao excluir cliente.');}
 }
@@ -1386,26 +1417,26 @@ function closeNovoClienteModal(){document.getElementById('novo-cliente-modal').s
 async function criarClienteAvulso(){const nome=document.getElementById('nc-nome').value.trim();const cidade=document.getElementById('nc-cidade').value.trim();const produto=document.getElementById('nc-produto').value;const uhs=document.getElementById('nc-uhs').value;const vigencia=document.getElementById('nc-vigencia').value;const responsavel=document.getElementById('nc-responsavel').value.trim();const motivo=document.getElementById('nc-motivo').value.trim();const endereco_val=document.getElementById('nc-endereco').value.trim();
   const contato_val=document.getElementById('nc-contato').value.trim();
   const telefone_val=document.getElementById('nc-telefone').value.trim();
-  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val||!contato_val||!telefone_val){alert('Preencha todos os campos obrigatórios (*)');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val||!contato_val||!telefone_val){alert('Preencha todos os campos obrigatórios (*)');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
 
 // ===================== CRONOGRAMA =====================
 let cronogramas=[],cronSaveTimer=null;
 const BASE_URL='https://mfdourado.github.io/agenda-blincast/cronograma.html';
 const TEMPLATE_TASKS=[{id:1,nome:'Configuração dos equipamentos',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:2,nome:'Instalação física — Rack',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:3,nome:'Infraestrutura de rede',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'},{id:4,nome:'Testes e validação',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'}];
-async function loadCronogramas(){document.getElementById('cron-sync').textContent='Carregando...';try{const r=await fetch(API+'?action=getCronogramas');const d=await r.json();cronogramas=Array.isArray(d)?d:[];document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro de conexão';}}
+async function loadCronogramas(){document.getElementById('cron-sync').textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getCronogramas');const d=await r.json();cronogramas=Array.isArray(d)?d:[];document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro de conexão';}}
 function openNovoCronModal(){document.getElementById('cron-nome').value='';document.getElementById('cm-edit-id').value='';document.getElementById('cron-modal-title').textContent='Novo cronograma';renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));document.getElementById('cron-modal').style.display='flex';}
 function closeCronModal(){document.getElementById('cron-modal').style.display='none';}
 function renderModalTasks(tasks){const list=document.getElementById('cm-tasks-list');list.innerHTML=tasks.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center"><input type="text" value="${t.nome}" placeholder="Nome da tarefa" id="ct-nome-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><input type="text" value="${t.responsavel}" placeholder="Responsável" id="ct-resp-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><button onclick="removeCronTask(${i})" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-light);font-size:13px;">✕</button></div>`).join('');list.dataset.count=tasks.length;}
 function addCronTask(){const tasks=getModalTasks();tasks.push({id:tasks.length+1,nome:'',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'});renderModalTasks(tasks);}
 function removeCronTask(idx){const tasks=getModalTasks();tasks.splice(idx,1);renderModalTasks(tasks);}
 function getModalTasks(){const list=document.getElementById('cm-tasks-list');const count=parseInt(list.dataset.count||0);const tasks=[];for(let i=0;i<count;i++){const nome=document.getElementById('ct-nome-'+i);const resp=document.getElementById('ct-resp-'+i);if(nome&&resp)tasks.push({id:i+1,nome:nome.value.trim(),responsavel:resp.value.trim(),dataInicio:'',dataFim:'',status:'previsto'});}return tasks;}
-async function salvarCronograma(){const nome=document.getElementById('cron-nome').value.trim();if(!nome){alert('Informe o nome do cliente/projeto.');return;}const tasks=getModalTasks().filter(t=>t.nome);const editId=document.getElementById('cm-edit-id').value;const cronId=editId||uid();closeCronModal();document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cronId,clienteId:'',projetoId:'',nomeCliente:nome,tarefas:tasks})});await loadCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}}
+async function salvarCronograma(){const nome=document.getElementById('cron-nome').value.trim();if(!nome){alert('Informe o nome do cliente/projeto.');return;}const tasks=getModalTasks().filter(t=>t.nome);const editId=document.getElementById('cm-edit-id').value;const cronId=editId||uid();closeCronModal();document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCronograma',id:cronId,clienteId:'',projetoId:'',nomeCliente:nome,tarefas:tasks})});await loadCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}}
 function getCronLink(id){return BASE_URL+'?id='+id;}
 function copiarLink(id){navigator.clipboard.writeText(getCronLink(id)).then(()=>{const btn=document.getElementById('copy-btn-'+id);if(btn){btn.textContent='Copiado!';setTimeout(()=>{btn.textContent='Copiar link';},2000);}});}
 function toggleCronCard(id){const el=document.getElementById('cron-body-'+id);const chev=document.getElementById('cron-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
 function toggleCronCheck(cronId,taskIdx,checked){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;cron.tarefas[taskIdx].status=checked?'concluido':'previsto';const row=document.getElementById('ctr-'+cronId+'-'+taskIdx);if(row){const nameEl=row.querySelector('.cron-task-name');if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}}const concluidas=cron.tarefas.filter(t=>t.status==='concluido').length;const pct=cron.tarefas.length?Math.round((concluidas/cron.tarefas.length)*100):0;const barEl=document.querySelector('#cron-bar-'+cronId);if(barEl)barEl.style.width=pct+'%';const metaEl=document.querySelector('#cron-meta-'+cronId);if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';updateCronTask(cronId,taskIdx,'status',cron.tarefas[taskIdx].status);}
-function updateCronTask(cronId,taskIdx,field,val){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;if(!cron.tarefas[taskIdx])return;cron.tarefas[taskIdx][field]=val;clearTimeout(cronSaveTimer);cronSaveTimer=setTimeout(async()=>{document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}},1500);}
-async function deletarCronograma(id){if(!confirm('Remover este cronograma?'))return;await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCronograma',id})});await loadCronogramas();}
+function updateCronTask(cronId,taskIdx,field,val){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;if(!cron.tarefas[taskIdx])return;cron.tarefas[taskIdx][field]=val;clearTimeout(cronSaveTimer);cronSaveTimer=setTimeout(async()=>{document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}},1500);}
+async function deletarCronograma(id){if(!confirm('Remover este cronograma?'))return;await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteCronograma',id})});await loadCronogramas();}
 function renderCronogramas(){const list=document.getElementById('cron-list');if(!cronogramas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cronograma.</div>';return;}list.innerHTML=cronogramas.map(cron=>{const tarefas=cron.tarefas||[];const concluidas=tarefas.filter(t=>t.status==='concluido').length;const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;const link=getCronLink(cron.id);const tarefasHtml=tarefas.map((t,i)=>{const done=t.status==='concluido';return `<div class="cron-task-row" id="ctr-${cron.id}-${i}"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)"><div><div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div></label><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio"><span style="color:var(--text-muted);font-size:11px">→</span><input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim"></div></div>`;}).join('');const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));const minD=datas.length?Math.min(...datas):null;const maxD=datas.length?Math.max(...datas):null;const totalD=maxD&&minD?maxD-minD:1;const ganttMiniHtml=datas.length?`<div class="gantt-mini-wrap"><div class="gantt-mini-title">Linha do tempo</div>${tarefas.filter(t=>t.dataInicio).map(t=>{const s=new Date(t.dataInicio).getTime()-minD;const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);const left=Math.max(0,Math.round((s/totalD)*100));const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));return'<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';}).join('')}</div>`:''
 return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')"><div class="cron-name">${cron.nomeCliente}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas — ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluído':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button></div></div></div></div>`;}).join('');}
 
@@ -1418,7 +1449,7 @@ async function loadAta(){
   document.getElementById('ata-sync').textContent='Carregando...';
   // Sem filtro de data por padrão — mostra todos os não-feitos
   try{
-    const r=await fetch(API+'?action=getAta');
+    const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getAta');
     const d=await r.json();
     ataRegistros=Array.isArray(d)?d.filter(r=>r&&r.id&&String(r.id).trim()!='').map(r=>{
       const n={};
@@ -1576,8 +1607,8 @@ async function salvarAta(){
   };
   closeAtaModal();
   try{
-    if(editId){await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAta',id:editId,...payload})});}
-    else{await fetch(API,{method:'POST',body:JSON.stringify({action:'addAta',id:uid(),...payload})});}
+    if(editId){await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'updateAta',id:editId,...payload})});}
+    else{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'addAta',id:uid(),...payload})});}
     await loadAta();
   }catch(e){setStatus('error','Erro ao salvar ata');}
 }
@@ -1586,14 +1617,14 @@ async function alterarAtaData(id, campo, valor){
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg[campo]=valor;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAtaData',id,campo,valor})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'updateAtaData',id,campo,valor})});
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){document.getElementById('ata-sync').textContent='Erro ao salvar';}
 }
 
 async function removerAta(id){
   if(!confirm('Remover este registro?'))return;
-  try{await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteAta',id})});await loadAta();}
+  try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteAta',id})});await loadAta();}
   catch(e){setStatus('error','Erro ao remover');}
 }
 
@@ -1605,7 +1636,7 @@ async function alterarAtaStatus(id, novoStatus, selEl){
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg.status=novoStatus;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'updateAtaStatus',id,status:novoStatus})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'updateAtaStatus',id,status:novoStatus})});
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
     document.getElementById('ata-sync').textContent='Erro ao salvar';
@@ -1756,8 +1787,66 @@ function exportarOrçamentoPDF(){
 }
 
 // ===================== SINCRONIZAÇÕES =====================
-async function sincronizarPipeline(){const btn=document.querySelector('[onclick="sincronizarPipeline()"]');if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}try{const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarPipeline'})});const d=await r.json();await loadPipeline(true);if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}if(d.atualizados>0)alert(d.atualizados+' projeto(s) atualizado(s)!');else alert('Todos os projetos já estão atualizados.');}catch(e){if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}alert('Erro ao sincronizar.');}}
-async function sincronizarClientes(){const btn=document.querySelector('[onclick="sincronizarClientes()"]');if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}try{const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarClientes'})});const d=await r.json();await loadClientes();if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}if(d.criados>0)alert(d.criados+' cliente(s) importado(s)!');else alert('Todos os clientes já estão sincronizados.');}catch(e){if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}alert('Erro ao sincronizar.');}}
+async function sincronizarPipeline(){const btn=document.querySelector('[onclick="sincronizarPipeline()"]');if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}try{const r=await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'sincronizarPipeline'})});const d=await r.json();await loadPipeline(true);if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}if(d.atualizados>0)alert(d.atualizados+' projeto(s) atualizado(s)!');else alert('Todos os projetos já estão atualizados.');}catch(e){if(btn){btn.textContent='↻ Sincronizar dados';btn.disabled=false;}alert('Erro ao sincronizar.');}}
+async function sincronizarClientes(){const btn=document.querySelector('[onclick="sincronizarClientes()"]');if(btn){btn.textContent='Sincronizando...';btn.disabled=true;}try{const r=await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'sincronizarClientes'})});const d=await r.json();await loadClientes();if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}if(d.criados>0)alert(d.criados+' cliente(s) importado(s)!');else alert('Todos os clientes já estão sincronizados.');}catch(e){if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}alert('Erro ao sincronizar.');}}
+
+// ── SURVEY ──────────────────────────────────────────────────────────────────
+const S_KEY='blintrack_survey_ts';
+const S_DIAS=30;
+let sR={1:0,2:0,3:0};
+
+function sS(q,v){
+  sR[q]=v;
+  document.querySelectorAll('#ss'+q+' .s-star').forEach((b,i)=>b.classList.toggle('on',i<v));
+  document.getElementById('sBtnEnviar').disabled=!(sR[1]>0&&sR[2]>0&&sR[3]>0);
+}
+
+function sClose(adiar){
+  document.getElementById('survey-overlay').style.display='none';
+  // Resetar para próxima vez
+  document.getElementById('survey-form').style.display='block';
+  document.getElementById('survey-thanks').style.display='none';
+  sR={1:0,2:0,3:0};
+  document.querySelectorAll('.s-star').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sObs').value='';
+  document.getElementById('sBtnEnviar').disabled=true;
+  document.getElementById('sBtnEnviar').textContent='Enviar';
+  if(!adiar) localStorage.setItem(S_KEY,Date.now().toString());
+}
+
+async function sEnviar(){
+  const btn=document.getElementById('sBtnEnviar');
+  btn.disabled=true;btn.textContent='Enviando...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:API_TOKEN,action:'logSatisfacao',
+      usuario:usuarioLogado?.nome||'?',
+      p1:sR[1],p2:sR[2],p3:sR[3],
+      obs:document.getElementById('sObs').value.trim(),
+      data:new Date().toLocaleDateString('pt-BR')
+    })});
+  }catch(e){}
+  // Mostrar tela de obrigado
+  document.getElementById('survey-form').style.display='none';
+  document.getElementById('survey-thanks').style.display='block';
+  localStorage.setItem(S_KEY,Date.now().toString());
+  // Barra de progresso 3 segundos depois fecha
+  const bar=document.getElementById('sTyBar');
+  bar.style.transition='width 3s linear';
+  setTimeout(()=>bar.style.width='100%',50);
+  setTimeout(()=>sClose(false),3200);
+}
+
+function sVerificar(){
+  if(!usuarioLogado) return;
+  const ul=localStorage.getItem(S_KEY);
+  if(ul){
+    const dias=Math.floor((Date.now()-parseInt(ul))/(1000*60*60*24));
+    if(dias<S_DIAS) return;
+  }
+  setTimeout(()=>document.getElementById('survey-overlay').style.display='flex',30000);
+}
+
 </script>
 
 <!-- CLIENTES -->
@@ -1968,6 +2057,64 @@ async function sincronizarClientes(){const btn=document.querySelector('[onclick=
     <input type="text" id="poc-busca" placeholder="🔍 Buscar..." oninput="renderPocOperacional()" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
   </div>
   <div id="poc-list"></div>
+</div>
+
+
+<!-- PESQUISA DE SATISFAÇÃO -->
+<div id="survey-overlay" style="display:none">
+  <div class="survey-box">
+    <!-- Formulário -->
+    <div id="survey-form">
+      <h3>📋 Pesquisa de satisfação</h3>
+      <p>Leva menos de 1 minuto e nos ajuda a melhorar o sistema</p>
+      <div class="survey-q">
+        <label>1. Como você avalia o BlinTrack no geral?</label>
+        <div class="s-stars" id="ss1">
+          <button class="s-star" onclick="sS(1,1)">⭐</button>
+          <button class="s-star" onclick="sS(1,2)">⭐</button>
+          <button class="s-star" onclick="sS(1,3)">⭐</button>
+          <button class="s-star" onclick="sS(1,4)">⭐</button>
+          <button class="s-star" onclick="sS(1,5)">⭐</button>
+        </div>
+      </div>
+      <div class="survey-q">
+        <label>2. O sistema é fácil de usar no dia a dia?</label>
+        <div class="s-stars" id="ss2">
+          <button class="s-star" onclick="sS(2,1)">⭐</button>
+          <button class="s-star" onclick="sS(2,2)">⭐</button>
+          <button class="s-star" onclick="sS(2,3)">⭐</button>
+          <button class="s-star" onclick="sS(2,4)">⭐</button>
+          <button class="s-star" onclick="sS(2,5)">⭐</button>
+        </div>
+      </div>
+      <div class="survey-q">
+        <label>3. As funcionalidades atendem à sua operação?</label>
+        <div class="s-stars" id="ss3">
+          <button class="s-star" onclick="sS(3,1)">⭐</button>
+          <button class="s-star" onclick="sS(3,2)">⭐</button>
+          <button class="s-star" onclick="sS(3,3)">⭐</button>
+          <button class="s-star" onclick="sS(3,4)">⭐</button>
+          <button class="s-star" onclick="sS(3,5)">⭐</button>
+        </div>
+      </div>
+      <div class="survey-q">
+        <label>Comentários <span style="color:#555;font-weight:400">(opcional)</span></label>
+        <textarea class="survey-obs" id="sObs" placeholder="Sugestões de melhoria..."></textarea>
+      </div>
+      <div class="survey-btns">
+        <button class="survey-later" onclick="sClose(true)">Responder depois</button>
+        <button class="survey-send" id="sBtnEnviar" onclick="sEnviar()" disabled>Enviar</button>
+      </div>
+    </div>
+    <!-- Tela de obrigado -->
+    <div class="survey-thanks" id="survey-thanks">
+      <div class="ty-icon">🎉</div>
+      <h3>Obrigado pelo feedback!</h3>
+      <p>Sua resposta foi registrada e vai nos ajudar a melhorar o BlinTrack.</p>
+      <button onclick="sClose(false)">Fechar</button>
+      <div class="survey-progress"><div class="survey-progress-bar" id="sTyBar"></div></div>
+    </div>
+  </div>
 </div>
 
 </body>
