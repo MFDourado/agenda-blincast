@@ -443,7 +443,6 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 <footer>&#169; 2026 Matheus Prateado</footer>
 
 <script>
-const API_TOKEN='3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9';
 const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
 let prospects=[];
 let filters={status:'todos',prioridade:'todos',vendedor:'todos'};
@@ -453,7 +452,7 @@ function setStatus(s,m){document.getElementById('status-dot').className='status-
 async function load(){
   setStatus('loading','Sincronizando...');
   try{
-    const r=await fetch(API+'?token='+API_TOKEN+'&action=getComercial');
+    const r=await fetch(API+'?action=getComercial');
     const d=await r.json();
     prospects=Array.isArray(d)?d:[];
     setStatus('online','Sincronizado');
@@ -617,9 +616,9 @@ async function salvar(){
   setStatus('loading','Salvando...');
   try{
     if(editId){
-      await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'updateComercial',id:editId,...payload})});
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'updateComercial',id:editId,...payload})});
     }else{
-      await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'addComercial',id:uid(),...payload})});
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'addComercial',id:uid(),...payload})});
     }
     await load();
   }catch(e){setStatus('error','Erro ao salvar');}
@@ -629,7 +628,7 @@ async function remover(id){
   if(!confirm('Remover este prospect?'))return;
   setStatus('loading','Removendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteComercial',id})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteComercial',id})});
     await load();
   }catch(e){setStatus('error','Erro ao remover');}
 }
@@ -650,7 +649,7 @@ async function confirmarConversao(){
   document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
@@ -705,7 +704,7 @@ async function loadClientes(){
   const syncEl = document.getElementById('cli-sync');
   if(syncEl) syncEl.textContent = 'Carregando...';
   try {
-    const r = await fetch(API+'?token='+API_TOKEN+'&action=getClientes');
+    const r = await fetch(API+'?action=getClientes');
     const d = await r.json();
     clientes = Array.isArray(d) ? d : [];
     if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -750,7 +749,7 @@ async function saveCliente(clienteId){
   const btn = document.getElementById('cli-save-btn-'+clienteId);
   if(btn){ btn.textContent='Salvando...'; btn.disabled=true; }
   try {
-    await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     await loadClientes();
     if(btn){ btn.textContent='Salvo!'; setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000); }
   } catch(e) {
@@ -968,7 +967,7 @@ const TEMPLATE_TASKS = [
 async function loadCronogramas(){
   document.getElementById('cron-sync').textContent='Carregando...';
   try{
-    const r=await fetch(API+'?token='+API_TOKEN+'&action=getCronogramas');
+    const r=await fetch(API+'?action=getCronogramas');
     const d=await r.json();
     cronogramas=Array.isArray(d)?d:[];
     document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -1035,7 +1034,7 @@ async function salvarCronograma(){
   closeCronModal();
   document.getElementById('cron-sync').textContent='Salvando...';
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCronograma',id:cronId,clienteId:'',projetoId:'',nomeCliente:nome,tarefas:tasks})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cronId,clienteId:'',projetoId:'',nomeCliente:nome,tarefas:tasks})});
     await loadCronogramas();
   }catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}
 }
@@ -1087,9 +1086,9 @@ function updateCronTask(cronId,taskIdx,field,val){
   cronSaveTimer=setTimeout(async()=>{
     document.getElementById('cron-sync').textContent='Salvando...';
     try{
-      await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
       // Sincronizar agenda
-      await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
+      await fetch(API,{method:'POST',body:JSON.stringify({action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});
       document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}
   },1500);
@@ -1097,7 +1096,7 @@ function updateCronTask(cronId,taskIdx,field,val){
 
 async function deletarCronograma(id){
   if(!confirm('Remover este cronograma?'))return;
-  await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteCronograma',id})});
+  await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCronograma',id})});
   await loadCronogramas();
 }
 
@@ -1235,7 +1234,7 @@ async function toggleInativarCliente(id, statusAtual){
   const acao = novoStatus === 'inativo' ? 'inativar' : 'reativar';
   if(!confirm('Deseja '+acao+' este cliente?')) return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveCliente',id,status:novoStatus})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'saveCliente',id,status:novoStatus})});
     await loadClientes();
   }catch(e){alert('Erro ao '+acao+' cliente.');}
 }
@@ -1243,7 +1242,7 @@ async function toggleInativarCliente(id, statusAtual){
 async function excluirCliente(id, nome){
   if(!confirm('Excluir permanentemente "'+nome+'"? Esta ação não pode ser desfeita.')) return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deleteCliente',id})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteCliente',id})});
     await loadClientes();
   }catch(e){alert('Erro ao excluir cliente.');}
 }
@@ -1289,7 +1288,7 @@ async function salvarEdicaoCliente(){
   };
   document.getElementById('editar-cliente-modal').style.display='none';
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     await loadClientes();
   }catch(e){alert('Erro ao salvar.');}
 }
@@ -1303,7 +1302,7 @@ let pocComercial = [];
 async function loadPocComercial(){
   document.getElementById('poc-com-sync').textContent='Carregando...';
   try{
-    const r=await fetch(API+'?token='+API_TOKEN+'&action=getPoc');
+    const r=await fetch(API+'?action=getPoc');
     const d=await r.json();
     pocComercial=Array.isArray(d)?d:[];
     document.getElementById('poc-com-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -1471,7 +1470,7 @@ async function salvarPoc(){
   };
   closePocModal();
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:API_TOKEN})});
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     await loadPocComercial();
   }catch(e){alert('Erro ao salvar PoC.');}
 }
@@ -1480,7 +1479,7 @@ async function cancelarPoc(id){
   if(!confirm('Cancelar esta PoC?'))return;
   const p=pocComercial.find(x=>String(x.id)===String(id));if(!p)return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,...p,action:'updatePoc',id,status:'cancelado'})});
+    await fetch(API,{method:'POST',body:JSON.stringify({...p,action:'updatePoc',id,status:'cancelado'})});
     await loadPocComercial();
   }catch(e){alert('Erro ao cancelar.');}
 }
@@ -1488,7 +1487,7 @@ async function cancelarPoc(id){
 async function deletarPoc(id, nome){
   if(!confirm('Excluir permanentemente a PoC de "'+nome+'"? Esta ação não pode ser desfeita.'))return;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'deletePoc',id})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'deletePoc',id})});
     await loadPocComercial();
   }catch(e){alert('Erro ao excluir PoC.');}
 }
@@ -1632,7 +1631,7 @@ async function esqueceuSenha(){
   const usuario = document.getElementById('login-usuario').value.trim();
   if(!usuario){document.getElementById('login-error').textContent='Digite seu usuário primeiro.';return;}
   try{
-    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'esqueceuSenha',usuario,sistema:'Comercial'})});
+    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'esqueceuSenha',usuario,sistema:'Comercial'})});
     document.getElementById('login-error').style.color='#2ecc71';
     document.getElementById('login-error').textContent='Solicitação enviada! O administrador foi notificado.';
   }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
