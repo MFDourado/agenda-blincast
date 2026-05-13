@@ -1251,20 +1251,7 @@ async function confirmarEnvioEmail(){const projId=document.getElementById('ec-pr
 // ===================== VISTORIA =====================
 const STEPS_VISTORIA=[{id:1,title:'Vistoria solicitada',resp:'SAC'},{id:2,title:'Agendamento com cliente',resp:'SAC'},{id:3,title:'Vistoria realizada',resp:'SAC'},{id:4,title:'Relatorio tecnico emitido',resp:'SAC'},{id:5,title:'Enviado ao comercial',resp:'SAC'}];
 let vistorias=[],vstSaveTimer=null;
-async function loadVistoria(){
-  document.getElementById('vistoria-sync').textContent='Carregando...';
-  try{
-    // Carrega clientes em paralelo se ainda não foram carregados
-    const promises=[fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getVistoria')];
-    if(!clientes.length) promises.push(fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getClientes'));
-    const results=await Promise.all(promises);
-    const dVistoria=await results[0].json();
-    if(results[1]){const dClientes=await results[1].json();clientes=Array.isArray(dClientes)?dClientes:[];}
-    vistorias=Array.isArray(dVistoria)?dVistoria.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];
-    document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    renderVistoria();
-  }catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}
-}
+async function loadVistoria(){document.getElementById('vistoria-sync').textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getVistoria');const d=await r.json();vistorias=Array.isArray(d)?d.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderVistoria();}catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}}
 async function saveVistoriaProject(v){try{await fetch(API,{method:'POST',body:JSON.stringify({token:API_TOKEN,action:'saveVistoria',id:v.id,prospectId:v.prospectId,nomeCliente:v.nomeCliente,status:v.status,steps:v.steps})});document.getElementById('vistoria-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('vistoria-sync').textContent='Erro ao salvar';}}
 function schedSaveVistoria(v){document.getElementById('vistoria-sync').textContent='Salvando...';clearTimeout(vstSaveTimer);vstSaveTimer=setTimeout(()=>saveVistoriaProject(v),1500);}
 function toggleVistoriaStep(vId,stepId){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;if(v.steps.every(s=>s.done))v.status='concluida';else v.status='andamento';renderVistoria();schedSaveVistoria(v);}
@@ -1941,18 +1928,8 @@ function nvFiltrarClientes(){
   const q = document.getElementById('nv-busca').value.trim().toLowerCase();
   const lista = document.getElementById('nv-lista');
   if(!q){ lista.style.display='none'; return; }
-  if(!clientes.length){
-    lista.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">Carregando clientes...</div>';
-    lista.style.display='block';
-    loadClientes().then(()=>nvFiltrarClientes());
-    return;
-  }
-  const filtrados = clientes.filter(c=>c.status==='ativo' && (c.nome||'').toLowerCase().includes(q)).slice(0,8);
-  if(!filtrados.length){
-    lista.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">Nenhum cliente encontrado.</div>';
-    lista.style.display='block';
-    return;
-  }
+  const filtrados = clientes.filter(c=>c.status==='ativo' && c.nome.toLowerCase().includes(q)).slice(0,8);
+  if(!filtrados.length){ lista.style.display='none'; return; }
   lista.innerHTML = filtrados.map(c=>`
     <div onclick="nvSelecionarCliente('${c.id}')"
       style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)"
