@@ -1848,6 +1848,102 @@ function sVerificar(){
   setTimeout(()=>document.getElementById('survey-overlay').style.display='flex',30000);
 }
 
+
+function openNovaVistoriaModal(){
+  // Preencher select de clientes
+  const sel = document.getElementById('nv-cliente');
+  if(sel){
+    sel.innerHTML = '<option value="">— Selecionar cliente —</option>';
+    clientes.filter(c=>c.status==='ativo').sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(c=>{
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      sel.appendChild(opt);
+    });
+  }
+  // Limpar campos
+  ['nv-produto','nv-uhs','nv-contato','nv-telefone','nv-endereco','nv-cidade'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('nova-vistoria-modal').style.display='flex';
+}
+
+function fecharNovaVistoriaModal(){
+  document.getElementById('nova-vistoria-modal').style.display='none';
+}
+
+function preencherDadosVistoria(){
+  const sel=document.getElementById('nv-cliente');
+  const id=sel?.value;
+  if(!id) return;
+  const c=clientes.find(x=>x.id===id);
+  if(!c) return;
+  if(document.getElementById('nv-produto')) document.getElementById('nv-produto').value=c.produto||'';
+  if(document.getElementById('nv-uhs')) document.getElementById('nv-uhs').value=c.uhs||'';
+  if(document.getElementById('nv-contato')) document.getElementById('nv-contato').value=c.contato||'';
+  if(document.getElementById('nv-telefone')) document.getElementById('nv-telefone').value=c.telefone||'';
+  if(document.getElementById('nv-endereco')) document.getElementById('nv-endereco').value=c.endereco||'';
+  if(document.getElementById('nv-cidade')) document.getElementById('nv-cidade').value=c.cidade||'';
+}
+
+async function salvarNovaVistoria(){
+  const clienteId=document.getElementById('nv-cliente')?.value;
+  const cliente=clientes.find(c=>c.id===clienteId);
+  if(!cliente){alert('Selecione um cliente.');return;}
+  const payload={
+    token:API_TOKEN,
+    action:'saveVistoria',
+    id:'vis_'+Date.now(),
+    clienteId,
+    nomeCliente:cliente.nome,
+    cidade:document.getElementById('nv-cidade')?.value||cliente.cidade||'',
+    produto:document.getElementById('nv-produto')?.value||cliente.produto||'',
+    uhs:document.getElementById('nv-uhs')?.value||cliente.uhs||'',
+    contato:document.getElementById('nv-contato')?.value||cliente.contato||'',
+    telefone:document.getElementById('nv-telefone')?.value||cliente.telefone||'',
+    endereco:document.getElementById('nv-endereco')?.value||cliente.endereco||'',
+    status:'solicitada',
+    steps:[]
+  };
+  fecharNovaVistoriaModal();
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await loadVistoria();
+  }catch(e){alert('Erro ao salvar vistoria.');}
+}
+
+
+function criarNovaVistoria(){
+  const clienteId = document.getElementById('nv-cliente')?.value;
+  const nomeManual = document.getElementById('nv-nome')?.value.trim();
+  const nome = (clienteId && clientes.find(c=>c.id===clienteId)?.nome) || nomeManual;
+  if(!nome){alert('Informe ou selecione um cliente.');return;}
+  const cliente = clientes.find(c=>c.id===clienteId) || {};
+  const payload = {
+    token: API_TOKEN,
+    action: 'saveVistoria',
+    id: 'vis_'+Date.now(),
+    clienteId: clienteId||'',
+    nomeCliente: nome,
+    cidade: cliente.cidade||'',
+    produto: cliente.produto||'',
+    uhs: cliente.uhs||'',
+    contato: document.getElementById('nv-contato')?.value||cliente.contato||'',
+    telefone: document.getElementById('nv-telefone')?.value||cliente.telefone||'',
+    endereco: cliente.endereco||'',
+    obs: document.getElementById('nv-obs')?.value||'',
+    status: 'solicitada',
+    steps: []
+  };
+  document.getElementById('nova-vistoria-modal').style.display='none';
+  ['nv-cliente','nv-nome','nv-contato','nv-telefone','nv-obs'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  fetch(API,{method:'POST',body:JSON.stringify(payload)})
+    .then(()=>loadVistoria())
+    .catch(e=>alert('Erro ao criar vistoria.'));
+}
+
 </script>
 
 <!-- CLIENTES -->
