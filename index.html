@@ -1849,42 +1849,8 @@ function sVerificar(){
 }
 
 
-function openNovaVistoriaModal(){
-  // Preencher select de clientes
-  const sel = document.getElementById('nv-cliente');
-  if(sel){
-    sel.innerHTML = '<option value="">— Selecionar cliente —</option>';
-    clientes.filter(c=>c.status==='ativo').sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(c=>{
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.nome;
-      sel.appendChild(opt);
-    });
-  }
-  // Limpar campos
-  ['nv-produto','nv-uhs','nv-contato','nv-telefone','nv-endereco','nv-cidade'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
-  document.getElementById('nova-vistoria-modal').style.display='flex';
-}
 
-function fecharNovaVistoriaModal(){
-  document.getElementById('nova-vistoria-modal').style.display='none';
-}
 
-function preencherDadosVistoria(){
-  const sel=document.getElementById('nv-cliente');
-  const id=sel?.value;
-  if(!id) return;
-  const c=clientes.find(x=>x.id===id);
-  if(!c) return;
-  if(document.getElementById('nv-produto')) document.getElementById('nv-produto').value=c.produto||'';
-  if(document.getElementById('nv-uhs')) document.getElementById('nv-uhs').value=c.uhs||'';
-  if(document.getElementById('nv-contato')) document.getElementById('nv-contato').value=c.contato||'';
-  if(document.getElementById('nv-telefone')) document.getElementById('nv-telefone').value=c.telefone||'';
-  if(document.getElementById('nv-endereco')) document.getElementById('nv-endereco').value=c.endereco||'';
-  if(document.getElementById('nv-cidade')) document.getElementById('nv-cidade').value=c.cidade||'';
-}
 
 async function salvarNovaVistoria(){
   const clienteId=document.getElementById('nv-cliente')?.value;
@@ -1913,35 +1879,101 @@ async function salvarNovaVistoria(){
 }
 
 
-function criarNovaVistoria(){
-  const clienteId = document.getElementById('nv-cliente')?.value;
-  const nomeManual = document.getElementById('nv-nome')?.value.trim();
-  const nome = (clienteId && clientes.find(c=>c.id===clienteId)?.nome) || nomeManual;
-  if(!nome){alert('Informe ou selecione um cliente.');return;}
-  const cliente = clientes.find(c=>c.id===clienteId) || {};
-  const payload = {
-    token: API_TOKEN,
-    action: 'saveVistoria',
-    id: 'vis_'+Date.now(),
-    clienteId: clienteId||'',
-    nomeCliente: nome,
-    cidade: cliente.cidade||'',
-    produto: cliente.produto||'',
-    uhs: cliente.uhs||'',
-    contato: document.getElementById('nv-contato')?.value||cliente.contato||'',
-    telefone: document.getElementById('nv-telefone')?.value||cliente.telefone||'',
-    endereco: cliente.endereco||'',
-    obs: document.getElementById('nv-obs')?.value||'',
-    status: 'solicitada',
-    steps: []
-  };
-  document.getElementById('nova-vistoria-modal').style.display='none';
-  ['nv-cliente','nv-nome','nv-contato','nv-telefone','nv-obs'].forEach(id=>{
+
+
+// ── NOVA VISTORIA MODAL ───────────────────────────────────────────────────────
+let nvClienteSelecionado = null;
+let nvModo = 'vincular';
+
+function openNovaVistoriaModal(){
+  nvClienteSelecionado = null;
+  nvModo = 'vincular';
+  // Resetar campos
+  ['nv-busca','nv-nome-manual','nv-contato','nv-telefone','nv-obs'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  fetch(API,{method:'POST',body:JSON.stringify(payload)})
-    .then(()=>loadVistoria())
-    .catch(e=>alert('Erro ao criar vistoria.'));
+  document.getElementById('nv-lista').style.display='none';
+  document.getElementById('nv-cliente-selecionado').style.display='none';
+  nvSetModo('vincular');
+  document.getElementById('nova-vistoria-modal').style.display='flex';
+}
+
+function closeNovaVistoriaModal(){
+  document.getElementById('nova-vistoria-modal').style.display='none';
+}
+
+function nvSetModo(modo){
+  nvModo = modo;
+  const btnV = document.getElementById('nv-btn-vincular');
+  const btnM = document.getElementById('nv-btn-manual');
+  const divV = document.getElementById('nv-modo-vincular');
+  const divM = document.getElementById('nv-modo-manual');
+  if(modo === 'vincular'){
+    btnV.style.background='var(--gold)'; btnV.style.color='#111'; btnV.style.borderColor='var(--gold)';
+    btnM.style.background='none'; btnM.style.color='var(--text-muted)'; btnM.style.borderColor='var(--border)';
+    divV.style.display='block'; divM.style.display='none';
+  } else {
+    btnM.style.background='var(--gold)'; btnM.style.color='#111'; btnM.style.borderColor='var(--gold)';
+    btnV.style.background='none'; btnV.style.color='var(--text-muted)'; btnV.style.borderColor='var(--border)';
+    divM.style.display='block'; divV.style.display='none';
+  }
+}
+
+function nvFiltrarClientes(){
+  const q = document.getElementById('nv-busca').value.trim().toLowerCase();
+  const lista = document.getElementById('nv-lista');
+  if(!q){ lista.style.display='none'; return; }
+  const filtrados = clientes.filter(c=>c.status==='ativo' && c.nome.toLowerCase().includes(q)).slice(0,8);
+  if(!filtrados.length){ lista.style.display='none'; return; }
+  lista.innerHTML = filtrados.map(c=>`
+    <div onclick="nvSelecionarCliente('${c.id}')"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)"
+      onmouseover="this.style.background='var(--gold)';this.style.color='#111'"
+      onmouseout="this.style.background='';this.style.color='var(--text)'">
+      <div style="font-weight:600">${c.nome}</div>
+      <div style="font-size:11px;opacity:.7">${c.cidade||''}${c.produto?' — '+c.produto:''}</div>
+    </div>`).join('');
+  lista.style.display='block';
+}
+
+function nvSelecionarCliente(id){
+  const c = clientes.find(x=>x.id===id);
+  if(!c) return;
+  nvClienteSelecionado = c;
+  document.getElementById('nv-busca').value = c.nome;
+  document.getElementById('nv-lista').style.display='none';
+  document.getElementById('nv-nome-sel').textContent = c.nome;
+  document.getElementById('nv-info-sel').textContent = [c.cidade, c.produto, c.uhs?c.uhs+' UHs':''].filter(Boolean).join(' — ');
+  document.getElementById('nv-cliente-selecionado').style.display='block';
+  if(c.contato) document.getElementById('nv-contato').value=c.contato;
+  if(c.telefone) document.getElementById('nv-telefone').value=c.telefone;
+}
+
+async function criarNovaVistoria(){
+  let nome='', clienteId='', cidade='', produto='', uhs='', endereco='';
+  if(nvModo==='vincular'){
+    if(!nvClienteSelecionado){alert('Selecione um cliente da lista.');return;}
+    nome=nvClienteSelecionado.nome; clienteId=nvClienteSelecionado.id;
+    cidade=nvClienteSelecionado.cidade||''; produto=nvClienteSelecionado.produto||'';
+    uhs=nvClienteSelecionado.uhs||''; endereco=nvClienteSelecionado.endereco||'';
+  } else {
+    nome=document.getElementById('nv-nome-manual')?.value.trim();
+    if(!nome){alert('Informe o nome do cliente.');return;}
+  }
+  const payload={
+    token:API_TOKEN, action:'saveVistoria',
+    id:'vis_'+Date.now(),
+    clienteId, nomeCliente:nome, cidade, produto, uhs, endereco,
+    contato:document.getElementById('nv-contato')?.value||'',
+    telefone:document.getElementById('nv-telefone')?.value||'',
+    obs:document.getElementById('nv-obs')?.value||'',
+    status:'solicitada', steps:[]
+  };
+  closeNovaVistoriaModal();
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    await loadVistoria();
+  }catch(e){alert('Erro ao criar vistoria.');}
 }
 
 </script>
@@ -2016,15 +2048,62 @@ function criarNovaVistoria(){
 <!-- PESQUISA SATISFAÇÃO -->
 
 <!-- MODAL NOVA VISTORIA -->
-<div class="modal-overlay" id="nova-vistoria-modal" style="display:none">
-  <div class="modal" style="max-width:460px">
-    <h3>Nova Vistoria Técnica</h3>
-    <div class="modal-field" style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Vincular a um cliente</label><select class="field-sel" id="nv-cliente" onchange="preencherDadosVistoria()" style="width:100%;"><option value="">Selecione um cliente...</option></select></div>
-    <div class="modal-field" style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Nome do cliente *</label><input type="text" id="nv-nome" placeholder="Ex: Hotel Beira Mar" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px"><div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Contato</label><input type="text" id="nv-contato" placeholder="Nome do contato" style="width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div><div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Telefone</label><input type="text" id="nv-telefone" placeholder="(00) 00000-0000" style="width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>
-    <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label><textarea id="nv-obs" placeholder="Detalhes relevantes..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;height:70px;"></textarea></div>
-    <input type="hidden" id="nv-cliente-id">
-    <div class="modal-actions"><button class="modal-btn" onclick="closeNovaVistoriaModal()">Cancelar</button><button class="modal-btn primary" onclick="criarNovaVistoria()">Criar vistoria</button></div>
+<div class="modal-overlay" id="nova-vistoria-modal" style="display:none" onclick="if(event.target===this)closeNovaVistoriaModal()">
+  <div class="modal" style="max-width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">Nova Vistoria Técnica</h3>
+      <button onclick="closeNovaVistoriaModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+
+    <!-- Modo: vincular ou manual -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="nv-btn-vincular" onclick="nvSetModo('vincular')" style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--gold);background:var(--gold);color:#111;font-size:12px;font-weight:700;cursor:pointer">🔗 Vincular a cliente</button>
+      <button id="nv-btn-manual" onclick="nvSetModo('manual')" style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--border);background:none;color:var(--text-muted);font-size:12px;font-weight:600;cursor:pointer">✏️ Inserir manualmente</button>
+    </div>
+
+    <!-- Modo: vincular -->
+    <div id="nv-modo-vincular">
+      <div class="modal-field" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Buscar cliente</label>
+        <input type="text" id="nv-busca" placeholder="Digite o nome do cliente..." oninput="nvFiltrarClientes()"
+          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+        <div id="nv-lista" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;display:none;background:var(--surface)"></div>
+      </div>
+      <div id="nv-cliente-selecionado" style="display:none;padding:10px 12px;background:#1a1a1a;border-radius:8px;border:1px solid var(--gold);margin-bottom:12px">
+        <div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:2px">Cliente selecionado</div>
+        <div id="nv-nome-sel" style="font-size:14px;font-weight:700;color:var(--text)"></div>
+        <div id="nv-info-sel" style="font-size:12px;color:var(--text-muted);margin-top:2px"></div>
+      </div>
+    </div>
+
+    <!-- Modo: manual -->
+    <div id="nv-modo-manual" style="display:none">
+      <div class="modal-field" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Nome do cliente *</label>
+        <input type="text" id="nv-nome-manual" placeholder="Ex: Hotel Beira Mar"
+          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Contato</label>
+        <input type="text" id="nv-contato" placeholder="Nome do contato"
+          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Telefone</label>
+        <input type="text" id="nv-telefone" placeholder="(00) 00000-0000"
+          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box"></div>
+    </div>
+
+    <div class="modal-field" style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+      <textarea id="nv-obs" placeholder="Informações adicionais..." rows="2"
+        style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeNovaVistoriaModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="criarNovaVistoria()">Criar vistoria</button>
+    </div>
   </div>
 </div>
 
