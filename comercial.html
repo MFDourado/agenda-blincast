@@ -649,7 +649,7 @@ async function confirmarConversao(){
   document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data})});
+    await fetch(API,{method:'POST',body:JSON.stringify({action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||''})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
