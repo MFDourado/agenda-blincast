@@ -1281,7 +1281,7 @@ const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:f
   <button onclick="editarVistoria('${v.id}')" style="padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted)">✎ Editar</button>
   <button onclick="excluirVistoria('${v.id}','${v.nomeCliente||v.nome}')" style="padding:6px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00">✕ Excluir</button>
 </div>
-</div></div>\`;}).join('');}
+</div></div>`;}).join('');}
 
 // ===================== CLIENTES =====================
 let clientes=[],cliSaveTimer=null;
