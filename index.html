@@ -1170,7 +1170,7 @@ function renderComercial(){
       <div class="project-card-header" onclick="toggleComCard('${p.id}')">
         <div>
           <div class="project-name">${p.nome}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.cidade||''}${p.cidade&&p.produto?' — ':''}${p.produto||''}${p.uhs?' — '+p.uhs+' UHs':''}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.cidade||''}${p.cidade&&p.produto?' — ':''}${p.produto||''}${p.uhs?' — '+p.uhs+' UHs':''}${p.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>
         </div>
         <div class="project-meta">
           <span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;background:${badgeBg};color:${badgeColor}">${badgeLabel}</span>
@@ -1183,6 +1183,7 @@ function renderComercial(){
             <div class="step-number">Dados do cliente</div>
             ${p.cnpj?`<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${p.cnpj}</div>`:''}
             ${p.contato?`<div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${p.contato}</div>`:''}
+            ${p.prazo_instalacao?`<div style="font-size:12px;margin-top:6px;padding:4px 8px;background:#1a1500;border-radius:6px;border:1px solid #2a2000"><span style="color:#F5B800;font-weight:700">📅 Prazo de instalação: ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
           </div>
           <div class="step-card">
             <div class="step-number">Produto</div>
