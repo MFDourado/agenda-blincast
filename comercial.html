@@ -845,7 +845,7 @@ function renderClientes(){
               <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
                 <input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContrato('${c.id}','${c.nome}',this)">
                 <button onclick="document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);white-space:nowrap">📎 Anexar PDF</button>
-                <span id="cli-contrato-status-${c.id}" style="font-size:11px;color:${c.link_contrato?'var(--c-concluido)':'var(--text-muted)'};">${c.link_contrato?'✅ Contrato anexado':'Nenhum arquivo'}</span>${c.link_contrato?'<a href="'+c.link_contrato+'" target="_blank" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px">👁 Ver</a>':''}
+                <span id="cli-contrato-status-${c.id}" style="font-size:11px;color:${c.link_contrato?'var(--c-concluido)':'var(--text-muted)'};">${c.link_contrato?'✅ Contrato anexado':'Nenhum arquivo'}</span>${c.link_contrato?'<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirContratoModalCom(\''+c.link_contrato+'\',\''+c.nome+'\');" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px;cursor:pointer;">👁 Ver</a>':''}
               </div>
               <label style="font-size:11px;color:var(--text-muted)">Link do projeto técnico</label>
               <input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
@@ -1832,5 +1832,79 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
   </div>
 </div>
 
+<!-- MODAL VISUALIZAR CONTRATO -->
+<div class="modal-overlay" id="contrato-modal-com" style="display:none" onclick="if(event.target===this)fecharContratoModalCom()">
+  <div style="background:var(--surface);border-radius:var(--radius);width:92%;max-width:900px;height:88vh;display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--black);flex-shrink:0;">
+      <div style="font-size:14px;font-weight:500;color:#fff" id="contrato-modal-com-titulo">Contrato</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a id="contrato-com-download" href="#" target="_blank" style="padding:5px 14px;border:1px solid #444;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#bbb;text-decoration:none;">⬇ Baixar</a>
+        <button onclick="fecharContratoModalCom()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>
+      </div>
+    </div>
+    <iframe id="contrato-com-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
+  </div>
+</div>
+
+<script>
+// ===================== UPLOAD + VISUALIZAÇÃO DE CONTRATO =====================
+async function uploadContrato(clienteId, nomeCliente, inputEl){
+  const file = inputEl.files[0];
+  if(!file) return;
+  if(file.type !== 'application/pdf'){ alert('Selecione apenas arquivos PDF.'); return; }
+  if(file.size > 10 * 1024 * 1024){ alert('Arquivo muito grande. Máximo 10MB.'); return; }
+
+  const statusEl = document.getElementById('cli-contrato-status-'+clienteId);
+  if(statusEl) statusEl.textContent = '⏳ Enviando...';
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const base64 = e.target.result.split(',')[1];
+    try{
+      const r = await fetch(API, {method:'POST', body: JSON.stringify({
+        token: API_TOKEN,
+        action: 'uploadContrato',
+        id: clienteId,
+        nome: nomeCliente,
+        arquivo: base64,
+        nomeArquivo: file.name
+      })});
+      const d = await r.json();
+      if(d.ok){
+        // Atualizar status na tela
+        if(statusEl){
+          statusEl.innerHTML = '✅ Contrato anexado &nbsp;<a href="'+d.link+'" onclick="event.preventDefault();event.stopPropagation();abrirContratoModalCom(\''+d.link+'\',\''+nomeCliente+'\')" style="color:var(--c-previsto);font-size:11px;cursor:pointer;">👁 Ver</a>';
+        }
+        // Recarregar lista de clientes para persistir o botão
+        await loadClientes();
+        // Banner de sucesso
+        alert('✅ Contrato de "'+nomeCliente+'" anexado com sucesso!');
+        // Abrir o PDF automaticamente após o OK
+        abrirContratoModalCom(d.link, nomeCliente);
+      } else {
+        if(statusEl) statusEl.textContent = '❌ Erro: '+(d.error||'falha no envio');
+        alert('Erro ao enviar: '+(d.error||'falha no envio'));
+      }
+    }catch(err){
+      if(statusEl) statusEl.textContent = '❌ Erro de conexão';
+      alert('Erro de conexão ao enviar o contrato.');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function abrirContratoModalCom(link, nomeCliente){
+  document.getElementById('contrato-modal-com-titulo').textContent = 'Contrato — ' + nomeCliente;
+  document.getElementById('contrato-com-iframe').src = link;
+  const downloadLink = link.replace('/preview', '/uc?export=download');
+  document.getElementById('contrato-com-download').href = downloadLink;
+  document.getElementById('contrato-modal-com').style.display = 'flex';
+}
+
+function fecharContratoModalCom(){
+  document.getElementById('contrato-modal-com').style.display = 'none';
+  document.getElementById('contrato-com-iframe').src = '';
+}
+</script>
 </body>
 </html>
