@@ -845,7 +845,7 @@ function renderClientes(){
               <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
                 <input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContrato('${c.id}','${c.nome}',this)">
                 <button onclick="document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);white-space:nowrap">📎 Anexar PDF</button>
-                <span id="cli-contrato-status-${c.id}" style="font-size:11px;color:${c.link_contrato?'var(--c-concluido)':'var(--text-muted)'};">${c.link_contrato?'✅ Contrato anexado':'Nenhum arquivo'}</span>${c.link_contrato?'<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirContratoModalCom(\''+c.link_contrato+'\',\''+c.nome+'\');" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px;cursor:pointer;">👁 Ver</a>':''}
+                <span id="cli-contrato-status-${c.id}" style="font-size:11px;color:${c.link_contrato?'var(--c-concluido)':'var(--text-muted)'};">${c.link_contrato?'✅ Contrato anexado':'Nenhum arquivo'}</span>${c.link_contrato?'<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirContratoModalCom(\''+c.link_contrato+'\',\''+c.nome+'\');" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px;cursor:pointer;">👁 Ver</a> <a href="#" onclick="event.preventDefault();event.stopPropagation();removerContrato(\''+c.id+'\',\''+c.nome+'\');" style="font-size:11px;color:#e00;text-decoration:none;margin-left:4px;cursor:pointer;">🗑 Remover</a>':''}
               </div>
               <label style="font-size:11px;color:var(--text-muted)">Link do projeto técnico</label>
               <input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
@@ -1891,6 +1891,31 @@ async function uploadContrato(clienteId, nomeCliente, inputEl){
     }
   };
   reader.readAsDataURL(file);
+}
+
+async function removerContrato(clienteId, nomeCliente){
+  if(!confirm('Remover o contrato anexado de "'+nomeCliente+'"? Esta ação não pode ser desfeita.')) return;
+  const statusEl = document.getElementById('cli-contrato-status-'+clienteId);
+  if(statusEl) statusEl.textContent = '⏳ Removendo...';
+  try{
+    const r = await fetch(API, {method:'POST', body: JSON.stringify({
+      token: API_TOKEN,
+      action: 'removerContrato',
+      id: clienteId,
+      nome: nomeCliente
+    })});
+    const d = await r.json();
+    if(d.ok){
+      if(statusEl) statusEl.textContent = 'Nenhum arquivo';
+      await loadClientes();
+      alert('✅ Contrato removido com sucesso!');
+    } else {
+      if(statusEl) statusEl.textContent = '❌ Erro ao remover';
+      alert('Erro: '+(d.error||'falha ao remover'));
+    }
+  }catch(err){
+    if(statusEl) statusEl.textContent = '❌ Erro de conexão';
+  }
 }
 
 function abrirContratoModalCom(link, nomeCliente){
