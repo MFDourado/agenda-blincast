@@ -2023,7 +2023,7 @@ async function criarNovaVistoria(){
     contato:document.getElementById('nv-contato')?.value||'',
     telefone:document.getElementById('nv-telefone')?.value||'',
     obs:document.getElementById('nv-obs')?.value||'',
-    status:'solicitada', steps:[]
+    status:'solicitada', steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))
   };
   closeNovaVistoriaModal();
   try{
@@ -2230,7 +2230,7 @@ async function excluirVistoria(id, nome){
   </div>
 </div>
 
-<div class="orc-no-print" style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Gold</div>
+<div class="orc-no-print" style="position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono',monospace;color:#C0C0C0;font-weight:700;letter-spacing:1px;pointer-events:none;">&#169; 2026 Matheus Prateado</div>
 
 <!-- MODAL EDITAR CLIENTE -->
 <div class="modal-overlay" id="editar-cliente-modal" style="display:none">
