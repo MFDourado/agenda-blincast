@@ -1259,7 +1259,7 @@ async function loadVistoria(){
     const results=await Promise.all(promises);
     const dVistoria=await results[0].json();
     if(results[1]){const dClientes=await results[1].json();clientes=Array.isArray(dClientes)?dClientes:[];}
-    vistorias=Array.isArray(dVistoria)?dVistoria.map(v=>({...v,steps:Array.isArray(v.steps)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];
+    vistorias=Array.isArray(dVistoria)?dVistoria.map(v=>({...v,steps:(Array.isArray(v.steps)&&v.steps.length>0)?v.steps:STEPS_VISTORIA.map(s=>({id:s.id,done:false,date:''}))})):[];
     document.getElementById('vistoria-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderVistoria();
   }catch(e){document.getElementById('vistoria-sync').textContent='Erro de conexão';}
