@@ -201,6 +201,8 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 <header>
   <div class="logo">Blin<span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> Comercial</div>
   <div class="status-bar">
+    <button onclick="forceRefresh()" title="Recarregar sistema" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">↻ Refresh</button>
+    <button onclick="sincronizarTudo()" title="Sincronizar todos os dados" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⟳ Sincronizar</button>
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-txt">Conectando...</span>
   </div>
@@ -1987,6 +1989,23 @@ async function removerGrade(clienteId, nomeCliente){
   }catch(err){
     if(statusEl) statusEl.textContent = '❌ Erro de conexão';
   }
+}
+
+function forceRefresh(){
+  location.reload(true);
+}
+
+async function sincronizarTudo(){
+  const btn = document.querySelector('[onclick="sincronizarTudo()"]');
+  if(btn){ btn.textContent='⟳ Sincronizando...'; btn.disabled=true; }
+  setStatus('loading','Sincronizando...');
+  try{
+    await Promise.all([loadProspects(), loadClientes()]);
+    setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    setStatus('error','Erro ao sincronizar');
+  }
+  if(btn){ btn.textContent='⟳ Sincronizar'; btn.disabled=false; }
 }
 
 function abrirGradeModalCom(link, nomeCliente){
