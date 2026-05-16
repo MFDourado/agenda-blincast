@@ -317,6 +317,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 <header>
   <div class="logo">Blin<span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> Operacional</div>
   <div class="status-bar">
+    <button onclick="sincronizarOperacional()" title="Sincronizar todos os dados" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:4px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⟳ Sincronizar</button>
     <button onclick="forceRefresh()" title="Recarregar sistema" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">↻ Refresh</button>
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-txt">Conectando...</span>
@@ -1393,15 +1394,64 @@ async function salvarEdicaoCliente(){
   }catch(e){alert('Erro ao salvar.');}
 }
 
+// ===================== POC OPERACIONAL =====================
+let pocDados = [];
+async function loadPocOperacional(){
+  const syncEl = document.getElementById('poc-sync');
+  if(syncEl) syncEl.textContent = 'Carregando...';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getPoc');
+    const d = await r.json();
+    pocDados = Array.isArray(d) ? d : [];
+    if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderPocOperacional();
+  }catch(e){
+    if(syncEl) syncEl.textContent = 'Erro de conexão';
+  }
+}
+
+function renderPocOperacional(){
+  const list = document.getElementById('poc-list');
+  if(!list) return;
+  const busca = (document.getElementById('poc-busca')?.value||'').trim().toLowerCase();
+  let dados = busca ? pocDados.filter(p=>(p.nome||'').toLowerCase().includes(busca)||(p.empresa||'').toLowerCase().includes(busca)) : pocDados;
+  if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum registro de PoC.</div>'; return; }
+  list.innerHTML = dados.map(p => {
+    const dias = p.data_inicio ? Math.floor((new Date()-new Date(p.data_inicio))/(1000*60*60*24)) : null;
+    const alerta = dias !== null && dias >= 30;
+    return '<div class="project-card" style="'+( alerta?'border-color:var(--c-atrasado)':'')+'"><div class="project-card-header" onclick="togglePocCard(\''+p.id+'\')"><div><div class="project-name">'+( p.nome||p.empresa||'—')+'</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+( p.empresa||'')+( p.produto?' — '+p.produto:'')+( p.vendedor?' · '+p.vendedor:'')+'</div></div><div class="project-meta">'+( alerta?'<span class="badge atrasado">⚠️ '+dias+'d</span>':'')+( dias!==null&&!alerta?'<span class="badge andamento">'+dias+'d</span>':'')+'<span class="badge '+( p.status==='concluido'?'concluido':p.status==='cancelado'?'atrasado':'andamento')+'">'+( p.status||'Em andamento')+'</span><span class="chevron" id="poc-chev-'+p.id+'">▼</span></div></div><div class="project-body" id="poc-body-'+p.id+'" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"><div class="step-card done"><div class="step-number">Dados</div>'+( p.cnpj?'<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> '+p.cnpj+'</div>':'')+( p.contato?'<div style="font-size:12px;margin-top:2px"><b>Contato:</b> '+p.contato+'</div>':'')+( p.telefone?'<div style="font-size:12px;margin-top:2px"><b>Tel:</b> '+p.telefone+'</div>':'')+'</div><div class="step-card"><div class="step-number">PoC</div>'+( p.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+p.produto+'</div>':'')+( p.uhs?'<div style="font-size:12px;margin-top:2px"><b>UHs:</b> '+p.uhs+'</div>':'')+( p.data_inicio?'<div style="font-size:12px;margin-top:2px"><b>Início:</b> '+new Date(p.data_inicio).toLocaleDateString("pt-BR")+'</div>':'')+( p.data_fim?'<div style="font-size:12px;margin-top:2px"><b>Prazo:</b> '+new Date(p.data_fim).toLocaleDateString("pt-BR")+'</div>':'')+'</div>'+( p.observacoes?'<div class="step-card"><div class="step-number">Observações</div><div style="font-size:12px;margin-top:4px">'+p.observacoes+'</div></div>':'')+'</div></div></div>';
+  }).join('');
+}
+
+function togglePocCard(id){
+  const el = document.getElementById('poc-body-'+id);
+  const chev = document.getElementById('poc-chev-'+id);
+  if(!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  chev.className = 'chevron'+(open?'':' open');
+}
+
+// ===================== SINCRONIZAR OPERACIONAL =====================
+async function sincronizarOperacional(){
+  const btn = document.querySelector('[onclick="sincronizarOperacional()"]');
+  if(btn){ btn.textContent='⟳ Sincronizando...'; btn.disabled=true; }
+  setStatus('loading','Sincronizando...');
+  try{
+    await Promise.all([apiGet(), loadPipeline(true)]);
+    setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    setStatus('error','Erro ao sincronizar');
+  }
+  if(btn){ btn.textContent='⟳ Sincronizar'; btn.disabled=false; }
+}
+
 function forceRefresh(){
   // Limpar sessão de retry e forçar reload completo
   window._pipelineRetry=false;
   location.reload(true);
 }
 
-function forceRefresh(){
-  window._pipelineRetry=false;
-  location.reload(true);
 }
 
 function iniciarDistrato(nome, cnpj){
