@@ -1606,6 +1606,7 @@ function iniciarApp(){
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
         const hUc1=document.getElementById('header-user-com');if(hUc1)hUc1.textContent='👤 '+u.nome;
+        carregarConfigCom();
         load();
         return;
       }
@@ -1632,6 +1633,7 @@ async function fazerLogin(){
       document.getElementById('login-user-badge').style.display='block';
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
       const hUc2=document.getElementById('header-user-com');if(hUc2)hUc2.textContent='👤 '+d.nome;
+      carregarConfigCom();
       load();
     } else if(d.ok && !PERFIS_COMERCIAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Comercial.';
@@ -1993,6 +1995,22 @@ async function removerGrade(clienteId, nomeCliente){
   }catch(err){
     if(statusEl) statusEl.textContent = '❌ Erro de conexão';
   }
+}
+
+// ===================== CONFIGURAÇÕES (COMERCIAL) =====================
+async function carregarConfigCom(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getConfiguracoes');
+    const d = await r.json();
+    // Aplicar visibilidade das abas do comercial
+    const map = {com_prospects:'ct-prospects', com_clientes:'ct-clientes', com_poc:'ct-poc'};
+    Object.entries(map).forEach(([key, elId]) => {
+      const el = document.getElementById(elId);
+      if(!el) return;
+      if(d['tab_'+key] === 'off') el.style.display = 'none';
+      else el.style.display = '';
+    });
+  }catch(e){}
 }
 
 function fazerLogoutCom(){
