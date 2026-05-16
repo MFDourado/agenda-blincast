@@ -447,7 +447,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 <footer>&#169; 2026 Matheus Prateado</footer>
 
 <script>
-const API_TOKEN='3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9';
+const API_TOKEN='3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9'; // ITEM SEG: mover para variável de ambiente
 const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
 let prospects=[];
 let filters={status:'todos',prioridade:'todos',vendedor:'todos'};
@@ -1596,6 +1596,7 @@ const PERFIS_COMERCIAL = ['admin','comercial'];
 let usuarioLogado = null;
 
 function iniciarApp(){
+  if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
     const sess = sessionStorage.getItem('blintrack_user');
     if(sess){
@@ -1628,7 +1629,7 @@ async function fazerLogin(){
     const d = await r.json();
     if(d.ok && PERFIS_COMERCIAL.includes(d.perfil)){
       usuarioLogado = d;
-      sessionStorage.setItem('blintrack_user', JSON.stringify(d));
+      d.login_ts = Date.now(); sessionStorage.setItem('blintrack_user', JSON.stringify(d));
       document.getElementById('login-overlay').style.display='none';
       document.getElementById('login-user-badge').style.display='block';
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
@@ -2012,6 +2013,32 @@ async function carregarConfigCom(){
     });
   }catch(e){}
 }
+
+
+// ── EXPIRAÇÃO DE SESSÃO (8 horas) ────────────────────────────────────────────
+function verificarSessaoExpirada() {
+  try {
+    const sess = sessionStorage.getItem('blintrack_user');
+    if (!sess) return true;
+    const u = JSON.parse(sess);
+    if (!u.login_ts) return false; // sessão antiga sem timestamp, manter
+    const agora = Date.now();
+    const oitoHoras = 8 * 60 * 60 * 1000;
+    if (agora - u.login_ts > oitoHoras) {
+      sessionStorage.removeItem('blintrack_user');
+      return true;
+    }
+    return false;
+  } catch(e) { return true; }
+}
+
+// Verificar a cada 5 minutos
+setInterval(() => {
+  if (verificarSessaoExpirada()) {
+    alert('Sua sessão expirou. Faça login novamente.');
+    location.reload();
+  }
+}, 5 * 60 * 1000);
 
 function fazerLogoutCom(){
   sessionStorage.removeItem('blintrack_user');
