@@ -847,6 +847,12 @@ function renderClientes(){
                 <button onclick="document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);white-space:nowrap">📎 Anexar PDF</button>
                 <span id="cli-contrato-status-${c.id}" style="font-size:11px;color:${c.link_contrato?'var(--c-concluido)':'var(--text-muted)'};">${c.link_contrato?'✅ Contrato anexado':'Nenhum arquivo'}</span>${c.link_contrato?'<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirContratoModalCom(\''+c.link_contrato+'\',\''+c.nome+'\');" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px;cursor:pointer;">👁 Ver</a> <a href="#" onclick="event.preventDefault();event.stopPropagation();removerContrato(\''+c.id+'\',\''+c.nome+'\');" style="font-size:11px;color:#e00;text-decoration:none;margin-left:4px;cursor:pointer;">🗑 Remover</a>':''}
               </div>
+              <label style="font-size:11px;color:var(--text-muted)">Grade de canais (PDF/Excel)</label>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+                <input type="file" id="cli-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGrade('${c.id}','${c.nome}',this)">
+                <button onclick="document.getElementById('cli-grade-file-${c.id}').click()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);white-space:nowrap">📎 Anexar Grade</button>
+                <span id="cli-grade-status-${c.id}" style="font-size:11px;color:${c.link_grade?'var(--c-concluido)':'var(--text-muted)'};">${c.link_grade?'✅ Grade anexada':'Nenhum arquivo'}</span>${c.link_grade?'<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirGradeModalCom(\''+c.link_grade+'\',\''+c.nome+'\');" style="font-size:11px;color:var(--c-previsto);text-decoration:none;margin-left:6px;cursor:pointer;">👁 Ver</a> <a href="#" onclick="event.preventDefault();event.stopPropagation();removerGrade(\''+c.id+'\',\''+c.nome+'\');" style="font-size:11px;color:#e00;text-decoration:none;margin-left:4px;cursor:pointer;">🗑 Remover</a>':''}
+              </div>
               <label style="font-size:11px;color:var(--text-muted)">Link do projeto técnico</label>
               <input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
             </div>
@@ -1916,6 +1922,79 @@ async function removerContrato(clienteId, nomeCliente){
   }catch(err){
     if(statusEl) statusEl.textContent = '❌ Erro de conexão';
   }
+}
+
+// ===================== UPLOAD GRADE DE CANAIS =====================
+async function uploadGrade(clienteId, nomeCliente, inputEl){
+  const file = inputEl.files[0];
+  if(!file) return;
+  const tiposPermitidos = ['application/pdf','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+  if(!tiposPermitidos.includes(file.type)){ alert('Selecione apenas PDF ou Excel.'); return; }
+  if(file.size > 10 * 1024 * 1024){ alert('Arquivo muito grande. Máximo 10MB.'); return; }
+
+  const statusEl = document.getElementById('cli-grade-status-'+clienteId);
+  if(statusEl) statusEl.textContent = '⏳ Enviando...';
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const base64 = e.target.result.split(',')[1];
+    try{
+      const r = await fetch(API, {method:'POST', body: JSON.stringify({
+        token: API_TOKEN,
+        action: 'uploadGrade',
+        id: clienteId,
+        nome: nomeCliente,
+        arquivo: base64,
+        nomeArquivo: file.name,
+        mimeType: file.type
+      })});
+      const d = await r.json();
+      if(d.ok){
+        if(statusEl) statusEl.innerHTML = '✅ Grade anexada &nbsp;<a href="#" onclick="event.preventDefault();event.stopPropagation();abrirGradeModalCom(\''+d.link+'\',\''+nomeCliente+'\')" style="color:var(--c-previsto);font-size:11px;cursor:pointer;">👁 Ver</a>';
+        await loadClientes();
+        alert('✅ Grade de canais de "'+nomeCliente+'" anexada com sucesso!');
+        abrirGradeModalCom(d.link, nomeCliente);
+      } else {
+        if(statusEl) statusEl.textContent = '❌ Erro: '+(d.error||'falha no envio');
+        alert('Erro ao enviar: '+(d.error||'falha no envio'));
+      }
+    }catch(err){
+      if(statusEl) statusEl.textContent = '❌ Erro de conexão';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function removerGrade(clienteId, nomeCliente){
+  if(!confirm('Remover a grade de canais de "'+nomeCliente+'"? Esta ação não pode ser desfeita.')) return;
+  const statusEl = document.getElementById('cli-grade-status-'+clienteId);
+  if(statusEl) statusEl.textContent = '⏳ Removendo...';
+  try{
+    const r = await fetch(API, {method:'POST', body: JSON.stringify({
+      token: API_TOKEN,
+      action: 'removerGrade',
+      id: clienteId,
+      nome: nomeCliente
+    })});
+    const d = await r.json();
+    if(d.ok){
+      if(statusEl) statusEl.textContent = 'Nenhum arquivo';
+      await loadClientes();
+      alert('✅ Grade removida com sucesso!');
+    } else {
+      if(statusEl) statusEl.textContent = '❌ Erro ao remover';
+    }
+  }catch(err){
+    if(statusEl) statusEl.textContent = '❌ Erro de conexão';
+  }
+}
+
+function abrirGradeModalCom(link, nomeCliente){
+  document.getElementById('contrato-modal-com-titulo').textContent = 'Grade de Canais — ' + nomeCliente;
+  document.getElementById('contrato-com-iframe').src = link;
+  const downloadLink = link.replace('/preview', '/uc?export=download');
+  document.getElementById('contrato-com-download').href = downloadLink;
+  document.getElementById('contrato-modal-com').style.display = 'flex';
 }
 
 function abrirContratoModalCom(link, nomeCliente){
