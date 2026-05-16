@@ -1581,7 +1581,12 @@ async function salvarConfig(){
     configAtual = novaConfig;
     aplicarConfig();
     fecharConfig();
-    alert('✅ Configurações salvas! Alterações valem na próxima vez que os usuários entrarem.');
+    // Toast discreto no lugar do alert
+    const toast = document.createElement('div');
+    toast.textContent = '✅ Configurações salvas!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(), 400); }, 2500);
   }catch(e){
     alert('Erro ao salvar configurações.');
   }
