@@ -1063,6 +1063,47 @@ function toggleProject(id){
 }
 
 // ===================== DASHBOARD =====================
+let dashFiltro = null;
+
+function setDashFiltro(filtro) {
+  dashFiltro = dashFiltro === filtro ? null : filtro;
+  // Atualizar visual dos cards
+  document.querySelectorAll('.kpi-card').forEach(c => c.style.outline = 'none');
+  if(dashFiltro) {
+    const el = document.getElementById('kpi-'+dashFiltro);
+    if(el) el.style.outline = '2px solid var(--gold)';
+  }
+  renderDashTable();
+}
+
+function renderDashTable() {
+  const tbody = document.getElementById('dash-pipeline-rows');
+  let lista = projects;
+  if(dashFiltro === 'concluidos') lista = projects.filter(p => p.steps.every(s=>s.done));
+  else if(dashFiltro === 'andamento') lista = projects.filter(p => !p.steps.every(s=>s.done) && p.steps.some(s=>s.done));
+  else if(dashFiltro === 'nao_iniciados') lista = projects.filter(p => p.steps.every(s=>!s.done));
+  else if(dashFiltro === 'atrasados45') lista = projects.filter(p => daysSince(p.inicio)>=45 && !p.steps.every(s=>s.done));
+
+  if(!lista.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Nenhum projeto</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(proj => {
+    const dc = proj.steps.filter(s=>s.done).length;
+    const pct = Math.round((dc/11)*100);
+    const dias = daysSince(proj.inicio);
+    const cs = proj.steps.find(s=>!s.done);
+    const st = pct===100?'Concluído':cs?cs.id+'. '+STEPS.find(s=>s.id===cs.id)?.title:'—';
+    const col = pct===100?'var(--c-concluido)':dias>=40?'var(--c-atrasado)':dias>=30?'var(--c-pendente)':'var(--text-muted)';
+    return `<tr><td style="font-weight:500">${proj.nome}</td><td>${proj.uhs}</td><td style="font-size:12px;color:var(--text-muted)">${st}</td><td><div class="pbar-wrap"><div class="pbar-fill${pct===100?' done':''}" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text-muted)">${pct}%</span></td><td style="font-weight:500;color:${col}">${dias!==null?dias+'d':'—'}</td></tr>`;
+  }).join('');
+
+  // Atualizar título da tabela
+  const titulos = {concluidos:'Concluídos (100%)', andamento:'Em andamento', nao_iniciados:'Não iniciados', atrasados45:'Acima de 45 dias'};
+  document.querySelector('.pipeline-table-header').textContent = dashFiltro ? 'Projetos: '+titulos[dashFiltro] : 'Projetos no pipeline';
+}
+
+
 async function renderDashboard(){
   document.getElementById('dash-sync').textContent='Carregando...';
   if(!projects.length){
@@ -1077,46 +1118,6 @@ async function renderDashboard(){
   const mediaDias=diasConc.length?Math.round(diasConc.reduce((a,b)=>a+b,0)/diasConc.length):0;
 
   // Filtro ativo no dashboard
-  let dashFiltro = null;
-
-  function setDashFiltro(filtro) {
-    dashFiltro = dashFiltro === filtro ? null : filtro;
-    // Atualizar visual dos cards
-    document.querySelectorAll('.kpi-card').forEach(c => c.style.outline = 'none');
-    if(dashFiltro) {
-      const el = document.getElementById('kpi-'+dashFiltro);
-      if(el) el.style.outline = '2px solid var(--gold)';
-    }
-    renderDashTable();
-  }
-
-  function renderDashTable() {
-    const tbody = document.getElementById('dash-pipeline-rows');
-    let lista = projects;
-    if(dashFiltro === 'concluidos') lista = projects.filter(p => p.steps.every(s=>s.done));
-    else if(dashFiltro === 'andamento') lista = projects.filter(p => !p.steps.every(s=>s.done) && p.steps.some(s=>s.done));
-    else if(dashFiltro === 'nao_iniciados') lista = projects.filter(p => p.steps.every(s=>!s.done));
-    else if(dashFiltro === 'atrasados45') lista = projects.filter(p => daysSince(p.inicio)>=45 && !p.steps.every(s=>s.done));
-
-    if(!lista.length){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Nenhum projeto</td></tr>';
-      return;
-    }
-    tbody.innerHTML = lista.map(proj => {
-      const dc = proj.steps.filter(s=>s.done).length;
-      const pct = Math.round((dc/11)*100);
-      const dias = daysSince(proj.inicio);
-      const cs = proj.steps.find(s=>!s.done);
-      const st = pct===100?'Concluído':cs?cs.id+'. '+STEPS.find(s=>s.id===cs.id)?.title:'—';
-      const col = pct===100?'var(--c-concluido)':dias>=40?'var(--c-atrasado)':dias>=30?'var(--c-pendente)':'var(--text-muted)';
-      return `<tr><td style="font-weight:500">${proj.nome}</td><td>${proj.uhs}</td><td style="font-size:12px;color:var(--text-muted)">${st}</td><td><div class="pbar-wrap"><div class="pbar-fill${pct===100?' done':''}" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text-muted)">${pct}%</span></td><td style="font-weight:500;color:${col}">${dias!==null?dias+'d':'—'}</td></tr>`;
-    }).join('');
-
-    // Atualizar título da tabela
-    const titulos = {concluidos:'Concluídos (100%)', andamento:'Em andamento', nao_iniciados:'Não iniciados', atrasados45:'Acima de 45 dias'};
-    document.querySelector('.pipeline-table-header').textContent = dashFiltro ? 'Projetos: '+titulos[dashFiltro] : 'Projetos no pipeline';
-  }
-
   document.getElementById('kpi-grid').innerHTML=`
     <div class="kpi-card total" id="kpi-total" style="cursor:pointer" onclick="setDashFiltro(null)" title="Todos os projetos"><div class="kpi-label">Total projetos</div><div class="kpi-value">${total}</div><div class="kpi-sub">${totalUHs} UHs total</div></div>
     <div class="kpi-card concluido" id="kpi-concluidos" style="cursor:pointer" onclick="setDashFiltro('concluidos')" title="Clique para filtrar"><div class="kpi-label">Concluídos (100%)</div><div class="kpi-value">${concluidos.length}</div><div class="kpi-sub">${total?Math.round(concluidos.length/total*100):0}% do total</div></div>
