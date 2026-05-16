@@ -1414,14 +1414,53 @@ function renderPocOperacional(){
   const list = document.getElementById('poc-list');
   if(!list) return;
   const busca = (document.getElementById('poc-busca')?.value||'').trim().toLowerCase();
-  let dados = busca ? pocDados.filter(p=>(p.nome||'').toLowerCase().includes(busca)||(p.empresa||'').toLowerCase().includes(busca)) : pocDados;
+  let dados = busca ? pocDados.filter(p=>
+    (p.prospect_nome||p.nome||'').toLowerCase().includes(busca)||
+    (p.vendedor||'').toLowerCase().includes(busca)||
+    (p.equipamento||'').toLowerCase().includes(busca)
+  ) : pocDados;
   if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum registro de PoC.</div>'; return; }
   list.innerHTML = dados.map(p => {
-    const dias = p.data_inicio ? Math.floor((new Date()-new Date(p.data_inicio))/(1000*60*60*24)) : null;
+    const nome = p.prospect_nome||p.nome||'—';
+    const dataEnvio = p.data_envio ? new Date(p.data_envio) : null;
+    const dias = dataEnvio ? Math.floor((new Date()-dataEnvio)/(1000*60*60*24)) : null;
     const alerta = dias !== null && dias >= 30;
-    return '<div class="project-card" style="'+( alerta?'border-color:var(--c-atrasado)':'')+'"><div class="project-card-header" onclick="togglePocCard(\''+p.id+'\')"><div><div class="project-name">'+( p.nome||p.empresa||'—')+'</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+( p.empresa||'')+( p.produto?' — '+p.produto:'')+( p.vendedor?' · '+p.vendedor:'')+'</div></div><div class="project-meta">'+( alerta?'<span class="badge atrasado">⚠️ '+dias+'d</span>':'')+( dias!==null&&!alerta?'<span class="badge andamento">'+dias+'d</span>':'')+'<span class="badge '+( p.status==='concluido'?'concluido':p.status==='cancelado'?'atrasado':'andamento')+'">'+( p.status||'Em andamento')+'</span><span class="chevron" id="poc-chev-'+p.id+'">▼</span></div></div><div class="project-body" id="poc-body-'+p.id+'" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"><div class="step-card done"><div class="step-number">Dados</div>'+( p.cnpj?'<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> '+p.cnpj+'</div>':'')+( p.contato?'<div style="font-size:12px;margin-top:2px"><b>Contato:</b> '+p.contato+'</div>':'')+( p.telefone?'<div style="font-size:12px;margin-top:2px"><b>Tel:</b> '+p.telefone+'</div>':'')+'</div><div class="step-card"><div class="step-number">PoC</div>'+( p.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+p.produto+'</div>':'')+( p.uhs?'<div style="font-size:12px;margin-top:2px"><b>UHs:</b> '+p.uhs+'</div>':'')+( p.data_inicio?'<div style="font-size:12px;margin-top:2px"><b>Início:</b> '+new Date(p.data_inicio).toLocaleDateString("pt-BR")+'</div>':'')+( p.data_fim?'<div style="font-size:12px;margin-top:2px"><b>Prazo:</b> '+new Date(p.data_fim).toLocaleDateString("pt-BR")+'</div>':'')+'</div>'+( p.observacoes?'<div class="step-card"><div class="step-number">Observações</div><div style="font-size:12px;margin-top:4px">'+p.observacoes+'</div></div>':'')+'</div></div></div>';
+    const status = p.status||'ativo';
+    const badgeClass = status==='concluido'?'concluido':status==='cancelado'?'atrasado':'andamento';
+    const fmtData = d => { try{ return new Date(d).toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+    return '<div class="project-card" style="'+(alerta?'border-color:var(--c-atrasado)':'')+'">'
+      +'<div class="project-card-header" onclick="togglePocCard(''+p.id+'')"><div>'
+      +'<div class="project-name">'+nome+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+(p.equipamento||'')+(p.vendedor?' | Vendedor: '+p.vendedor:'')+'</div>'
+      +(p.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px">📍 '+p.endereco+'</div>':'')
+      +'</div><div class="project-meta">'
+      +(dias!==null?'<span class="badge '+(alerta?'atrasado':'andamento')+'">'+(alerta?'⚠️ ':'')+dias+'d</span>':'')
+      +(dataEnvio?'<span style="font-size:11px;color:var(--text-muted);margin-right:4px">Envio: '+fmtData(p.data_envio)+'</span>':'')
+      +'<span class="badge '+badgeClass+'">'+status+'</span>'
+      +'<span class="chevron" id="poc-chev-'+p.id+'">▼</span>'
+      +'</div></div>'
+      +'<div class="project-body" id="poc-body-'+p.id+'" style="display:none">'
+      +'<div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">'
+      +'<div class="step-card done"><div class="step-number">Dados</div>'
+      +(p.equipamento?'<div style="font-size:12px;margin-top:4px"><b>Equipamento:</b> '+p.equipamento+'</div>':'')
+      +(p.telefone?'<div style="font-size:12px;margin-top:2px"><b>Telefone:</b> '+p.telefone+'</div>':'')
+      +((p.conteudo_online&&p.conteudo_online!=='Não'&&p.conteudo_online!=='Nao'&&p.conteudo_online!=='')?'<div style="font-size:12px;margin-top:2px"><b>Conteúdo:</b> '+(p.conteudo_detalhe||p.conteudo_online)+'</div>':'')
+      +'</div>'
+      +'<div class="step-card"><div class="step-number">Datas</div>'
+      +(p.data_envio?'<div style="font-size:12px;margin-top:4px"><b>Envio:</b> '+fmtData(p.data_envio)+'</div>':'')
+      +(p.prazo_retorno?'<div style="font-size:12px;margin-top:2px"><b>Retorno:</b> '+fmtData(p.prazo_retorno)+'</div>':'')
+      +(dias!==null?'<div style="font-size:12px;margin-top:2px;color:'+(alerta?'var(--c-atrasado)':'var(--c-andamento)')+'"><b>'+(alerta?'⚠️ ':'')+dias+' dias desde envio</b></div>':'')
+      +'</div>'
+      +'<div class="step-card"><div class="step-number">Instalação</div>'
+      +(p.tipo_instalacao?'<div style="font-size:12px;margin-top:4px"><b>Tipo:</b> '+p.tipo_instalacao+'</div>':'')
+      +(p.qtd_tvs?'<div style="font-size:12px;margin-top:2px"><b>TVs:</b> '+p.qtd_tvs+(p.android?' | Android: '+p.android:'')+'</div>':'')
+      +(p.conexao?'<div style="font-size:12px;margin-top:2px"><b>Conexão:</b> '+p.conexao+'</div>':'')
+      +(p.rack_existente?'<div style="font-size:12px;margin-top:2px"><b>Rack:</b> '+p.rack_existente+'</div>':'')
+      +'</div>'
+      +'</div></div></div>';
   }).join('');
 }
+
 
 function togglePocCard(id){
   const el = document.getElementById('poc-body-'+id);
