@@ -322,6 +322,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-txt">Conectando...</span>
     <span id="header-user" style="font-size:11px;color:#555;margin-left:12px;font-family:'DM Mono',monospace;"></span>
+    <button id="btn-config-admin" onclick="abrirConfig()" title="Configurações do sistema" style="display:none;height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-left:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⚙ Config</button>
     <button onclick="fazerLogout()" title="Sair" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-left:8px;transition:all .15s;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⏻ Sair</button>
   </div>
 </header>
@@ -696,6 +697,8 @@ function iniciarApp(){
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
         const hUser = document.getElementById('header-user');
         if(hUser) hUser.textContent = '👤 '+u.nome;
+        if(u.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
+        carregarConfig();
         apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);setTimeout(sVerificar,5000);
         return;
       }
@@ -723,6 +726,8 @@ async function fazerLogin(){
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
       const hUser = document.getElementById('header-user');
       if(hUser) hUser.textContent = '👤 '+d.nome;
+      if(d.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
+      carregarConfig();
       apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
@@ -1489,6 +1494,97 @@ async function sincronizarOperacional(){
     setStatus('error','Erro ao sincronizar');
   }
   if(btn){ btn.textContent='⟳ Sincronizar'; btn.disabled=false; }
+}
+
+// ===================== CONFIGURAÇÕES ADMIN =====================
+const TABS_OPERACIONAL = [
+  {id:'pipeline', label:'Pipeline'},
+  {id:'vistoria', label:'Vistorias'},
+  {id:'agenda', label:'Agenda'},
+  {id:'dashboard', label:'Dashboard'},
+  {id:'comercial', label:'Comercial'},
+  {id:'clientes', label:'Clientes'},
+  {id:'cronograma', label:'Cronograma'},
+  {id:'ata', label:'Ata do Dia'},
+  {id:'orcamento', label:'Orçamento'},
+  {id:'distrato', label:'Distrato'},
+  {id:'poc', label:'PoC'},
+];
+const TABS_COMERCIAL = [
+  {id:'com_prospects', label:'Prospects'},
+  {id:'com_clientes', label:'Clientes'},
+  {id:'com_poc', label:'PoC'},
+];
+
+let configAtual = {};
+
+async function carregarConfig(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(API_TOKEN)+'&action=getConfiguracoes');
+    const d = await r.json();
+    configAtual = d || {};
+  }catch(e){ configAtual = {}; }
+  aplicarConfig();
+}
+
+function aplicarConfig(){
+  // Operacional
+  TABS_OPERACIONAL.forEach(t => {
+    const el = document.getElementById('mt-'+t.id);
+    if(!el) return;
+    const desabilitada = configAtual['tab_'+t.id] === 'off';
+    el.style.display = desabilitada ? 'none' : '';
+  });
+  // Comercial (abas do comercial.html são controladas por config separada)
+}
+
+function abrirConfig(){
+  // Renderizar toggles operacional
+  const list = document.getElementById('config-tabs-list');
+  list.innerHTML = TABS_OPERACIONAL.map(t => {
+    const ativo = configAtual['tab_'+t.id] !== 'off';
+    return `<label style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:var(--radius-sm);cursor:pointer;">
+      <span style="font-size:13px;font-weight:500">${t.label}</span>
+      <input type="checkbox" id="cfg-${t.id}" ${ativo?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--black)">
+    </label>`;
+  }).join('');
+
+  // Renderizar toggles comercial
+  const listCom = document.getElementById('config-tabs-com-list');
+  listCom.innerHTML = TABS_COMERCIAL.map(t => {
+    const ativo = configAtual['tab_'+t.id] !== 'off';
+    return `<label style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:var(--radius-sm);cursor:pointer;">
+      <span style="font-size:13px;font-weight:500">${t.label}</span>
+      <input type="checkbox" id="cfg-${t.id}" ${ativo?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--black)">
+    </label>`;
+  }).join('');
+
+  document.getElementById('config-modal').style.display = 'flex';
+}
+
+function fecharConfig(){
+  document.getElementById('config-modal').style.display = 'none';
+}
+
+async function salvarConfig(){
+  const novaConfig = {...configAtual};
+  [...TABS_OPERACIONAL, ...TABS_COMERCIAL].forEach(t => {
+    const el = document.getElementById('cfg-'+t.id);
+    if(el) novaConfig['tab_'+t.id] = el.checked ? 'on' : 'off';
+  });
+  try{
+    await fetch(API, {method:'POST', body: JSON.stringify({
+      token: API_TOKEN,
+      action: 'saveConfiguracoes',
+      config: novaConfig
+    })});
+    configAtual = novaConfig;
+    aplicarConfig();
+    fecharConfig();
+    alert('✅ Configurações salvas! Alterações valem na próxima vez que os usuários entrarem.');
+  }catch(e){
+    alert('Erro ao salvar configurações.');
+  }
 }
 
 function fazerLogout(){
@@ -2587,5 +2683,23 @@ async function excluirVistoria(id, nome){
     <iframe id="contrato-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
   </div>
 </div>
+<!-- MODAL CONFIGURAÇÕES ADMIN -->
+<div class="modal-overlay" id="config-modal" style="display:none" onclick="if(event.target===this)fecharConfig()">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">⚙ Configurações do sistema</h3>
+      <button onclick="fecharConfig()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Abas visíveis no <b>Operacional</b> — alterações valem na próxima vez que os usuários entrarem.</div>
+    <div id="config-tabs-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">Abas visíveis no <b>Comercial</b></div>
+    <div id="config-tabs-com-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharConfig()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarConfig()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
