@@ -1013,7 +1013,7 @@ const sh=STEPS.map(s=>{
       const ir=s.remote&&proj.uhs<50;
       return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card" style="${concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" canais":""}</span>${dias!==null?`<span class="days-badge ${dc}">${dias}d / 45d</span>`:''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button><button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirContratoModal('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}</div></div></div>`;
+    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" canais":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${proj.id}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${proj.id}','${proj.nome}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirContratoModal('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}</div></div></div>`;
   }).join('');
 }
 
@@ -1097,7 +1097,7 @@ function renderDashTable() {
   if(dashFiltro === 'concluidos') lista = projects.filter(p => p.steps.every(s=>s.done));
   else if(dashFiltro === 'andamento') lista = projects.filter(p => !p.steps.every(s=>s.done) && p.steps.some(s=>s.done));
   else if(dashFiltro === 'nao_iniciados') lista = projects.filter(p => p.steps.every(s=>!s.done));
-  else if(dashFiltro === 'atrasados45') lista = projects.filter(p => daysSince(p.inicio)>=45 && !p.steps.every(s=>s.done));
+  else if(dashFiltro === 'atrasados45') lista = projects.filter(p => !p.congelado && daysSince(p.inicio)>=45 && !p.steps.every(s=>s.done));
 
   if(!lista.length){
     tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Nenhum projeto</td></tr>';
@@ -1139,7 +1139,7 @@ async function renderDashboard(){
     <div class="kpi-card andamento" id="kpi-andamento" style="cursor:pointer" onclick="setDashFiltro('andamento')" title="Clique para filtrar"><div class="kpi-label">Em andamento</div><div class="kpi-value">${emAndamento.length}</div><div class="kpi-sub">com etapas iniciadas</div></div>
     <div class="kpi-card previsto" id="kpi-nao_iniciados" style="cursor:pointer" onclick="setDashFiltro('nao_iniciados')" title="Clique para filtrar"><div class="kpi-label">Não iniciados</div><div class="kpi-value">${naoIniciados.length}</div><div class="kpi-sub">nenhuma etapa</div></div>
     <div class="kpi-card pendente"><div class="kpi-label">Dias médios</div><div class="kpi-value">${mediaDias}</div><div class="kpi-sub">projetos concluídos</div></div>
-    <div class="kpi-card atrasado" id="kpi-atrasados45" style="cursor:pointer" onclick="setDashFiltro('atrasados45')" title="Clique para filtrar"><div class="kpi-label">Prazo 45d</div><div class="kpi-value">${projects.filter(p=>daysSince(p.inicio)>=45&&!p.steps.every(s=>s.done)).length}</div><div class="kpi-sub">projetos acima de 45d ⚠️</div></div>
+    <div class="kpi-card total"><div class="kpi-label">Prazo 45d</div><div class="kpi-value">${projects.filter(p=>!p.congelado&&daysSince(p.inicio)>=45&&!p.steps.every(s=>s.done)).length}</div><div class="kpi-sub">projetos acima de 45d ⚠️</div></div>
   `;
 
   // Gráfico 1: Pizza por etapa atual
@@ -1624,6 +1624,119 @@ setInterval(() => {
     location.reload();
   }
 }, 5 * 60 * 1000);
+
+// ===================== CONGELAR PIPELINE =====================
+function abrirCongelarModal(projId, projNome){
+  document.getElementById('congelar-id').value = projId;
+  document.getElementById('congelar-nome').textContent = projNome;
+  document.getElementById('congelar-data').value = todayStr;
+  document.getElementById('congelar-retorno').value = '';
+  document.getElementById('congelar-obs').value = '';
+  // Carregar vendedores do comercial
+  const sel = document.getElementById('congelar-responsavel');
+  sel.innerHTML = '<option value="">Selecione o responsável...</option>';
+  fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getComercial')
+    .then(r=>r.json())
+    .then(d=>{
+      if(Array.isArray(d)){
+        const vendedores = [...new Set(d.map(p=>p.vendedor).filter(Boolean))].sort();
+        vendedores.forEach(v=>{
+          const opt = document.createElement('option');
+          opt.value = v; opt.textContent = v;
+          sel.appendChild(opt);
+        });
+      }
+    }).catch(()=>{
+      sel.innerHTML = '<option value="">Erro ao carregar vendedores</option>';
+    });
+  document.getElementById('congelar-modal').style.display = 'flex';
+}
+
+function fecharCongelarModal(){
+  document.getElementById('congelar-modal').style.display = 'none';
+}
+
+async function confirmarCongelamento(){
+  const id = document.getElementById('congelar-id').value;
+  const data = document.getElementById('congelar-data').value;
+  const retorno = document.getElementById('congelar-retorno').value;
+  const obs = document.getElementById('congelar-obs').value.trim();
+  const responsavel = document.getElementById('congelar-responsavel').value;
+  if(!data){ alert('Informe a data de congelamento.'); return; }
+  if(!responsavel){ alert('Selecione o responsável.'); return; }
+  const proj = projects.find(p=>p.id===id);
+  if(!proj) return;
+
+  // Botão loading
+  const btn = document.querySelector('#congelar-modal .modal-btn.primary');
+  if(btn){ btn.textContent='⏳ Congelando...'; btn.disabled=true; }
+
+  proj.congelado = true;
+  proj.data_congelamento = data;
+  proj.data_retorno = retorno;
+  proj.obs_congelamento = obs;
+  proj.responsavel_congelamento = responsavel;
+
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'savePipeline',
+      id:proj.id,nome:proj.nome,uhs:proj.uhs,inicio:proj.inicio,steps:proj.steps,
+      congelado:true,data_congelamento:data,data_retorno:retorno,
+      obs_congelamento:obs,responsavel_congelamento:responsavel
+    })});
+    fecharCongelarModal();
+    renderPipeline();
+    document.getElementById('pipeline-sync').textContent='Congelado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    // Toast de sucesso
+    const toast = document.createElement('div');
+    toast.innerHTML = '❄️ <b>'+proj.nome+'</b> congelado com sucesso!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1A5FC8;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 3000);
+  }catch(e){
+    document.getElementById('pipeline-sync').textContent='Erro ao salvar';
+    alert('Erro ao congelar. Tente novamente.');
+  }finally{
+    if(btn){ btn.textContent='❄️ Congelar'; btn.disabled=false; }
+  }
+}
+
+async function retornarProjeto(id){
+  if(!confirm('Retomar a instalação deste projeto?')) return;
+  const proj = projects.find(p=>p.id===id);
+  if(!proj) return;
+
+  const loading = document.createElement('div');
+  loading.textContent = '⏳ Retomando instalação...';
+  loading.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:12px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+  document.body.appendChild(loading);
+
+  proj.congelado = false;
+  proj.data_congelamento = '';
+  proj.data_retorno = '';
+  proj.obs_congelamento = '';
+  proj.responsavel_congelamento = '';
+
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'savePipeline',
+      id:proj.id,nome:proj.nome,uhs:proj.uhs,inicio:proj.inicio,steps:proj.steps,
+      congelado:false,data_congelamento:'',data_retorno:'',obs_congelamento:'',responsavel_congelamento:''
+    })});
+    loading.remove();
+    renderPipeline();
+    document.getElementById('pipeline-sync').textContent='Retomado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const toast = document.createElement('div');
+    toast.innerHTML = '▶ <b>'+proj.nome+'</b> retomado com sucesso!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--c-andamento);color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 3000);
+  }catch(e){
+    loading.remove();
+    document.getElementById('pipeline-sync').textContent='Erro ao salvar';
+    alert('Erro ao retomar. Tente novamente.');
+  }
+}
 
 function fazerLogout(){
   sessionStorage.removeItem('blintrack_user');
@@ -2735,6 +2848,42 @@ async function excluirVistoria(id, nome){
     <div class="modal-actions">
       <button class="modal-btn" onclick="fecharConfig()">Cancelar</button>
       <button class="modal-btn primary" onclick="salvarConfig()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONGELAR INSTALAÇÃO -->
+<div class="modal-overlay" id="congelar-modal" style="display:none" onclick="if(event.target===this)fecharCongelarModal()">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">❄️ Congelar instalação</h3>
+      <button onclick="fecharCongelarModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Projeto: <strong id="congelar-nome"></strong></p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Data de congelamento *</label>
+        <input type="date" id="congelar-data" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Previsão de retorno</label>
+        <input type="date" id="congelar-retorno" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+    </div>
+    <div class="modal-field" style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Responsável (vendedor) *</label>
+      <select id="congelar-responsavel" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="">Carregando vendedores...</option>
+      </select>
+    </div>
+    <div class="modal-field" style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Motivo / Observação</label>
+      <textarea id="congelar-obs" rows="3" placeholder="Ex: Cliente em renegociação com o comercial..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box"></textarea>
+    </div>
+    <input type="hidden" id="congelar-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharCongelarModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarCongelamento()" style="background:#1A5FC8;border-color:#1A5FC8">❄️ Congelar</button>
     </div>
   </div>
 </div>
