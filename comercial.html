@@ -450,7 +450,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(sessionStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
-const API='https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+const API='https://script.google.com/macros/s/AKfycbwJiG9bNJUQZvRQpZC18ie29TieqqLabQx3kKaP_9EQxMwz8hof67TCnIbSMv7trAfI/exec';
 let prospects=[];
 let filters={status:'todos',prioridade:'todos',vendedor:'todos'};
 
@@ -1593,7 +1593,7 @@ td{padding:4px 6px;border:1px solid #ccc;font-size:10px;}
 
 
 // ===================== LOGIN COMERCIAL =====================
-const LOGIN_API = 'https://script.google.com/macros/s/AKfycbwoEs-AW-7zJgxVimJkVWi0PUqBEsFfgSmd7h6l_oIElP8UfFYfBGSaen1R0znHLxKg/exec';
+const LOGIN_API = 'https://script.google.com/macros/s/AKfycbwJiG9bNJUQZvRQpZC18ie29TieqqLabQx3kKaP_9EQxMwz8hof67TCnIbSMv7trAfI/exec';
 const PERFIS_COMERCIAL = ['admin','comercial'];
 let usuarioLogado = null;
 
