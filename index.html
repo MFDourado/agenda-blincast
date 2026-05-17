@@ -1094,7 +1094,7 @@ function setDashFiltro(filtro) {
   document.querySelectorAll('.kpi-card').forEach(c => c.style.outline = 'none');
   if(dashFiltro) {
     const el = document.getElementById('kpi-'+dashFiltro);
-    if(el) el.style.outline = '2px solid var(--gold)';
+    if(el) el.style.outline = dashFiltro==='congelados' ? '2px solid #1A5FC8' : '2px solid var(--gold)';
   }
   renderDashTable();
 }
@@ -1149,7 +1149,7 @@ async function renderDashboard(){
     <div class="kpi-card previsto" id="kpi-nao_iniciados" style="cursor:pointer" onclick="setDashFiltro('nao_iniciados')" title="Clique para filtrar"><div class="kpi-label">Não iniciados</div><div class="kpi-value">${naoIniciados.length}</div><div class="kpi-sub">nenhuma etapa</div></div>
     <div class="kpi-card pendente" id="kpi-mediaDias" style="cursor:pointer" onclick="setDashFiltro('concluidos')" title="Clique para ver concluídos"><div class="kpi-label">Dias médios</div><div class="kpi-value">${mediaDias}</div><div class="kpi-sub">projetos concluídos</div></div>
     <div class="kpi-card atrasado" id="kpi-atrasados45" style="cursor:pointer" onclick="setDashFiltro('atrasados45')" title="Clique para filtrar"><div class="kpi-label">Prazo 45d</div><div class="kpi-value">${projects.filter(p=>!p.congelado&&daysSince(p.inicio)>=45&&!p.steps.every(s=>s.done)).length}</div><div class="kpi-sub">projetos acima de 45d ⚠️</div></div>
-    <div class="kpi-card" id="kpi-congelados" style="cursor:pointer;border-color:#5B8FC9;background:#F0F4FF" onclick="setDashFiltro('congelados')" title="Clique para filtrar"><div class="kpi-label" style="color:#1A5FC8">❄️ Congelados</div><div class="kpi-value" style="color:#1A5FC8">${projects.filter(p=>p.congelado).length}</div><div class="kpi-sub">em renegociação</div></div>
+    <div class="kpi-card" id="kpi-congelados" style="cursor:pointer" onclick="setDashFiltro('congelados')" title="Clique para filtrar"><div class="kpi-label" style="color:#1A5FC8">❄️ Congelados</div><div class="kpi-value" style="color:#1A5FC8">${projects.filter(p=>p.congelado).length}</div><div class="kpi-sub">em renegociação</div></div>
   `;
 
   // Gráfico 1: Pizza por etapa atual
