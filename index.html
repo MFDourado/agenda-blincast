@@ -105,6 +105,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .pipeline-box:hover{border-color:var(--text-muted);}
 .pipeline-box.active-box.concluidos{border-color:var(--c-concluido);background:var(--c-concluido-bg);}
 .pipeline-box.active-box.pendentes{border-color:var(--c-pendente);background:var(--c-pendente-bg);}
+.pipeline-box.active-box.congelados{border-color:#1A5FC8;background:#EBF0FB;}
 .pipeline-box-num{font-size:36px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
 .pipeline-box-num.verde{color:var(--c-concluido);}
 .pipeline-box-num.amarelo{color:var(--c-pendente);}
@@ -363,7 +364,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <div class="pipeline-box-num amarelo" id="box-num-pendentes">0</div>
       <div class="pipeline-box-label">Pendentes</div>
     </div>
-    <div class="pipeline-box" id="box-congelados" onclick="togglePipelineBox('congelados')" style="border-color:#5B8FC9">
+    <div class="pipeline-box congelados" id="box-congelados" onclick="togglePipelineBox('congelados')">
       <div class="pipeline-box-num" id="box-num-congelados" style="color:#1A5FC8">0</div>
       <div class="pipeline-box-label">❄️ Congelados</div>
     </div>
