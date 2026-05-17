@@ -100,7 +100,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .btn-new-project{height:36px;padding:0 20px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;}
 .btn-new-project:hover{opacity:.85;}
 /* Pipeline boxes */
-.pipeline-boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;}
+.pipeline-boxes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.5rem;}
 .pipeline-box{background:var(--surface);border-radius:var(--radius);border:2px solid var(--border);padding:1.25rem;cursor:pointer;transition:all .15s;text-align:center;}
 .pipeline-box:hover{border-color:var(--text-muted);}
 .pipeline-box.active-box.concluidos{border-color:var(--c-concluido);background:var(--c-concluido-bg);}
@@ -234,7 +234,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 #page-ata .ata-table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:3px;}
 #page-ata .ata-table-wrap::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px;}
 #page-ata .ata-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--black);}
-@media(max-width:768px){.charts-grid{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr 1fr;}.add-btn{grid-column:span 2;}.legend{display:none;}.steps-grid{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(3,1fr);}.pipeline-boxes{grid-template-columns:1fr 1fr;}}
+@media(max-width:768px){.charts-grid{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr 1fr;}.add-btn{grid-column:span 2;}.legend{display:none;}.steps-grid{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(3,1fr);}.pipeline-boxes{grid-template-columns:1fr;}}
 
 /* Autocomplete orçamento */
 .orc-autocomplete-wrap{position:relative;width:100%;}
@@ -362,6 +362,10 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <div class="pipeline-box pendentes" id="box-pendentes" onclick="togglePipelineBox('pendentes')">
       <div class="pipeline-box-num amarelo" id="box-num-pendentes">0</div>
       <div class="pipeline-box-label">Pendentes</div>
+    </div>
+    <div class="pipeline-box" id="box-congelados" onclick="togglePipelineBox('congelados')" style="border-color:#5B8FC9">
+      <div class="pipeline-box-num" id="box-num-congelados" style="color:#1A5FC8">0</div>
+      <div class="pipeline-box-label">❄️ Congelados</div>
     </div>
   </div>
   <div id="projects-list"></div>
@@ -957,7 +961,7 @@ function daysSince(ds){if(!ds)return null;return Math.floor((new Date()-new Date
 // Boxes Pipeline
 function togglePipelineBox(tipo){
   pipelineBoxFilter=pipelineBoxFilter===tipo?null:tipo;
-  ['concluidos','pendentes'].forEach(t=>{
+  ['concluidos','pendentes','congelados'].forEach(t=>{
     const box=document.getElementById('box-'+t);
     box.className='pipeline-box '+t+(pipelineBoxFilter===t?' active-box':'');
   });
@@ -967,16 +971,19 @@ function togglePipelineBox(tipo){
 function renderPipeline(){
   // Calcular contagens para boxes
   const concluidos=projects.filter(p=>p.steps.every(s=>s.done)).length;
-  const pendentes=projects.filter(p=>!p.steps.every(s=>s.done)).length;
+  const pendentes=projects.filter(p=>!p.steps.every(s=>s.done)&&!p.congelado).length;
+  const congelados=projects.filter(p=>p.congelado).length;
   document.getElementById('box-num-concluidos').textContent=concluidos;
   document.getElementById('box-num-pendentes').textContent=pendentes;
+  document.getElementById('box-num-congelados').textContent=congelados;
 
   // Filtrar projetos conforme box ativo e busca
   const buscaEl=document.getElementById('pipeline-busca');
   const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
   let lista=projects;
   if(pipelineBoxFilter==='concluidos')lista=projects.filter(p=>p.steps.every(s=>s.done));
-  else if(pipelineBoxFilter==='pendentes')lista=projects.filter(p=>!p.steps.every(s=>s.done));
+  else if(pipelineBoxFilter==='pendentes')lista=projects.filter(p=>!p.steps.every(s=>s.done)&&!p.congelado);
+  else if(pipelineBoxFilter==='congelados')lista=projects.filter(p=>p.congelado);
   if(buscaTxt)lista=lista.filter(p=>p.nome.toLowerCase().includes(buscaTxt));
 
   const list=document.getElementById('projects-list');
@@ -1098,6 +1105,7 @@ function renderDashTable() {
   else if(dashFiltro === 'andamento') lista = projects.filter(p => !p.steps.every(s=>s.done) && p.steps.some(s=>s.done));
   else if(dashFiltro === 'nao_iniciados') lista = projects.filter(p => p.steps.every(s=>!s.done));
   else if(dashFiltro === 'atrasados45') lista = projects.filter(p => !p.congelado && daysSince(p.inicio)>=45 && !p.steps.every(s=>s.done));
+  else if(dashFiltro === 'congelados') lista = projects.filter(p => p.congelado);
 
   if(!lista.length){
     tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Nenhum projeto</td></tr>';
@@ -1114,7 +1122,7 @@ function renderDashTable() {
   }).join('');
 
   // Atualizar título da tabela
-  const titulos = {concluidos:'Concluídos (100%)', andamento:'Em andamento', nao_iniciados:'Não iniciados', atrasados45:'Acima de 45 dias'};
+  const titulos = {concluidos:'Concluídos (100%)', andamento:'Em andamento', nao_iniciados:'Não iniciados', atrasados45:'Acima de 45 dias', congelados:'❄️ Congelados'};
   document.querySelector('.pipeline-table-header').textContent = dashFiltro ? 'Projetos: '+titulos[dashFiltro] : 'Projetos no pipeline';
 }
 
@@ -1138,8 +1146,9 @@ async function renderDashboard(){
     <div class="kpi-card concluido" id="kpi-concluidos" style="cursor:pointer" onclick="setDashFiltro('concluidos')" title="Clique para filtrar"><div class="kpi-label">Concluídos (100%)</div><div class="kpi-value">${concluidos.length}</div><div class="kpi-sub">${total?Math.round(concluidos.length/total*100):0}% do total</div></div>
     <div class="kpi-card andamento" id="kpi-andamento" style="cursor:pointer" onclick="setDashFiltro('andamento')" title="Clique para filtrar"><div class="kpi-label">Em andamento</div><div class="kpi-value">${emAndamento.length}</div><div class="kpi-sub">com etapas iniciadas</div></div>
     <div class="kpi-card previsto" id="kpi-nao_iniciados" style="cursor:pointer" onclick="setDashFiltro('nao_iniciados')" title="Clique para filtrar"><div class="kpi-label">Não iniciados</div><div class="kpi-value">${naoIniciados.length}</div><div class="kpi-sub">nenhuma etapa</div></div>
-    <div class="kpi-card pendente"><div class="kpi-label">Dias médios</div><div class="kpi-value">${mediaDias}</div><div class="kpi-sub">projetos concluídos</div></div>
-    <div class="kpi-card total"><div class="kpi-label">Prazo 45d</div><div class="kpi-value">${projects.filter(p=>!p.congelado&&daysSince(p.inicio)>=45&&!p.steps.every(s=>s.done)).length}</div><div class="kpi-sub">projetos acima de 45d ⚠️</div></div>
+    <div class="kpi-card pendente" id="kpi-mediaDias" style="cursor:pointer" onclick="setDashFiltro('concluidos')" title="Clique para ver concluídos"><div class="kpi-label">Dias médios</div><div class="kpi-value">${mediaDias}</div><div class="kpi-sub">projetos concluídos</div></div>
+    <div class="kpi-card atrasado" id="kpi-atrasados45" style="cursor:pointer" onclick="setDashFiltro('atrasados45')" title="Clique para filtrar"><div class="kpi-label">Prazo 45d</div><div class="kpi-value">${projects.filter(p=>!p.congelado&&daysSince(p.inicio)>=45&&!p.steps.every(s=>s.done)).length}</div><div class="kpi-sub">projetos acima de 45d ⚠️</div></div>
+    <div class="kpi-card" id="kpi-congelados" style="cursor:pointer;border-color:#5B8FC9;background:#F0F4FF" onclick="setDashFiltro('congelados')" title="Clique para filtrar"><div class="kpi-label" style="color:#1A5FC8">❄️ Congelados</div><div class="kpi-value" style="color:#1A5FC8">${projects.filter(p=>p.congelado).length}</div><div class="kpi-sub">em renegociação</div></div>
   `;
 
   // Gráfico 1: Pizza por etapa atual
