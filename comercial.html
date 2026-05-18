@@ -461,7 +461,30 @@ async function load(){
   try{
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getComercial');
     const d=await r.json();
-    prospects=Array.isArray(d)?d:[];
+    prospects=Array.isArray(d)?d.map(p=>{
+      // Normalizar campos independente de maiúsculas/minúsculas no Sheets
+      const norm={};
+      Object.keys(p).forEach(k=>{ norm[k.toLowerCase().trim()]=p[k]; });
+      return {
+        id: norm.id||'',
+        nome: norm.nome||'',
+        cidade: norm.cidade||'',
+        cnpj: norm.cnpj||'',
+        contato: norm.contato||'',
+        telefone: norm.telefone||'',
+        endereco: norm.endereco||'',
+        produto: norm.produto||'',
+        uhs: norm.uhs||'',
+        status: String(norm.status||'prospect').toLowerCase().trim(),
+        vendedor: norm.vendedor||'',
+        prioridade: norm.prioridade||'',
+        canais: norm.canais||'',
+        conteudo_online: norm.conteudo_online||norm['conteúdo online']||'',
+        conteudo_detalhe: norm.conteudo_detalhe||'',
+        prazo: norm.prazo||norm.prazo_instalacao||'',
+        obs: norm.obs||norm.observacoes||'',
+      };
+    }):[];
     setStatus('online','Sincronizado');
     document.getElementById('page-sync').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     render();
@@ -656,7 +679,7 @@ async function confirmarConversao(){
   document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||''})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||'',vendedor:p.vendedor||''})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
