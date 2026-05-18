@@ -2186,11 +2186,10 @@ function renderImplantacoes(){
     {label:'Congelados',   val:implDados.filter(i=>i.status_dinamico==='Congelado').length,     color:'#1A5FC8',           filtro:'Congelado'},
     {label:'Não iniciados',val:implDados.filter(i=>i.status_dinamico==='Não iniciado').length,  color:'var(--text-muted)', filtro:'Não iniciado'},
   ];
-  const fStatusAtual = document.getElementById('impl-f-status')?.value||'';
   if(kpiEl) kpiEl.innerHTML = kpis.map(k=>{
-    const ativo = k.filtro === fStatusAtual;
-    return '<div class="kpi-card" style="padding:14px 16px;cursor:pointer;'+(ativo?'outline:2px solid '+k.color+';':'')+'" onclick="setImplStatusFiltro(\''+k.filtro+'\')" title="Clique para filtrar">'
-      +'<div class="kpi-label">'+k.label+'</div>'
+    const ativo = k.filtro ? implStatusFiltros.has(k.filtro) : implStatusFiltros.size===0;
+    return '<div class="kpi-card" style="padding:14px 16px;cursor:pointer;'+(ativo&&k.filtro?'outline:2px solid '+k.color+';outline-offset:2px;':'')+'" onclick="setImplStatusFiltro(\''+k.filtro+'\')" title="Clique para filtrar (multi-seleção)">'
+      +'<div class="kpi-label">'+k.label+(ativo&&k.filtro?' ✓':'')+'</div>'
       +'<div class="kpi-value" style="font-size:28px;color:'+k.color+'">'+k.val+'</div>'
       +'</div>';
   }).join('');
