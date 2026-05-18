@@ -232,6 +232,10 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 }
 /* Scroll horizontal da Ata */
 #page-ata .ata-table-wrap::-webkit-scrollbar{height:6px;}
+.mont-drag-handle{cursor:grab;color:var(--text-light);font-size:14px;padding:4px 8px;user-select:none;}
+.mont-drag-handle:active{cursor:grabbing;}
+.mont-dragging{opacity:.4;}
+.mont-drag-over{border-top:2px solid var(--gold) !important;}
 .ata-drag-handle{cursor:grab;color:var(--text-light);font-size:14px;padding:0 4px;user-select:none;}
 .ata-drag-handle:active{cursor:grabbing;}
 tr.ata-dragging{opacity:.4;}
@@ -811,13 +815,21 @@ let cur={y:new Date().getFullYear(),m:new Date().getMonth()};
 let selectedDate=todayStr,activeTab='mes',events=[],activeFilter='todos',projects=[],saveTimer=null;
 let chartPizza=null,chartBarras=null;
 let pipelineBoxFilter=null;
-let pipelineTipoFiltro='todos';
+let pipelineTipoFiltros=new Set();
 
 function setPipelineTipoFiltro(f){
-  pipelineTipoFiltro = f;
-  ['todos','rack-hd','rack-sd','stb','str','outros'].forEach(x=>{
+  if(f==='todos'){
+    pipelineTipoFiltros.clear();
+  } else {
+    if(pipelineTipoFiltros.has(f)) pipelineTipoFiltros.delete(f);
+    else pipelineTipoFiltros.add(f);
+  }
+  // Atualizar visual dos botões
+  const todosEl = document.getElementById('ptf-todos');
+  if(todosEl) todosEl.className = 'filter-btn'+(pipelineTipoFiltros.size===0?' active':'');
+  ['rack-hd','rack-sd','stb','str','outros'].forEach(x=>{
     const el = document.getElementById('ptf-'+x);
-    if(el) el.className = 'filter-btn'+(x===f?' active':'');
+    if(el) el.className = 'filter-btn'+(pipelineTipoFiltros.has(x)?' active':'');
   });
   renderPipeline();
 } // 'concluidos' | 'pendentes' | null
@@ -1029,16 +1041,18 @@ function renderPipeline(){
   else if(pipelineBoxFilter==='pendentes')lista=projects.filter(p=>!p.steps.every(s=>s.done)&&!p.congelado);
   else if(pipelineBoxFilter==='congelados')lista=projects.filter(p=>p.congelado);
   if(buscaTxt)lista=lista.filter(p=>p.nome.toLowerCase().includes(buscaTxt));
-  // Filtro por tecnologia
-  if(pipelineTipoFiltro && pipelineTipoFiltro!=='todos'){
+  // Filtro por tecnologia (multi-seleção)
+  if(pipelineTipoFiltros.size>0){
     lista=lista.filter(p=>{
       const prod=(p.produto||'').toUpperCase();
-      if(pipelineTipoFiltro==='rack-hd') return prod==='HD';
-      if(pipelineTipoFiltro==='rack-sd') return prod==='SD';
-      if(pipelineTipoFiltro==='stb') return prod==='STB';
-      if(pipelineTipoFiltro==='str') return prod==='STR';
-      if(pipelineTipoFiltro==='outros') return !['HD','SD','STB','STR'].includes(prod);
-      return true;
+      return [...pipelineTipoFiltros].some(f=>{
+        if(f==='rack-hd') return prod==='HD';
+        if(f==='rack-sd') return prod==='SD';
+        if(f==='stb') return prod==='STB';
+        if(f==='str') return prod==='STR';
+        if(f==='outros') return !['HD','SD','STB','STR'].includes(prod);
+        return false;
+      });
     });
   }
   // Ordenação
@@ -1886,6 +1900,7 @@ function renderMontagem(){
       +'</div>'
       +'<div class="step-card"><div class="step-number">Prazo</div>'
       +'<div style="font-size:12px;margin-top:4px"><b>Previsão:</b> '+(m.previsao_dias||'—')+' dias</div>'
+      +(m.dt_prevista?'<div style="font-size:12px;margin-top:2px;color:var(--c-previsto);font-weight:600">📅 Entrega: '+new Date(m.dt_prevista+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':'')
       +'<div style="font-size:12px;margin-top:2px"><b>Criado em:</b> '+(m.data_criacao||'—')+'</div>'
       +'</div>'
       +(m.obs?'<div class="step-card" style="grid-column:span 2"><div class="step-number">Observações</div><div style="font-size:12px;margin-top:4px">'+m.obs+'</div></div>':'')
@@ -1919,6 +1934,7 @@ function enviarParaMontagem(projId, projNome){
   document.getElementById('mont-previsao').value = '';
   document.getElementById('mont-status').value = 'pendente';
   document.getElementById('mont-obs').value = '';
+  document.getElementById('mont-dt-prevista').value = '';
   document.getElementById('mont-rack-fields').style.display = 'none';
   document.getElementById('montagem-modal').style.display = 'flex';
 }
@@ -1956,6 +1972,7 @@ async function salvarMontagem(){
     conversor: isRack ? document.getElementById('mont-conversor').value : '',
     status: document.getElementById('mont-status').value,
     obs: document.getElementById('mont-obs').value.trim(),
+    dt_prevista: document.getElementById('mont-dt-prevista')?.value||'',
     data_criacao: todayStr
   };
 
@@ -1981,6 +1998,47 @@ async function salvarMontagem(){
   }finally{
     if(btn){ btn.textContent='🔧 Enviar para montagem'; btn.disabled=false; }
   }
+}
+
+// ===================== MONTAGEM — DRAG & DROP =====================
+let montDragId = null;
+
+function montDragStart(event, id){
+  montDragId = id;
+  event.currentTarget.classList.add('mont-dragging');
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function montDragOver(event){
+  event.preventDefault();
+  event.currentTarget.classList.add('mont-drag-over');
+}
+
+function montDragLeave(event){
+  event.currentTarget.classList.remove('mont-drag-over');
+}
+
+async function montDrop(event, targetId){
+  event.preventDefault();
+  event.currentTarget.classList.remove('mont-drag-over');
+  if(!montDragId || montDragId === targetId) return;
+  const fromIdx = montagemDados.findIndex(m=>m.id===montDragId);
+  const toIdx   = montagemDados.findIndex(m=>m.id===targetId);
+  if(fromIdx===-1||toIdx===-1) return;
+  const item = montagemDados.splice(fromIdx, 1)[0];
+  montagemDados.splice(toIdx, 0, item);
+  montagemDados.forEach((m, i) => { m.ordem = i + 1; });
+  renderMontagem();
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(), action:'reordenarMontagem',
+      ordens: montagemDados.map(m=>({id:m.id, ordem:m.ordem}))
+    })});
+    document.getElementById('montagem-sync').textContent='Ordem salva - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('montagem-sync').textContent='Erro ao salvar ordem';
+  }
+  montDragId = null;
 }
 
 function fazerLogout(){
@@ -3259,6 +3317,10 @@ async function excluirVistoria(id, nome){
       <div class="modal-field">
         <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Previsão de montagem (dias) *</label>
         <input type="number" id="mont-previsao" min="1" placeholder="Ex: 5" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Data prevista de entrega</label>
+        <input type="date" id="mont-dt-prevista" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
       </div>
       <div class="modal-field">
         <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Status inicial</label>
