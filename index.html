@@ -600,17 +600,16 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead>
         <tr style="background:var(--black);">
-          <th style="padding:8px 4px;width:3%;"></th>
-          <th style="padding:8px 4px;width:3%;"></th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">No OS</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:13%;">Cliente</th>
+          <th style="padding:8px 2px;width:2%;"></th>
+          <th style="padding:8px 2px;width:4%;"></th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">No OS</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Cliente</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:3%;">UF</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:22%;">Problema</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:14%;">Técnico / Aj.</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Status</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Obs</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">Datas</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Dt. Prevista</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:18%;">Problema</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:11%;">Técnico / Aj.</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Status</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Obs</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Datas</th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
@@ -2178,9 +2177,7 @@ function renderAta(){
       </td>
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
       <td style="padding:2px 3px;">
-        ${r.dt_prevista?'<div style="font-size:9px;color:var(--c-previsto);font-weight:600;margin-bottom:1px;">Previsto</div><div style="font-size:10px;color:var(--c-previsto);font-weight:600;">'+new Date(r.dt_prevista+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':''}
-      </td>
-      <td style="padding:2px 3px;">
+        ${r.dt_prevista?'<div style="font-size:9px;color:var(--c-previsto);font-weight:600;margin-bottom:1px;">Prev.</div><div style="font-size:10px;color:var(--c-previsto);font-weight:600;margin-bottom:3px;">'+new Date(r.dt_prevista+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':''}
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
         <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px;margin-bottom:1px;">Concl.</div>
