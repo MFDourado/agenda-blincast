@@ -355,6 +355,25 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       <button class="btn-new-project" onclick="openModal()">+ Novo projeto</button>
     </div>
   </div>
+  <!-- FILTROS DE TECNOLOGIA + ORDENAÇÃO -->
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <span style="font-size:12px;color:var(--text-muted);">Tecnologia:</span>
+    <button class="filter-btn active" id="ptf-todos" onclick="setPipelineTipoFiltro('todos')">Todos</button>
+    <button class="filter-btn" id="ptf-rack-hd" onclick="setPipelineTipoFiltro('rack-hd')">Rack HD</button>
+    <button class="filter-btn" id="ptf-rack-sd" onclick="setPipelineTipoFiltro('rack-sd')">Rack SD</button>
+    <button class="filter-btn" id="ptf-stb" onclick="setPipelineTipoFiltro('stb')">STB</button>
+    <button class="filter-btn" id="ptf-str" onclick="setPipelineTipoFiltro('str')">STR</button>
+    <button class="filter-btn" id="ptf-outros" onclick="setPipelineTipoFiltro('outros')">Outros</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+      <span style="font-size:12px;color:var(--text-muted);">Ordenar:</span>
+      <select id="pipeline-ordem" onchange="renderPipeline()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="prazo">Prazo mais próximo</option>
+        <option value="dias-asc">Dias (menor → maior)</option>
+        <option value="dias-desc">Dias (maior → menor)</option>
+        <option value="nome">Nome A→Z</option>
+      </select>
+    </div>
+  </div>
   <!-- BOXES concluídos / pendentes -->
   <div class="pipeline-boxes">
     <div class="pipeline-box concluidos" id="box-concluidos" onclick="togglePipelineBox('concluidos')">
@@ -784,7 +803,17 @@ const todayStr=new Date().toISOString().slice(0,10);
 let cur={y:new Date().getFullYear(),m:new Date().getMonth()};
 let selectedDate=todayStr,activeTab='mes',events=[],activeFilter='todos',projects=[],saveTimer=null;
 let chartPizza=null,chartBarras=null;
-let pipelineBoxFilter=null; // 'concluidos' | 'pendentes' | null
+let pipelineBoxFilter=null;
+let pipelineTipoFiltro='todos';
+
+function setPipelineTipoFiltro(f){
+  pipelineTipoFiltro = f;
+  ['todos','rack-hd','rack-sd','stb','str','outros'].forEach(x=>{
+    const el = document.getElementById('ptf-'+x);
+    if(el) el.className = 'filter-btn'+(x===f?' active':'');
+  });
+  renderPipeline();
+} // 'concluidos' | 'pendentes' | null
 
 function setStatus(s,m){document.getElementById('status-dot').className='status-dot '+s;document.getElementById('status-txt').textContent=m;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
@@ -988,6 +1017,33 @@ function renderPipeline(){
   else if(pipelineBoxFilter==='pendentes')lista=projects.filter(p=>!p.steps.every(s=>s.done)&&!p.congelado);
   else if(pipelineBoxFilter==='congelados')lista=projects.filter(p=>p.congelado);
   if(buscaTxt)lista=lista.filter(p=>p.nome.toLowerCase().includes(buscaTxt));
+  // Filtro por tecnologia
+  if(pipelineTipoFiltro && pipelineTipoFiltro!=='todos'){
+    lista=lista.filter(p=>{
+      const prod=(p.produto||'').toUpperCase();
+      if(pipelineTipoFiltro==='rack-hd') return prod==='HD';
+      if(pipelineTipoFiltro==='rack-sd') return prod==='SD';
+      if(pipelineTipoFiltro==='stb') return prod==='STB';
+      if(pipelineTipoFiltro==='str') return prod==='STR';
+      if(pipelineTipoFiltro==='outros') return !['HD','SD','STB','STR'].includes(prod);
+      return true;
+    });
+  }
+  // Ordenação
+  const ordemPipeline = document.getElementById('pipeline-ordem')?.value||'prazo';
+  if(ordemPipeline==='prazo'){
+    lista=[...lista].sort((a,b)=>{
+      const dA=a.prazo_instalacao?new Date(a.prazo_instalacao):new Date('9999-12-31');
+      const dB=b.prazo_instalacao?new Date(b.prazo_instalacao):new Date('9999-12-31');
+      return dA-dB;
+    });
+  } else if(ordemPipeline==='dias-asc'){
+    lista=[...lista].sort((a,b)=>(daysSince(a.inicio)||0)-(daysSince(b.inicio)||0));
+  } else if(ordemPipeline==='dias-desc'){
+    lista=[...lista].sort((a,b)=>(daysSince(b.inicio)||0)-(daysSince(a.inicio)||0));
+  } else if(ordemPipeline==='nome'){
+    lista=[...lista].sort((a,b)=>a.nome.localeCompare(b.nome));
+  }
 
   const list=document.getElementById('projects-list');
   if(!lista.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum projeto encontrado.</div>';return;}
