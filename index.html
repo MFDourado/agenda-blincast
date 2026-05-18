@@ -852,8 +852,10 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 // ===================== TABS =====================
 function switchMainTab(t){
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','poc'].forEach(tab=>{
-    document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
-    document.getElementById('page-'+tab).style.display=t===tab?'':'none';
+    const btn = document.getElementById('mt-'+tab);
+    const page = document.getElementById('page-'+tab);
+    if(btn) btn.className='main-tab'+(t===tab?' active':'');
+    if(page) page.style.display=t===tab?'':'none';
   });
   if(t==='pipeline')loadPipeline();
   if(t==='vistoria')loadVistoria();
@@ -2222,6 +2224,62 @@ function renderImplantacoes(){
   }).join('');
 
   if(totalEl) totalEl.textContent = lista.length + ' registros';
+
+  // Renderizar gráficos com os dados filtrados
+  renderImplCharts(lista);
+}
+
+// ===================== GRÁFICOS IMPLANTAÇÕES =====================
+let implChartStatus = null;
+let implChartMes    = null;
+let implChartTipo   = null;
+
+function renderImplCharts(lista){
+  // --- Pizza: Por Status ---
+  const statusLabels = ['Concluído','Em andamento','Na montagem','Congelado','Não iniciado'];
+  const statusColors = ['#2ecc71','#3498db','#F5B800','#1A5FC8','#888'];
+  const statusData   = statusLabels.map(s => lista.filter(i=>i.status_dinamico===s).length);
+
+  const ctxS = document.getElementById('impl-chart-status');
+  if(ctxS){
+    if(implChartStatus) implChartStatus.destroy();
+    implChartStatus = new Chart(ctxS, {
+      type: 'doughnut',
+      data: { labels: statusLabels, datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface')||'#fff' }] },
+      options: { plugins: { legend: { position:'bottom', labels:{ font:{size:11}, color: getComputedStyle(document.documentElement).getPropertyValue('--text')||'#333', boxWidth:12 } } }, cutout:'60%', responsive:true, maintainAspectRatio:false }
+    });
+  }
+
+  // --- Barras: Por Mês ---
+  const mesesAll = [...new Set(implDados.map(i=>i.previsao).filter(Boolean))].sort();
+  const mesesFiltrado = [...new Set(lista.map(i=>i.previsao).filter(Boolean))].sort();
+  const mesesUsar = mesesFiltrado.length > 0 ? mesesFiltrado : mesesAll;
+  const mesData  = mesesUsar.map(m => lista.filter(i=>i.previsao===m).length);
+
+  const ctxM = document.getElementById('impl-chart-mes');
+  if(ctxM){
+    if(implChartMes) implChartMes.destroy();
+    implChartMes = new Chart(ctxM, {
+      type: 'bar',
+      data: { labels: mesesUsar, datasets: [{ label:'Implantações', data: mesData, backgroundColor:'#F5B800', borderRadius:4 }] },
+      options: { plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{font:{size:10}, color:'#888'}, grid:{display:false} }, y:{ ticks:{stepSize:1, color:'#888'}, grid:{color:'rgba(0,0,0,.05)'} } }, responsive:true, maintainAspectRatio:false }
+    });
+  }
+
+  // --- Barras: Por Tipo ---
+  const tipos = ['Instalação','Upgrade','Ampliação'];
+  const tipoData  = tipos.map(t => lista.filter(i=>(i.tipo||'')=== t).length);
+  const tipoColors = ['#3498db','#e67e22','#9b59b6'];
+
+  const ctxT = document.getElementById('impl-chart-tipo');
+  if(ctxT){
+    if(implChartTipo) implChartTipo.destroy();
+    implChartTipo = new Chart(ctxT, {
+      type: 'bar',
+      data: { labels: tipos, datasets: [{ label:'Qtd', data: tipoData, backgroundColor: tipoColors, borderRadius:4 }] },
+      options: { plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{font:{size:11}, color:'#888'}, grid:{display:false} }, y:{ ticks:{stepSize:1, color:'#888'}, grid:{color:'rgba(0,0,0,.05)'} } }, responsive:true, maintainAspectRatio:false }
+    });
+  }
 }
 
 function limparFiltrosImpl(){
@@ -3684,6 +3742,22 @@ async function excluirVistoria(id, nome){
 
   <!-- KPI CARDS -->
   <div id="impl-kpi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem;"></div>
+
+  <!-- GRÁFICOS -->
+  <div id="impl-charts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:1.5rem;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Por Status</div>
+      <canvas id="impl-chart-status" height="220"></canvas>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Por Mês</div>
+      <canvas id="impl-chart-mes" height="220"></canvas>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Por Tipo</div>
+      <canvas id="impl-chart-tipo" height="220"></canvas>
+    </div>
+  </div>
 
   <!-- FILTROS -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
