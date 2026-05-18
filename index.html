@@ -750,7 +750,8 @@ function iniciarApp(){
         if(hUser) hUser.textContent = '👤 '+u.nome;
         if(u.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
         carregarConfig();
-        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);setTimeout(sVerificar,5000);
+        switchMainTab('pipeline');
+        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         return;
       }
     }
@@ -779,6 +780,7 @@ async function fazerLogin(){
       if(hUser) hUser.textContent = '👤 '+d.nome;
       if(d.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
       carregarConfig();
+      switchMainTab('pipeline');
       apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
