@@ -346,6 +346,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <button class="main-tab" id="mt-ata" onclick="switchMainTab('ata')">Ata do Dia</button>
   <button class="main-tab" id="mt-orcamento" onclick="switchMainTab('orcamento')">Orçamento</button>
   <button class="main-tab" id="mt-distrato" onclick="switchMainTab('distrato')">Distrato</button>
+  <button class="main-tab" id="mt-implantacoes" onclick="switchMainTab('implantacoes')">Implantações</button>
   <button class="main-tab" id="mt-montagem" onclick="switchMainTab('montagem')">Montagem</button>
   <button class="main-tab" id="mt-poc" onclick="switchMainTab('poc')">PoC</button>
 </div>
@@ -850,7 +851,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','montagem','poc'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','poc'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
@@ -865,6 +866,7 @@ function switchMainTab(t){
   if(t==='distrato')loadDistrato();
   if(t==='poc')loadPocOperacional();
   if(t==='montagem')loadMontagem();
+  if(t==='implantacoes')loadImplantacoes();
 }
 
 // ===================== AGENDA =====================
@@ -1653,6 +1655,7 @@ const TABS_OPERACIONAL = [
   {id:'ata', label:'Ata do Dia'},
   {id:'orcamento', label:'Orçamento'},
   {id:'distrato', label:'Distrato'},
+  {id:'implantacoes', label:'Implantações'},
   {id:'montagem', label:'Montagem'},
   {id:'poc', label:'PoC'},
 ];
@@ -2080,6 +2083,289 @@ async function montDrop(event, targetId){
     document.getElementById('montagem-sync').textContent='Erro ao salvar ordem';
   }
   montDragId = null;
+}
+
+// ===================== IMPLANTAÇÕES =====================
+let implDados = [];
+
+function getImplStatus(proj){
+  if(!proj) return 'Não iniciado';
+  if(proj.congelado) return 'Congelado';
+  if(proj.enviado_montagem) return 'Na montagem';
+  const done = (proj.steps||[]).filter(s=>s.done).length;
+  if(done === 11) return 'Concluído';
+  if(done === 0) return 'Não iniciado';
+  return 'Em andamento';
+}
+
+function getImplStatusColor(s){
+  const m = {
+    'Concluído':    {c:'var(--c-concluido)',   bg:'var(--c-concluido-bg)'},
+    'Em andamento': {c:'var(--c-andamento)',   bg:'var(--c-andamento-bg)'},
+    'Na montagem':  {c:'var(--c-previsto)',    bg:'#EBF0FB'},
+    'Congelado':    {c:'#1A5FC8',             bg:'#EBF0FB'},
+    'Não iniciado': {c:'var(--text-muted)',   bg:'var(--border)'},
+  };
+  return m[s]||{c:'var(--text-muted)',bg:'var(--border)'};
+}
+
+async function loadImplantacoes(){
+  const syncEl = document.getElementById('impl-sync');
+  if(syncEl) syncEl.textContent = 'Carregando...';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getImplantacoes');
+    const d = await r.json();
+    // Cruzar com pipeline para status dinâmico
+    implDados = Array.isArray(d) ? d.map(item => {
+      const proj = projects.find(p => p.id === item.pipeline_id || p.nome === item.nome);
+      return {
+        ...item,
+        status_dinamico: getImplStatus(proj),
+        cnpj: proj ? (proj.cnpj||item.cnpj||'') : (item.cnpj||''),
+        cidade: proj ? (proj.cidade||item.cidade||'') : (item.cidade||''),
+      };
+    }) : [];
+    if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    popularFiltroMes();
+    renderImplantacoes();
+  }catch(e){
+    if(syncEl) syncEl.textContent = 'Erro de conexão';
+  }
+}
+
+function popularFiltroMes(){
+  const sel = document.getElementById('impl-f-mes');
+  if(!sel) return;
+  const meses = [...new Set(implDados.map(i=>i.previsao).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todos os meses</option>';
+  meses.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+}
+
+function renderImplantacoes(){
+  const tbody = document.getElementById('impl-tbody');
+  const totalEl = document.getElementById('impl-total');
+  const kpiEl = document.getElementById('impl-kpi');
+  if(!tbody) return;
+
+  const fMes    = document.getElementById('impl-f-mes')?.value||'';
+  const fTipo   = document.getElementById('impl-f-tipo')?.value||'';
+  const fStatus = document.getElementById('impl-f-status')?.value||'';
+  const fEquip  = document.getElementById('impl-f-equip')?.value||'';
+  const fBusca  = (document.getElementById('impl-busca')?.value||'').trim().toLowerCase();
+
+  let lista = implDados;
+  if(fMes)    lista = lista.filter(i=>i.previsao===fMes);
+  if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
+  if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
+  if(fEquip)  lista = lista.filter(i=>{
+    const prod=(i.equipamento||'').toUpperCase();
+    if(fEquip==='HD') return prod.includes('HD');
+    if(fEquip==='SD') return prod.includes('SD');
+    if(fEquip==='STB') return prod.includes('STB');
+    if(fEquip==='STR') return prod.includes('STR')||prod.includes('STREAMBLINK');
+    if(fEquip==='OUTROS') return !['HD','SD','STB'].some(x=>prod.includes(x));
+    return true;
+  });
+  if(fBusca)  lista = lista.filter(i=>(i.nome||'').toLowerCase().includes(fBusca));
+
+  // KPIs
+  const kpis = [
+    {label:'Total',      val:lista.length,                                          color:'var(--text)'},
+    {label:'Concluídos', val:lista.filter(i=>i.status_dinamico==='Concluído').length, color:'var(--c-concluido)'},
+    {label:'Em andamento',val:lista.filter(i=>i.status_dinamico==='Em andamento').length,color:'var(--c-andamento)'},
+    {label:'Na montagem', val:lista.filter(i=>i.status_dinamico==='Na montagem').length, color:'var(--c-previsto)'},
+    {label:'Congelados',  val:lista.filter(i=>i.status_dinamico==='Congelado').length,   color:'#1A5FC8'},
+    {label:'Não iniciados',val:lista.filter(i=>i.status_dinamico==='Não iniciado').length,color:'var(--text-muted)'},
+  ];
+  if(kpiEl) kpiEl.innerHTML = kpis.map(k=>
+    '<div class="kpi-card" style="padding:14px 16px;">'
+    +'<div class="kpi-label">'+k.label+'</div>'
+    +'<div class="kpi-value" style="font-size:28px;color:'+k.color+'">'+k.val+'</div>'
+    +'</div>'
+  ).join('');
+
+  if(!lista.length){
+    tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
+    if(totalEl) totalEl.textContent='';
+    return;
+  }
+
+  const fmtDate = d => { if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+
+  tbody.innerHTML = lista.map(item => {
+    const sc = getImplStatusColor(item.status_dinamico);
+    const diasNum = item.assinatura && item.conclusao
+      ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))
+      : item.assinatura
+        ? Math.floor((new Date()-new Date(item.assinatura))/(1000*60*60*24))
+        : null;
+    const diasStr = diasNum!==null ? diasNum+'d' : '—';
+    const diasColor = diasNum!==null&&diasNum>45?'var(--c-atrasado)':diasNum!==null&&diasNum>30?'var(--c-pendente)':'var(--text)';
+    return '<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background=\'var(--surface)\'" onmouseout="this.style.background=\'\'">'
+      +'<td style="padding:8px 12px;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+item.nome+'">'+item.nome+'</td>'
+      +'<td style="padding:8px;white-space:nowrap;color:var(--text-muted);font-size:11px;">'+(item.cidade||'—')+'<br>'+(item.uf||'')+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+formatCNPJ(item.cnpj||'')+'</td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;">'+(item.tipo||'—')+'</td>'
+      +'<td style="padding:8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.equipamento||'')+'">'+( item.equipamento||'—')+'</td>'
+      +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span></td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--text-muted);">'+fmtDate(item.assinatura)+'</td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--c-previsto);">'+( item.previsao||'—')+'</td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:'+(item.conclusao?'var(--c-concluido)':'var(--text-muted)')+'">'+fmtDate(item.conclusao)+'</td>'
+      +'<td style="padding:8px;font-size:11px;font-weight:600;color:'+diasColor+';white-space:nowrap;">'+diasStr+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.obs||'')+'">'+( item.obs||'—')+'</td>'
+      +'<td style="padding:8px;text-align:center;"><button onclick="editarImplantacao(\''+item.id+'\')" style="padding:2px 7px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button></td>'
+      +'</tr>';
+  }).join('');
+
+  if(totalEl) totalEl.textContent = lista.length + ' registros';
+}
+
+function limparFiltrosImpl(){
+  ['impl-f-mes','impl-f-tipo','impl-f-status','impl-f-equip'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  const b=document.getElementById('impl-busca');if(b)b.value='';
+  renderImplantacoes();
+}
+
+function editarImplantacao(id){
+  const item = implDados.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('impl-edit-id').value = id;
+  document.getElementById('impl-modal-nome').textContent = item.nome;
+  document.getElementById('impl-edit-tipo').value = item.tipo||'';
+  document.getElementById('impl-edit-conclusao').value = item.conclusao||'';
+  document.getElementById('impl-edit-previsao').value = item.previsao ? item.previsao.split('/').reverse().join('-') : '';
+  document.getElementById('impl-edit-obs').value = item.obs||'';
+  document.getElementById('impl-modal').style.display = 'flex';
+}
+
+function fecharImplModal(){
+  document.getElementById('impl-modal').style.display = 'none';
+}
+
+async function salvarImplantacao(){
+  const id = document.getElementById('impl-edit-id').value;
+  const btn = document.getElementById('impl-edit-btn');
+  if(btn){ btn.textContent='⏳ Salvando...'; btn.disabled=true; }
+  const previsaoRaw = document.getElementById('impl-edit-previsao').value;
+  const previsao = previsaoRaw ? previsaoRaw.split('-').reverse().slice(0,2).join('/') : '';
+  const payload = {
+    token: getToken(), action: 'saveImplantacao',
+    id,
+    tipo:      document.getElementById('impl-edit-tipo').value,
+    conclusao: document.getElementById('impl-edit-conclusao').value,
+    previsao,
+    obs:       document.getElementById('impl-edit-obs').value.trim(),
+  };
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    const item = implDados.find(i=>i.id===id);
+    if(item){
+      item.tipo = payload.tipo;
+      item.conclusao = payload.conclusao;
+      item.previsao = payload.previsao;
+      item.obs = payload.obs;
+    }
+    fecharImplModal();
+    renderImplantacoes();
+    const toast = document.createElement('div');
+    toast.textContent = '✅ Implantação atualizada!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
+  }catch(e){ alert('Erro ao salvar.'); }
+  finally{ if(btn){ btn.textContent='Salvar'; btn.disabled=false; } }
+}
+
+// ===================== EXPORTAÇÃO =====================
+let implExportData = [];
+
+function buildPreview(){
+  const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+  const fMes    = document.getElementById('impl-f-mes')?.value||'';
+  const fTipo   = document.getElementById('impl-f-tipo')?.value||'';
+  const fStatus = document.getElementById('impl-f-status')?.value||'';
+  const fBusca  = (document.getElementById('impl-busca')?.value||'').trim().toLowerCase();
+  let lista = implDados;
+  if(fMes)    lista = lista.filter(i=>i.previsao===fMes);
+  if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
+  if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
+  if(fBusca)  lista = lista.filter(i=>(i.nome||'').toLowerCase().includes(fBusca));
+  implExportData = lista;
+  return lista;
+}
+
+function exportarImplantacoesExcel(){
+  const lista = buildPreview();
+  const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+
+  const previewEl = document.getElementById('impl-preview-content');
+  previewEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">'+lista.length+' registros — clique em "Baixar Excel" para confirmar.</div>'
+    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    +'<thead><tr style="background:var(--black);color:#888;">'
+    +['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Assinatura','Previsão','Conclusão','Dias','Obs']
+      .map(h=>'<th style="padding:8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">'+h+'</th>').join('')
+    +'</tr></thead><tbody>'
+    +lista.map((item,i) => {
+      const dias = item.assinatura&&item.conclusao ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))+'d' : '—';
+      return '<tr style="background:'+(i%2===0?'var(--surface)':'');+'border-bottom:1px solid var(--border);">'
+        +[item.nome,item.cidade||'',item.uf||'',formatCNPJ(item.cnpj||''),item.tipo||'',item.equipamento||'',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'',fmtDate(item.conclusao),dias,item.obs||'']
+          .map(v=>'<td style="padding:6px 8px;">'+v+'</td>').join('')
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+
+  document.getElementById('impl-preview-modal').style.display = 'flex';
+}
+
+function exportarImplantacoesPDF(){
+  exportarImplantacoesExcel(); // mesma prévia, botão diferente
+}
+
+function confirmarExportarExcel(){
+  const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+  const headers = ['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Assinatura','Previsão','Conclusão','Dias','Observações'];
+  const rows = implExportData.map(item => {
+    const dias = item.assinatura&&item.conclusao ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24)) : '';
+    return [item.nome,item.cidade||'',item.uf||'',formatCNPJ(item.cnpj||''),item.tipo||'',item.equipamento||'',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'',fmtDate(item.conclusao),dias,item.obs||''];
+  });
+  // Gerar CSV (abre no Excel)
+  const csvContent = [headers, ...rows].map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csvContent], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'implantacoes_blintrack_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  document.getElementById('impl-preview-modal').style.display = 'none';
+}
+
+function confirmarExportarPDF(){
+  const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+  const headers = ['Cliente','Cidade/UF','CNPJ','Tipo','Equipamento','Status','Assinatura','Previsão','Conclusão','Dias'];
+  const rows = implExportData.map(item => {
+    const dias = item.assinatura&&item.conclusao ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))+'d' : '—';
+    return [item.nome,(item.cidade||'')+'/'+(item.uf||''),formatCNPJ(item.cnpj||''),item.tipo||'—',item.equipamento||'—',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'—',fmtDate(item.conclusao),dias];
+  });
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Implantações BlinTrack</title>'
+    +'<style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px;}h1{font-size:16px;margin-bottom:4px;}p{color:#888;font-size:11px;margin-bottom:16px;}'
+    +'table{width:100%;border-collapse:collapse;}th{background:#111;color:#F5B800;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}'
+    +'td{padding:5px 8px;border-bottom:1px solid #eee;}tr:nth-child(even){background:#f9f9f9;}</style></head><body>'
+    +'<h1>Relatório de Implantações — BlinTrack</h1>'
+    +'<p>Gerado em '+new Date().toLocaleDateString('pt-BR')+' | '+implExportData.length+' registros</p>'
+    +'<table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead>'
+    +'<tbody>'+rows.map(r=>'<tr>'+r.map(v=>'<td>'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table>'
+    +'<p style="margin-top:20px;color:#aaa;font-size:10px;">Blincast Media S/A — Confidencial</p>'
+    +'</body></html>';
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(), 500);
+  document.getElementById('impl-preview-modal').style.display = 'none';
 }
 
 function fazerLogout(){
@@ -3380,6 +3666,132 @@ async function excluirVistoria(id, nome){
       <button class="modal-btn" onclick="fecharMontagemModal()">Cancelar</button>
       <button class="modal-btn primary" id="mont-salvar-btn" onclick="salvarMontagem()">🔧 Enviar para montagem</button>
     </div>
+  </div>
+</div>
+
+<!-- IMPLANTAÇÕES -->
+<div id="page-implantacoes" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Implantações</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="impl-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button onclick="exportarImplantacoesExcel()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Exportar Excel</button>
+      <button onclick="exportarImplantacoesPDF()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Exportar PDF</button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div id="impl-kpi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem;"></div>
+
+  <!-- FILTROS -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
+    <select id="impl-f-mes" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+      <option value="">Todos os meses</option>
+    </select>
+    <select id="impl-f-tipo" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+      <option value="">Todos os tipos</option>
+      <option value="Instalação">Instalação</option>
+      <option value="Upgrade">Upgrade</option>
+      <option value="Ampliação">Ampliação</option>
+    </select>
+    <select id="impl-f-status" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+      <option value="">Todos os status</option>
+      <option value="Não iniciado">Não iniciado</option>
+      <option value="Em andamento">Em andamento</option>
+      <option value="Na montagem">Na montagem</option>
+      <option value="Congelado">Congelado</option>
+      <option value="Concluído">Concluído</option>
+    </select>
+    <select id="impl-f-equip" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+      <option value="">Todos os equipamentos</option>
+      <option value="HD">Rack HD</option>
+      <option value="SD">Rack SD</option>
+      <option value="STB">STB</option>
+      <option value="STR">STR</option>
+      <option value="OUTROS">Outros</option>
+    </select>
+    <input type="text" id="impl-busca" placeholder="🔍 Buscar cliente..." oninput="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;min-width:180px;">
+    <button onclick="limparFiltrosImpl()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">✕ Limpar</button>
+  </div>
+
+  <!-- TABELA -->
+  <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);">
+    <table id="impl-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--black);color:#888;">
+          <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Cliente</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Cidade/UF</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">CNPJ</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Tipo</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Equipamento</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Status</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Assinatura</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Previsão</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Conclusão</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Dias</th>
+          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Obs</th>
+          <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">✎</th>
+        </tr>
+      </thead>
+      <tbody id="impl-tbody"></tbody>
+    </table>
+  </div>
+  <div id="impl-total" style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:right;"></div>
+</div>
+
+<!-- MODAL EDITAR IMPLANTAÇÃO -->
+<div class="modal-overlay" id="impl-modal" style="display:none" onclick="if(event.target===this)fecharImplModal()">
+  <div class="modal" style="max-width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">Editar Implantação</h3>
+      <button onclick="fecharImplModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px"><strong id="impl-modal-nome"></strong></p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field" style="grid-column:span 2">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Tipo de instalação</label>
+        <select id="impl-edit-tipo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione...</option>
+          <option value="Instalação">Instalação</option>
+          <option value="Upgrade">Upgrade</option>
+          <option value="Ampliação">Ampliação</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Data de conclusão</label>
+        <input type="date" id="impl-edit-conclusao" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Previsão</label>
+        <input type="month" id="impl-edit-previsao" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+        <textarea id="impl-edit-obs" rows="3" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <input type="hidden" id="impl-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharImplModal()">Cancelar</button>
+      <button class="modal-btn primary" id="impl-edit-btn" onclick="salvarImplantacao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRÉVIA EXPORTAÇÃO -->
+<div class="modal-overlay" id="impl-preview-modal" style="display:none" onclick="if(event.target===this)document.getElementById('impl-preview-modal').style.display='none'">
+  <div class="modal" style="max-width:95vw;width:1100px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">📋 Prévia — Relatório de Implantações</h3>
+      <div style="display:flex;gap:8px;">
+        <button id="impl-prev-excel-btn" onclick="confirmarExportarExcel()" style="padding:6px 16px;background:var(--c-andamento);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Baixar Excel</button>
+        <button id="impl-prev-pdf-btn" onclick="confirmarExportarPDF()" style="padding:6px 16px;background:var(--gold);color:#111;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Baixar PDF</button>
+        <button onclick="document.getElementById('impl-preview-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+      </div>
+    </div>
+    <div id="impl-preview-content" style="overflow-x:auto;"></div>
   </div>
 </div>
 
