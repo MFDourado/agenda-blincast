@@ -406,6 +406,17 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <div><h2>Vistorias Técnicas</h2><div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vistoria-sync"></div></div>
     <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
   </div>
+  <!-- BOXES vistorias -->
+  <div class="pipeline-boxes" style="margin-bottom:1.5rem;">
+    <div class="pipeline-box concluidos" id="vbox-concluidas" onclick="toggleVistoriaBox('concluidas')">
+      <div class="pipeline-box-num verde" id="vbox-num-concluidas">0</div>
+      <div class="pipeline-box-label">Concluídas</div>
+    </div>
+    <div class="pipeline-box pendentes" id="vbox-pendentes" onclick="toggleVistoriaBox('pendentes')">
+      <div class="pipeline-box-num amarelo" id="vbox-num-pendentes">0</div>
+      <div class="pipeline-box-label">Pendentes</div>
+    </div>
+  </div>
   <div id="vistoria-list"></div>
 </div>
 
@@ -1424,7 +1435,30 @@ function schedSaveVistoria(v){document.getElementById('vistoria-sync').textConte
 function toggleVistoriaStep(vId,stepId){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.done=!step.done;if(step.done&&!step.date)step.date=todayStr;if(v.steps.every(s=>s.done))v.status='concluida';else v.status='andamento';renderVistoria();schedSaveVistoria(v);}
 function updateVistoriaStepDate(vId,stepId,val){const v=vistorias.find(x=>x.id===vId);if(!v)return;const step=v.steps.find(s=>s.id===stepId);if(!step)return;step.date=val;schedSaveVistoria(v);}
 function toggleVistoriaCard(id){const el=document.getElementById('vst-body-'+id);const chev=document.getElementById('vst-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
-function renderVistoria(){const list=document.getElementById('vistoria-list');if(!vistorias.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria.</div>';return;}list.innerHTML=vistorias.map(v=>{const doneCnt=v.steps.filter(s=>s.done).length;const pct=Math.round((doneCnt/5)*100);const concluida=v.status==='concluida'||pct===100;const cs=v.steps.find(s=>!s.done);const cst=cs?STEPS_VISTORIA.find(s=>s.id===cs.id)?.title:'Concluida';const infoCard=`<div class="step-card done">
+let vistoriaBoxFilter = null;
+
+function toggleVistoriaBox(f){
+  vistoriaBoxFilter = vistoriaBoxFilter === f ? null : f;
+  ['concluidas','pendentes'].forEach(x=>{
+    const el = document.getElementById('vbox-'+x);
+    if(el) el.className = 'pipeline-box '+(x==='concluidas'?'concluidos':'pendentes')+(vistoriaBoxFilter===x?' active-box '+(x==='concluidas'?'concluidos':'pendentes'):'');
+  });
+  renderVistoria();
+}
+
+function renderVistoria(){const list=document.getElementById('vistoria-list');if(!vistorias.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria.</div>';return;}
+  // Atualizar contagem dos boxes
+  const numConc = vistorias.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done)).length;
+  const numPend = vistorias.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done)).length;
+  const elC = document.getElementById('vbox-num-concluidas');
+  const elP = document.getElementById('vbox-num-pendentes');
+  if(elC) elC.textContent = numConc;
+  if(elP) elP.textContent = numPend;
+  // Filtrar
+  let lista = vistorias;
+  if(vistoriaBoxFilter==='concluidas') lista = vistorias.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done));
+  else if(vistoriaBoxFilter==='pendentes') lista = vistorias.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done));
+  if(!lista.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria nesta categoria.</div>';return;}list.innerHTML=lista.map(v=>{const doneCnt=v.steps.filter(s=>s.done).length;const pct=Math.round((doneCnt/5)*100);const concluida=v.status==='concluida'||pct===100;const cs=v.steps.find(s=>!s.done);const cst=cs?STEPS_VISTORIA.find(s=>s.id===cs.id)?.title:'Concluida';const infoCard=`<div class="step-card done">
   <div class="step-number">Dados da instalação</div>
   ${v.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+v.produto+'</div>':''}
   ${v.uhs?'<div style="font-size:12px;margin-top:2px"><b>UHs:</b> '+v.uhs+'</div>':''}
