@@ -2165,7 +2165,8 @@ function renderImplantacoes(){
   let lista = implDados;
   if(fMes)    lista = lista.filter(i=>i.previsao===fMes);
   if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
-  if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
+  if(implStatusFiltros.size>0) lista = lista.filter(i=>implStatusFiltros.has(i.status_dinamico));
+  else if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
   if(fEquip)  lista = lista.filter(i=>{
     const prod=(i.equipamento||'').toUpperCase();
     if(fEquip==='HD') return prod.includes('HD');
