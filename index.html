@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BlinTrack — Operacional</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{--black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;--radius:10px;--radius-sm:6px;--c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;--c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;--c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;--c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;--c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;}
@@ -2178,12 +2179,12 @@ function renderImplantacoes(){
 
   // KPIs
   const kpis = [
-    {label:'Total',        val:lista.length,                                            color:'var(--text)',       filtro:''},
-    {label:'Concluídos',   val:lista.filter(i=>i.status_dinamico==='Concluído').length, color:'var(--c-concluido)',filtro:'Concluído'},
-    {label:'Em andamento', val:lista.filter(i=>i.status_dinamico==='Em andamento').length,color:'var(--c-andamento)',filtro:'Em andamento'},
-    {label:'Na montagem',  val:lista.filter(i=>i.status_dinamico==='Na montagem').length, color:'var(--c-previsto)', filtro:'Na montagem'},
-    {label:'Congelados',   val:lista.filter(i=>i.status_dinamico==='Congelado').length,   color:'#1A5FC8',           filtro:'Congelado'},
-    {label:'Não iniciados',val:lista.filter(i=>i.status_dinamico==='Não iniciado').length,color:'var(--text-muted)', filtro:'Não iniciado'},
+    {label:'Total',        val:implDados.length,                                                color:'var(--text)',       filtro:''},
+    {label:'Concluídos',   val:implDados.filter(i=>i.status_dinamico==='Concluído').length,     color:'var(--c-concluido)',filtro:'Concluído'},
+    {label:'Em andamento', val:implDados.filter(i=>i.status_dinamico==='Em andamento').length,  color:'var(--c-andamento)',filtro:'Em andamento'},
+    {label:'Na montagem',  val:implDados.filter(i=>i.status_dinamico==='Na montagem').length,   color:'var(--c-previsto)', filtro:'Na montagem'},
+    {label:'Congelados',   val:implDados.filter(i=>i.status_dinamico==='Congelado').length,     color:'#1A5FC8',           filtro:'Congelado'},
+    {label:'Não iniciados',val:implDados.filter(i=>i.status_dinamico==='Não iniciado').length,  color:'var(--text-muted)', filtro:'Não iniciado'},
   ];
   const fStatusAtual = document.getElementById('impl-f-status')?.value||'';
   if(kpiEl) kpiEl.innerHTML = kpis.map(k=>{
@@ -2217,9 +2218,9 @@ function renderImplantacoes(){
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+formatCNPJ(item.cnpj||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;">'+(item.tipo||'—')+'</td>'
       +'<td style="padding:8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.equipamento||'')+'">'+( item.equipamento||'—')+'</td>'
-      +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span></td>'
+      +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span>'+(item.status_op?'<br><span style="font-size:10px;color:#888;font-style:italic;">'+item.status_op+'</span>':'')+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--text-muted);">'+fmtDate(item.assinatura)+'</td>'
-      +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--c-previsto);">'+( item.previsao||'—')+'</td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;"><input type="month" value="'+(item.previsao?'20'+item.previsao.split('/').reverse().join('-'):'')+'" onchange="salvarPrevInline(\''+item.id+'\',this.value)" style="border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;font-family:DM Sans,sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;width:110px;"></td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:'+(item.conclusao?'var(--c-concluido)':'var(--text-muted)')+'">'+fmtDate(item.conclusao)+'</td>'
       +'<td style="padding:8px;font-size:11px;font-weight:600;color:'+diasColor+';white-space:nowrap;">'+diasStr+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.obs||'')+'">'+( item.obs||'—')+'</td>'
@@ -2286,6 +2287,21 @@ function renderImplCharts(lista){
   }
 }
 
+async function salvarPrevInline(id, valor){
+  const item = implDados.find(i=>i.id===id);
+  if(!item) return;
+  // Converter de yyyy-MM para MM/yyyy
+  const previsao = valor ? valor.split('-').reverse().join('/') : '';
+  item.previsao = previsao;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(), action:'saveImplantacao',
+      id, previsao
+    })});
+    popularFiltroMes();
+  }catch(e){ console.error('Erro ao salvar previsão', e); }
+}
+
 function setImplStatusFiltro(status){
   const sel = document.getElementById('impl-f-status');
   if(!sel) return;
@@ -2311,6 +2327,7 @@ function editarImplantacao(id){
   document.getElementById('impl-edit-conclusao').value = item.conclusao||'';
   document.getElementById('impl-edit-previsao').value = item.previsao ? item.previsao.split('/').reverse().join('-') : '';
   document.getElementById('impl-edit-obs').value = item.obs||'';
+  document.getElementById('impl-edit-status-op').value = item.status_op||'';
   document.getElementById('impl-modal').style.display = 'flex';
 }
 
@@ -2331,6 +2348,7 @@ async function salvarImplantacao(){
     conclusao: document.getElementById('impl-edit-conclusao').value,
     previsao,
     obs:       document.getElementById('impl-edit-obs').value.trim(),
+    status_op: document.getElementById('impl-edit-status-op')?.value||'',
   };
   try{
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
@@ -2340,6 +2358,7 @@ async function salvarImplantacao(){
       item.conclusao = payload.conclusao;
       item.previsao = payload.previsao;
       item.obs = payload.obs;
+      item.status_op = payload.status_op;
     }
     fecharImplModal();
     renderImplantacoes();
@@ -2399,18 +2418,74 @@ function exportarImplantacoesPDF(){
 
 function confirmarExportarExcel(){
   const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
-  const headers = ['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Assinatura','Previsão','Conclusão','Dias','Observações'];
+
+  const headers = ['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Status Operacional','Assinatura','Previsão','Conclusão','Dias','Observações'];
   const rows = implExportData.map(item => {
-    const dias = item.assinatura&&item.conclusao ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24)) : '';
-    return [item.nome,item.cidade||'',item.uf||'',formatCNPJ(item.cnpj||''),item.tipo||'',item.equipamento||'',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'',fmtDate(item.conclusao),dias,item.obs||''];
+    const dias = item.assinatura && item.conclusao
+      ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))
+      : '';
+    return [
+      item.nome, item.cidade||'', item.uf||'', formatCNPJ(item.cnpj||''),
+      item.tipo||'', item.equipamento||'', item.status_dinamico, item.status_op||'',
+      fmtDate(item.assinatura), item.previsao||'', fmtDate(item.conclusao),
+      dias, item.obs||''
+    ];
   });
-  // Gerar CSV (abre no Excel)
-  const csvContent = [headers, ...rows].map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csvContent], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'implantacoes_blintrack_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click(); URL.revokeObjectURL(url);
+
+  // Criar workbook com SheetJS
+  const wb = XLSX.utils.book_new();
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Larguras das colunas
+  ws['!cols'] = [
+    {wch:35},{wch:18},{wch:5},{wch:20},{wch:14},{wch:28},
+    {wch:16},{wch:22},{wch:13},{wch:10},{wch:13},{wch:7},{wch:30}
+  ];
+
+  // Estilo do cabeçalho — fundo preto, texto dourado, negrito
+  const headerStyle = {
+    font: { bold: true, color: { rgb: 'F5B800' }, name: 'Arial', sz: 10 },
+    fill: { patternType: 'solid', fgColor: { rgb: '111111' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      bottom: { style: 'thin', color: { rgb: '444444' } },
+      right:  { style: 'thin', color: { rgb: '444444' } }
+    }
+  };
+
+  // Aplicar estilo ao cabeçalho
+  headers.forEach((h, i) => {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: i });
+    if(!ws[ref]) ws[ref] = {};
+    ws[ref].s = headerStyle;
+  });
+
+  // Estilo das linhas de dados — zebrado e bordas
+  rows.forEach((row, ri) => {
+    const isEven = ri % 2 === 0;
+    row.forEach((val, ci) => {
+      const ref = XLSX.utils.encode_cell({ r: ri + 1, c: ci });
+      if(!ws[ref]) ws[ref] = {};
+      ws[ref].s = {
+        font: { name: 'Arial', sz: 10 },
+        fill: { patternType: 'solid', fgColor: { rgb: isEven ? 'FFFFFF' : 'F5F5F5' } },
+        alignment: { vertical: 'center', wrapText: ci === 12 },
+        border: {
+          bottom: { style: 'thin', color: { rgb: 'DDDDDD' } },
+          right:  { style: 'thin', color: { rgb: 'DDDDDD' } }
+        }
+      };
+    });
+  });
+
+  // Altura da linha de cabeçalho
+  ws['!rows'] = [{ hpt: 30 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Implantações');
+
+  // Gerar e baixar
+  XLSX.writeFile(wb, 'implantacoes_blintrack_'+new Date().toISOString().slice(0,10)+'.xlsx');
   document.getElementById('impl-preview-modal').style.display = 'none';
 }
 
@@ -3852,6 +3927,17 @@ async function excluirVistoria(id, nome){
       <div class="modal-field">
         <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Previsão</label>
         <input type="month" id="impl-edit-previsao" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Status operacional</label>
+        <select id="impl-edit-status-op" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">— Sem status operacional —</option>
+          <option value="Instalando">Instalando</option>
+          <option value="Agendar instalação">Agendar instalação</option>
+          <option value="Instalação agendada">Instalação agendada</option>
+          <option value="Aguardando desembaraço">Aguardando desembaraço</option>
+          <option value="Montagem">Montagem</option>
+        </select>
       </div>
       <div class="modal-field" style="grid-column:span 2">
         <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
