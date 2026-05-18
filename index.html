@@ -2236,6 +2236,7 @@ function renderImplantacoes(){
 
 // ===================== GRÁFICOS IMPLANTAÇÕES =====================
 let implChartStatus = null;
+let implStatusFiltros = new Set();
 let implChartMes    = null;
 let implChartTipo   = null;
 
@@ -2285,6 +2286,46 @@ function renderImplCharts(lista){
       options: { plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{font:{size:11}, color:'#888'}, grid:{display:false} }, y:{ ticks:{stepSize:1, color:'#888'}, grid:{color:'rgba(0,0,0,.05)'} } }, responsive:true, maintainAspectRatio:false }
     });
   }
+
+  // --- Indicador Previsto vs Realizado ---
+  const concluidos_com_data = lista.filter(i => i.status_dinamico==='Concluído' && i.previsao && i.conclusao);
+  const no_prazo = concluidos_com_data.filter(i => {
+    try {
+      const partes = i.previsao.split('/');
+      const ultimoDia = new Date(parseInt(partes[1]), parseInt(partes[0]), 0);
+      return new Date(i.conclusao) <= ultimoDia;
+    } catch(e){ return false; }
+  }).length;
+  const atrasados_impl = concluidos_com_data.length - no_prazo;
+  const pct_prazo = concluidos_com_data.length > 0 ? Math.round((no_prazo/concluidos_com_data.length)*100) : 0;
+
+  const prazoCard = document.getElementById('impl-prazo-card');
+  if(prazoCard){
+    if(concluidos_com_data.length === 0){
+      prazoCard.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Previsto vs Realizado</div>'
+        +'<div style="font-size:12px;color:var(--text-muted)">Nenhum projeto concluído com previsão e data de conclusão preenchidas.</div>';
+    } else {
+      prazoCard.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Previsto vs Realizado — '+concluidos_com_data.length+' projetos concluídos com data</div>'
+        +'<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">'
+        +'<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px;">'
+        +'<div style="flex:1;background:var(--border);border-radius:20px;height:12px;overflow:hidden;">'
+        +'<div style="width:'+pct_prazo+'%;background:var(--c-concluido);height:100%;border-radius:20px;transition:width .5s"></div>'
+        +'</div>'
+        +'<span style="font-size:14px;font-weight:700;color:var(--c-concluido);min-width:40px">'+pct_prazo+'%</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:20px;">'
+        +'<div style="text-align:center;padding:8px 16px;background:var(--c-concluido-bg);border-radius:var(--radius-sm);">'
+        +'<div style="font-size:22px;font-weight:700;color:var(--c-concluido)">'+no_prazo+'</div>'
+        +'<div style="font-size:11px;color:var(--text-muted)">✅ No prazo</div>'
+        +'</div>'
+        +'<div style="text-align:center;padding:8px 16px;background:#fff0f0;border-radius:var(--radius-sm);">'
+        +'<div style="font-size:22px;font-weight:700;color:var(--c-atrasado)">'+atrasados_impl+'</div>'
+        +'<div style="font-size:11px;color:var(--text-muted)">⚠️ Atrasados</div>'
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    }
+  }
 }
 
 async function salvarPrevInline(id, valor){
@@ -2303,14 +2344,20 @@ async function salvarPrevInline(id, valor){
 }
 
 function setImplStatusFiltro(status){
+  if(!status){
+    implStatusFiltros.clear();
+  } else {
+    if(implStatusFiltros.has(status)) implStatusFiltros.delete(status);
+    else implStatusFiltros.add(status);
+  }
+  // Sincronizar com o select (para compatibilidade com filtro dropdown)
   const sel = document.getElementById('impl-f-status');
-  if(!sel) return;
-  // Toggle — clicar no mesmo filtro ativo limpa
-  sel.value = sel.value === status ? '' : status;
+  if(sel) sel.value = implStatusFiltros.size===1 ? [...implStatusFiltros][0] : '';
   renderImplantacoes();
 }
 
 function limparFiltrosImpl(){
+  implStatusFiltros.clear();
   ['impl-f-mes','impl-f-tipo','impl-f-status','impl-f-equip'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
@@ -3831,7 +3878,7 @@ async function excluirVistoria(id, nome){
   <div id="impl-kpi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem;"></div>
 
   <!-- GRÁFICOS -->
-  <div id="impl-charts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:1.5rem;">
+  <div id="impl-charts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:1rem;">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
       <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Por Status</div>
       <div style="position:relative;height:220px;"><canvas id="impl-chart-status"></canvas></div>
@@ -3845,6 +3892,8 @@ async function excluirVistoria(id, nome){
       <div style="position:relative;height:220px;"><canvas id="impl-chart-tipo"></canvas></div>
     </div>
   </div>
+  <!-- INDICADOR PREVISTO VS REALIZADO -->
+  <div id="impl-prazo-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:1.5rem;"></div>
 
   <!-- FILTROS -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
@@ -3857,7 +3906,7 @@ async function excluirVistoria(id, nome){
       <option value="Upgrade">Upgrade</option>
       <option value="Ampliação">Ampliação</option>
     </select>
-    <select id="impl-f-status" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+    <select id="impl-f-status" onchange="implStatusFiltros.clear();renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
       <option value="">Todos os status</option>
       <option value="Não iniciado">Não iniciado</option>
       <option value="Em andamento">Em andamento</option>
