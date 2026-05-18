@@ -338,6 +338,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   <button class="main-tab" id="mt-ata" onclick="switchMainTab('ata')">Ata do Dia</button>
   <button class="main-tab" id="mt-orcamento" onclick="switchMainTab('orcamento')">Orçamento</button>
   <button class="main-tab" id="mt-distrato" onclick="switchMainTab('distrato')">Distrato</button>
+  <button class="main-tab" id="mt-montagem" onclick="switchMainTab('montagem')">Montagem</button>
   <button class="main-tab" id="mt-poc" onclick="switchMainTab('poc')">PoC</button>
 </div>
 
@@ -790,7 +791,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','poc'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','montagem','poc'].forEach(tab=>{
     document.getElementById('mt-'+tab).className='main-tab'+(t===tab?' active':'');
     document.getElementById('page-'+tab).style.display=t===tab?'':'none';
   });
@@ -804,6 +805,7 @@ function switchMainTab(t){
   if(t==='orcamento')initOrçamento();
   if(t==='distrato')loadDistrato();
   if(t==='poc')loadPocOperacional();
+  if(t==='montagem')loadMontagem();
 }
 
 // ===================== AGENDA =====================
@@ -1021,7 +1023,7 @@ const sh=STEPS.map(s=>{
       const ir=s.remote&&proj.uhs<50;
       return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" canais":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${proj.id}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${proj.id}','${proj.nome}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirContratoModal('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}</div></div></div>`;
+    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" canais":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>${!proj.enviado_montagem?`<button class="proj-btn" onclick="enviarParaMontagem('${proj.id}','${proj.nome}')" style="color:#B86A00;border-color:#B86A00">🔧 Enviar para montagem</button>`:`<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ Na montagem</span>`}${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${proj.id}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${proj.id}','${proj.nome}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirContratoModal('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}</div></div></div>`;
   }).join('');
 }
 
@@ -1521,6 +1523,7 @@ const TABS_OPERACIONAL = [
   {id:'ata', label:'Ata do Dia'},
   {id:'orcamento', label:'Orçamento'},
   {id:'distrato', label:'Distrato'},
+  {id:'montagem', label:'Montagem'},
   {id:'poc', label:'PoC'},
 ];
 const TABS_COMERCIAL = [
@@ -1745,6 +1748,163 @@ async function retornarProjeto(id){
     loading.remove();
     document.getElementById('pipeline-sync').textContent='Erro ao salvar';
     alert('Erro ao retomar. Tente novamente.');
+  }
+}
+
+// ===================== MONTAGEM =====================
+let montagemDados = [];
+let montagemFiltro = 'todos';
+
+async function loadMontagem(){
+  const syncEl = document.getElementById('montagem-sync');
+  if(syncEl) syncEl.textContent = 'Carregando...';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMontagem');
+    const d = await r.json();
+    montagemDados = Array.isArray(d) ? d : [];
+    if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderMontagem();
+  }catch(e){
+    if(syncEl) syncEl.textContent = 'Erro de conexão';
+  }
+}
+
+function setMontagemFiltro(f){
+  montagemFiltro = f;
+  ['todos','pendente','montando','concluido'].forEach(x=>{
+    const el = document.getElementById('mf-'+x);
+    if(el) el.className = 'tab'+(x===f?' active':'');
+  });
+  renderMontagem();
+}
+
+function renderMontagem(){
+  const list = document.getElementById('montagem-list');
+  if(!list) return;
+  let dados = montagemFiltro==='todos' ? montagemDados : montagemDados.filter(m=>m.status===montagemFiltro);
+  if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum equipamento na montagem.</div>'; return; }
+  list.innerHTML = dados.map(m => {
+    const isRack = (m.tipo||'').toLowerCase().includes('rack');
+    const statusColor = m.status==='concluido'?'var(--c-concluido)':m.status==='montando'?'var(--c-andamento)':'var(--c-pendente)';
+    const statusBg = m.status==='concluido'?'var(--c-concluido-bg)':m.status==='montando'?'var(--c-andamento-bg)':'var(--c-pendente-bg)';
+    const statusLabel = m.status==='concluido'?'Concluído':m.status==='montando'?'Montando':'Pendente';
+    return '<div class="project-card" style="'+( m.status==='concluido'?'border-color:var(--c-concluido)':m.status==='montando'?'border-color:var(--c-andamento)':'')+'">'
+      +'<div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+      +'<div>'
+      +'<div class="project-name">'+m.nome+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+m.tipo+(m.moduladores?' · '+m.moduladores+' moduladores':'')+(m.previsao_dias?' · '+m.previsao_dias+' dias previstos':'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">'
+      +'<select onchange="alterarStatusMontagem(\''+m.id+'\',this.value,this)" style="font-size:11px;font-family:\'DM Sans\',sans-serif;border:1px solid '+statusColor+';border-radius:20px;padding:3px 8px;background:'+statusBg+';color:'+statusColor+';cursor:pointer;outline:none;font-weight:500;">'
+      +'<option value="pendente" '+(m.status==='pendente'?'selected':'')+'>Pendente</option>'
+      +'<option value="montando" '+(m.status==='montando'?'selected':'')+'>Montando</option>'
+      +'<option value="concluido" '+(m.status==='concluido'?'selected':'')+'>Concluído</option>'
+      +'</select>'
+      +'</div>'
+      +'</div>'
+      +'<div style="padding:0 16px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">'
+      +'<div class="step-card done"><div class="step-number">Equipamento</div>'
+      +'<div style="font-size:12px;margin-top:4px"><b>Tipo:</b> '+m.tipo+'</div>'
+      +(isRack?'<div style="font-size:12px;margin-top:2px"><b>Moduladores:</b> '+(m.moduladores||'—')+'</div>':'')
+      +(isRack?'<div style="font-size:12px;margin-top:2px"><b>Filtro digital:</b> '+(m.filtro_digital||'Não')+'</div>':'')
+      +(isRack?'<div style="font-size:12px;margin-top:2px"><b>Conversor:</b> '+(m.conversor||'Não')+'</div>':'')
+      +'</div>'
+      +'<div class="step-card"><div class="step-number">Prazo</div>'
+      +'<div style="font-size:12px;margin-top:4px"><b>Previsão:</b> '+(m.previsao_dias||'—')+' dias</div>'
+      +'<div style="font-size:12px;margin-top:2px"><b>Criado em:</b> '+(m.data_criacao||'—')+'</div>'
+      +'</div>'
+      +(m.obs?'<div class="step-card" style="grid-column:span 2"><div class="step-number">Observações</div><div style="font-size:12px;margin-top:4px">'+m.obs+'</div></div>':'')
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+async function alterarStatusMontagem(id, novoStatus, selEl){
+  const sc = novoStatus==='concluido'?{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'}:novoStatus==='montando'?{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'}:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'};
+  selEl.style.background = sc.bg; selEl.style.color = sc.c; selEl.style.borderColor = sc.c;
+  const m = montagemDados.find(x=>x.id===id);
+  if(m) m.status = novoStatus;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id,status:novoStatus})});
+    document.getElementById('montagem-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    // Recarregar para atualizar visual do card
+    setTimeout(()=>renderMontagem(), 300);
+  }catch(e){
+    document.getElementById('montagem-sync').textContent='Erro ao salvar';
+  }
+}
+
+function enviarParaMontagem(projId, projNome){
+  document.getElementById('mont-proj-id').value = projId;
+  document.getElementById('mont-nome-proj').textContent = projNome;
+  document.getElementById('mont-tipo').value = '';
+  document.getElementById('mont-moduladores').value = '';
+  document.getElementById('mont-filtro').value = 'Não';
+  document.getElementById('mont-conversor').value = 'Não';
+  document.getElementById('mont-previsao').value = '';
+  document.getElementById('mont-status').value = 'pendente';
+  document.getElementById('mont-obs').value = '';
+  document.getElementById('mont-rack-fields').style.display = 'none';
+  document.getElementById('montagem-modal').style.display = 'flex';
+}
+
+function fecharMontagemModal(){
+  document.getElementById('montagem-modal').style.display = 'none';
+}
+
+function toggleMontagemTipo(){
+  const tipo = document.getElementById('mont-tipo').value;
+  const isRack = tipo.toLowerCase().includes('rack');
+  document.getElementById('mont-rack-fields').style.display = isRack ? 'block' : 'none';
+}
+
+async function salvarMontagem(){
+  const projId = document.getElementById('mont-proj-id').value;
+  const tipo = document.getElementById('mont-tipo').value;
+  const previsao = document.getElementById('mont-previsao').value;
+  if(!tipo){ alert('Selecione o tipo de equipamento.'); return; }
+  if(!previsao){ alert('Informe a previsão de montagem.'); return; }
+
+  const btn = document.getElementById('mont-salvar-btn');
+  if(btn){ btn.textContent='⏳ Enviando...'; btn.disabled=true; }
+
+  const isRack = tipo.toLowerCase().includes('rack');
+  const proj = projects.find(p=>p.id===projId);
+  const payload = {
+    token: getToken(), action: 'saveMontagem',
+    id: 'mont_'+Date.now(),
+    projeto_id: projId,
+    nome: proj ? proj.nome : projId,
+    tipo, previsao_dias: previsao,
+    moduladores: isRack ? document.getElementById('mont-moduladores').value : '',
+    filtro_digital: isRack ? document.getElementById('mont-filtro').value : '',
+    conversor: isRack ? document.getElementById('mont-conversor').value : '',
+    status: document.getElementById('mont-status').value,
+    obs: document.getElementById('mont-obs').value.trim(),
+    data_criacao: todayStr
+  };
+
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    // Marcar projeto como enviado para montagem no pipeline
+    if(proj){ proj.enviado_montagem = true; }
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'savePipeline',
+      id:projId,nome:proj?.nome||'',uhs:proj?.uhs||0,inicio:proj?.inicio||'',
+      steps:proj?.steps||[],enviado_montagem:true
+    })});
+    fecharMontagemModal();
+    renderPipeline();
+    // Toast
+    const toast = document.createElement('div');
+    toast.innerHTML = '🔧 <b>'+(proj?.nome||'Projeto')+'</b> enviado para montagem!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--black);color:var(--gold);padding:12px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 3000);
+  }catch(e){
+    alert('Erro ao enviar para montagem.');
+  }finally{
+    if(btn){ btn.textContent='🔧 Enviar para montagem'; btn.disabled=false; }
   }
 }
 
@@ -2894,6 +3054,92 @@ async function excluirVistoria(id, nome){
     <div class="modal-actions">
       <button class="modal-btn" onclick="fecharCongelarModal()">Cancelar</button>
       <button class="modal-btn primary" onclick="confirmarCongelamento()" style="background:#1A5FC8;border-color:#1A5FC8">❄️ Congelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MONTAGEM -->
+<div id="page-montagem" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Montagem de Equipamentos</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="montagem-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;gap:4px;background:var(--border);padding:3px;border-radius:var(--radius-sm);">
+        <button class="tab active" id="mf-todos" onclick="setMontagemFiltro('todos')">Todos</button>
+        <button class="tab" id="mf-pendente" onclick="setMontagemFiltro('pendente')">Pendente</button>
+        <button class="tab" id="mf-montando" onclick="setMontagemFiltro('montando')">Montando</button>
+        <button class="tab" id="mf-concluido" onclick="setMontagemFiltro('concluido')">Concluído</button>
+      </div>
+    </div>
+  </div>
+  <div id="montagem-list"></div>
+</div>
+
+<!-- MODAL ENVIAR PARA MONTAGEM -->
+<div class="modal-overlay" id="montagem-modal" style="display:none" onclick="if(event.target===this)fecharMontagemModal()">
+  <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">🔧 Enviar para montagem</h3>
+      <button onclick="fecharMontagemModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Projeto: <strong id="mont-nome-proj"></strong></p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field" style="grid-column:span 2">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Tipo de equipamento *</label>
+        <select id="mont-tipo" class="field-sel" onchange="toggleMontagemTipo()" style="width:100%;height:36px;">
+          <option value="">Selecione...</option>
+          <option value="Rack SD">Rack SD</option>
+          <option value="Rack HD">Rack HD</option>
+          <option value="Set-top-box ZTE">Set-top-box ZTE</option>
+          <option value="Set-top-box Prime">Set-top-box Prime</option>
+          <option value="Decoder">Decoder</option>
+        </select>
+      </div>
+      <!-- Campos para Rack -->
+      <div id="mont-rack-fields" style="display:none;grid-column:span 2;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="modal-field">
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Qtd. de moduladores</label>
+            <input type="number" id="mont-moduladores" min="0" placeholder="Ex: 8" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          </div>
+          <div class="modal-field">
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Filtro digital</label>
+            <select id="mont-filtro" class="field-sel" style="width:100%;height:36px;">
+              <option value="Não">Não</option>
+              <option value="Sim">Sim</option>
+            </select>
+          </div>
+          <div class="modal-field" style="grid-column:span 2">
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Conversor</label>
+            <select id="mont-conversor" class="field-sel" style="width:100%;height:36px;">
+              <option value="Não">Não</option>
+              <option value="Sim">Sim</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Previsão de montagem (dias) *</label>
+        <input type="number" id="mont-previsao" min="1" placeholder="Ex: 5" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+      <div class="modal-field">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Status inicial</label>
+        <select id="mont-status" class="field-sel" style="width:100%;height:36px;">
+          <option value="pendente">Pendente</option>
+          <option value="montando">Montando</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+        <textarea id="mont-obs" rows="2" placeholder="Informações adicionais..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <input type="hidden" id="mont-proj-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharMontagemModal()">Cancelar</button>
+      <button class="modal-btn primary" id="mont-salvar-btn" onclick="salvarMontagem()">🔧 Enviar para montagem</button>
     </div>
   </div>
 </div>
