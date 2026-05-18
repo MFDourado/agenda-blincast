@@ -232,6 +232,10 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 }
 /* Scroll horizontal da Ata */
 #page-ata .ata-table-wrap::-webkit-scrollbar{height:6px;}
+.ata-drag-handle{cursor:grab;color:var(--text-light);font-size:14px;padding:0 4px;user-select:none;}
+.ata-drag-handle:active{cursor:grabbing;}
+tr.ata-dragging{opacity:.4;}
+tr.ata-drag-over{border-top:2px solid var(--gold);}
 #page-ata .ata-table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:3px;}
 #page-ata .ata-table-wrap::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px;}
 #page-ata .ata-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--black);}
@@ -564,6 +568,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
   </div>
   <!-- Filtros -->
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;position:relative;">
+    <input type="text" id="ata-filtro-os" placeholder="🔍 Buscar OS..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:120px;">
     <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
     <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
     <!-- Dropdown multi-select de status -->
@@ -595,7 +600,8 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead>
         <tr style="background:var(--black);">
-          <th style="padding:8px 4px;width:5%;"></th>
+          <th style="padding:8px 4px;width:3%;"></th>
+          <th style="padding:8px 4px;width:3%;"></th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">No OS</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:13%;">Cliente</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:3%;">UF</th>
@@ -604,6 +610,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Status</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Obs</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">Datas</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Dt. Prevista</th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
@@ -638,6 +645,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
       </div>
       <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Observações</label><input type="text" id="at-obs" placeholder="Informações complementares"></div>
+      <div class="modal-field"><label>Data prevista do serviço</label><input type="date" id="at-dt-prevista"></div>
       <div class="modal-field"><label>Data de conclusão</label><input type="date" id="at-dt-conclusao"></div>
     </div>
     <input type="hidden" id="at-edit-id">
@@ -2108,6 +2116,7 @@ document.addEventListener('click',function(e){
 });
 
 function renderAta(){
+  const filtroOs=document.getElementById('ata-filtro-os')?.value.trim().toLowerCase()||'';
   const filtroCliente=document.getElementById('ata-filtro-cliente')?.value.trim().toLowerCase()||'';
   const filtroData=document.getElementById('ata-filtro-data').value;
   const filtroTecnico=document.getElementById('ata-filtro-tecnico').value;
@@ -2123,11 +2132,14 @@ function renderAta(){
   }
 
   // Ordenar por data crescente (mais antigas primeiro)
+  // Ordenar por campo 'ordem' se existir, senão por data
   let lista=[...ataRegistros].sort((a,b)=>{
+    if(a.ordem && b.ordem) return parseInt(a.ordem)-parseInt(b.ordem);
     const da=String(a.data||'').trim();
     const db=String(b.data||'').trim();
     return da.localeCompare(db);
   });
+  if(filtroOs)lista=lista.filter(r=>String(r.no||'').toLowerCase().includes(filtroOs));
   if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
   if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
   // Se há status selecionados no multi-select, filtrar por eles
@@ -2142,7 +2154,8 @@ function renderAta(){
   if(!lista.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
-    return `<tr style="border-bottom:1px solid var(--border);">
+    return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${r.id}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${r.id}')">
+      <td style="padding:3px 2px;vertical-align:middle;cursor:grab;" class="ata-drag-handle" draggable="true" title="Arrastar para reordenar">⠿</td>
       <td style="padding:3px 4px;white-space:nowrap;vertical-align:middle;">
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
         <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
@@ -2165,6 +2178,9 @@ function renderAta(){
       </td>
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
       <td style="padding:2px 3px;">
+        ${r.dt_prevista?'<div style="font-size:9px;color:var(--c-previsto);font-weight:600;margin-bottom:1px;">Previsto</div><div style="font-size:10px;color:var(--c-previsto);font-weight:600;">'+new Date(r.dt_prevista+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':''}
+      </td>
+      <td style="padding:2px 3px;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
         <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px;margin-bottom:1px;">Concl.</div>
@@ -2174,7 +2190,60 @@ function renderAta(){
   }).join('');;;
 }
 
+// ===================== ATA — DRAG & DROP REORDENAÇÃO =====================
+let ataDragId = null;
+
+function ataDragStart(event, id){
+  ataDragId = id;
+  event.currentTarget.classList.add('ata-dragging');
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function ataDragOver(event){
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const tr = event.currentTarget;
+  tr.classList.add('ata-drag-over');
+}
+
+function ataDragLeave(event){
+  event.currentTarget.classList.remove('ata-drag-over');
+}
+
+async function ataDrop(event, targetId){
+  event.preventDefault();
+  event.currentTarget.classList.remove('ata-drag-over');
+  if(!ataDragId || ataDragId === targetId) return;
+
+  // Reordenar no array em memória
+  const fromIdx = ataRegistros.findIndex(r=>String(r.id)===String(ataDragId));
+  const toIdx   = ataRegistros.findIndex(r=>String(r.id)===String(targetId));
+  if(fromIdx===-1||toIdx===-1) return;
+
+  const item = ataRegistros.splice(fromIdx, 1)[0];
+  ataRegistros.splice(toIdx, 0, item);
+
+  // Atualizar campo ordem em cada registro
+  ataRegistros.forEach((r, i) => { r.ordem = i + 1; });
+
+  renderAta();
+
+  // Salvar nova ordem no AppScript
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),
+      action:'reordenarAta',
+      ordens: ataRegistros.map(r=>({id:r.id, ordem:r.ordem}))
+    })});
+    document.getElementById('ata-sync').textContent='Ordem salva - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('ata-sync').textContent='Erro ao salvar ordem';
+  }
+  ataDragId = null;
+}
+
 function limparFiltrosAta(){
+  const fo=document.getElementById('ata-filtro-os');if(fo)fo.value='';
   const fc=document.getElementById('ata-filtro-cliente');if(fc)fc.value='';
   document.getElementById('ata-filtro-data').value='';
   document.getElementById('ata-filtro-tecnico').value='';
@@ -2185,7 +2254,7 @@ function limparFiltrosAta(){
 }
 
 function openAtaModal(){
-  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-problema','at-obs','at-dt-abertura','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
@@ -2207,6 +2276,7 @@ function editarAta(id){
   document.getElementById('at-status').value=r.status||'em_andamento';
   document.getElementById('at-obs').value=r.obs||'';
   document.getElementById('at-dt-abertura').value=r.dt_abertura||'';
+  const dtPrev=document.getElementById('at-dt-prevista');if(dtPrev)dtPrev.value=r.dt_prevista||'';
   document.getElementById('at-dt-conclusao').value=r.dt_conclusao||'';
   document.getElementById('ata-modal-title').textContent='Editar registro';
   document.getElementById('ata-modal').style.display='flex';
@@ -2228,6 +2298,7 @@ async function salvarAta(){
     problema,status,
     obs:document.getElementById('at-obs').value.trim(),
     dt_abertura:document.getElementById('at-dt-abertura').value||'',
+    dt_prevista:document.getElementById('at-dt-prevista')?.value||'',
     dt_conclusao:document.getElementById('at-dt-conclusao').value||''
   };
   closeAtaModal();
