@@ -2093,8 +2093,13 @@ async function montDrop(event, targetId){
 // ===================== IMPLANTAÇÕES =====================
 let implDados = [];
 
-function getImplStatus(proj){
-  if(!proj) return 'Não iniciado';
+function getImplStatus(proj, item){
+  // Registro histórico (sem pipeline)
+  if(!proj){
+    if(item && item.conclusao) return 'Concluído';
+    if(item && item.status_op) return item.status_op;
+    return 'Não iniciado';
+  }
   if(proj.congelado) return 'Congelado';
   if(proj.enviado_montagem) return 'Na montagem';
   const done = (proj.steps||[]).filter(s=>s.done).length;
@@ -2125,7 +2130,7 @@ async function loadImplantacoes(){
       const proj = projects.find(p => p.id === item.pipeline_id || p.nome === item.nome);
       return {
         ...item,
-        status_dinamico: getImplStatus(proj),
+        status_dinamico: getImplStatus(proj, item),
         cnpj: proj ? (proj.cnpj||item.cnpj||'') : (item.cnpj||''),
         cidade: proj ? (proj.cidade||item.cidade||'') : (item.cidade||''),
       };
