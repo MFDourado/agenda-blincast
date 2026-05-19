@@ -2225,6 +2225,7 @@ function renderImplantacoes(){
       +'<td style="padding:8px;font-size:11px;font-weight:600;color:'+diasColor+';white-space:nowrap;">'+diasStr+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.obs||'')+'">'+( item.obs||'—')+'</td>'
       +'<td style="padding:8px;text-align:center;"><button onclick="editarImplantacao(\''+item.id+'\')" style="padding:2px 7px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button></td>'
+      +'<td style="padding:8px;text-align:center;"><button onclick="removerImplantacaoFront(\''+item.id+'\',(\''+(item.nome||'').replace(/\'/g,"\'")+'\')\'" style="padding:2px 7px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button></td>'
       +'</tr>';
   }).join('');
 
@@ -2341,6 +2342,42 @@ async function salvarPrevInline(id, valor){
     })});
     popularFiltroMes();
   }catch(e){ console.error('Erro ao salvar previsão', e); }
+}
+
+async function importarHistoricoImpl(){
+  if(!confirm('Importar 19 registros históricos (jan/2026 até hoje) da planilha anterior?\n\nRegistros com nome já existente serão ignorados automaticamente.')) return;
+  const btn = document.querySelector('[onclick="importarHistoricoImpl()"]');
+  if(btn){ btn.textContent='⏳ Importando...'; btn.disabled=true; }
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'importarHistorico'})});
+    const d = await r.json();
+    if(d.ok){
+      await loadImplantacoes();
+      alert('✅ '+d.importados+' registros importados com sucesso!\nRegistros duplicados foram ignorados.');
+    } else {
+      alert('Erro: '+(d.error||'falha na importação'));
+    }
+  }catch(e){ alert('Erro de conexão'); }
+  finally{ if(btn){ btn.textContent='📥 Importar Histórico'; btn.disabled=false; } }
+}
+
+async function removerImplantacaoFront(id, nome){
+  if(!confirm('Remover "'+nome+'" das implantações? Esta ação não pode ser desfeita.')) return;
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerImplantacao',id})});
+    const d = await r.json();
+    if(d.ok){
+      implDados = implDados.filter(i=>i.id!==id);
+      renderImplantacoes();
+      const toast = document.createElement('div');
+      toast.textContent = '🗑 Removido com sucesso!';
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#e00;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
+      document.body.appendChild(toast);
+      setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
+    } else {
+      alert('Erro ao remover: '+(d.error||''));
+    }
+  }catch(e){ alert('Erro de conexão'); }
 }
 
 function setImplStatusFiltro(status){
@@ -3869,6 +3906,7 @@ async function excluirVistoria(id, nome){
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="impl-sync"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button onclick="importarHistoricoImpl()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📥 Importar Histórico</button>
       <button onclick="exportarImplantacoesExcel()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Exportar Excel</button>
       <button onclick="exportarImplantacoesPDF()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Exportar PDF</button>
     </div>
@@ -3943,6 +3981,7 @@ async function excluirVistoria(id, nome){
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Dias</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Obs</th>
           <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">✎</th>
+          <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">🗑</th>
         </tr>
       </thead>
       <tbody id="impl-tbody"></tbody>
