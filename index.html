@@ -590,6 +590,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <input type="text" id="ata-filtro-os" placeholder="🔍 Buscar OS..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:120px;">
     <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
     <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
+    <input type="date" id="ata-filtro-prevista" placeholder="Data prevista" style="height:32px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;" onchange="renderAta()" title="Filtrar por data prevista">
+    <button id="ata-btn-hoje" onclick="filtrarAtaHoje()" style="height:32px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);font-weight:600;" title="Mostrar apenas previstos para hoje">📅 Hoje</button>
     <!-- Dropdown multi-select de status -->
     <div style="position:relative;" id="ata-status-wrap">
       <button onclick="toggleAtaStatusMenu()" id="ata-status-btn" style="height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px;">
@@ -2909,6 +2911,7 @@ function renderAta(){
   const filtroOs=document.getElementById('ata-filtro-os')?.value.trim().toLowerCase()||'';
   const filtroCliente=document.getElementById('ata-filtro-cliente')?.value.trim().toLowerCase()||'';
   const filtroData=document.getElementById('ata-filtro-data').value;
+  const filtroPrevista=document.getElementById('ata-filtro-prevista')?.value||'';
   const filtroTecnico=document.getElementById('ata-filtro-tecnico').value;
   const excluirFeito=document.getElementById('ata-excluir-feito')?.checked;
   const statusSelecionados=[...document.querySelectorAll('.ata-status-chk:checked')].map(c=>c.value);
@@ -2932,6 +2935,7 @@ function renderAta(){
   if(filtroOs)lista=lista.filter(r=>String(r.no||'').toLowerCase().includes(filtroOs));
   if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
   if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
+  if(filtroPrevista)lista=lista.filter(r=>String(r.dt_prevista||'').trim()===filtroPrevista);
   // Se há status selecionados no multi-select, filtrar por eles
   if(statusSelecionados.length>0){
     lista=lista.filter(r=>statusSelecionados.includes(String(r.status||'').trim()));
@@ -3064,10 +3068,27 @@ async function importarDatasAta(){
   finally{ if(btn){ btn.textContent='📅 Importar datas'; btn.disabled=false; } }
 }
 
+function filtrarAtaHoje(){
+  const hoje = todayStr;
+  const el = document.getElementById('ata-filtro-prevista');
+  const btn = document.getElementById('ata-btn-hoje');
+  // Toggle — clicar de novo limpa
+  if(el && el.value === hoje){
+    el.value = '';
+    if(btn){ btn.style.background='none'; btn.style.color='var(--c-previsto)'; }
+  } else {
+    if(el) el.value = hoje;
+    if(btn){ btn.style.background='var(--c-previsto)'; btn.style.color='#fff'; }
+  }
+  renderAta();
+}
+
 function limparFiltrosAta(){
   const fo=document.getElementById('ata-filtro-os');if(fo)fo.value='';
   const fc=document.getElementById('ata-filtro-cliente');if(fc)fc.value='';
   document.getElementById('ata-filtro-data').value='';
+  const fp=document.getElementById('ata-filtro-prevista');if(fp)fp.value='';
+  const btnH=document.getElementById('ata-btn-hoje');if(btnH){btnH.style.background='none';btnH.style.color='var(--c-previsto)';}
   document.getElementById('ata-filtro-tecnico').value='';
   document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
   const excl=document.getElementById('ata-excluir-feito');
