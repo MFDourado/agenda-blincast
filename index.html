@@ -580,6 +580,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
         <input type="date" id="ata-csv-ate" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
       </div>
       <button onclick="exportarAtaCSV()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">⬇ Exportar CSV</button>
+      <button id="btn-importar-datas-ata" onclick="importarDatasAta()" style="height:36px;padding:0 16px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--gold)">📅 Importar datas</button>
       <button class="btn-new-project" onclick="openAtaModal()">+ Novo registro</button>
     </div>
   </div>
@@ -3014,6 +3015,23 @@ async function ataDrop(event, targetId){
     document.getElementById('ata-sync').textContent='Erro ao salvar ordem';
   }
   ataDragId = null;
+}
+
+async function importarDatasAta(){
+  if(!confirm('Atualizar datas de abertura e conclusão das atas cruzando com a planilha de 01/04 a 18/05/2026?\n\nSó preenche campos vazios — não sobrescreve datas já existentes.')) return;
+  const btn = document.getElementById('btn-importar-datas-ata');
+  if(btn){ btn.textContent='⏳ Atualizando...'; btn.disabled=true; }
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'atualizarDatasAta'})});
+    const d = await r.json();
+    if(d.ok){
+      await loadAta();
+      alert('✅ '+d.atualizados+' ordens atualizadas!\n'+d.naoEncontrados+' ordens não encontradas na planilha (deixadas em branco).');
+    } else {
+      alert('Erro: '+(d.error||'falha'));
+    }
+  }catch(e){ alert('Erro de conexão'); }
+  finally{ if(btn){ btn.textContent='📅 Importar datas'; btn.disabled=false; } }
 }
 
 function limparFiltrosAta(){
