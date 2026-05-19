@@ -744,6 +744,7 @@ function iniciarApp(){
       const u = JSON.parse(sess);
       if(PERFIS_OPERACIONAL.includes(u.perfil)){
         usuarioLogado = u;
+        if(u.token) API_TOKEN_RUNTIME = u.token;
         document.getElementById('login-overlay').style.display='none';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
@@ -773,6 +774,7 @@ async function fazerLogin(){
     const d = await r.json();
     if(d.ok && PERFIS_OPERACIONAL.includes(d.perfil)){
       usuarioLogado = d;
+      if(d.token) API_TOKEN_RUNTIME = d.token;
       d.login_ts = Date.now(); sessionStorage.setItem('blintrack_user', JSON.stringify(d));
       document.getElementById('login-overlay').style.display='none';
       document.getElementById('login-user-badge').style.display='block';
