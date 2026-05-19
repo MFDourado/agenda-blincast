@@ -3102,32 +3102,25 @@ async function salvarAta(){
 }
 
 async function alterarAtaData(id, campo, valor){
-  const reg=ataRegistros.find(r=>String(r.id)===String(id));
-  if(reg) reg[campo]=valor;
-
-  // Se preencheu data de conclusão, alterar status para "feito" automaticamente
-  if(campo === 'dt_conclusao' && valor) {
-    if(reg && reg.status !== 'feito') {
-      reg.status = 'feito';
-      // Atualizar visual do select de status na linha
-      const selEl = document.querySelector(`select[data-ata-id="${id}"]`);
-      if(selEl){
-        selEl.value = 'feito';
-        const sc = ATA_STATUS_COLOR['feito']||{bg:'var(--border)',c:'var(--text-muted)'};
-        selEl.style.background = sc.bg;
-        selEl.style.color = sc.c;
-        selEl.style.borderColor = sc.c;
-      }
-      // Salvar status também
-      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
-    }
-  }
+  const reg = ataRegistros.find(r=>String(r.id)===String(id));
+  if(reg) reg[campo] = valor;
 
   try{
+    // Salvar o campo alterado
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo,valor})});
+
+    // Se preencheu data de conclusão, alterar status para feito automaticamente
+    if(campo === 'dt_conclusao' && valor){
+      if(reg && reg.status !== 'feito'){
+        reg.status = 'feito';
+        await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
+        renderAta();
+      }
+    }
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    if(campo === 'dt_conclusao') renderAta();
-  }catch(e){document.getElementById('ata-sync').textContent='Erro ao salvar';}
+  }catch(e){
+    document.getElementById('ata-sync').textContent='Erro ao salvar';
+  }
 }
 
 async function removerAta(id){
