@@ -2750,6 +2750,18 @@ function confirmarExportarPDF(){
   document.getElementById('impl-preview-modal').style.display = 'none';
 }
 
+function abrirContratoModal(link, nome){
+  document.getElementById('contrato-modal-titulo').textContent = nome || 'Contrato';
+  document.getElementById('contrato-iframe').src = link;
+  const dlBtn = document.getElementById('contrato-download-btn');
+  if(dlBtn) dlBtn.href = link.replace('/preview','/uc?export=download');
+  document.getElementById('contrato-modal').style.display = 'flex';
+}
+function fecharContratoModal(){
+  document.getElementById('contrato-modal').style.display = 'none';
+  document.getElementById('contrato-iframe').src = '';
+}
+
 function fazerLogout(){
   sessionStorage.removeItem('blintrack_user');
   usuarioLogado = null;
