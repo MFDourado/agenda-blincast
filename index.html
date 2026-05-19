@@ -2943,7 +2943,7 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.problema||''}">${r.problema||'—'}</td>
       <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
       <td style="padding:3px 4px;">
-        <select onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
+        <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
           <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
           <option value="pendente" ${r.status==='pendente'?'selected':''}>Pendente</option>
@@ -3104,9 +3104,29 @@ async function salvarAta(){
 async function alterarAtaData(id, campo, valor){
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg[campo]=valor;
+
+  // Se preencheu data de conclusão, alterar status para "feito" automaticamente
+  if(campo === 'dt_conclusao' && valor) {
+    if(reg && reg.status !== 'feito') {
+      reg.status = 'feito';
+      // Atualizar visual do select de status na linha
+      const selEl = document.querySelector(`select[data-ata-id="${id}"]`);
+      if(selEl){
+        selEl.value = 'feito';
+        const sc = ATA_STATUS_COLOR['feito']||{bg:'var(--border)',c:'var(--text-muted)'};
+        selEl.style.background = sc.bg;
+        selEl.style.color = sc.c;
+        selEl.style.borderColor = sc.c;
+      }
+      // Salvar status também
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
+    }
+  }
+
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo,valor})});
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(campo === 'dt_conclusao') renderAta();
   }catch(e){document.getElementById('ata-sync').textContent='Erro ao salvar';}
 }
 
