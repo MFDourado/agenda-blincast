@@ -1727,7 +1727,10 @@ async function carregarUsuariosConfig(){
   try{
     const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getUsuarios');
     const d = await r.json();
-    usuariosSistema = Array.isArray(d) ? d.filter(u=>u.ativo==='ativo'||u.ativo===true||u.ativo==='TRUE') : [];
+    usuariosSistema = Array.isArray(d) ? d.filter(u => {
+      const a = String(u.ativo||'').toLowerCase().trim();
+      return a === 'sim' || a === 'ativo' || a === 'true';
+    }) : [];
     lista.innerHTML = usuariosSistema.map(u =>
       '<button onclick="abrirPermissoesUsuario(\''+u.usuario+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:13px;color:var(--text);transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
       +'<span>👤 '+u.nome+' <span style="font-size:11px;color:var(--text-muted)">('+u.usuario+')</span></span>'
