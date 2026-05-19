@@ -1682,14 +1682,130 @@ async function carregarConfig(){
 }
 
 function aplicarConfig(){
-  // Operacional
+  const usuario = usuarioLogado?.usuario || '';
+  const prefixoUser = 'user_'+usuario+'_tab_';
+  const temPermissaoPersonalizada = Object.keys(configAtual).some(k=>k.startsWith(prefixoUser));
+
   TABS_OPERACIONAL.forEach(t => {
     const el = document.getElementById('mt-'+t.id);
     if(!el) return;
-    const desabilitada = configAtual['tab_'+t.id] === 'off';
+    // Verificar permissão do usuário primeiro, senão usar configuração geral
+    const keyUser = prefixoUser+'tab_'+t.id;
+    const keyGeral = 'tab_'+t.id;
+    let desabilitada;
+    if(temPermissaoPersonalizada && configAtual[keyUser] !== undefined){
+      desabilitada = configAtual[keyUser] === 'off';
+    } else {
+      desabilitada = configAtual[keyGeral] === 'off';
+    }
     el.style.display = desabilitada ? 'none' : '';
   });
-  // Comercial (abas do comercial.html são controladas por config separada)
+}
+
+// ===================== CONFIG — PERMISSÕES POR USUÁRIO =====================
+let usuariosSistema = [];
+let usuarioConfigSelecionado = null;
+
+function switchConfigTab(tab){
+  ['geral','usuarios'].forEach(t => {
+    const btn = document.getElementById('cfg-tab-'+t);
+    const panel = document.getElementById('cfg-panel-'+t);
+    if(btn) btn.style.cssText = btn.style.cssText.replace(/border-bottom:[^;]+/,'') + ';border-bottom:2px solid '+(t===tab?'var(--gold)':'transparent');
+    if(btn) btn.style.color = t===tab ? 'var(--text)' : 'var(--text-muted)';
+    if(btn) btn.style.fontWeight = t===tab ? '600' : '400';
+    if(panel) panel.style.display = t===tab ? '' : 'none';
+  });
+  if(tab==='usuarios') carregarUsuariosConfig();
+}
+
+async function carregarUsuariosConfig(){
+  const lista = document.getElementById('cfg-usuarios-lista');
+  if(!lista) return;
+  lista.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">Carregando usuários...</div>';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getUsuarios');
+    const d = await r.json();
+    usuariosSistema = Array.isArray(d) ? d.filter(u=>u.ativo==='ativo'||u.ativo===true||u.ativo==='TRUE') : [];
+    lista.innerHTML = usuariosSistema.map(u =>
+      '<button onclick="abrirPermissoesUsuario(\''+u.usuario+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:13px;color:var(--text);transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+      +'<span>👤 '+u.nome+' <span style="font-size:11px;color:var(--text-muted)">('+u.usuario+')</span></span>'
+      +'<span style="font-size:11px;color:var(--text-muted)">'+u.perfil+' →</span>'
+      +'</button>'
+    ).join('');
+  }catch(e){
+    lista.innerHTML = '<div style="font-size:12px;color:#e00">Erro ao carregar usuários.</div>';
+  }
+}
+
+function abrirPermissoesUsuario(usuarioLogin){
+  const u = usuariosSistema.find(x=>x.usuario===usuarioLogin);
+  if(!u) return;
+  usuarioConfigSelecionado = usuarioLogin;
+  document.getElementById('cfg-usuario-nome').textContent = u.nome;
+  document.getElementById('cfg-usuario-painel').style.display = '';
+
+  // Permissões salvas para este usuário
+  const prefixo = 'user_'+usuarioLogin+'_tab_';
+
+  // Renderizar abas operacional
+  document.getElementById('cfg-usuario-tabs-op').innerHTML = TABS_OPERACIONAL.map(t => {
+    const key = prefixo+t.id;
+    const val = configAtual[key];
+    const checked = val === undefined ? true : val !== 'off'; // default = on
+    return '<label style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">'
+      +'<span style="font-size:13px">'+t.label+'</span>'
+      +'<input type="checkbox" id="ucfg-'+usuarioLogin+'-'+t.id+'" '+(checked?'checked':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:var(--black);">'
+      +'</label>';
+  }).join('');
+
+  // Renderizar abas comercial
+  document.getElementById('cfg-usuario-tabs-com').innerHTML = TABS_COMERCIAL.map(t => {
+    const key = prefixo+t.id;
+    const val = configAtual[key];
+    const checked = val === undefined ? true : val !== 'off';
+    return '<label style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">'
+      +'<span style="font-size:13px">'+t.label+'</span>'
+      +'<input type="checkbox" id="ucfg-'+usuarioLogin+'-'+t.id+'" '+(checked?'checked':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:var(--black);">'
+      +'</label>';
+  }).join('');
+}
+
+async function salvarPermissoesUsuario(){
+  if(!usuarioConfigSelecionado) return;
+  const novaConfig = {...configAtual};
+  const prefixo = 'user_'+usuarioConfigSelecionado+'_tab_';
+  [...TABS_OPERACIONAL, ...TABS_COMERCIAL].forEach(t => {
+    const el = document.getElementById('ucfg-'+usuarioConfigSelecionado+'-'+t.id);
+    if(el) novaConfig[prefixo+t.id] = el.checked ? 'on' : 'off';
+  });
+  const btn = document.querySelector('[onclick="salvarPermissoesUsuario()"]');
+  if(btn){ btn.textContent='⏳ Salvando...'; btn.disabled=true; }
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveConfiguracoes',config:novaConfig})});
+    configAtual = novaConfig;
+    const toast = document.createElement('div');
+    toast.textContent = '✅ Permissões de '+usuarioConfigSelecionado+' salvas!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
+    document.body.appendChild(toast);
+    setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
+  }catch(e){ alert('Erro ao salvar.'); }
+  finally{ if(btn){ btn.textContent='💾 Salvar permissões'; btn.disabled=false; } }
+}
+
+async function resetarPermissoesUsuario(){
+  if(!usuarioConfigSelecionado || !confirm('Remover permissões específicas de '+usuarioConfigSelecionado+'? Ele voltará a usar as configurações gerais.')) return;
+  const novaConfig = {...configAtual};
+  const prefixo = 'user_'+usuarioConfigSelecionado+'_tab_';
+  Object.keys(novaConfig).forEach(k=>{ if(k.startsWith(prefixo)) delete novaConfig[k]; });
+  await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveConfiguracoes',config:novaConfig})});
+  configAtual = novaConfig;
+  document.getElementById('cfg-usuario-painel').style.display = 'none';
+  usuarioConfigSelecionado = null;
+  const toast = document.createElement('div');
+  toast.textContent = '↺ Permissões resetadas para o padrão geral.';
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
+  document.body.appendChild(toast);
+  setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
 }
 
 function abrirConfig(){
@@ -2146,7 +2262,18 @@ async function loadImplantacoes(){
 function popularFiltroMes(){
   const sel = document.getElementById('impl-f-mes');
   if(!sel) return;
-  const meses = [...new Set(implDados.map(i=>i.previsao).filter(Boolean))].sort();
+  const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
+  const getMes = i => {
+    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    if(!d) return '';
+    if(d.includes('/')) return d; // já MM/yyyy
+    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+  };
+  const meses = [...new Set(implDados.map(getMes).filter(Boolean))].sort((a,b)=>{
+    const [ma,ya]=[parseInt(a.split('/')[0]),parseInt(a.split('/')[1])];
+    const [mb,yb]=[parseInt(b.split('/')[0]),parseInt(b.split('/')[1])];
+    return ya!==yb?ya-yb:ma-mb;
+  });
   sel.innerHTML = '<option value="">Todos os meses</option>';
   meses.forEach(m => {
     const opt = document.createElement('option');
@@ -2168,7 +2295,14 @@ function renderImplantacoes(){
   const fBusca  = (document.getElementById('impl-busca')?.value||'').trim().toLowerCase();
 
   let lista = implDados;
-  if(fMes)    lista = lista.filter(i=>i.previsao===fMes);
+  const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
+  const getMesItem = i => {
+    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    if(!d) return '';
+    if(d.includes('/')) return d;
+    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+  };
+  if(fMes) lista = lista.filter(i=>getMesItem(i)===fMes);
   if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
   if(implStatusFiltros.size>0) lista = lista.filter(i=>implStatusFiltros.has(i.status_dinamico));
   else if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
@@ -2400,7 +2534,7 @@ function setImplStatusFiltro(status){
 
 function limparFiltrosImpl(){
   implStatusFiltros.clear();
-  ['impl-f-mes','impl-f-tipo','impl-f-status','impl-f-equip'].forEach(id=>{
+  ['impl-f-mes','impl-f-tipo','impl-f-status','impl-f-equip','impl-f-tipo-mes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   const b=document.getElementById('impl-busca');if(b)b.value='';
@@ -2470,7 +2604,14 @@ function buildPreview(){
   const fStatus = document.getElementById('impl-f-status')?.value||'';
   const fBusca  = (document.getElementById('impl-busca')?.value||'').trim().toLowerCase();
   let lista = implDados;
-  if(fMes)    lista = lista.filter(i=>i.previsao===fMes);
+  const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
+  const getMesItem = i => {
+    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    if(!d) return '';
+    if(d.includes('/')) return d;
+    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+  };
+  if(fMes) lista = lista.filter(i=>getMesItem(i)===fMes);
   if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
   if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
   if(fBusca)  lista = lista.filter(i=>(i.nome||'').toLowerCase().includes(fBusca));
@@ -3761,18 +3902,46 @@ async function excluirVistoria(id, nome){
 </div>
 <!-- MODAL CONFIGURAÇÕES ADMIN -->
 <div class="modal-overlay" id="config-modal" style="display:none" onclick="if(event.target===this)fecharConfig()">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3 style="margin:0">⚙ Configurações do sistema</h3>
       <button onclick="fecharConfig()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Abas visíveis no <b>Operacional</b> — alterações valem na próxima vez que os usuários entrarem.</div>
-    <div id="config-tabs-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">Abas visíveis no <b>Comercial</b></div>
-    <div id="config-tabs-com-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+
+    <!-- TABS do modal -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;">
+      <button id="cfg-tab-geral" onclick="switchConfigTab('geral')" style="padding:8px 16px;border:none;border-bottom:2px solid var(--gold);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);font-weight:600;">Geral</button>
+      <button id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')" style="padding:8px 16px;border:none;border-bottom:2px solid transparent;background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);">Permissões por usuário</button>
+    </div>
+
+    <!-- ABA GERAL -->
+    <div id="cfg-panel-geral">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Abas visíveis no <b>Operacional</b> — alterações valem na próxima vez que os usuários entrarem.</div>
+      <div id="config-tabs-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">Abas visíveis no <b>Comercial</b></div>
+      <div id="config-tabs-com-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+    </div>
+
+    <!-- ABA PERMISSÕES POR USUÁRIO -->
+    <div id="cfg-panel-usuarios" style="display:none;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Selecione um usuário para definir quais abas ele pode acessar. Deixe vazio para usar as configurações gerais.</div>
+      <div id="cfg-usuarios-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+      <div id="cfg-usuario-painel" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Abas de <span id="cfg-usuario-nome" style="color:var(--gold)"></span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;">Operacional</div>
+        <div id="cfg-usuario-tabs-op" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;padding-top:8px;border-top:1px solid var(--border)">Comercial</div>
+        <div id="cfg-usuario-tabs-com" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button onclick="salvarPermissoesUsuario()" style="flex:1;height:34px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">💾 Salvar permissões</button>
+          <button onclick="resetarPermissoesUsuario()" style="height:34px;padding:0 12px;background:none;color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">↺ Usar padrão geral</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="modal-btn" onclick="fecharConfig()">Cancelar</button>
-      <button class="modal-btn primary" onclick="salvarConfig()">Salvar</button>
+      <button class="modal-btn primary" id="config-salvar-btn" onclick="salvarConfig()">Salvar</button>
     </div>
   </div>
 </div>
@@ -3940,6 +4109,10 @@ async function excluirVistoria(id, nome){
 
   <!-- FILTROS -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;">
+    <select id="impl-f-tipo-mes" onchange="popularFiltroMes();renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+      <option value="previsao">Previsão</option>
+      <option value="assinatura">Assinatura</option>
+    </select>
     <select id="impl-f-mes" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
       <option value="">Todos os meses</option>
     </select>
