@@ -581,6 +581,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       </div>
       <button onclick="exportarAtaCSV()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">⬇ Exportar CSV</button>
       <button id="btn-importar-datas-ata" onclick="importarDatasAta()" style="height:36px;padding:0 16px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--gold)">📅 Importar datas</button>
+      <button id="btn-corrigir-datas-ata" onclick="corrigirDatasAtaFront()" style="height:36px;padding:0 16px;border:1px solid #e74c3c;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#e74c3c">🔧 Corrigir datas</button>
       <button class="btn-new-project" onclick="openAtaModal()">+ Novo registro</button>
     </div>
   </div>
@@ -3017,6 +3018,23 @@ async function ataDrop(event, targetId){
   ataDragId = null;
 }
 
+async function corrigirDatasAtaFront(){
+  if(!confirm('Corrigir datas com anos errados (0202, 2002, 2020 → 2026) em todas as atas?\n\nEsta ação é irreversível.')) return;
+  const btn = document.getElementById('btn-corrigir-datas-ata');
+  if(btn){ btn.textContent='⏳ Corrigindo...'; btn.disabled=true; }
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'corrigirDatasAta'})});
+    const d = await r.json();
+    if(d.ok){
+      await loadAta();
+      alert('✅ '+d.corrigidos+' datas corrigidas!');
+    } else {
+      alert('Erro: '+(d.error||'falha'));
+    }
+  }catch(e){ alert('Erro de conexão'); }
+  finally{ if(btn){ btn.textContent='🔧 Corrigir datas'; btn.disabled=false; } }
+}
+
 async function importarDatasAta(){
   if(!confirm('Atualizar datas de abertura e conclusão das atas cruzando com a planilha de 01/04 a 18/05/2026?\n\nSó preenche campos vazios — não sobrescreve datas já existentes.')) return;
   const btn = document.getElementById('btn-importar-datas-ata');
@@ -3105,22 +3123,24 @@ async function alterarAtaData(id, campo, valor){
   const reg = ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg[campo] = valor;
 
-  try{
-    // Salvar o campo alterado
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo,valor})});
+  // Se preencheu data de conclusão, alterar status para feito
+  if(campo === 'dt_conclusao' && valor){
+    if(reg) reg.status = 'feito';
+  }
 
-    // Se preencheu data de conclusão, alterar status para feito automaticamente
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo,valor})});
+    // Se conclusao preenchida, salvar status feito também
     if(campo === 'dt_conclusao' && valor){
-      if(reg && reg.status !== 'feito'){
-        reg.status = 'feito';
-        await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
-        renderAta();
-      }
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
     }
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
     document.getElementById('ata-sync').textContent='Erro ao salvar';
   }
+
+  // Re-renderizar sempre que conclusao mudar (atualiza visual do status)
+  if(campo === 'dt_conclusao') renderAta();
 }
 
 async function removerAta(id){
