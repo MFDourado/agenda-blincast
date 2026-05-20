@@ -651,6 +651,9 @@ async function salvar(){
   const telefone_val=document.getElementById('m-telefone').value.trim();
   const endereco_val=document.getElementById('m-endereco').value.trim();
   if(!nome||!cidade||!uhs||!produto||!vendedor||!prioridade||!contato_val||!telefone_val||!endereco_val){alert('Preencha todos os campos obrigatórios (*): Nome, Cidade, Contato, Telefone, Endereço, Produto, UHs, Vendedor e Prioridade');return;}
+  // Canais obrigatório para Rack HD e SD
+  const canais_val = document.getElementById('m-canais').value.trim();
+  if((produto==='HD'||produto==='SD')&&!canais_val){alert('⚠️ Campo obrigatório: informe a quantidade de canais para produtos Rack HD/SD.');return;}
   const editId=document.getElementById('m-edit-id').value;
   const payload={
     nome,cidade,
