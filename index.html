@@ -3438,6 +3438,8 @@ async function salvarNovaVistoria(){
   const clienteId=document.getElementById('nv-cliente')?.value;
   const cliente=clientes.find(c=>c.id===clienteId);
   if(!cliente){alert('Selecione um cliente.');return;}
+  const endereco_vst = document.getElementById('nv-endereco')?.value||cliente.endereco||'';
+  if(!endereco_vst.trim()){alert('⚠️ Endereço é obrigatório para criar uma vistoria.');return;}
   const payload={
     token:getToken(),
     action:'saveVistoria',
