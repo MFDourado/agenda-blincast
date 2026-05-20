@@ -338,12 +338,34 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 
 <!-- MODAL CONVERSAO -->
 <div class="modal-overlay" id="conv-modal" style="display:none">
-  <div class="modal" style="max-width:400px">
+  <div class="modal" style="max-width:420px">
     <h3>Contrato Assinado</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Cliente: <strong id="conv-nome"></strong></p>
     <div class="mf full">
       <label>Data do contrato *</label>
       <input type="date" id="conv-data">
+    </div>
+    <div class="mf full" id="conv-pagamento-wrap" style="display:none;margin-top:12px;">
+      <label style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;">
+        💳 Pagamento da operadora *
+        <span style="font-size:10px;background:#e00;color:#fff;padding:1px 6px;border-radius:10px;font-weight:700;">OBRIGATÓRIO</span>
+      </label>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" id="conv-pg-repasse-lbl">
+          <input type="radio" name="conv-pagamento" id="conv-pg-repasse" value="Repasse" onchange="togglePagamentoStyle()" style="width:16px;height:16px;accent-color:var(--gold);">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Repasse</div>
+            <div style="font-size:11px;color:var(--text-muted);">Blincast paga a operadora</div>
+          </div>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" id="conv-pg-cliente-lbl">
+          <input type="radio" name="conv-pagamento" id="conv-pg-cliente" value="Cliente PG" onchange="togglePagamentoStyle()" style="width:16px;height:16px;accent-color:var(--gold);">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Cliente PG</div>
+            <div style="font-size:11px;color:var(--text-muted);">Cliente paga direto</div>
+          </div>
+        </label>
+      </div>
     </div>
     <input type="hidden" id="conv-id">
     <div class="modal-actions">
@@ -515,13 +537,17 @@ function filtered(){
   const status=getChecked('f-status');
   const prio=getChecked('f-prioridade');
   const vend=getChecked('f-vendedor');
+  const busca=(document.getElementById('prospects-busca')?.value||'').trim().toLowerCase();
   return prospects.filter(p=>{
     if(status.length&&!status.includes(String(p.status)))return false;
     if(prio.length&&!prio.includes(String(p.prioridade)))return false;
     if(vend.length&&!vend.includes(String(p.vendedor)))return false;
+    if(busca&&!(p.nome||'').toLowerCase().includes(busca)&&!(p.cnpj||'').toLowerCase().includes(busca)&&!(p.cidade||'').toLowerCase().includes(busca))return false;
     return true;
   });
 }
+
+function renderProspects(){ render(); }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Média':p==='baixa'?'Baixa':p||'';}
@@ -663,11 +689,29 @@ async function remover(id){
   }catch(e){setStatus('error','Erro ao remover');}
 }
 
+function togglePagamentoStyle(){
+  const repasse = document.getElementById('conv-pg-repasse');
+  const cliente = document.getElementById('conv-pg-cliente');
+  document.getElementById('conv-pg-repasse-lbl').style.borderColor = repasse?.checked ? 'var(--gold)' : 'var(--border)';
+  document.getElementById('conv-pg-cliente-lbl').style.borderColor = cliente?.checked ? 'var(--gold)' : 'var(--border)';
+}
+
+function produtoRequerPagamento(produto){
+  const p = (produto||'').toUpperCase();
+  return p.includes('HD') || p.includes('SD') || p.includes('IP') || p.includes('OUTRO') || p === 'OUTROS';
+}
+
 function converter(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   document.getElementById('conv-id').value=id;
   document.getElementById('conv-nome').textContent=p.nome;
   document.getElementById('conv-data').value=new Date().toISOString().slice(0,10);
+  // Resetar radio
+  document.querySelectorAll('input[name="conv-pagamento"]').forEach(r=>r.checked=false);
+  togglePagamentoStyle();
+  // Mostrar campo pagamento só para Rack/Outros
+  const wrap = document.getElementById('conv-pagamento-wrap');
+  if(wrap) wrap.style.display = produtoRequerPagamento(p.produto) ? '' : 'none';
   document.getElementById('conv-modal').style.display='flex';
 }
 
@@ -676,10 +720,19 @@ async function confirmarConversao(){
   const data=document.getElementById('conv-data').value;
   if(!data){alert('Selecione a data do contrato.');return;}
   const p=prospects.find(x=>x.id==id);if(!p)return;
+
+  // Validar pagamento se obrigatório
+  let pagamento = '';
+  if(produtoRequerPagamento(p.produto)){
+    const sel = document.querySelector('input[name="conv-pagamento"]:checked');
+    if(!sel){ alert('⚠️ Campo obrigatório: selecione o tipo de pagamento da operadora (Repasse ou Cliente PG).'); return; }
+    pagamento = sel.value;
+  }
+
   document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||'',vendedor:p.vendedor||''})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||'',vendedor:p.vendedor||'',pagamento_operadora:pagamento})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
