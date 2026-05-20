@@ -542,7 +542,7 @@ function filtered(){
     if(status.length&&!status.includes(String(p.status)))return false;
     if(prio.length&&!prio.includes(String(p.prioridade)))return false;
     if(vend.length&&!vend.includes(String(p.vendedor)))return false;
-    if(busca&&!(p.nome||'').toLowerCase().includes(busca)&&!(p.cnpj||'').toLowerCase().includes(busca)&&!(p.cidade||'').toLowerCase().includes(busca))return false;
+    if(busca&&!(p.nome||'').toLowerCase().includes(busca)&&!String(p.cnpj||'').toLowerCase().includes(busca)&&!(p.cidade||'').toLowerCase().includes(busca))return false;
     return true;
   });
 }
