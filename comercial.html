@@ -308,7 +308,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
           <option value="STR">STR</option>
           <option value="OUTROS">OUTROS</option>
         </select>
-        <div class="sub-field" id="produto-canais-wrap"><input type="number" id="m-canais" placeholder="Qtd. de canais" min="1"></div>
+        <div class="sub-field" id="produto-canais-wrap"><input type="number" id="m-canais" placeholder="Qtd. de moduladores" min="1"></div>
         <div class="sub-field" id="produto-outro-wrap"><input type="text" id="m-produto-outro" placeholder="Especifique o produto..."></div>
       </div>
       <div class="mf"><label>UHs *</label><input type="number" id="m-uhs" placeholder="Ex: 120" min="1"></div>
@@ -320,15 +320,29 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
         </select>
         <div class="sub-field" id="conteudo-detalhe-wrap"><input type="text" id="m-conteudo-detalhe" placeholder="Qual plataforma?"></div>
       </div>
+      <div class="mf"><label>Ponto extra?</label>
+        <select id="m-ponto-extra" onchange="togglePontoExtra()">
+          <option value="Não">Não</option>
+          <option value="Sim">Sim</option>
+        </select>
+        <div class="sub-field" id="ponto-extra-wrap"><input type="number" id="m-ponto-extra-qtd" placeholder="Quantos?" min="1"></div>
+      </div>
       <div class="mf"><label>Canal corporativo?</label>
         <select id="m-corp" onchange="toggleCorp()">
           <option value="Não">Não</option>
           <option value="Sim">Sim</option>
         </select>
-        <div class="sub-field" id="corp-detalhe-wrap"><input type="text" id="m-corp-detalhe" placeholder="Observacao..."></div>
+        <div class="sub-field" id="corp-detalhe-wrap"><select id="m-corp-detalhe" class="field-sel"><option value="">— Selecione —</option><option value="Box">Box</option><option value="Modulador + Box">Modulador + Box</option></select></div>
       </div>
     </div>
-    <input type="hidden" id="m-edit-id">
+    <div class="mf" id="m-pagamento-wrap"><label>💳 Pagamento operadora</label>
+        <select id="m-pagamento-op" class="field-sel">
+          <option value="">— Não se aplica —</option>
+          <option value="Repasse">💳 Repasse (Blincast paga)</option>
+          <option value="Cliente PG">✅ Cliente PG</option>
+        </select>
+      </div>
+      <input type="hidden" id="m-edit-id">
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal()">Cancelar</button>
       <button class="modal-btn primary" onclick="salvar()">Salvar</button>
@@ -574,11 +588,12 @@ function render(){
         <div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato||'—'}</span></div>
         <div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${p.telefone||'—'}</span></div>
         <div class="card-row"><span class="card-lbl">Endereço</span><span class="card-val">${p.endereco||'—'}</span></div>
-        <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' canais)':''}</span></div>
+        <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' moduladores)':''}</span></div>
         <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
         ${p.prazo?`<div class="card-row"><span class="card-lbl">Prazo inst.</span><span class="card-val">${formatDateBR(p.prazo)}</span></div>`:''}
         <div class="card-row"><span class="card-lbl">Cont. online</span><span class="card-val">${p.conteudo_online||'Não'}${p.conteudo_online==='Sim'&&p.conteudo_detalhe?' — '+p.conteudo_detalhe:''}</span></div>
-        <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Não'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
+        ${p.ponto_extra==='Sim'?`<div class="card-row"><span class="card-lbl">Ponto extra</span><span class="card-val">Sim${p.ponto_extra_qtd?' — '+p.ponto_extra_qtd+' ponto(s)':''}</span></div>`:''}
+            <div class="card-row"><span class="card-lbl">Canal corp.</span><span class="card-val">${p.canal_corporativo||'Não'}${p.canal_corporativo==='Sim'&&p.canal_corp_detalhe?' — '+p.canal_corp_detalhe:''}</span></div>
       </div>
       <div class="card-actions">
         ${p.status!=='convertido'?`<button class="btn-sm converter" onclick="converter('${p.id}')">Contrato Assinado</button>`:'<span style="font-size:12px;color:var(--c-convertido);font-weight:500">No pipeline</span>'}
@@ -600,15 +615,19 @@ function toggleProduto(){
 }
 function toggleConteudo(){document.getElementById('conteudo-detalhe-wrap').className='sub-field'+(document.getElementById('m-conteudo').value==='Sim'?' show':'');}
 function toggleCorp(){document.getElementById('corp-detalhe-wrap').className='sub-field'+(document.getElementById('m-corp').value==='Sim'?' show':'');}
+function togglePontoExtra(){document.getElementById('ponto-extra-wrap').className='sub-field'+(document.getElementById('m-ponto-extra').value==='Sim'?' show':'');}
 
 function openModal(){
-  ['m-nome','m-cidade','m-cnpj','m-contato-nome','m-telefone','m-endereco','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['m-nome','m-cidade','m-cnpj','m-contato-nome','m-telefone','m-endereco','m-uhs','m-produto-outro','m-conteudo-detalhe','m-corp-detalhe','m-canais','m-ponto-extra-qtd'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['m-produto','m-vendedor','m-prioridade'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-conteudo').value='Não';
   document.getElementById('m-corp').value='Não';
+  document.getElementById('m-ponto-extra').value='Não';
+  document.getElementById('m-pagamento-op').value='';
+  togglePontoExtra();
   document.getElementById('m-prazo').value='';
   document.getElementById('m-edit-id').value='';
-  ['produto-canais-wrap','produto-outro-wrap','conteudo-detalhe-wrap','corp-detalhe-wrap'].forEach(id=>document.getElementById(id).className='sub-field');
+  ['produto-canais-wrap','produto-outro-wrap','conteudo-detalhe-wrap','corp-detalhe-wrap','ponto-extra-wrap'].forEach(id=>document.getElementById(id).className='sub-field');
   document.getElementById('modal-title').textContent='Novo prospect';
   document.getElementById('modal').style.display='flex';
 }
@@ -631,6 +650,10 @@ function editar(id){
   document.getElementById('m-conteudo').value=p.conteudo_online||'Não';
   document.getElementById('m-conteudo-detalhe').value=p.conteudo_detalhe||'';
   document.getElementById('m-corp').value=p.canal_corporativo||'Não';
+  document.getElementById('m-ponto-extra').value=p.ponto_extra||'Não';
+  document.getElementById('m-ponto-extra-qtd').value=p.ponto_extra_qtd||'';
+  document.getElementById('m-pagamento-op').value=p.pagamento_operadora||'';
+  togglePontoExtra();
   document.getElementById('m-corp-detalhe').value=p.canal_corp_detalhe||'';
   document.getElementById('m-produto-outro').value='';
   toggleProduto();toggleConteudo();toggleCorp();
@@ -650,6 +673,10 @@ async function salvar(){
   const contato_val=document.getElementById('m-contato-nome').value.trim();
   const telefone_val=document.getElementById('m-telefone').value.trim();
   const endereco_val=document.getElementById('m-endereco').value.trim();
+  const cnpj_raw=(document.getElementById('m-cnpj').value||'').replace(/\D/g,'');
+  const tel_raw=(document.getElementById('m-telefone').value||'').replace(/\D/g,'');
+  if(cnpj_raw.length>0&&cnpj_raw.length<14){alert('CNPJ inválido — deve ter 14 dígitos.');return;}
+  if(tel_raw.length>0&&tel_raw.length<10){alert('Telefone inválido — mínimo 10 dígitos.');return;}
   if(!nome||!cidade||!uhs||!produto||!vendedor||!prioridade||!contato_val||!telefone_val||!endereco_val){alert('Preencha todos os campos obrigatórios (*): Nome, Cidade, Contato, Telefone, Endereço, Produto, UHs, Vendedor e Prioridade');return;}
   // Canais obrigatório para Rack HD e SD
   const canais_val = document.getElementById('m-canais').value.trim();
@@ -667,7 +694,10 @@ async function salvar(){
     conteudo_online:document.getElementById('m-conteudo').value,
     conteudo_detalhe:document.getElementById('m-conteudo-detalhe').value.trim(),
     canal_corporativo:document.getElementById('m-corp').value,
-    canal_corp_detalhe:document.getElementById('m-corp-detalhe').value.trim(),
+    canal_corp_detalhe:document.getElementById('m-corp-detalhe').value,
+    ponto_extra:document.getElementById('m-ponto-extra').value,
+    ponto_extra_qtd:document.getElementById('m-ponto-extra-qtd').value,
+    pagamento_operadora:document.getElementById('m-pagamento-op').value,
     uhs:parseInt(uhs)||0,
     prazo:document.getElementById('m-prazo').value,
   };
@@ -735,7 +765,7 @@ async function confirmarConversao(){
   document.getElementById('conv-modal').style.display='none';
   setStatus('loading','Convertendo...');
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||'',vendedor:p.vendedor||'',pagamento_operadora:pagamento})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'converterPipeline',id:p.id,pid:uid(),nome:p.nome,uhs:p.uhs,cidade:p.cidade||'',cnpj:p.cnpj||'',contato:p.contato||'',telefone:p.telefone||'',endereco:p.endereco||'',produto:p.produto||'',conteudo_online:p.conteudo_online||'',conteudo_detalhe:p.conteudo_detalhe||'',data_contrato:data,prazo_instalacao:p.prazo||'',vendedor:p.vendedor||'',pagamento_operadora:pagamento,ponto_extra:p.ponto_extra||'',ponto_extra_qtd:p.ponto_extra_qtd||''})});
     await load();
     setStatus('online','Convertido! E-mail enviado.');
   }catch(e){setStatus('error','Erro ao converter');}
