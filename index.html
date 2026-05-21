@@ -2109,8 +2109,9 @@ function renderMontagem(){
     }
     html += '<div class="step-card"><div class="step-number">Prazo</div>';
     html += '<div style="font-size:12px;margin-top:4px"><b>Previsão:</b> '+(m.previsao_dias||'—')+' dias</div>';
-    if(m.dt_prevista) html += '<div style="font-size:12px;margin-top:2px;color:var(--c-previsto);font-weight:600">📅 Entrega: '+new Date(m.dt_prevista+'T12:00:00').toLocaleDateString('pt-BR')+'</div>';
-    html += '<div style="font-size:12px;margin-top:2px"><b>Criado em:</b> '+(m.data_criacao||'—')+'</div></div>';
+    html += '<div style="font-size:12px;margin-top:6px;color:var(--text-muted)"><b>📅 Data de entrega:</b></div>';
+    html += '<input type="date" value="'+(m.dt_prevista||'')+'" onchange="salvarDtPrevistaMontagem(\''+m.id+'\',this.value)" style="width:100%;margin-top:4px;border:1px solid var(--c-previsto);border-radius:4px;padding:3px 6px;font-size:12px;font-family:\'DM Sans\',sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;cursor:pointer;">';
+    html += '<div style="font-size:12px;margin-top:4px"><b>Criado em:</b> '+(m.data_criacao||'—')+'</div></div>';
     html += '<div class="step-card"><div class="step-number">🔧 Técnico montagem</div>';
     html += '<select onchange="salvarTecnicoMontagem(\''+m.id+'\',this.value)" style="width:100%;margin-top:6px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 6px;font-size:12px;font-family:\'DM Sans\',sans-serif;background:var(--surface);color:var(--text);outline:none;">';
     html += '<option value="">— Selecionar —</option>';
@@ -2122,6 +2123,15 @@ function renderMontagem(){
     html += '</div></div>';
     return html;
   }).join('');
+}
+
+async function salvarDtPrevistaMontagem(id, valor){
+  const m = montagemDados.find(x=>x.id===id);
+  if(m) m.dt_prevista = valor;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id,dt_prevista:valor})});
+    document.getElementById('montagem-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ document.getElementById('montagem-sync').textContent='Erro ao salvar'; }
 }
 
 async function salvarTecnicoMontagem(id, tecnico){
