@@ -4538,41 +4538,6 @@ async function excluirVistoria(id, nome){
 
 
 <!-- MODAL VISUALIZAR CONTRATO -->
-<div class="modal-overlay" id="contrato-modal" style="display:none" onclick="if(event.target===this)fecharContratoModal()">
-  <div style="background:var(--surface);border-radius:var(--radius);width:90%;max-width:900px;height:85vh;display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--black);flex-shrink:0;">
-      <div style="font-size:14px;font-weight:500;color:#fff" id="contrato-modal-titulo">Contrato</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <a id="contrato-download-btn" href="#" target="_blank" style="padding:5px 14px;border:1px solid #444;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#bbb;text-decoration:none;">⬇ Baixar</a>
-        <button onclick="fecharContratoModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>
-      </div>
-    </div>
-    <iframe id="contrato-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
-  </div>
-</div>
-<!-- MODAL NOVA ENTREGA -->
-<div class="modal-overlay" id="entrega-form-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" style="max-width:460px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="margin:0">📦 Nova Entrega de Material</h3>
-      <button onclick="document.getElementById('entrega-form-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Título / Descrição *</label>
-        <input type="text" id="entrega-form-titulo" placeholder="Ex: Entrega de cabos para Hotel X" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Vincular a cliente (opcional)</label>
-        <select id="entrega-form-cliente" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
-          <option value="">— Sem vínculo —</option>
-        </select></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Observações</label>
-        <input type="text" id="entrega-form-obs" placeholder="Opcional" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="modal-btn" onclick="document.getElementById('entrega-form-modal').style.display='none'">Cancelar</button>
-      <button class="modal-btn primary" onclick="salvarNovaEntrega()">Criar e abrir checklist →</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL CHECKLIST DE MATERIAL -->
 <div class="modal-overlay" id="checklist-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -4681,6 +4646,7 @@ async function excluirVistoria(id, nome){
     </div>
   </div>
 </div>
+
 
 <!-- MODAL REQUISIÇÃO DE MATERIAL -->
 <div class="modal-overlay" id="req-mat-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -4802,6 +4768,57 @@ async function excluirVistoria(id, nome){
       <button class="modal-btn" onclick="fecharCongelarModal()">Cancelar</button>
       <button class="modal-btn primary" onclick="confirmarCongelamento()" style="background:#1A5FC8;border-color:#1A5FC8">❄️ Congelar</button>
     </div>
+  </div>
+</div>
+
+<!-- ENTREGAS -->
+<div id="page-entregas" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Entregas de Material</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="entregas-sync">Checklists avulsos de entrega</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="abrirNovaEntrega()" class="btn-new-project">+ Nova entrega</button>
+    </div>
+  </div>
+  <div id="entregas-list" style="display:flex;flex-direction:column;gap:12px;padding:0 24px 24px;">
+    <div class="empty-state" style="padding:3rem">Nenhuma entrega registrada.</div>
+  </div>
+</div>
+<!-- MODAL NOVA ENTREGA -->
+<div class="modal-overlay" id="entrega-form-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">📦 Nova Entrega de Material</h3>
+      <button onclick="document.getElementById('entrega-form-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Título / Descrição *</label>
+        <input type="text" id="entrega-form-titulo" placeholder="Ex: Entrega de cabos para Hotel X" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Vincular a cliente (opcional)</label>
+        <select id="entrega-form-cliente" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">— Sem vínculo —</option>
+        </select></div>
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Observações</label>
+        <input type="text" id="entrega-form-obs" placeholder="Opcional" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('entrega-form-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarNovaEntrega()">Criar e abrir checklist →</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="contrato-modal" style="display:none" onclick="if(event.target===this)fecharContratoModal()">
+  <div style="background:var(--surface);border-radius:var(--radius);width:90%;max-width:900px;height:85vh;display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--black);flex-shrink:0;">
+      <div style="font-size:14px;font-weight:500;color:#fff" id="contrato-modal-titulo">Contrato</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a id="contrato-download-btn" href="#" target="_blank" style="padding:5px 14px;border:1px solid #444;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#bbb;text-decoration:none;">⬇ Baixar</a>
+        <button onclick="fecharContratoModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>
+      </div>
+    </div>
+    <iframe id="contrato-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
   </div>
 </div>
 
@@ -5054,21 +5071,6 @@ async function excluirVistoria(id, nome){
     </div>
     <div id="impl-preview-content" style="overflow-x:auto;"></div>
   </div>
-<!-- ENTREGAS -->
-<div id="page-entregas" class="main" style="display:none">
-  <div class="pipeline-header">
-    <div>
-      <h2>Entregas de Material</h2>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="entregas-sync">Checklists avulsos de entrega</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="abrirNovaEntrega()" class="btn-new-project">+ Nova entrega</button>
-    </div>
-  </div>
-  <div id="entregas-list" style="display:flex;flex-direction:column;gap:12px;padding:0 24px 24px;">
-    <div class="empty-state" style="padding:3rem">Nenhuma entrega registrada.</div>
-  </div>
-</div>
 
 </body>
 </html>
