@@ -3248,9 +3248,8 @@ async function salvarPagamentoCliente(id, valor){
   const c = clientes.find(x=>x.id===id);
   if(c) c.pagamento_operadora = valor;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'editarCliente',id,pagamento_operadora:valor})});
-    // Atualizar pipeline em memória também
     const pid = c ? String(c.prospectid||'').trim() : '';
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPagamentoOp',tipo:'cli',id,pid,valor})});
     if(pid){ const proj = projects.find(p=>p.id===pid); if(proj) proj.pagamento_operadora = valor; }
     renderPipeline();
     const toast = document.createElement('div');
@@ -3265,7 +3264,7 @@ async function salvarPagamentoPipeline(id, valor){
   const proj = projects.find(p=>p.id===id);
   if(proj) proj.pagamento_operadora = valor;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'savePipelineRow',id,pagamento_operadora:valor})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPagamentoOp',tipo:'pipeline',id,valor})});
     renderPipeline();
     const toast = document.createElement('div');
     toast.textContent = '💳 Pagamento salvo: '+(valor||'Não definido');
