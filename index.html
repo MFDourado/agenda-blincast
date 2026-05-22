@@ -349,6 +349,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <button class="main-tab" id="mt-distrato" onclick="switchMainTab('distrato')">Distrato</button>
   <button class="main-tab" id="mt-implantacoes" onclick="switchMainTab('implantacoes')">Implantações</button>
   <button class="main-tab" id="mt-montagem" onclick="switchMainTab('montagem')">Montagem</button>
+  <button class="main-tab" id="mt-entregas" onclick="switchMainTab('entregas')">Entregas</button>
   <button class="main-tab" id="mt-poc" onclick="switchMainTab('poc')">PoC</button>
 </div>
 
@@ -877,6 +878,7 @@ function switchMainTab(t){
   if(t==='distrato')loadDistrato();
   if(t==='poc')loadPocOperacional();
   if(t==='montagem')loadMontagem();
+  if(t==='entregas')renderEntregas();
   if(t==='implantacoes')loadImplantacoes();
 }
 
@@ -1143,6 +1145,7 @@ const sh=STEPS.map(s=>{
     <option value="" ${!proj.pagamento_operadora?'selected':''}>— Não definido —</option>
     <option value="Repasse" ${proj.pagamento_operadora==='Repasse'?'selected':''}>💳 Repasse (Blincast paga)</option>
     <option value="Cliente PG" ${proj.pagamento_operadora==='Cliente PG'?'selected':''}>✅ Cliente PG (Cliente paga)</option>
+    <option value="N/A" ${proj.pagamento_operadora==='N/A'?'selected':''}>— N/A</option>
   </select>
   ${proj.pagamento_operadora?`<span style="font-size:12px;font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse — Blincast paga a operadora':'✅ Cliente PG — Cliente paga direto'}</span>`:'<span style="font-size:12px;color:var(--text-muted);font-style:italic">⚠️ Não preenchido — importante definir antes da instalação</span>'}
 </div>
@@ -1513,6 +1516,7 @@ function renderClientes(){
 <option value="" ${!c.pagamento_operadora?'selected':''}>— Não definido —</option>
 <option value="Repasse" ${c.pagamento_operadora==='Repasse'?'selected':''}>💳 Repasse (Blincast paga)</option>
 <option value="Cliente PG" ${c.pagamento_operadora==='Cliente PG'?'selected':''}>✅ Cliente PG</option>
+<option value="N/A" ${c.pagamento_operadora==='N/A'?'selected':''}>— N/A</option>
 </select></div>${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label>${c.link_contrato ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirContratoModal(this.dataset.link,this.dataset.nome);" data-link="'+c.link_contrato+'" data-nome="'+c.nome+'" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum contrato anexado</span></div>'}<label style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block">Grade de canais</label>${c.link_grade ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirContratoModal(this.dataset.link,this.dataset.nome);" data-link="'+c.link_grade+'" data-nome="'+c.nome+' — Grade" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Ver grade</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhuma grade anexada</span></div>'}<label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <div style="display:flex;gap:8px;">
     <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
@@ -1696,6 +1700,7 @@ const TABS_OPERACIONAL = [
   {id:'distrato', label:'Distrato'},
   {id:'implantacoes', label:'Implantações'},
   {id:'montagem', label:'Montagem'},
+  {id:'entregas', label:'Entregas'},
   {id:'poc', label:'PoC'},
 ];
 const TABS_COMERCIAL = [
@@ -2082,7 +2087,7 @@ function renderMontagem(){
     const endereco = proj?(proj.endereco||''):'';
     const produto = proj?(proj.produto||m.tipo||''):(m.tipo||'');
     const tec = m.tecnico_montagem||'';
-    let html = '<div class="project-card" style="'+(m.status==='concluido'?'border-color:var(--c-concluido)':m.status==='montando'?'border-color:var(--c-andamento)':'')+'">';
+    let html = '<div class="project-card" draggable="true" data-mont-id="'+m.id+'" ondragstart="montDragStart(event,\''+m.id+'\')" ondragover="montDragOver(event)" ondragleave="montDragLeave(event)" ondrop="montDrop(event,\''+m.id+'\')" style="cursor:grab;'+(m.status==='concluido'?'border-color:var(--c-concluido)':m.status==='montando'?'border-color:var(--c-andamento)':'')+'">';
     html += '<div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">';
     html += '<div>';
     html += '<div class="project-name">'+m.nome+'</div>';
@@ -2119,7 +2124,10 @@ function renderMontagem(){
     html += '<option value="Daniel" '+(tec==='Daniel'?'selected':'')+'>Daniel</option>';
     html += '<option value="Maria Eduarda" '+(tec==='Maria Eduarda'?'selected':'')+'>Maria Eduarda</option>';
     html += '</select></div>';
-    if(m.obs) html += '<div class="step-card" style="grid-column:span 2"><div class="step-number">Observações</div><div style="font-size:12px;margin-top:4px">'+m.obs+'</div></div>';
+    html += '<div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">';
+    html += '<button onclick="abrirReqMaterial(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--text-muted);">📦 Requisição'+(m.requisicao&&JSON.parse(m.requisicao||'[]').length?' ('+JSON.parse(m.requisicao||'[]').length+' itens)':'')+'</button>';
+    html += '<button onclick="abrirChecklist(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-andamento);">✅ Checklist de material</button>';
+    html += '</div>';
     html += '</div></div>';
     return html;
   }).join('');
@@ -2812,6 +2820,396 @@ function confirmarExportarPDF(){
   document.getElementById('impl-preview-modal').style.display = 'none';
 }
 
+// ===== CHECKLIST DE MATERIAL =====
+let clId = null, clNome = '';
+let clItens = []; // {descricao, quantidade, obs, alm_ok, tec_ok}
+let clEtapaAtual = 1;
+
+function abrirChecklist(id, nome){
+  clId = id; clNome = nome;
+  const m = montagemDados.find(x=>x.id===id);
+  const cl = m && m.checklist ? JSON.parse(m.checklist) : {itens:[], adm:{}, alm:{}, tec:{}};
+  clItens = cl.itens || [];
+
+  document.getElementById('checklist-titulo').textContent = '✅ Checklist — '+nome;
+  // Preencher etapa 1
+  document.getElementById('cl-adm-nome').value  = cl.adm?.nome||'';
+  document.getElementById('cl-adm-data').value  = cl.adm?.data||'';
+  document.getElementById('cl-adm-os').value    = cl.adm?.os||'';
+  document.getElementById('cl-adm-check').checked = cl.adm?.check||false;
+  // Etapa 2
+  document.getElementById('cl-alm-nome').value  = cl.alm?.nome||'';
+  document.getElementById('cl-alm-data').value  = cl.alm?.data||'';
+  document.getElementById('cl-alm-os').value    = cl.alm?.os||'';
+  document.getElementById('cl-alm-check').checked = cl.alm?.check||false;
+  // Etapa 3
+  document.getElementById('cl-tec-nome').value  = cl.tec?.nome||'';
+  document.getElementById('cl-tec-data').value  = cl.tec?.data||'';
+  document.getElementById('cl-tec-os').value    = cl.tec?.os||'';
+  document.getElementById('cl-tec-check').checked = cl.tec?.check||false;
+
+  clRenderItens();
+  clMostrarEtapa(1);
+  document.getElementById('checklist-modal').style.display='flex';
+}
+
+function clMostrarEtapa(n){
+  clEtapaAtual = n;
+  [1,2,3].forEach(i=>{
+    const panel = document.getElementById('cl-panel-'+i);
+    const step  = document.getElementById('cl-step-'+i);
+    if(panel) panel.style.display = i===n ? '' : 'none';
+    if(step){
+      const done = i===1?(clItens.length>0&&document.getElementById('cl-adm-check')?.checked):i===2?document.getElementById('cl-alm-check')?.checked:document.getElementById('cl-tec-check')?.checked;
+      step.style.background = done ? 'var(--c-concluido-bg)' : i===n ? 'var(--black)' : 'var(--surface)';
+      step.style.color = done ? 'var(--c-concluido)' : i===n ? 'var(--gold)' : 'var(--text-muted)';
+    }
+  });
+  if(n===2) clRenderAlmItens();
+  if(n===3) clRenderTecItens();
+}
+
+function clRenderItens(){
+  const el = document.getElementById('cl-itens-lista');
+  if(!el) return;
+  if(!clItens.length){ el.innerHTML='<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Nenhum item adicionado.</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><thead><tr style="background:var(--bg)"><th style="padding:6px 8px;font-size:11px;text-align:left">Material</th><th style="padding:6px 8px;font-size:11px;text-align:center">Qtd.</th><th style="padding:6px 8px;font-size:11px;text-align:left">Obs.</th><th></th></tr></thead><tbody>'
+    + clItens.map((it,i)=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:12px">'+it.descricao+'</td><td style="padding:6px 8px;font-size:12px;text-align:center">'+it.quantidade+'</td><td style="padding:6px 8px;font-size:11px;color:var(--text-muted)">'+( it.obs||'')+'</td><td style="padding:6px 8px;text-align:center"><button onclick="clRemoverItem('+i+')" style="padding:1px 5px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00">✕</button></td></tr>').join('')
+    + '</tbody></table>';
+}
+
+function clRenderAlmItens(){
+  const el = document.getElementById('cl-alm-itens');
+  if(!el) return;
+  el.innerHTML = clItens.map((it,i)=>'<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">'
+    +'<input type="checkbox" '+(it.alm_ok?'checked':'')+' onchange="clItens['+i+'].alm_ok=this.checked" style="width:16px;height:16px;cursor:pointer;accent-color:var(--c-concluido);">'
+    +'<span><b>'+it.quantidade+'x</b> '+it.descricao+(it.obs?' <span style="color:var(--text-muted);font-size:11px">('+it.obs+')</span>':'')+'</span>'
+    +'</label>').join('') || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Nenhum item na lista.</div>';
+}
+
+function clRenderTecItens(){
+  const el = document.getElementById('cl-tec-itens');
+  if(!el) return;
+  el.innerHTML = clItens.map((it,i)=>'<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">'
+    +'<input type="checkbox" '+(it.tec_ok?'checked':'')+' onchange="clItens['+i+'].tec_ok=this.checked" style="width:16px;height:16px;cursor:pointer;accent-color:var(--c-concluido);">'
+    +'<span><b>'+it.quantidade+'x</b> '+it.descricao+(it.obs?' <span style="color:var(--text-muted);font-size:11px">('+it.obs+')</span>':'')+'</span>'
+    +'<span style="margin-left:auto;font-size:10px;color:'+(it.alm_ok?'var(--c-concluido)':'#e67e22')+'">'+(it.alm_ok?'✅ Separado':'⚠️ Não confirmado pelo almox.')+'</span>'
+    +'</label>').join('') || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Nenhum item na lista.</div>';
+}
+
+function adicionarClItem(){
+  const desc = document.getElementById('cl-item-desc').value.trim();
+  const qtd  = document.getElementById('cl-item-qtd').value.trim();
+  const obs  = document.getElementById('cl-item-obs').value.trim();
+  if(!desc||!qtd){ alert('Preencha material e quantidade.'); return; }
+  clItens.push({descricao:desc, quantidade:qtd, obs:obs||'', alm_ok:false, tec_ok:false});
+  document.getElementById('cl-item-desc').value='';
+  document.getElementById('cl-item-qtd').value='';
+  document.getElementById('cl-item-obs').value='';
+  clRenderItens();
+}
+
+function clRemoverItem(idx){
+  if(!confirm('Remover este item?')) return;
+  clItens.splice(idx,1);
+  clRenderItens();
+}
+
+async function salvarChecklist(){
+  const cl = {
+    itens: clItens,
+    adm: { nome:document.getElementById('cl-adm-nome').value.trim(), data:document.getElementById('cl-adm-data').value, os:document.getElementById('cl-adm-os').value.trim(), check:document.getElementById('cl-adm-check').checked },
+    alm: { nome:document.getElementById('cl-alm-nome').value.trim(), data:document.getElementById('cl-alm-data').value, os:document.getElementById('cl-alm-os').value.trim(), check:document.getElementById('cl-alm-check').checked },
+    tec: { nome:document.getElementById('cl-tec-nome').value.trim(), data:document.getElementById('cl-tec-data').value, os:document.getElementById('cl-tec-os').value.trim(), check:document.getElementById('cl-tec-check').checked },
+  };
+  const m = montagemDados.find(x=>x.id===clId);
+  if(m) m.checklist = JSON.stringify(cl);
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id:clId,checklist:JSON.stringify(cl)})});
+    document.getElementById('checklist-modal').style.display='none';
+    showToast('✅ Checklist salvo!');
+  }catch(e){ alert('Erro ao salvar.'); }
+}
+
+function exportarChecklistPDF(){
+  const m = montagemDados.find(x=>x.id===clId);
+  const cl = m && m.checklist ? JSON.parse(m.checklist) : {itens:clItens, adm:{}, alm:{}, tec:{}};
+  const admNome = document.getElementById('cl-adm-nome').value||cl.adm?.nome||'—';
+  const almNome = document.getElementById('cl-alm-nome').value||cl.alm?.nome||'—';
+  const tecNome = document.getElementById('cl-tec-nome').value||cl.tec?.nome||'—';
+  const admData = document.getElementById('cl-adm-data').value||cl.adm?.data||'';
+  const almData = document.getElementById('cl-alm-data').value||cl.alm?.data||'';
+  const tecData = document.getElementById('cl-tec-data').value||cl.tec?.data||'';
+  const tecOs   = document.getElementById('cl-tec-os').value||cl.tec?.os||'';
+  const itens   = clItens.length ? clItens : (cl.itens||[]);
+  const linhas  = itens.map((it,i)=>`<tr><td>${i+1}</td><td>${it.descricao}</td><td style="text-align:center">${it.quantidade}</td><td>${it.obs||''}</td><td style="text-align:center">${it.alm_ok?'✅':'—'}</td><td style="text-align:center">${it.tec_ok?'✅':'—'}</td></tr>`).join('');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Checklist de Material</title>
+  <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}h2{color:#111;border-bottom:2px solid #F5B800;padding-bottom:8px}
+  table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#111;color:#F5B800;padding:8px 10px;font-size:11px;text-align:left}
+  td{padding:7px 10px;font-size:11px;border-bottom:1px solid #ddd}
+  .sigs{display:flex;gap:24px;margin-top:40px;flex-wrap:wrap}.sig{flex:1;min-width:160px;text-align:center}
+  .sig-line{border-top:1px solid #111;margin-top:48px;padding-top:6px;font-size:10px}.info{font-size:10px;color:#666;margin-top:2px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+  .ok{background:#e8f5e9;color:#2e7d32}.pend{background:#fff3e0;color:#e65100}</style>
+  </head><body>
+  <h2>✅ Checklist de Material</h2>
+  <p><b>Projeto:</b> ${clNome} &nbsp;&nbsp; <b>Data:</b> ${new Date().toLocaleDateString('pt-BR')} &nbsp;&nbsp; ${tecOs?'<b>OS:</b> '+tecOs:''}</p>
+  <table><thead><tr><th>#</th><th>Material</th><th>Qtd.</th><th>Obs.</th><th>Almox. ✓</th><th>Técnico ✓</th></tr></thead><tbody>${linhas}</tbody></table>
+  <div class="sigs">
+    <div class="sig"><div class="sig-line"><b>${admNome}</b><div class="info">ADM Operacional${admData?' — '+new Date(admData+'T12:00:00').toLocaleDateString('pt-BR'):''}</div></div></div>
+    <div class="sig"><div class="sig-line"><b>${almNome}</b><div class="info">Almoxarifado${almData?' — '+new Date(almData+'T12:00:00').toLocaleDateString('pt-BR'):''}</div></div></div>
+    <div class="sig"><div class="sig-line"><b>${tecNome}</b><div class="info">Técnico${tecData?' — '+new Date(tecData+'T12:00:00').toLocaleDateString('pt-BR'):''}</div></div></div>
+  </div>
+  <p style="margin-top:32px;font-size:9px;color:#aaa;text-align:right">BlinTrack — Blincast Media S/A</p>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+// ===== ENTREGAS DE MATERIAL (CHECKLIST AVULSO) =====
+let entregasDados = [];
+let entregaEditId = null;
+
+async function carregarEntregas(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEntregas');
+    const d = await r.json();
+    entregasDados = Array.isArray(d) ? d.map(e => ({
+      ...e,
+      itens: e.itens ? JSON.parse(e.itens) : [],
+      adm:   e.adm   ? JSON.parse(e.adm)   : {},
+      alm:   e.alm   ? JSON.parse(e.alm)   : {},
+      tec:   e.tec   ? JSON.parse(e.tec)   : {},
+    })) : [];
+  }catch(e){ entregasDados=[]; }
+}
+
+async function renderEntregas(){
+  document.getElementById('entregas-sync').textContent='Carregando...';
+  await carregarEntregas();
+  document.getElementById('entregas-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const list = document.getElementById('entregas-list');
+  if(!list) return;
+  if(!entregasDados.length){
+    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma entrega registrada. Clique em "+ Nova entrega".</div>';
+    return;
+  }
+  list.innerHTML = entregasDados.map(e => {
+    const etapas = [e.adm?.check, e.alm?.check, e.tec?.check];
+    const concluidas = etapas.filter(Boolean).length;
+    const cor = concluidas===3?'var(--c-concluido)':concluidas>0?'var(--c-andamento)':'var(--c-pendente)';
+    return '<div class="project-card" style="border-color:'+cor+';padding:16px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+      +'<div>'
+      +'<div class="project-name">'+e.titulo+'</div>'
+      +(e.cliente?'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">🏢 '+e.cliente+'</div>':'')
+      +(e.obs?'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+e.obs+'</div>':'')
+      +'<div style="display:flex;gap:6px;margin-top:8px;">'
+      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+(e.adm?.check?'var(--c-concluido-bg)':'var(--border)')+';color:'+(e.adm?.check?'var(--c-concluido)':'var(--text-muted)')+'">ADM '+(e.adm?.check?'✅':'⏳')+'</span>'
+      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+(e.alm?.check?'var(--c-concluido-bg)':'var(--border)')+';color:'+(e.alm?.check?'var(--c-concluido)':'var(--text-muted)')+'">Almox '+(e.alm?.check?'✅':'⏳')+'</span>'
+      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+(e.tec?.check?'var(--c-concluido-bg)':'var(--border)')+';color:'+(e.tec?.check?'var(--c-concluido)':'var(--text-muted)')+'">Técnico '+(e.tec?.check?'✅':'⏳')+'</span>'
+      +'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;flex-shrink:0;">'
+      +'<button onclick="abrirEntregaChecklist(\''+e.id+'\')" style="padding:5px 12px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-andamento);">✅ Checklist</button>'
+      +'<button onclick="removerEntrega(\''+e.id+'\')" style="padding:5px 10px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:11px;background:none;cursor:pointer;color:#e00;">🗑</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function abrirNovaEntrega(){
+  entregaEditId = null;
+  document.getElementById('entrega-form-titulo').value='';
+  document.getElementById('entrega-form-cliente').value='';
+  document.getElementById('entrega-form-obs').value='';
+  // Popular select de clientes
+  const sel = document.getElementById('entrega-form-cliente');
+  sel.innerHTML='<option value="">— Sem vínculo —</option>'
+    + (clientes||[]).map(c=>'<option value="'+c.nome+'">'+c.nome+'</option>').join('');
+  document.getElementById('entrega-form-modal').style.display='flex';
+}
+
+async function salvarNovaEntrega(){
+  const titulo = document.getElementById('entrega-form-titulo').value.trim();
+  if(!titulo){ alert('Informe um título para a entrega.'); return; }
+  const nova = {
+    id: 'ent_'+Date.now(),
+    titulo,
+    cliente: document.getElementById('entrega-form-cliente').value,
+    obs: document.getElementById('entrega-form-obs').value.trim(),
+    itens: [], adm:{}, alm:{}, tec:{},
+    criado: new Date().toISOString().slice(0,10)
+  };
+  entregasDados.unshift(nova);
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveEntrega',...nova,itens:JSON.stringify(nova.itens),adm:JSON.stringify(nova.adm),alm:JSON.stringify(nova.alm),tec:JSON.stringify(nova.tec)})}); }catch(e){}
+  document.getElementById('entrega-form-modal').style.display='none';
+  renderEntregas();
+  // Abrir checklist direto
+  abrirEntregaChecklist(nova.id);
+}
+
+async function removerEntrega(id){
+  if(!confirm('Remover esta entrega? Esta ação não pode ser desfeita.')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerEntrega',id})});
+    entregasDados = entregasDados.filter(e=>e.id!==id);
+    renderEntregas();
+  }catch(e){ alert('Erro ao remover.'); }
+}
+
+function abrirEntregaChecklist(id){
+  const e = entregasDados.find(x=>x.id===id);
+  if(!e) return;
+  clId = id; clNome = e.titulo;
+  clItens = e.itens ? JSON.parse(JSON.stringify(e.itens)) : [];
+  document.getElementById('checklist-titulo').textContent = '✅ Checklist — '+e.titulo+(e.cliente?' ('+e.cliente+')':'');
+  document.getElementById('cl-adm-nome').value  = e.adm?.nome||'';
+  document.getElementById('cl-adm-data').value  = e.adm?.data||'';
+  document.getElementById('cl-adm-os').value    = e.adm?.os||'';
+  document.getElementById('cl-adm-check').checked = e.adm?.check||false;
+  document.getElementById('cl-alm-nome').value  = e.alm?.nome||'';
+  document.getElementById('cl-alm-data').value  = e.alm?.data||'';
+  document.getElementById('cl-alm-os').value    = e.alm?.os||'';
+  document.getElementById('cl-alm-check').checked = e.alm?.check||false;
+  document.getElementById('cl-tec-nome').value  = e.tec?.nome||'';
+  document.getElementById('cl-tec-data').value  = e.tec?.data||'';
+  document.getElementById('cl-tec-os').value    = e.tec?.os||'';
+  document.getElementById('cl-tec-check').checked = e.tec?.check||false;
+  // Override salvar para usar entregas
+  window._clSaveTarget = 'entrega';
+  clRenderItens();
+  clMostrarEtapa(1);
+  document.getElementById('checklist-modal').style.display='flex';
+}
+
+// Override salvarChecklist para suportar entregas
+const _salvarChecklistOriginal = salvarChecklist;
+async function salvarChecklist(){
+  if(window._clSaveTarget === 'entrega'){
+    const e = entregasDados.find(x=>x.id===clId);
+    if(!e){ alert('Entrega não encontrada.'); return; }
+    e.itens = clItens;
+    e.adm = { nome:document.getElementById('cl-adm-nome').value.trim(), data:document.getElementById('cl-adm-data').value, os:document.getElementById('cl-adm-os').value.trim(), check:document.getElementById('cl-adm-check').checked };
+    e.alm = { nome:document.getElementById('cl-alm-nome').value.trim(), data:document.getElementById('cl-alm-data').value, os:document.getElementById('cl-alm-os').value.trim(), check:document.getElementById('cl-alm-check').checked };
+    e.tec = { nome:document.getElementById('cl-tec-nome').value.trim(), data:document.getElementById('cl-tec-data').value, os:document.getElementById('cl-tec-os').value.trim(), check:document.getElementById('cl-tec-check').checked };
+    try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveEntrega',...e,itens:JSON.stringify(e.itens),adm:JSON.stringify(e.adm),alm:JSON.stringify(e.alm),tec:JSON.stringify(e.tec)})}); }catch(err){}
+    document.getElementById('checklist-modal').style.display='none';
+    window._clSaveTarget = null;
+    await renderEntregas();
+    showToast('✅ Checklist salvo!');
+    return;
+  }
+  window._clSaveTarget = null;
+  await _salvarChecklistOriginal();
+}
+
+// ===== FIM ENTREGAS =====
+
+// ===== DRAG & DROP MONTAGEM =====
+// ===== REQUISIÇÃO DE MATERIAL =====
+let reqMatId = null;
+let reqMatItens = [];
+
+function abrirReqMaterial(id, nome){
+  reqMatId = id;
+  document.getElementById('req-mat-titulo').textContent = '📦 Requisição de Material — '+nome;
+  // Carregar itens salvos
+  const m = montagemDados.find(x=>x.id===id);
+  reqMatItens = m && m.requisicao ? JSON.parse(JSON.stringify(m.requisicao)) : [];
+  renderReqItens();
+  document.getElementById('req-mat-nome').value = m?.req_responsavel||'';
+  document.getElementById('req-mat-modal').style.display='flex';
+}
+
+function renderReqItens(){
+  const tbody = document.getElementById('req-itens-tbody');
+  if(!tbody) return;
+  if(!reqMatItens.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px">Nenhum item adicionado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = reqMatItens.map((item,i)=>
+    '<tr style="border-bottom:1px solid var(--border);">'
+    +'<td style="padding:6px 8px;font-size:12px">'+item.descricao+'</td>'
+    +'<td style="padding:6px 8px;font-size:12px;text-align:center">'+item.quantidade+'</td>'
+    +'<td style="padding:6px 8px;font-size:12px;color:var(--text-muted)">'+item.obs+'</td>'
+    +'<td style="padding:6px 8px;text-align:center;white-space:nowrap">'
+    +'<button onclick="editarReqItem('+i+')" style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);margin-right:4px">✎</button>'
+    +'<button onclick="removerReqItem('+i+')" style="padding:2px 6px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00">✕</button>'
+    +'</td></tr>'
+  ).join('');
+}
+
+function adicionarReqItem(){
+  const desc = document.getElementById('req-item-desc').value.trim();
+  const qtd  = document.getElementById('req-item-qtd').value.trim();
+  const obs  = document.getElementById('req-item-obs').value.trim();
+  if(!desc||!qtd){ alert('Preencha descrição e quantidade.'); return; }
+  reqMatItens.push({descricao:desc, quantidade:qtd, obs:obs||''});
+  document.getElementById('req-item-desc').value='';
+  document.getElementById('req-item-qtd').value='';
+  document.getElementById('req-item-obs').value='';
+  renderReqItens();
+}
+
+function editarReqItem(idx){
+  const item = reqMatItens[idx];
+  document.getElementById('req-item-desc').value = item.descricao;
+  document.getElementById('req-item-qtd').value  = item.quantidade;
+  document.getElementById('req-item-obs').value  = item.obs||'';
+  reqMatItens.splice(idx,1);
+  renderReqItens();
+  document.getElementById('req-item-desc').focus();
+}
+
+function removerReqItem(idx){
+  if(!confirm('Remover este item?')) return;
+  reqMatItens.splice(idx,1);
+  renderReqItens();
+}
+
+async function salvarReqMaterial(){
+  const nome = document.getElementById('req-mat-nome').value.trim();
+  if(!nome){ alert('Informe o nome do responsável.'); return; }
+  const m = montagemDados.find(x=>x.id===reqMatId);
+  if(m){ m.requisicao = reqMatItens; m.req_responsavel = nome; }
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id:reqMatId,requisicao:JSON.stringify(reqMatItens),req_responsavel:nome})});
+    document.getElementById('req-mat-modal').style.display='none';
+    showToast('✅ Requisição salva!');
+  }catch(e){ alert('Erro ao salvar.'); }
+}
+
+function exportarReqPDF(){
+  const nome = document.getElementById('req-mat-nome').value.trim();
+  if(!reqMatItens.length){ alert('Adicione ao menos um item.'); return; }
+  const m = montagemDados.find(x=>x.id===reqMatId);
+  const w = window.open('','_blank');
+  const linhas = reqMatItens.map((item,i)=>`<tr><td>${i+1}</td><td>${item.descricao}</td><td style="text-align:center">${item.quantidade}</td><td>${item.obs||''}</td></tr>`).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Requisição de Material</title>
+  <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}h2{color:#111;border-bottom:2px solid #F5B800;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#111;color:#F5B800;padding:8px 12px;font-size:12px;text-align:left}td{padding:8px 12px;font-size:12px;border-bottom:1px solid #ddd}.footer{margin-top:32px;display:flex;justify-content:space-between;font-size:11px;color:#666}.assinatura{margin-top:48px;border-top:1px solid #111;padding-top:8px;min-width:200px;text-align:center;font-size:11px}</style>
+  </head><body>
+  <h2>📦 Requisição de Material</h2>
+  <p><b>Projeto:</b> ${m?m.nome:''} &nbsp;&nbsp; <b>Data:</b> ${new Date().toLocaleDateString('pt-BR')}</p>
+  <table><thead><tr><th>#</th><th>Descrição</th><th>Qtd.</th><th>Observações</th></tr></thead><tbody>${linhas}</tbody></table>
+  <div class="footer">
+    <div class="assinatura"><br><br>______________________________<br>${nome}<br>Responsável</div>
+    <div style="align-self:flex-end;font-size:10px;color:#aaa">BlinTrack — Blincast Media S/A</div>
+  </div>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+function showToast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},2500);
+}
+
 async function salvarPagamentoCliente(id, valor){
   const c = clientes.find(x=>x.id===id);
   if(c) c.pagamento_operadora = valor;
@@ -3029,7 +3427,12 @@ function renderAta(){
   if(filtroOs)lista=lista.filter(r=>String(r.no||'').toLowerCase().includes(filtroOs));
   if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
   if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
-  if(filtroPrevista)lista=lista.filter(r=>String(r.dt_prevista||'').trim()===filtroPrevista);
+  if(filtroPrevista)lista=lista.filter(r=>{
+    const d = String(r.dt_prevista||'').trim();
+    // Normalizar dd/MM/yyyy → yyyy-MM-dd se necessário
+    const norm = d.includes('/') ? d.split('/').reverse().join('-') : d.slice(0,10);
+    return norm === filtroPrevista;
+  });
   // Se há status selecionados no multi-select, filtrar por eles
   if(statusSelecionados.length>0){
     lista=lista.filter(r=>statusSelecionados.includes(String(r.status||'').trim()));
@@ -4092,6 +4495,157 @@ async function excluirVistoria(id, nome){
     <iframe id="contrato-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
   </div>
 </div>
+<!-- MODAL NOVA ENTREGA -->
+<div class="modal-overlay" id="entrega-form-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">📦 Nova Entrega de Material</h3>
+      <button onclick="document.getElementById('entrega-form-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Título / Descrição *</label>
+        <input type="text" id="entrega-form-titulo" placeholder="Ex: Entrega de cabos para Hotel X" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Vincular a cliente (opcional)</label>
+        <select id="entrega-form-cliente" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">— Sem vínculo —</option>
+        </select></div>
+      <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Observações</label>
+        <input type="text" id="entrega-form-obs" placeholder="Opcional" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('entrega-form-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarNovaEntrega()">Criar e abrir checklist →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CHECKLIST DE MATERIAL -->
+<div class="modal-overlay" id="checklist-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:720px;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 id="checklist-titulo" style="margin:0;font-size:16px">✅ Checklist de Material</h3>
+      <button onclick="document.getElementById('checklist-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div id="checklist-no-os" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
+
+    <!-- Progress bar das etapas -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+      <div id="cl-step-1" style="flex:1;padding:8px 12px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;border-right:1px solid var(--border);" onclick="clMostrarEtapa(1)">1. ADM Operacional</div>
+      <div id="cl-step-2" style="flex:1;padding:8px 12px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;border-right:1px solid var(--border);" onclick="clMostrarEtapa(2)">2. Almoxarifado</div>
+      <div id="cl-step-3" style="flex:1;padding:8px 12px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;" onclick="clMostrarEtapa(3)">3. Técnico</div>
+    </div>
+
+    <!-- ETAPA 1: ADM Operacional -->
+    <div id="cl-panel-1">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Preencha os materiais necessários para a montagem.</div>
+      <div style="display:grid;grid-template-columns:2fr 80px 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Material *</label>
+          <input type="text" id="cl-item-desc" placeholder="Ex: Modulador HD" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Qtd. *</label>
+          <input type="number" id="cl-item-qtd" min="1" placeholder="0" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Obs.</label>
+          <input type="text" id="cl-item-obs" placeholder="Opcional" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <button onclick="adicionarClItem()" style="height:34px;padding:0 14px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">+ Add</button>
+      </div>
+      <div id="cl-itens-lista" style="margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data *</label>
+          <input type="date" id="cl-adm-data" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nº da OS</label>
+          <input type="text" id="cl-adm-os" placeholder="Ex: 15837" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      </div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nome e sobrenome do ADM Operacional *</label>
+        <input type="text" id="cl-adm-nome" placeholder="Ex: Matheus Dourado" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="cl-adm-check" style="width:16px;height:16px;cursor:pointer;accent-color:var(--c-concluido);">
+        Confirmo que os materiais acima foram solicitados
+      </label>
+    </div>
+
+    <!-- ETAPA 2: Almoxarifado -->
+    <div id="cl-panel-2" style="display:none;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Marque cada item conforme for separado.</div>
+      <div id="cl-alm-itens" style="margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data *</label>
+          <input type="date" id="cl-alm-data" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nº da OS</label>
+          <input type="text" id="cl-alm-os" placeholder="Ex: 15837" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      </div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nome e sobrenome do Almoxarifado *</label>
+        <input type="text" id="cl-alm-nome" placeholder="Ex: Marco Antonio" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="cl-alm-check" style="width:16px;height:16px;cursor:pointer;accent-color:var(--c-concluido);">
+        Confirmo que todos os materiais foram separados e entregues
+      </label>
+    </div>
+
+    <!-- ETAPA 3: Técnico -->
+    <div id="cl-panel-3" style="display:none;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Valide o recebimento de cada item.</div>
+      <div id="cl-tec-itens" style="margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data *</label>
+          <input type="date" id="cl-tec-data" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nº da OS *</label>
+          <input type="text" id="cl-tec-os" placeholder="Ex: 15837" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      </div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nome e sobrenome do Técnico *</label>
+        <input type="text" id="cl-tec-nome" placeholder="Ex: Isaque Lucas" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="cl-tec-check" style="width:16px;height:16px;cursor:pointer;accent-color:var(--c-concluido);">
+        Confirmo que recebi todos os materiais listados
+      </label>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="modal-btn" onclick="document.getElementById('checklist-modal').style.display='none'">Fechar</button>
+      <button class="modal-btn" onclick="exportarChecklistPDF()" style="color:var(--text-muted);">🖨️ Exportar PDF</button>
+      <button class="modal-btn primary" onclick="salvarChecklist()">💾 Salvar checklist</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REQUISIÇÃO DE MATERIAL -->
+<div class="modal-overlay" id="req-mat-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:660px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="req-mat-titulo" style="margin:0;font-size:16px">📦 Requisição de Material</h3>
+      <button onclick="document.getElementById('req-mat-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <!-- Adicionar item -->
+    <div style="display:grid;grid-template-columns:2fr 80px 1fr auto;gap:8px;margin-bottom:12px;align-items:end;">
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Descrição *</label>
+        <input type="text" id="req-item-desc" placeholder="Ex: Cabo coaxial RG6" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Qtd. *</label>
+        <input type="number" id="req-item-qtd" min="1" placeholder="0" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Obs.</label>
+        <input type="text" id="req-item-obs" placeholder="Opcional" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <button onclick="adicionarReqItem()" style="height:34px;padding:0 14px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;white-space:nowrap;">+ Adicionar</button>
+    </div>
+    <!-- Tabela de itens -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <thead><tr style="background:var(--black);">
+        <th style="padding:8px;font-size:11px;text-align:left;color:var(--gold)">Descrição</th>
+        <th style="padding:8px;font-size:11px;text-align:center;color:var(--gold)">Qtd.</th>
+        <th style="padding:8px;font-size:11px;text-align:left;color:var(--gold)">Obs.</th>
+        <th style="padding:8px;font-size:11px;color:var(--gold)">Ações</th>
+      </tr></thead>
+      <tbody id="req-itens-tbody"></tbody>
+    </table>
+    <!-- Responsável -->
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Responsável (nome e sobrenome) *</label>
+      <input type="text" id="req-mat-nome" placeholder="Ex: João Silva" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('req-mat-modal').style.display='none'">Fechar</button>
+      <button class="modal-btn" onclick="exportarReqPDF()" style="color:var(--text-muted)">🖨️ Exportar PDF</button>
+      <button class="modal-btn primary" onclick="salvarReqMaterial()">💾 Salvar requisição</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIGURAÇÕES ADMIN -->
 <div class="modal-overlay" id="config-modal" style="display:none" onclick="if(event.target===this)fecharConfig()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
@@ -4422,6 +4976,20 @@ async function excluirVistoria(id, nome){
       </div>
     </div>
     <div id="impl-preview-content" style="overflow-x:auto;"></div>
+  </div>
+<!-- ENTREGAS -->
+<div id="page-entregas" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Entregas de Material</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="entregas-sync">Checklists avulsos de entrega</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="abrirNovaEntrega()" class="btn-new-project">+ Nova entrega</button>
+    </div>
+  </div>
+  <div id="entregas-list" style="display:flex;flex-direction:column;gap:12px;padding:0 24px 24px;">
+    <div class="empty-state" style="padding:3rem">Nenhuma entrega registrada.</div>
   </div>
 </div>
 
