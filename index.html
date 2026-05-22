@@ -2953,7 +2953,7 @@ function selecionarEstoqueItem(el, sugestId){
 
 // Fechar sugestões ao clicar fora
 document.addEventListener('click', function(e){
-  ['req-item-sugest','cl-item-sugest','cl-alm-item-sugest','cl-tec-item-sugest','mat-item-sugest'].forEach(id=>{
+  ['req-item-sugest','cl-item-sugest','cl-alm-item-sugest','cl-tec-item-sugest','mat-item-sugest','req-cliente-sugest'].forEach(id=>{
     const el = document.getElementById(id);
     if(el && !el.contains(e.target)) el.style.display='none';
   });
@@ -3180,13 +3180,29 @@ async function renderRequisicoes(){
 async function abrirNovaRequisicao(){
   requisicaoEditId = null;
   document.getElementById('requisicao-form-titulo').value='';
+  document.getElementById('requisicao-form-cliente').value='';
   document.getElementById('requisicao-form-obs').value='';
-  // Carregar clientes se ainda não carregados
+  document.getElementById('req-cliente-sugest').style.display='none';
   if(!clientes||!clientes.length) await loadClientes();
-  const sel = document.getElementById('requisicao-form-cliente');
-  sel.innerHTML='<option value="">— Sem vínculo —</option>'
-    + (clientes||[]).filter(c=>c.status!=='inativo').map(c=>'<option value="'+c.nome+'">'+c.nome+'</option>').join('');
   document.getElementById('requisicao-form-modal').style.display='flex';
+}
+
+function filtrarClienteReq(input){
+  const q = input.value.trim().toLowerCase();
+  const el = document.getElementById('req-cliente-sugest');
+  if(!el) return;
+  if(q.length < 1){ el.style.display='none'; return; }
+  const lista = (clientes||[]).filter(c=>c.status!=='inativo'&&(c.nome||'').toLowerCase().includes(q)).slice(0,20);
+  if(!lista.length){ el.style.display='none'; return; }
+  el.innerHTML = lista.map(c=>
+    '<div onclick="selecionarClienteReq(\''+c.nome.replace(/'/g,"\\'")+'\')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+c.nome+(c.cidade?' <span style="font-size:10px;color:var(--text-muted)">— '+c.cidade+'</span>':'')+'</div>'
+  ).join('');
+  el.style.display='block';
+}
+
+function selecionarClienteReq(nome){
+  document.getElementById('requisicao-form-cliente').value = nome;
+  document.getElementById('req-cliente-sugest').style.display='none';
 }
 
 async function salvarNovaRequisicao(){
@@ -4962,9 +4978,11 @@ async function excluirVistoria(id, nome){
       <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Título / Descrição *</label>
         <input type="text" id="requisicao-form-titulo" placeholder="Ex: Entrega de cabos para Hotel X" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
       <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Vincular a cliente (opcional)</label>
-        <select id="requisicao-form-cliente" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
-          <option value="">— Sem vínculo —</option>
-        </select></div>
+        <div style="position:relative">
+          <input type="text" id="requisicao-form-cliente" placeholder="🔍 Digitar nome do cliente..." autocomplete="off" oninput="filtrarClienteReq(this)" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+          <div id="req-cliente-sugest" style="display:none;position:absolute;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3);width:100%;top:38px;left:0;"></div>
+        </div>
+      </div>
       <div><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Observações</label>
         <input type="text" id="requisicao-form-obs" placeholder="Opcional" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
     </div>
