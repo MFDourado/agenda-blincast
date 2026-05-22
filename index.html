@@ -3897,28 +3897,31 @@ async function alterarAtaStatus(id, novoStatus, selEl){
 }
 
 function exportarAtaCSV(){
-  const de=document.getElementById('ata-csv-de').value;
-  const ate=document.getElementById('ata-csv-ate').value;
-  const filtroStatus=document.getElementById('ata-filtro-status').value;
-  const filtroTecnico=document.getElementById('ata-filtro-tecnico').value;
-  let lista=ataRegistros;
-  if(de)lista=lista.filter(r=>String(r.data||'')>=de);
-  if(ate)lista=lista.filter(r=>String(r.data||'')<=ate);
-  if(filtroStatus)lista=lista.filter(r=>String(r.status||'').trim()===filtroStatus);
-  if(filtroTecnico)lista=lista.filter(r=>String(r.tecnico||'').trim()===filtroTecnico);
-  if(!lista.length){alert('Nenhum registro para exportar com os filtros selecionados.');return;}
-  const header='No OS,Data,Cliente,Estado,Problema,Técnico,Ajudante,Status,Observações';
-  const rows=lista.map(r=>[r.no||'',r.data||'',r.cliente||'',r.estado||'',r.problema||'',r.tecnico||'',r.ajudante||'',ATA_STATUS_LABEL[r.status]||r.status||'',r.obs||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
-  const csv='\uFEFF'+header+'\n'+rows.join('\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
+  const de  = document.getElementById('ata-csv-de').value;
+  const ate = document.getElementById('ata-csv-ate').value;
+  const filtroTecnico = document.getElementById('ata-filtro-tecnico').value;
+  const normDate = d => { if(!d) return ''; const s=String(d).trim(); return s.includes('/')?s.split('/').reverse().join('-'):s.slice(0,10); };
+  let lista = [...ataRegistros];
+  if(de)  lista = lista.filter(r => normDate(r.dt_abertura)>=de || normDate(r.dt_prevista)>=de);
+  if(ate) lista = lista.filter(r => normDate(r.dt_abertura)<=ate || normDate(r.dt_prevista)<=ate);
+  if(filtroTecnico) lista = lista.filter(r => String(r.tecnico||'').trim()===filtroTecnico);
+  if(!lista.length){ alert('Nenhum registro para exportar.'); return; }
+  const header = 'No OS,Cliente,UF,Problema,Tecnico,Ajudante,Status,Obs,Dt Abertura,Dt Prevista,Dt Conclusao';
+  const rows = lista.map(r=>[
+    r.no||'', r.cliente||'', r.estado||'', r.problema||'',
+    r.tecnico||'', r.ajudante||'', ATA_STATUS_LABEL[r.status]||r.status||'', r.obs||'',
+    normDate(r.dt_abertura), normDate(r.dt_prevista), normDate(r.dt_conclusao)
+  ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
+  const csv = '\uFEFF'+header+'\n'+rows.join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   a.href=url;
-  const sufixo=de&&ate?de+'_a_'+ate:de||ate||new Date().toISOString().slice(0,10);
-  a.download='ata_'+sufixo+'.csv';
+  a.download='ata_'+(de&&ate?de+'_a_'+ate:new Date().toISOString().slice(0,10))+'.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
+
 
 // ===================== ORÇAMENTO =====================
 const ORC_CUSTOS=[
