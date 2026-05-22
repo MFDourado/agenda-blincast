@@ -865,7 +865,7 @@ function switchMainTab(t){
     const btn = document.getElementById('mt-'+tab);
     const page = document.getElementById('page-'+tab);
     if(btn) btn.className='main-tab'+(t===tab?' active':'');
-    if(page) page.style.display=t===tab?'':'none';
+    if(page) page.style.display=t===tab?'block':'none';
   });
   if(t==='pipeline')loadPipeline();
   if(t==='vistoria')loadVistoria();
