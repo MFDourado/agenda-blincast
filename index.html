@@ -861,7 +861,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','entregas','poc'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','poc'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     const page = document.getElementById('page-'+tab);
     if(btn) btn.className='main-tab'+(t===tab?' active':'');
