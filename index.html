@@ -3177,15 +3177,15 @@ async function renderRequisicoes(){
   }).join('');
 }
 
-function abrirNovaRequisicao(){
+async function abrirNovaRequisicao(){
   requisicaoEditId = null;
   document.getElementById('requisicao-form-titulo').value='';
-  document.getElementById('requisicao-form-cliente').value='';
   document.getElementById('requisicao-form-obs').value='';
-  // Popular select de clientes
+  // Carregar clientes se ainda não carregados
+  if(!clientes||!clientes.length) await loadClientes();
   const sel = document.getElementById('requisicao-form-cliente');
   sel.innerHTML='<option value="">— Sem vínculo —</option>'
-    + (clientes||[]).map(c=>'<option value="'+c.nome+'">'+c.nome+'</option>').join('');
+    + (clientes||[]).filter(c=>c.status!=='inativo').map(c=>'<option value="'+c.nome+'">'+c.nome+'</option>').join('');
   document.getElementById('requisicao-form-modal').style.display='flex';
 }
 
