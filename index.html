@@ -2126,7 +2126,6 @@ function renderMontagem(){
     html += '<option value="Maria Eduarda" '+(tec==='Maria Eduarda'?'selected':'')+'>Maria Eduarda</option>';
     html += '</select></div>';
     html += '<div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">';
-    html += '<button onclick="abrirReqMaterial(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--text-muted);">📦 Requisição'+(m.requisicao&&JSON.parse(m.requisicao||'[]').length?' ('+JSON.parse(m.requisicao||'[]').length+' itens)':'')+'</button>';
     html += '<button onclick="abrirChecklist(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-andamento);">✅ Checklist de material</button>';
     html += '</div>';
     html += '</div></div>';
