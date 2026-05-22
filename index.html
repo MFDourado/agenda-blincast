@@ -3583,13 +3583,20 @@ function renderAta(){
   });
   if(filtroOs)lista=lista.filter(r=>String(r.no||'').toLowerCase().includes(filtroOs));
   if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
+  const normD = d => {
+    if(!d) return '';
+    let s = String(d).trim();
+    if(s.includes('/')) s = s.split('/').reverse().join('-');
+    s = s.slice(0,10);
+    // Corrigir anos errados: 0202, 2002, 2020, 2023 → 2026
+    s = s.replace(/^0202-/, '2026-').replace(/^2002-/, '2026-').replace(/^2020-/, '2026-').replace(/^2023-0[45]-/, m=>'2026-'+m.slice(5));
+    return s;
+  };
   if(filtroData)lista=lista.filter(r=>{
-    const normD = d => { if(!d) return ''; const s=String(d).trim(); return s.includes('/')?s.split('/').reverse().join('-'):s.slice(0,10); };
     return normD(r.dt_abertura)===filtroData || normD(r.dt_prevista)===filtroData || normD(r.dt_conclusao)===filtroData;
   });
   if(window._ataFiltroHoje){
     const hoje = todayStr;
-    const normD = d => { if(!d) return ''; const s=String(d).trim(); return s.includes('/')?s.split('/').reverse().join('-'):s.slice(0,10); };
     lista=lista.filter(r=> normD(r.dt_abertura)===hoje || normD(r.dt_prevista)===hoje || normD(r.dt_conclusao)===hoje);
   } else if(filtroPrevista)lista=lista.filter(r=>{
     const d = String(r.dt_prevista||'').trim();
