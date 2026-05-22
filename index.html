@@ -1728,14 +1728,15 @@ function aplicarConfig(){
   TABS_OPERACIONAL.forEach(t => {
     const el = document.getElementById('mt-'+t.id);
     if(!el) return;
-    // Verificar permissão do usuário primeiro, senão usar configuração geral
-    const keyUser = prefixoUser+'tab_'+t.id;
+    const keyUser  = prefixoUser+t.id;   // sem 'tab_' duplicado
     const keyGeral = 'tab_'+t.id;
     let desabilitada;
     if(temPermissaoPersonalizada && configAtual[keyUser] !== undefined){
       desabilitada = configAtual[keyUser] === 'off';
-    } else {
+    } else if(configAtual[keyGeral] !== undefined){
       desabilitada = configAtual[keyGeral] === 'off';
+    } else {
+      desabilitada = false; // nova aba: mostrar por padrão
     }
     el.style.display = desabilitada ? 'none' : '';
   });
@@ -2837,15 +2838,20 @@ function filtrarEstoque(input, sugestId){
 function selecionarEstoqueItem(el, sugestId){
   const texto = el.textContent;
   const sugest = document.getElementById(sugestId);
-  // Encontrar o input correspondente
-  if(sugestId==='req-item-sugest') document.getElementById('req-item-desc').value = texto;
-  if(sugestId==='cl-item-sugest')  document.getElementById('cl-item-desc').value  = texto;
+  const mapa = {
+    'req-item-sugest':     'req-item-desc',
+    'cl-item-sugest':      'cl-item-desc',
+    'cl-alm-item-sugest':  'cl-alm-item-desc',
+    'cl-tec-item-sugest':  'cl-tec-item-desc',
+  };
+  const inputId = mapa[sugestId];
+  if(inputId) document.getElementById(inputId).value = texto;
   if(sugest) sugest.style.display='none';
 }
 
 // Fechar sugestões ao clicar fora
 document.addEventListener('click', function(e){
-  ['req-item-sugest','cl-item-sugest'].forEach(id=>{
+  ['req-item-sugest','cl-item-sugest','cl-alm-item-sugest','cl-tec-item-sugest'].forEach(id=>{
     const el = document.getElementById(id);
     if(el && !el.contains(e.target)) el.style.display='none';
   });
@@ -2926,6 +2932,22 @@ function clRenderTecItens(){
     +'<span><b>'+it.quantidade+'x</b> '+it.descricao+(it.obs?' <span style="color:var(--text-muted);font-size:11px">('+it.obs+')</span>':'')+'</span>'
     +'<span style="margin-left:auto;font-size:10px;color:'+(it.alm_ok?'var(--c-concluido)':'#e67e22')+'">'+(it.alm_ok?'✅ Separado':'⚠️ Não confirmado pelo almox.')+'</span>'
     +'</label>').join('') || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Nenhum item na lista.</div>';
+}
+
+function adicionarClItemEtapa(etapa){
+  const desc = document.getElementById('cl-'+etapa+'-item-desc').value.trim();
+  const qtd  = document.getElementById('cl-'+etapa+'-item-qtd').value.trim();
+  const obs  = document.getElementById('cl-'+etapa+'-item-obs').value.trim();
+  if(!desc||!qtd){ alert('Preencha material e quantidade.'); return; }
+  clItens.push({descricao:desc, quantidade:qtd, obs:obs||'', alm_ok:etapa==='alm'||etapa==='tec', tec_ok:etapa==='tec'});
+  document.getElementById('cl-'+etapa+'-item-desc').value='';
+  document.getElementById('cl-'+etapa+'-item-qtd').value='';
+  document.getElementById('cl-'+etapa+'-item-obs').value='';
+  document.getElementById('cl-'+etapa+'-item-sugest').style.display='none';
+  if(etapa==='alm') clRenderAlmItens();
+  if(etapa==='tec') clRenderTecItens();
+  // Atualizar lista da etapa 1 também
+  clRenderItens();
 }
 
 function adicionarClItem(){
@@ -4598,7 +4620,17 @@ async function excluirVistoria(id, nome){
 
     <!-- ETAPA 2: Almoxarifado -->
     <div id="cl-panel-2" style="display:none;">
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Marque cada item conforme for separado.</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Adicione ou confira os itens. Marque cada item conforme for separado.</div>
+      <div style="display:grid;grid-template-columns:2fr 80px 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
+        <div style="position:relative"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Material *</label>
+          <input type="text" id="cl-alm-item-desc" placeholder="🔍 Buscar item do estoque..." autocomplete="off" oninput="filtrarEstoque(this,'cl-alm-item-sugest')" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+          <div id="cl-alm-item-sugest" style="display:none;position:absolute;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:300px;"></div></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Qtd. *</label>
+          <input type="number" id="cl-alm-item-qtd" min="1" placeholder="0" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Obs.</label>
+          <input type="text" id="cl-alm-item-obs" placeholder="Opcional" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <button onclick="adicionarClItemEtapa('alm')" style="height:34px;padding:0 14px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">+ Add</button>
+      </div>
       <div id="cl-alm-itens" style="margin-bottom:14px;"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data *</label>
@@ -4616,7 +4648,17 @@ async function excluirVistoria(id, nome){
 
     <!-- ETAPA 3: Técnico -->
     <div id="cl-panel-3" style="display:none;">
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Valide o recebimento de cada item.</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Adicione ou valide os itens. Marque cada item conforme o recebimento.</div>
+      <div style="display:grid;grid-template-columns:2fr 80px 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
+        <div style="position:relative"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Material *</label>
+          <input type="text" id="cl-tec-item-desc" placeholder="🔍 Buscar item do estoque..." autocomplete="off" oninput="filtrarEstoque(this,'cl-tec-item-sugest')" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+          <div id="cl-tec-item-sugest" style="display:none;position:absolute;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:300px;"></div></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Qtd. *</label>
+          <input type="number" id="cl-tec-item-qtd" min="1" placeholder="0" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Obs.</label>
+          <input type="text" id="cl-tec-item-obs" placeholder="Opcional" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+        <button onclick="adicionarClItemEtapa('tec')" style="height:34px;padding:0 14px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">+ Add</button>
+      </div>
       <div id="cl-tec-itens" style="margin-bottom:14px;"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data *</label>
