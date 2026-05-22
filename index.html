@@ -590,8 +590,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;position:relative;">
     <input type="text" id="ata-filtro-os" placeholder="🔍 Buscar OS..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:120px;">
     <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
-    <input type="date" id="ata-filtro-data" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
-    <input type="date" id="ata-filtro-prevista" placeholder="Data prevista" style="height:32px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;" onchange="renderAta()" title="Filtrar por data prevista">
+    <input type="date" id="ata-filtro-data" onchange="window._ataFiltroHoje=false;document.getElementById('ata-btn-hoje').style.background='none';document.getElementById('ata-btn-hoje').style.color='var(--c-previsto)';renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" title="Filtrar por abertura, prevista ou conclusão">
+    <input type="hidden" id="ata-filtro-prevista">
     <button id="ata-btn-hoje" onclick="filtrarAtaHoje()" style="height:32px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);font-weight:600;" title="Mostrar apenas previstos para hoje">📅 Hoje</button>
     <!-- Dropdown multi-select de status -->
     <div style="position:relative;" id="ata-status-wrap">
@@ -3583,7 +3583,10 @@ function renderAta(){
   });
   if(filtroOs)lista=lista.filter(r=>String(r.no||'').toLowerCase().includes(filtroOs));
   if(filtroCliente)lista=lista.filter(r=>String(r.cliente||'').toLowerCase().includes(filtroCliente));
-  if(filtroData)lista=lista.filter(r=>String(r.data||'').trim()===filtroData);
+  if(filtroData)lista=lista.filter(r=>{
+    const normD = d => { if(!d) return ''; const s=String(d).trim(); return s.includes('/')?s.split('/').reverse().join('-'):s.slice(0,10); };
+    return normD(r.dt_abertura)===filtroData || normD(r.dt_prevista)===filtroData || normD(r.dt_conclusao)===filtroData;
+  });
   if(window._ataFiltroHoje){
     const hoje = todayStr;
     const normD = d => { if(!d) return ''; const s=String(d).trim(); return s.includes('/')?s.split('/').reverse().join('-'):s.slice(0,10); };
