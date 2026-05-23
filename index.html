@@ -3044,7 +3044,8 @@ function renderFeriasAdmin(){
     if(!usuarios[u.usuario]) usuarios[u.usuario] = {nome:u.nome, solicitacoes:[], saldo:30};
   });
   const pendentes = (feriasDados||[]).filter(f=>f.status==='solicitado').length;
-  list.innerHTML = (pendentes?`<div style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600">⚠️ ${pendentes} solicitação(ões) pendente(s) de aprovação</div>`:'')
+  const bannerHtml = pendentes ? `<div id="ferias-pendentes-banner" style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600;cursor:pointer;" onclick="this.style.display='none'">⚠️ ${pendentes} solicitação(ões) pendente(s) de aprovação <span style="font-size:11px;color:var(--text-muted)">(clique para fechar)</span></div>` : '';
+  list.innerHTML = bannerHtml
     + Object.entries(usuarios).map(([usuario, info]) => {
     const pend = info.solicitacoes.filter(f=>f.status==='solicitado').length;
     return '<div class="project-card" style="padding:16px;margin-bottom:12px;">'
@@ -3141,14 +3142,15 @@ function calcularDiasFerias(){
 
 async function enviarSolicitacaoFerias(){
   const btn = document.querySelector('#ferias-modal .modal-btn.primary');
-  if(btn) btn.disabled = true;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Enviando...'; }
   const ini = document.getElementById('ferias-dt-inicio').value;
   const fim = document.getElementById('ferias-dt-fim').value;
   const abono = document.getElementById('ferias-abono').value;
   const obs = document.getElementById('ferias-obs').value.trim();
   const check = document.getElementById('ferias-check').checked;
-  if(!ini||!fim){ alert('Preencha as datas.'); if(btn) btn.disabled=false; return; }
-  if(!check){ alert('Confirme que está ciente antes de enviar.'); if(btn) btn.disabled=false; return; }
+  const reset = () => { if(btn){ btn.disabled=false; btn.textContent='Enviar solicitação'; } };
+  if(!ini||!fim){ alert('Preencha as datas.'); reset(); return; }
+  if(!check){ alert('Confirme que está ciente antes de enviar.'); reset(); return; }
   const d1=new Date(ini), d2=new Date(fim);
   const dias = Math.round((d2-d1)/(1000*60*60*24))+1;
   const id = feriasEditId||('fer_'+Date.now());
@@ -3161,16 +3163,20 @@ async function enviarSolicitacaoFerias(){
     dt_solicitacao:new Date().toISOString().slice(0,10)
   };
   try{
+    if(btn) btn.textContent='💾 Salvando...';
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    if(btn) btn.textContent='📧 Enviando e-mail...';
     const corpo = `<h3>🌴 Nova Solicitação de Férias</h3><p><b>Colaborador:</b> ${usuarioLogado?.nome}<br><b>Período:</b> ${new Date(ini+'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(fim+'T12:00:00').toLocaleDateString('pt-BR')}<br><b>Dias:</b> ${dias}${abono==='Sim'?' + abono pecuniário':''}<br><b>Obs:</b> ${obs||'—'}</p><p>Acesse o BlinTrack para responder.</p>`;
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Solicitação de Férias — '+usuarioLogado?.nome,corpo})});
+    // Fechar modal e recarregar
     document.getElementById('ferias-modal').style.display='none';
     feriasEditId = null;
+    if(btn) btn.textContent='🔄 Atualizando...';
     if(isAdmin) await carregarFeriasAdmin();
     else await carregarFeriasColaborador();
     showToast('✅ Solicitação enviada!');
-  }catch(e){ alert('Erro ao enviar.'); }
-  finally{ if(btn) btn.disabled=false; }
+  }catch(e){ alert('Erro ao enviar: '+e.message); }
+  finally{ reset(); }
 }
 
 async function responderFerias(id, status){
