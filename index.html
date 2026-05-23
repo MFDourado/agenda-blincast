@@ -3140,16 +3140,19 @@ function calcularDiasFerias(){
 }
 
 async function enviarSolicitacaoFerias(){
+  const btn = document.querySelector('#ferias-modal .modal-btn.primary');
+  if(btn) btn.disabled = true;
   const ini = document.getElementById('ferias-dt-inicio').value;
   const fim = document.getElementById('ferias-dt-fim').value;
   const abono = document.getElementById('ferias-abono').value;
   const obs = document.getElementById('ferias-obs').value.trim();
   const check = document.getElementById('ferias-check').checked;
-  if(!ini||!fim){ alert('Preencha as datas.'); return; }
-  if(!check){ alert('Confirme que está ciente antes de enviar.'); return; }
+  if(!ini||!fim){ alert('Preencha as datas.'); if(btn) btn.disabled=false; return; }
+  if(!check){ alert('Confirme que está ciente antes de enviar.'); if(btn) btn.disabled=false; return; }
   const d1=new Date(ini), d2=new Date(fim);
   const dias = Math.round((d2-d1)/(1000*60*60*24))+1;
   const id = feriasEditId||('fer_'+Date.now());
+  const isAdmin = usuarioLogado?.perfil==='admin';
   const payload = {
     token:getToken(), action:'salvarFerias', id, usuario:usuarioLogado?.usuario||'',
     nome:usuarioLogado?.nome||'', saldo_dias:feriasSaldo,
@@ -3159,13 +3162,15 @@ async function enviarSolicitacaoFerias(){
   };
   try{
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
-    // E-mail para admin
     const corpo = `<h3>🌴 Nova Solicitação de Férias</h3><p><b>Colaborador:</b> ${usuarioLogado?.nome}<br><b>Período:</b> ${new Date(ini+'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(fim+'T12:00:00').toLocaleDateString('pt-BR')}<br><b>Dias:</b> ${dias}${abono==='Sim'?' + abono pecuniário':''}<br><b>Obs:</b> ${obs||'—'}</p><p>Acesse o BlinTrack para responder.</p>`;
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Solicitação de Férias — '+usuarioLogado?.nome,corpo})});
     document.getElementById('ferias-modal').style.display='none';
-    await carregarFeriasColaborador();
-    showToast('✅ Solicitação enviada! O gestor será notificado.');
+    feriasEditId = null;
+    if(isAdmin) await carregarFeriasAdmin();
+    else await carregarFeriasColaborador();
+    showToast('✅ Solicitação enviada!');
   }catch(e){ alert('Erro ao enviar.'); }
+  finally{ if(btn) btn.disabled=false; }
 }
 
 async function responderFerias(id, status){
