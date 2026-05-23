@@ -3166,8 +3166,14 @@ async function enviarSolicitacaoFerias(){
     if(btn) btn.textContent='💾 Salvando...';
     await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     if(btn) btn.textContent='📧 Enviando e-mail...';
-    const corpo = `<h3>🌴 Nova Solicitação de Férias</h3><p><b>Colaborador:</b> ${usuarioLogado?.nome}<br><b>Período:</b> ${new Date(ini+'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(fim+'T12:00:00').toLocaleDateString('pt-BR')}<br><b>Dias:</b> ${dias}${abono==='Sim'?' + abono pecuniário':''}<br><b>Obs:</b> ${obs||'—'}</p><p>Acesse o BlinTrack para responder.</p>`;
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Solicitação de Férias — '+usuarioLogado?.nome,corpo})});
+    const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(), action:'enviarEmailFeriasFormatado',
+      tipo:'solicitacao',
+      colaborador: usuarioLogado?.nome||'',
+      dt_inicio: ini, dt_fim: fim,
+      dias, abono, obs: obs||'—'
+    })});
     // Fechar modal e recarregar
     document.getElementById('ferias-modal').style.display='none';
     feriasEditId = null;
@@ -3188,9 +3194,14 @@ async function responderFerias(id, status){
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarFerias',id,status,obs_gestor:obs,dt_resposta:new Date().toISOString().slice(0,10),usuario:f.usuario,nome:f.nome,saldo_dias:f.saldo_dias,dt_inicio:f.dt_inicio,dt_fim:f.dt_fim,dias_solicitados:f.dias_solicitados,abono_pecuniario:f.abono_pecuniario})});
     // E-mail
-    const statusLabel = status==='aprovado'?'✅ APROVADA':'❌ REPROVADA';
-    const corpo = `<h3>🌴 Sua solicitação de férias foi ${statusLabel}</h3><p><b>Período:</b> ${f.dt_inicio} a ${f.dt_fim}<br><b>Status:</b> ${statusLabel}${obs?'<br><b>Obs gestor:</b> '+obs:''}</p>${status==='reprovado'?'<p>Você pode sugerir um novo período pelo BlinTrack.</p>':''}`;
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Férias '+statusLabel+' — '+f.nome,corpo})});
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(), action:'enviarEmailFeriasFormatado',
+      tipo: status,
+      colaborador: f.nome||'',
+      dt_inicio: f.dt_inicio, dt_fim: f.dt_fim,
+      dias: f.dias_solicitados, abono: f.abono_pecuniario,
+      obs_gestor: obs||''
+    })});
     await carregarFeriasAdmin();
     showToast(status==='aprovado'?'✅ Férias aprovadas!':'❌ Férias reprovadas.');
   }catch(e){ alert('Erro.'); }
