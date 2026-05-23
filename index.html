@@ -5604,19 +5604,6 @@ async function excluirVistoria(id, nome){
 </div>
 
 <!-- MODAL PRÉVIA EXPORTAÇÃO -->
-<div class="modal-overlay" id="impl-preview-modal" style="display:none" onclick="if(event.target===this)document.getElementById('impl-preview-modal').style.display='none'">
-  <div class="modal" style="max-width:95vw;width:1100px;max-height:90vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="margin:0">📋 Prévia — Relatório de Implantações</h3>
-      <div style="display:flex;gap:8px;">
-        <button id="impl-prev-excel-btn" onclick="confirmarExportarExcel()" style="padding:6px 16px;background:var(--c-andamento);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Baixar Excel</button>
-        <button id="impl-prev-pdf-btn" onclick="confirmarExportarPDF()" style="padding:6px 16px;background:var(--gold);color:#111;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Baixar PDF</button>
-        <button onclick="document.getElementById('impl-preview-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
-      </div>
-    </div>
-    <div id="impl-preview-content" style="overflow-x:auto;"></div>
-  </div>
-
 
 <!-- MODAL SOLICITAR FÉRIAS -->
 <div class="modal-overlay" id="ferias-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -5691,6 +5678,21 @@ async function excluirVistoria(id, nome){
   </div>
   <button onclick="switchMainTab('ferias');document.getElementById('ferias-popup').style.display='none'" style="margin-top:10px;width:100%;padding:6px;background:var(--black);color:#F5B800;border:1px solid #F5B800;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver férias →</button>
 </div>
+
+<div class="modal-overlay" id="impl-preview-modal" style="display:none" onclick="if(event.target===this)document.getElementById('impl-preview-modal').style.display='none'">
+  <div class="modal" style="max-width:95vw;width:1100px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">📋 Prévia — Relatório de Implantações</h3>
+      <div style="display:flex;gap:8px;">
+        <button id="impl-prev-excel-btn" onclick="confirmarExportarExcel()" style="padding:6px 16px;background:var(--c-andamento);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Baixar Excel</button>
+        <button id="impl-prev-pdf-btn" onclick="confirmarExportarPDF()" style="padding:6px 16px;background:var(--gold);color:#111;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Baixar PDF</button>
+        <button onclick="document.getElementById('impl-preview-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+      </div>
+    </div>
+    <div id="impl-preview-content" style="overflow-x:auto;"></div>
+  </div>
+
+
 
 </body>
 </html>
