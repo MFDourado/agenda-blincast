@@ -350,6 +350,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <button class="main-tab" id="mt-implantacoes" onclick="switchMainTab('implantacoes')">Implantações</button>
   <button class="main-tab" id="mt-montagem" onclick="switchMainTab('montagem')">Montagem</button>
   <button class="main-tab" id="mt-requisicoes" onclick="switchMainTab('requisicoes')">Requisições</button>
+  <button class="main-tab" id="mt-ferias" onclick="switchMainTab('ferias')">🌴 Férias</button>
   <button class="main-tab" id="mt-poc" onclick="switchMainTab('poc')">PoC</button>
 </div>
 
@@ -790,6 +791,7 @@ async function fazerLogin(){
       carregarConfig();
       switchMainTab('pipeline');
       apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+      setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -861,7 +863,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','poc'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','poc'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     const page = document.getElementById('page-'+tab);
     if(btn) btn.className='main-tab'+(t===tab?' active':'');
@@ -879,6 +881,7 @@ function switchMainTab(t){
   if(t==='poc')loadPocOperacional();
   if(t==='montagem')loadMontagem();
   if(t==='requisicoes')renderRequisicoes();
+  if(t==='ferias')iniciarFerias();
   if(t==='implantacoes')loadImplantacoes();
 }
 
@@ -1700,6 +1703,7 @@ const TABS_OPERACIONAL = [
   {id:'distrato', label:'Distrato'},
   {id:'implantacoes', label:'Implantações'},
   {id:'montagem', label:'Montagem'},
+  {id:'ferias', label:'🌴 Férias'},
   {id:'entregas', label:'Entregas'},
   {id:'poc', label:'PoC'},
 ];
@@ -2072,6 +2076,8 @@ function setMontagemFiltro(f){
     const el = document.getElementById('mf-'+x);
     if(el) el.className = 'tab'+(x===f?' active':'');
   });
+  const expWrap = document.getElementById('montagem-export-wrap');
+  if(expWrap) expWrap.style.display = f==='concluido' ? 'flex' : 'none';
   renderMontagem();
 }
 
@@ -2133,6 +2139,39 @@ function renderMontagem(){
   }).join('');
 }
 
+function exportarMontagemXLSX(){
+  const de  = document.getElementById('mont-exp-de').value;
+  const ate = document.getElementById('mont-exp-ate').value;
+  const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
+  let lista = montagemDados.filter(m=>m.status==='concluido');
+  if(de)  lista = lista.filter(m=>(m.dt_prevista||m.data_criacao||'')>=de);
+  if(ate) lista = lista.filter(m=>(m.dt_prevista||m.data_criacao||'')<=ate);
+  if(!lista.length){ alert('Nenhum registro concluído no período selecionado.'); return; }
+  const headers = ['Projeto','Tipo','Moduladores','Filtro Digital','Conversor','Previsão (dias)','Data Entrega','Técnico','Criado em','Obs'];
+  const rows = lista.map(m=>[
+    m.nome||'', m.tipo||'', m.moduladores||'', m.filtro_digital||'', m.conversor||'',
+    m.previsao_dias||'', fmtDate(m.dt_prevista), m.tecnico_montagem||'',
+    fmtDate(m.data_criacao), m.obs||''
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [{wch:35},{wch:8},{wch:12},{wch:14},{wch:10},{wch:14},{wch:14},{wch:20},{wch:12},{wch:30}];
+  headers.forEach((h,i)=>{
+    const ref = XLSX.utils.encode_cell({r:0,c:i});
+    if(!ws[ref]) ws[ref]={v:h,t:'s'};
+    ws[ref].s={font:{bold:true,color:{rgb:'F5B800'},sz:10},fill:{patternType:'solid',fgColor:{rgb:'111111'}},alignment:{horizontal:'center'}};
+  });
+  rows.forEach((row,ri)=>{
+    row.forEach((val,ci)=>{
+      const ref=XLSX.utils.encode_cell({r:ri+1,c:ci});
+      if(!ws[ref]) ws[ref]={v:val,t:'s'};
+      ws[ref].s={font:{sz:10},fill:{patternType:'solid',fgColor:{rgb:ri%2===0?'FFFFFF':'F5F5F5'}},alignment:{vertical:'center'}};
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, ws, 'Montagem Concluída');
+  XLSX.writeFile(wb, 'montagem_concluida_'+(de&&ate?de+'_a_'+ate:new Date().toISOString().slice(0,10))+'.xlsx');
+}
+
 async function salvarDtPrevistaMontagem(id, valor){
   const m = montagemDados.find(x=>x.id===id);
   if(m) m.dt_prevista = valor;
@@ -2157,10 +2196,12 @@ async function alterarStatusMontagem(id, novoStatus, selEl){
   const m = montagemDados.find(x=>x.id===id);
   if(m) m.status = novoStatus;
   try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id,status:novoStatus})});
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateMontagemStatus',id,status:novoStatus})});
+    const d = await r.json();
+    if(d.error){ document.getElementById('montagem-sync').textContent='Erro: '+d.error; return; }
+    if(d.encontrou===false){ document.getElementById('montagem-sync').textContent='⚠️ ID não encontrado no Sheets ('+id+')'; return; }
     document.getElementById('montagem-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    // Recarregar para atualizar visual do card
-    setTimeout(()=>renderMontagem(), 300);
+    if(novoStatus==='concluido') renderMontagem();
   }catch(e){
     document.getElementById('montagem-sync').textContent='Erro ao salvar';
   }
@@ -2921,6 +2962,258 @@ function exportarMaterialPDF(){
   <script>window.onload=()=>window.print()<\/script></body></html>`);
   w.document.close();
 }
+
+// ===== FÉRIAS =====
+let feriasDados = [];
+let feriasEditId = null;
+let feriasSaldo = 30;
+
+async function iniciarFerias(){
+  document.getElementById('ferias-sync').textContent = 'Carregando...';
+  const isAdmin = usuarioLogado?.perfil === 'admin';
+  document.getElementById('btn-solicitar-ferias').style.display = isAdmin ? 'none' : '';
+  // Admin vê painel de saldo de todos os usuários
+  if(isAdmin){
+    await carregarFeriasAdmin();
+  } else {
+    await carregarFeriasColaborador();
+  }
+}
+
+async function carregarFeriasAdmin(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getFerias');
+    feriasDados = await r.json();
+    renderFeriasAdmin();
+    document.getElementById('ferias-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ document.getElementById('ferias-sync').textContent='Erro ao carregar'; }
+}
+
+async function carregarFeriasColaborador(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getSaldoFerias&usuario='+encodeURIComponent(usuarioLogado?.usuario||''));
+    const d = await r.json();
+    feriasSaldo = parseInt(d.saldo)||30;
+    feriasDados = d.solicitacoes||[];
+    document.getElementById('ferias-saldo-card').style.display='flex';
+    document.getElementById('ferias-saldo-num').textContent = feriasSaldo;
+    const usados = feriasDados.reduce((s,f)=>s+(parseInt(f.dias_solicitados)||0),0);
+    document.getElementById('ferias-saldo-usados').textContent = usados;
+    renderFeriasColaborador();
+    document.getElementById('ferias-sync').textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){}
+}
+
+function renderFeriasAdmin(){
+  const list = document.getElementById('ferias-list');
+  if(!list) return;
+  // Agrupar por usuário
+  const usuarios = {};
+  (feriasDados||[]).forEach(f => {
+    if(!usuarios[f.usuario]) usuarios[f.usuario] = {nome:f.nome||f.usuario, solicitacoes:[], saldo:parseInt(f.saldo_dias)||30};
+    else if(f.saldo_dias) usuarios[f.usuario].saldo = parseInt(f.saldo_dias)||30;
+    usuarios[f.usuario].solicitacoes.push(f);
+  });
+  // Adicionar usuários sem solicitações
+  (usuariosSistema||[]).forEach(u => {
+    if(!usuarios[u.usuario]) usuarios[u.usuario] = {nome:u.nome, solicitacoes:[], saldo:30};
+  });
+  const pendentes = (feriasDados||[]).filter(f=>f.status==='solicitado').length;
+  list.innerHTML = (pendentes?`<div style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600">⚠️ ${pendentes} solicitação(ões) pendente(s) de aprovação</div>`:'')
+    + Object.entries(usuarios).map(([usuario, info]) => {
+    const pend = info.solicitacoes.filter(f=>f.status==='solicitado').length;
+    return '<div class="project-card" style="padding:16px;margin-bottom:12px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
+      +'<div>'
+      +'<div style="font-size:15px;font-weight:700">'+info.nome+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted)">'+usuario+(pend?` <span style="color:#e67e22;font-weight:600">· ${pend} pendente(s)</span>`:'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;">'
+      +'<span style="font-size:22px;font-weight:800;color:var(--c-concluido)">'+info.saldo+'</span>'
+      +'<span style="font-size:11px;color:var(--text-muted)">dias<br>disponíveis</span>'
+      +'<button onclick="abrirAdminSaldo(\''+usuario+'\',\''+info.nome+'\','+info.saldo+')" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:none;cursor:pointer;color:var(--text-muted);">⚙ Saldo</button>'
+      +'</div></div>'
+      +(info.solicitacoes.length?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">'
+        +info.solicitacoes.map(f=>renderFeriasCard(f, true)).join('')+'</div>':'')
+      +'</div>';
+  }).join('');
+}
+
+function renderFeriasColaborador(){
+  const list = document.getElementById('ferias-list');
+  if(!list) return;
+  if(!feriasDados.length){
+    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma solicitação de férias. Clique em "+ Solicitar férias".</div>';
+    return;
+  }
+  list.innerHTML = feriasDados.map(f=>renderFeriasCard(f, false)).join('');
+}
+
+function renderFeriasCard(f, isAdmin){
+  const statusColor = f.status==='aprovado'?'var(--c-concluido)':f.status==='reprovado'?'#e00':'#e67e22';
+  const statusLabel = {solicitado:'⏳ Aguardando aprovação', aprovado:'✅ Aprovado', reprovado:'❌ Reprovado'}[f.status]||f.status;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+  return '<div style="padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
+    +'<div>'
+    +(!isAdmin?'':'<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">'+f.nome+'</div>')
+    +'<div style="font-size:14px;font-weight:600">'+fmtDate(f.dt_inicio)+' → '+fmtDate(f.dt_fim)+'</div>'
+    +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+f.dias_solicitados+' dias'+(f.abono_pecuniario==='Sim'?' · 💰 Abono pecuniário':'')+'</div>'
+    +(f.obs_colaborador?'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">📝 '+f.obs_colaborador+'</div>':'')
+    +(f.obs_gestor?'<div style="font-size:11px;color:#e67e22;margin-top:2px">💬 Gestor: '+f.obs_gestor+'</div>':'')
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">'
+    +'<span style="font-size:11px;font-weight:700;color:'+statusColor+';padding:2px 8px;border:1px solid '+statusColor+';border-radius:10px;">'+statusLabel+'</span>'
+    +(isAdmin&&f.status==='solicitado'?
+      '<div style="display:flex;gap:6px;">'
+      +'<button onclick="responderFerias(\''+f.id+'\',\'aprovado\')" style="padding:4px 10px;background:var(--c-concluido-bg);border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--c-concluido);font-weight:600">✅ Aprovar</button>'
+      +'<button onclick="abrirReprovacao(\''+f.id+'\')" style="padding:4px 10px;background:#fff0f0;border:1px solid #e00;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:#e00;font-weight:600">❌ Reprovar</button>'
+      +'</div>':'')
+    +(!isAdmin&&f.status==='reprovado'?
+      '<button onclick="reabrirSolicitacao(\''+f.id+'\')" style="padding:4px 10px;border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--gold);">↺ Nova data</button>':'')
+    +(isAdmin?'<button onclick="removerFeriasSolicitacao(\''+f.id+'\')" style="padding:2px 8px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">🗑</button>':'')
+    +'</div></div></div>';
+}
+
+function abrirSolicitarFerias(editId){
+  feriasEditId = editId||null;
+  document.getElementById('ferias-modal-titulo').textContent = editId ? '↺ Nova data de férias' : '🌴 Solicitar Férias';
+  document.getElementById('ferias-dt-inicio').value='';
+  document.getElementById('ferias-dt-fim').value='';
+  document.getElementById('ferias-abono').value='Não';
+  document.getElementById('ferias-obs').value='';
+  document.getElementById('ferias-check').checked=false;
+  document.getElementById('ferias-dias-calc').textContent='';
+  document.getElementById('ferias-alerta').style.display='none';
+  document.getElementById('ferias-modal').style.display='flex';
+}
+
+function calcularDiasFerias(){
+  const ini = document.getElementById('ferias-dt-inicio').value;
+  const fim = document.getElementById('ferias-dt-fim').value;
+  const alerta = document.getElementById('ferias-alerta');
+  const calc = document.getElementById('ferias-dias-calc');
+  if(!ini||!fim){ calc.textContent=''; return; }
+  const d1=new Date(ini), d2=new Date(fim);
+  if(d2<=d1){ calc.textContent='⚠️ Data fim deve ser após data início.'; return; }
+  const dias = Math.round((d2-d1)/(1000*60*60*24))+1;
+  const hoje = new Date();
+  const diasAntecedencia = Math.round((d1-hoje)/(1000*60*60*24));
+  let msg = `📅 ${dias} dias de férias`;
+  if(document.getElementById('ferias-abono').value==='Sim') msg += ' · 💰 +10 dias em abono pecuniário';
+  calc.textContent = msg;
+  // Validações
+  let alertas = [];
+  if(diasAntecedencia < 30) alertas.push('⚠️ Solicitação deve ser feita com mínimo 30 dias de antecedência ('+diasAntecedencia+' dias).');
+  if(dias < 14) alertas.push('⚠️ Mínimo de 14 dias corridos em uma das saídas.');
+  if(dias > feriasSaldo) alertas.push('⚠️ Saldo insuficiente ('+feriasSaldo+' dias disponíveis).');
+  if(alertas.length){ alerta.innerHTML=alertas.join('<br>'); alerta.style.display='block'; }
+  else alerta.style.display='none';
+}
+
+async function enviarSolicitacaoFerias(){
+  const ini = document.getElementById('ferias-dt-inicio').value;
+  const fim = document.getElementById('ferias-dt-fim').value;
+  const abono = document.getElementById('ferias-abono').value;
+  const obs = document.getElementById('ferias-obs').value.trim();
+  const check = document.getElementById('ferias-check').checked;
+  if(!ini||!fim){ alert('Preencha as datas.'); return; }
+  if(!check){ alert('Confirme que está ciente antes de enviar.'); return; }
+  const d1=new Date(ini), d2=new Date(fim);
+  const dias = Math.round((d2-d1)/(1000*60*60*24))+1;
+  const id = feriasEditId||('fer_'+Date.now());
+  const payload = {
+    token:getToken(), action:'salvarFerias', id, usuario:usuarioLogado?.usuario||'',
+    nome:usuarioLogado?.nome||'', saldo_dias:feriasSaldo,
+    dt_inicio:ini, dt_fim:fim, dias_solicitados:dias, abono_pecuniario:abono,
+    status:'solicitado', obs_colaborador:obs,
+    dt_solicitacao:new Date().toISOString().slice(0,10)
+  };
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    // E-mail para admin
+    const corpo = `<h3>🌴 Nova Solicitação de Férias</h3><p><b>Colaborador:</b> ${usuarioLogado?.nome}<br><b>Período:</b> ${new Date(ini+'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(fim+'T12:00:00').toLocaleDateString('pt-BR')}<br><b>Dias:</b> ${dias}${abono==='Sim'?' + abono pecuniário':''}<br><b>Obs:</b> ${obs||'—'}</p><p>Acesse o BlinTrack para responder.</p>`;
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Solicitação de Férias — '+usuarioLogado?.nome,corpo})});
+    document.getElementById('ferias-modal').style.display='none';
+    await carregarFeriasColaborador();
+    showToast('✅ Solicitação enviada! O gestor será notificado.');
+  }catch(e){ alert('Erro ao enviar.'); }
+}
+
+async function responderFerias(id, status){
+  let obs = '';
+  if(status==='reprovado'){
+    obs = prompt('Motivo da reprovação (opcional):','') || '';
+  }
+  const f = feriasDados.find(x=>x.id===id)||{};
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarFerias',id,status,obs_gestor:obs,dt_resposta:new Date().toISOString().slice(0,10),usuario:f.usuario,nome:f.nome,saldo_dias:f.saldo_dias,dt_inicio:f.dt_inicio,dt_fim:f.dt_fim,dias_solicitados:f.dias_solicitados,abono_pecuniario:f.abono_pecuniario})});
+    // E-mail
+    const statusLabel = status==='aprovado'?'✅ APROVADA':'❌ REPROVADA';
+    const corpo = `<h3>🌴 Sua solicitação de férias foi ${statusLabel}</h3><p><b>Período:</b> ${f.dt_inicio} a ${f.dt_fim}<br><b>Status:</b> ${statusLabel}${obs?'<br><b>Obs gestor:</b> '+obs:''}</p>${status==='reprovado'?'<p>Você pode sugerir um novo período pelo BlinTrack.</p>':''}`;
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailFerias',assunto:'🌴 Férias '+statusLabel+' — '+f.nome,corpo})});
+    await carregarFeriasAdmin();
+    showToast(status==='aprovado'?'✅ Férias aprovadas!':'❌ Férias reprovadas.');
+  }catch(e){ alert('Erro.'); }
+}
+
+function abrirReprovacao(id){ responderFerias(id,'reprovado'); }
+
+function reabrirSolicitacao(id){
+  feriasEditId = id;
+  abrirSolicitarFerias(id);
+}
+
+async function removerFeriasSolicitacao(id){
+  if(!confirm('Remover esta solicitação?')) return;
+  await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerFerias',id})});
+  await carregarFeriasAdmin();
+  showToast('🗑 Removido.');
+}
+
+function abrirAdminSaldo(usuario, nome, saldo){
+  document.getElementById('ferias-admin-usuario').value=usuario;
+  document.getElementById('ferias-admin-nome').value=nome;
+  document.getElementById('ferias-admin-saldo').value=saldo;
+  document.getElementById('ferias-admin-titulo').textContent='⚙ Saldo de Férias — '+nome;
+  document.getElementById('ferias-admin-modal').style.display='flex';
+}
+
+async function salvarSaldoAdmin(){
+  const usuario = document.getElementById('ferias-admin-usuario').value;
+  const nome = document.getElementById('ferias-admin-nome').value;
+  const saldo = parseInt(document.getElementById('ferias-admin-saldo').value)||30;
+  // Atualizar ou criar registro de saldo
+  await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarFerias',id:'saldo_'+usuario,usuario,nome,saldo_dias:saldo,status:'saldo',dt_inicio:'',dt_fim:'',dias_solicitados:0})});
+  document.getElementById('ferias-admin-modal').style.display='none';
+  await carregarFeriasAdmin();
+  showToast('✅ Saldo atualizado!');
+}
+
+function verificarNotificacoesFerias(){
+  if(usuarioLogado?.perfil==='admin'){
+    // Admin: verificar pendentes
+    fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getFerias').then(r=>r.json()).then(d=>{
+      const pendentes = (d||[]).filter(f=>f.status==='solicitado');
+      if(pendentes.length){
+        document.getElementById('ferias-popup-msg').textContent = pendentes.length+' solicitação(ões) de férias aguardando sua aprovação.';
+        document.getElementById('ferias-popup').style.display='block';
+      }
+    }).catch(()=>{});
+  } else {
+    // Colaborador: verificar respostas novas
+    const usuario = usuarioLogado?.usuario||'';
+    fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getSaldoFerias&usuario='+encodeURIComponent(usuario)).then(r=>r.json()).then(d=>{
+      const reprovadas = (d.solicitacoes||[]).filter(f=>f.status==='reprovado');
+      if(reprovadas.length){
+        document.getElementById('ferias-popup-msg').textContent = 'Uma solicitação foi reprovada. Clique para sugerir nova data.';
+        document.getElementById('ferias-popup').style.display='block';
+      }
+    }).catch(()=>{});
+  }
+}
+
+// ===== FIM FÉRIAS =====
 
 // ===== AUTOCOMPLETE ESTOQUE =====
 function filtrarEstoque(input, sugestId){
@@ -5057,6 +5350,12 @@ async function excluirVistoria(id, nome){
         <button class="tab" id="mf-montando" onclick="setMontagemFiltro('montando')">Montando</button>
         <button class="tab" id="mf-concluido" onclick="setMontagemFiltro('concluido')">Concluído</button>
       </div>
+      <div id="montagem-export-wrap" style="display:none;align-items:center;gap:6px;">
+        <input type="date" id="mont-exp-de" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <span style="font-size:12px;color:var(--text-muted)">até</span>
+        <input type="date" id="mont-exp-ate" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <button onclick="exportarMontagemXLSX()" style="height:32px;padding:0 14px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">📊 Exportar</button>
+      </div>
     </div>
   </div>
   <div id="montagem-list"></div>
@@ -5292,6 +5591,106 @@ async function excluirVistoria(id, nome){
     </div>
     <div id="impl-preview-content" style="overflow-x:auto;"></div>
   </div>
+
+<!-- FÉRIAS -->
+<div id="page-ferias" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>🌴 Férias</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="ferias-sync">Gerenciamento de férias</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="abrirSolicitarFerias()" class="btn-new-project" id="btn-solicitar-ferias">+ Solicitar férias</button>
+    </div>
+  </div>
+  <!-- Saldo (para colaborador) -->
+  <div id="ferias-saldo-card" style="display:none;margin:0 24px 16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+    <div style="text-align:center;padding:0 16px;">
+      <div style="font-size:28px;font-weight:800;color:var(--c-concluido)" id="ferias-saldo-num">30</div>
+      <div style="font-size:11px;color:var(--text-muted)">Dias disponíveis</div>
+    </div>
+    <div style="text-align:center;padding:0 16px;border-left:1px solid var(--border);">
+      <div style="font-size:20px;font-weight:700;color:#F5B800" id="ferias-saldo-usados">0</div>
+      <div style="font-size:11px;color:var(--text-muted)">Dias solicitados</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-left:auto;font-style:italic">Mínimo: 14 dias corridos em uma das saídas · Abono pecuniário: até 10 dias</div>
+  </div>
+  <div id="ferias-list" style="padding:0 24px 24px;"></div>
+</div>
+
+<!-- MODAL SOLICITAR FÉRIAS -->
+<div class="modal-overlay" id="ferias-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="ferias-modal-titulo" style="margin:0">🌴 Solicitar Férias</h3>
+      <button onclick="document.getElementById('ferias-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Data início *</label>
+        <input type="date" id="ferias-dt-inicio" oninput="calcularDiasFerias()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+      <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Data fim *</label>
+        <input type="date" id="ferias-dt-fim" oninput="calcularDiasFerias()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></div>
+    </div>
+    <div id="ferias-dias-calc" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;padding:8px;background:var(--bg);border-radius:var(--radius-sm);"></div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Abono pecuniário (vender 10 dias)?</label>
+      <select id="ferias-abono" onchange="calcularDiasFerias()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="Não">Não</option>
+        <option value="Sim">Sim — solicitar abono de 10 dias</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Observações</label>
+      <textarea id="ferias-obs" rows="2" placeholder="Alguma observação para o gestor..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box;"></textarea>
+    </div>
+    <div id="ferias-alerta" style="display:none;padding:8px 12px;background:#fff3e0;border:1px solid #e67e22;border-radius:var(--radius-sm);font-size:12px;color:#e67e22;margin-bottom:12px;"></div>
+    <div id="ferias-check-wrap" style="margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="ferias-check" style="width:16px;height:16px;accent-color:var(--c-concluido);">
+        Estou ciente que a solicitação está sujeita à aprovação do gestor
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('ferias-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="enviarSolicitacaoFerias()">Enviar solicitação</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADMIN SALDO/EDITAR -->
+<div class="modal-overlay" id="ferias-admin-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="ferias-admin-titulo" style="margin:0">⚙ Saldo de Férias</h3>
+      <button onclick="document.getElementById('ferias-admin-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <input type="hidden" id="ferias-admin-usuario">
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Colaborador</label>
+      <input type="text" id="ferias-admin-nome" readonly style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Saldo de dias disponíveis</label>
+      <input type="number" id="ferias-admin-saldo" min="0" max="60" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="document.getElementById('ferias-admin-modal').style.display='none'">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarSaldoAdmin()">💾 Salvar saldo</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP NOTIFICAÇÃO FÉRIAS -->
+<div id="ferias-popup" style="display:none;position:fixed;bottom:80px;right:24px;background:var(--surface);border:2px solid #F5B800;border-radius:var(--radius);padding:16px 20px;max-width:320px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,.4);">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#F5B800;margin-bottom:4px">🌴 Notificação de Férias</div>
+      <div id="ferias-popup-msg" style="font-size:12px;color:var(--text-muted);"></div>
+    </div>
+    <button onclick="document.getElementById('ferias-popup').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;flex-shrink:0;">✕</button>
+  </div>
+  <button onclick="switchMainTab('ferias');document.getElementById('ferias-popup').style.display='none'" style="margin-top:10px;width:100%;padding:6px;background:var(--black);color:#F5B800;border:1px solid #F5B800;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver férias →</button>
+</div>
 
 </body>
 </html>
