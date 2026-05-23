@@ -2996,7 +2996,7 @@ let feriasSaldo = 30;
 async function iniciarFerias(){
   document.getElementById('ferias-sync').textContent = 'Carregando...';
   const isAdmin = usuarioLogado?.perfil === 'admin';
-  document.getElementById('btn-solicitar-ferias').style.display = isAdmin ? 'none' : '';
+  document.getElementById('btn-solicitar-ferias').style.display = '';
   // Admin vê painel de saldo de todos os usuários
   if(isAdmin){
     await carregarFeriasAdmin();
