@@ -2167,7 +2167,7 @@ function renderMontagem(){
     html += '</select></div>';
     html += '<div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">';
     html += '<button onclick="abrirMaterialUtilizado(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-andamento);">🔧 Material utilizado</button>';
-    html += '<button onclick="abrirReqViagem(\''+m.id+'\',\''+m.nome.replace(/\'/g,\'\\\'\')+'\')" style="padding:5px 12px;border:1px solid #1A5FC8;border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:#1A5FC8;">✈️ Req. de Viagem</button>';
+    html += '<button onclick="abrirReqViagemBtn(this)" data-id="'+m.id+'" data-nome="'+encodeURIComponent(m.nome||'')+'" style="padding:5px 12px;border:1px solid #1A5FC8;border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:#1A5FC8;">✈️ Req. de Viagem</button>';
     html += m.status==='concluido' ? '<button onclick="abrirEmailConclusaoMontagem(\''+m.id+'\')" style="padding:5px 12px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-concluido);">📧 E-mail de conclusão</button>' : '';
     html += '</div>';
     html += '</div></div>';
@@ -4741,6 +4741,11 @@ async function excluirVistoria(id, nome){
 // ===================================================================
 let reqViagemMontagemId = '';
 
+function abrirReqViagemBtn(btn){
+  const id   = btn.dataset.id;
+  const nome = decodeURIComponent(btn.dataset.nome || '');
+  abrirReqViagem(id, nome);
+}
 function abrirReqViagem(montId, nomeProjeto){
   reqViagemMontagemId = montId;
   document.getElementById('rv-projeto').value = nomeProjeto || '';
