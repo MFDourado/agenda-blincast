@@ -678,7 +678,14 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" placeholder="Nome do cliente"></div>
       <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase"></div>
       <div class="modal-field"><label>Técnico</label><input type="text" id="at-tecnico" placeholder="Nome do técnico"></div>
-      <div class="modal-field"><label>Ajudante</label><input type="text" id="at-ajudante" placeholder="Nome do ajudante"></div>
+      <div class="modal-field">
+        <label>Ajudante</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="at-ajudante" placeholder="Nome do ajudante" style="flex:1">
+          <button type="button" onclick="toggleAjudante2()" id="btn-ajudante2" title="Adicionar 2º ajudante" style="height:32px;width:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;cursor:pointer;font-size:16px;color:var(--text-muted);flex-shrink:0;">+</button>
+        </div>
+        <input type="text" id="at-ajudante2" placeholder="2º ajudante (opcional)" style="display:none;margin-top:6px;width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+      </div>
       <div class="modal-field"><label>Status *</label>
         <select class="field-sel" id="at-status">
           <option value="feito">Feito</option>
@@ -4127,7 +4134,11 @@ function limparFiltrosAta(){
 }
 
 function openAtaModal(){
-  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const aj2El = document.getElementById('at-ajudante2');
+  if(aj2El){ aj2El.style.display='none'; }
+  const btn2 = document.getElementById('btn-ajudante2');
+  if(btn2){ btn2.textContent='+'; btn2.style.color='var(--text-muted)'; }
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
@@ -4144,7 +4155,14 @@ function editarAta(id){
   document.getElementById('at-cliente').value=r.cliente||'';
   document.getElementById('at-estado').value=r.estado||'';
   document.getElementById('at-tecnico').value=r.tecnico||'';
-  document.getElementById('at-ajudante').value=r.ajudante||'';
+  const ajParts = (r.ajudante||'').split('/').map(s=>s.trim());
+  document.getElementById('at-ajudante').value = ajParts[0]||'';
+  if(ajParts[1]){
+    const aj2 = document.getElementById('at-ajudante2');
+    const btn2 = document.getElementById('btn-ajudante2');
+    if(aj2){ aj2.value=ajParts[1]; aj2.style.display='block'; }
+    if(btn2){ btn2.textContent='−'; btn2.style.color='var(--c-pendente)'; }
+  }
   document.getElementById('at-problema').value=r.problema||'';
   document.getElementById('at-status').value=r.status||'em_andamento';
   document.getElementById('at-obs').value=r.obs||'';
@@ -4153,6 +4171,22 @@ function editarAta(id){
   document.getElementById('at-dt-conclusao').value=r.dt_conclusao||'';
   document.getElementById('ata-modal-title').textContent='Editar registro';
   document.getElementById('ata-modal').style.display='flex';
+}
+
+function toggleAjudante2(){
+  const el = document.getElementById('at-ajudante2');
+  const btn = document.getElementById('btn-ajudante2');
+  if(el.style.display==='none'){
+    el.style.display='block';
+    btn.textContent='−';
+    btn.style.color='var(--c-pendente)';
+    el.focus();
+  } else {
+    el.style.display='none';
+    el.value='';
+    btn.textContent='+';
+    btn.style.color='var(--text-muted)';
+  }
 }
 
 async function salvarAta(){
@@ -4167,7 +4201,7 @@ async function salvarAta(){
     cliente,
     estado:document.getElementById('at-estado').value.trim().toUpperCase(),
     tecnico:document.getElementById('at-tecnico').value.trim(),
-    ajudante:document.getElementById('at-ajudante').value.trim(),
+    ajudante: [document.getElementById('at-ajudante').value.trim(), document.getElementById('at-ajudante2')?.value.trim()].filter(Boolean).join(' / '),
     problema,status,
     obs:document.getElementById('at-obs').value.trim(),
     dt_abertura:document.getElementById('at-dt-abertura').value||'',
@@ -4256,18 +4290,20 @@ function exportarAtaCSV(){
   if(filtroTecnico) lista = lista.filter(r => String(r.tecnico||'').trim()===filtroTecnico);
   if(!lista.length){ alert('Nenhum registro para exportar.'); return; }
 
-  const headers = ['No OS','Cliente','UF','Problema','Técnico','Ajudante','Status','Observações','Dt Abertura','Dt Prevista','Dt Conclusão'];
-  const rows = lista.map(r=>[
-    r.no||'', r.cliente||'', r.estado||'', r.problema||'',
-    r.tecnico||'', r.ajudante||'', ATA_STATUS_LABEL[r.status]||r.status||'', r.obs||'',
-    fmtDate(r.dt_abertura), fmtDate(r.dt_prevista), fmtDate(r.dt_conclusao)
-  ]);
+  const headers = ['No OS','Cliente','UF','Problema','Técnico','Ajudante 1','Ajudante 2','Status','Observações','Dt Abertura','Dt Prevista','Dt Conclusão'];
+  const rows = lista.map(r=>{
+    const aj = (r.ajudante||'').split('/').map(s=>s.trim());
+    return [r.no||'', r.cliente||'', r.estado||'', r.problema||'',
+      r.tecnico||'', aj[0]||'', aj[1]||'',
+      ATA_STATUS_LABEL[r.status]||r.status||'', r.obs||'',
+      fmtDate(r.dt_abertura), fmtDate(r.dt_prevista), fmtDate(r.dt_conclusao)];
+  });
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
   // Larguras das colunas
-  ws['!cols'] = [{wch:12},{wch:35},{wch:5},{wch:45},{wch:20},{wch:15},{wch:14},{wch:30},{wch:13},{wch:13},{wch:13}];
+  ws['!cols'] = [{wch:12},{wch:35},{wch:5},{wch:45},{wch:20},{wch:15},{wch:15},{wch:14},{wch:30},{wch:13},{wch:13},{wch:13}];
 
   // Estilo cabeçalho
   headers.forEach((h,i) => {
