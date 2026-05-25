@@ -350,8 +350,9 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <button class="main-tab" id="mt-implantacoes" onclick="switchMainTab('implantacoes')">Implantações</button>
   <button class="main-tab" id="mt-montagem" onclick="switchMainTab('montagem')">Montagem</button>
   <button class="main-tab" id="mt-requisicoes" onclick="switchMainTab('requisicoes')">Requisições</button>
-  <button class="main-tab" id="mt-ferias" onclick="switchMainTab('ferias')">🌴 Férias</button>
+  <button class="main-tab" id="mt-ferias" onclick="switchMainTab('ferias')">Férias</button>
   <button class="main-tab" id="mt-poc" onclick="switchMainTab('poc')">PoC</button>
+  <button class="main-tab" id="mt-estoque" onclick="switchMainTab('estoque')">Estoque</button>
 </div>
 
 <!-- PIPELINE -->
@@ -522,7 +523,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 <div id="page-ferias" class="main" style="display:none">
   <div class="pipeline-header">
     <div>
-      <h2>🌴 Férias</h2>
+      <h2>Férias</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="ferias-sync">Gerenciamento de férias</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
@@ -895,7 +896,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','poc'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','poc','estoque'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     const page = document.getElementById('page-'+tab);
     if(btn) btn.className='main-tab'+(t===tab?' active':'');
@@ -915,6 +916,7 @@ function switchMainTab(t){
   if(t==='requisicoes')renderRequisicoes();
   if(t==='ferias')iniciarFerias();
   if(t==='implantacoes')loadImplantacoes();
+  if(t==='estoque')iniciarEstoque();
 }
 
 // ===================== AGENDA =====================
@@ -1735,7 +1737,7 @@ const TABS_OPERACIONAL = [
   {id:'distrato', label:'Distrato'},
   {id:'implantacoes', label:'Implantações'},
   {id:'montagem', label:'Montagem'},
-  {id:'ferias', label:'🌴 Férias'},
+  {id:'ferias', label:'Férias'},
   {id:'entregas', label:'Entregas'},
   {id:'poc', label:'PoC'},
 ];
@@ -2165,6 +2167,8 @@ function renderMontagem(){
     html += '</select></div>';
     html += '<div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">';
     html += '<button onclick="abrirMaterialUtilizado(\''+m.id+'\',\''+m.nome+'\')" style="padding:5px 12px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-andamento);">🔧 Material utilizado</button>';
+    html += '<button onclick="abrirReqViagem(\''+m.id+'\',\''+m.nome.replace(/\'/g,\'\\\'\')+'\')" style="padding:5px 12px;border:1px solid #1A5FC8;border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:#1A5FC8;">✈️ Req. de Viagem</button>';
+    html += m.status==='concluido' ? '<button onclick="abrirEmailConclusaoMontagem(\''+m.id+'\')" style="padding:5px 12px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:11px;font-family:\'DM Sans\',sans-serif;background:none;cursor:pointer;color:var(--c-concluido);">📧 E-mail de conclusão</button>' : '';
     html += '</div>';
     html += '</div></div>';
     return html;
@@ -2233,7 +2237,11 @@ async function alterarStatusMontagem(id, novoStatus, selEl){
     if(d.error){ document.getElementById('montagem-sync').textContent='Erro: '+d.error; return; }
     if(d.encontrou===false){ document.getElementById('montagem-sync').textContent='⚠️ ID não encontrado no Sheets ('+id+')'; return; }
     document.getElementById('montagem-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    if(novoStatus==='concluido') renderMontagem();
+    if(novoStatus==='concluido'){
+      renderMontagem();
+      if(implDados.length) implDados.forEach(i=>{ const proj=projects.find(p=>p.id===i.pipeline_id||p.nome===i.nome); i.status_dinamico=getImplStatus(proj,i); });
+      abrirEmailConclusaoMontagem(id);
+    }
   }catch(e){
     document.getElementById('montagem-sync').textContent='Erro ao salvar';
   }
@@ -2367,9 +2375,11 @@ function getImplStatus(proj, item){
     return 'Não iniciado';
   }
   if(proj.congelado) return 'Congelado';
-  if(proj.enviado_montagem) return 'Na montagem';
   const done = (proj.steps||[]).filter(s=>s.done).length;
+  // Concluído SOMENTE quando pipeline tiver 11/11 etapas
   if(done === 11) return 'Concluído';
+  // Enviado para montagem mas pipeline ainda não concluído = Em andamento
+  // (a montagem é apenas uma etapa do processo, não define conclusão do projeto)
   if(done === 0) return 'Não iniciado';
   return 'Em andamento';
 }
@@ -4725,6 +4735,629 @@ async function excluirVistoria(id, nome){
   }catch(e){alert('Erro ao excluir.');}
 }
 
+
+// ===================================================================
+// ===== REQUISIÇÃO DE VIAGEM =========================================
+// ===================================================================
+let reqViagemMontagemId = '';
+
+function abrirReqViagem(montId, nomeProjeto){
+  reqViagemMontagemId = montId;
+  document.getElementById('rv-projeto').value = nomeProjeto || '';
+  document.getElementById('rv-data-solic').value = new Date().toISOString().slice(0,10);
+  // Pré-preencher destino com dados do projeto
+  const m = montagemDados.find(x=>x.id===montId);
+  const proj = m ? projects.find(p=>p.id===m.projeto_id||p.nome===m.nome) : null;
+  document.getElementById('rv-destino').value = proj ? (proj.cidade||'') : '';
+  document.getElementById('rv-endereco').value = proj ? (proj.endereco||'') : '';
+  // Técnico
+  document.getElementById('rv-tecnico').value = m ? (m.tecnico_montagem||'') : '';
+  // Limpar outros campos
+  ['rv-cargo','rv-saida','rv-retorno','rv-diarias','rv-adiantamento','rv-objetivo','rv-obs'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('rv-qtd-tec').value = '1';
+  document.getElementById('rv-hospedagem').value = '';
+  ['rv-tr-passagem','rv-tr-rodoviario','rv-tr-uber','rv-tr-veiculo','rv-tr-frota'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.checked = false;
+  });
+  document.getElementById('req-viagem-modal').style.display = 'flex';
+}
+
+function fecharReqViagem(){
+  document.getElementById('req-viagem-modal').style.display = 'none';
+}
+
+function exportarReqViagemPDF(){
+  const projeto   = document.getElementById('rv-projeto').value.trim();
+  const tecnico   = document.getElementById('rv-tecnico').value.trim();
+  const cargo     = document.getElementById('rv-cargo').value.trim();
+  const destino   = document.getElementById('rv-destino').value.trim();
+  const endereco  = document.getElementById('rv-endereco').value.trim();
+  const saida     = document.getElementById('rv-saida').value;
+  const retorno   = document.getElementById('rv-retorno').value;
+  const hospedagem= document.getElementById('rv-hospedagem').value;
+  const diarias   = document.getElementById('rv-diarias').value;
+  const adiant    = document.getElementById('rv-adiantamento').value;
+  const qtdTec    = document.getElementById('rv-qtd-tec').value;
+  const objetivo  = document.getElementById('rv-objetivo').value.trim();
+  const obs       = document.getElementById('rv-obs').value.trim();
+  const dataSolic = document.getElementById('rv-data-solic').value;
+
+  if(!projeto||!tecnico||!destino||!saida||!retorno||!objetivo){
+    alert('Preencha os campos obrigatórios: Projeto, Técnico, Destino, Datas e Objetivo.');
+    return;
+  }
+
+  const fmtD = d => { try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d||'—'; } };
+  const transportes = [];
+  if(document.getElementById('rv-tr-passagem').checked) transportes.push('Passagem aérea');
+  if(document.getElementById('rv-tr-rodoviario').checked) transportes.push('Rodoviário');
+  if(document.getElementById('rv-tr-uber').checked) transportes.push('Uber/Táxi');
+  if(document.getElementById('rv-tr-veiculo').checked) transportes.push('Veículo próprio');
+  if(document.getElementById('rv-tr-frota').checked) transportes.push('Veículo da frota');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Requisição de Viagem — ${projeto}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:780px;margin:0 auto}
+  .logo{font-size:22px;font-weight:900;margin-bottom:4px}
+  .logo span{color:#F5B800}
+  h1{font-size:18px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:8px;margin:18px 0 18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .field{border:1px solid #ddd;border-radius:4px;padding:8px 12px}
+  .field label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#888;display:block;margin-bottom:3px}
+  .field span{font-size:13px;font-weight:600}
+  .full{grid-column:1/-1}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#555;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #eee}
+  .check-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  .check-item{display:flex;align-items:center;gap:6px;font-size:12px}
+  .check-box{width:14px;height:14px;border:1.5px solid #333;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .checked{background:#111;color:#F5B800}
+  .sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:32px}
+  .sig-box{border-top:1.5px solid #111;padding-top:6px;text-align:center;font-size:10px;color:#666}
+  .footer{margin-top:24px;font-size:9px;color:#aaa;text-align:right}
+</style></head><body>
+<div class="logo">Blin<span>Track</span></div>
+<div style="font-size:10px;color:#888;margin-bottom:0">Blincast Media S/A — Documento Interno</div>
+<h1>✈️ Requisição de Viagem</h1>
+<div class="section-title">Dados da solicitação</div>
+<div class="grid">
+  <div class="field"><label>Data da solicitação</label><span>${fmtD(dataSolic)}</span></div>
+  <div class="field"><label>Projeto / Cliente</label><span>${projeto}</span></div>
+  <div class="field"><label>Técnico responsável</label><span>${tecnico}</span></div>
+  <div class="field"><label>Cargo / Função</label><span>${cargo||'—'}</span></div>
+  <div class="field"><label>Nº de técnicos</label><span>${qtdTec}</span></div>
+  <div class="field full"><label>Objetivo / Descrição do serviço</label><span style="font-weight:400;white-space:pre-wrap">${objetivo}</span></div>
+</div>
+<div class="section-title">Destino e período</div>
+<div class="grid">
+  <div class="field"><label>Destino</label><span>${destino}</span></div>
+  <div class="field"><label>Endereço do local</label><span>${endereco||'—'}</span></div>
+  <div class="field"><label>Data de saída</label><span>${fmtD(saida)}</span></div>
+  <div class="field"><label>Data de retorno</label><span>${fmtD(retorno)}</span></div>
+</div>
+<div class="section-title">Transporte necessário</div>
+<div class="check-row">
+  ${['Passagem aérea','Rodoviário','Uber/Táxi','Veículo próprio','Veículo da frota'].map(t=>`<div class="check-item"><div class="check-box ${transportes.includes(t)?'checked':''}">${transportes.includes(t)?'✓':''}</div> ${t}</div>`).join('')}
+</div>
+<div class="section-title">Hospedagem e custos</div>
+<div class="grid">
+  <div class="field"><label>Hospedagem</label><span>${hospedagem||'Não informado'}</span></div>
+  <div class="field"><label>Diárias solicitadas</label><span>${diarias||'0'}</span></div>
+  <div class="field"><label>Adiantamento solicitado</label><span>R$ ${adiant||'0,00'}</span></div>
+</div>
+${obs?`<div class="section-title">Observações</div><div class="field full" style="border:1px solid #ddd;border-radius:4px;padding:10px 12px;font-size:12px;white-space:pre-wrap">${obs}</div>`:''}
+<div class="section-title">Assinaturas</div>
+<div class="sig-row">
+  <div class="sig-box">______________________________<br>${tecnico}<br>Técnico / Solicitante</div>
+  <div class="sig-box">______________________________<br>Gestor Operacional<br>Aprovação</div>
+  <div class="sig-box">______________________________<br>Financeiro<br>Aprovação</div>
+</div>
+<div class="footer">BlinTrack — Blincast Media S/A — gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+<script>window.onload=()=>{ setTimeout(()=>window.print(),400); }<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+// ===================================================================
+// ===== E-MAIL DE CONCLUSÃO DE MONTAGEM ==============================
+// ===================================================================
+let ecmMontagemId = '';
+
+function abrirEmailConclusaoMontagem(montId){
+  ecmMontagemId = montId;
+  const m = montagemDados.find(x=>x.id===montId);
+  if(!m) return;
+
+  document.getElementById('ecm-projeto-info').textContent = '🔧 ' + (m.nome||montId);
+  // Pré-preencher destinatários com equipe
+  document.getElementById('ecm-destinatarios').value = 'matheus.dourado@blincast.com.br, joyce.caroline@blincast.com.br, marco.antonio@blincast.com.br';
+  document.getElementById('ecm-mensagem').value = '';
+  document.getElementById('ecm-anexo').value = '';
+  document.getElementById('ecm-anexo-info').textContent = '';
+
+  // Mostrar preview dos itens materiais
+  const cl = m.checklist ? JSON.parse(m.checklist) : {itens:[]};
+  const itens = cl.itens||[];
+  const prevEl = document.getElementById('ecm-itens-preview');
+  if(itens.length){
+    prevEl.style.display = 'block';
+    prevEl.innerHTML = '<div style="font-size:11px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">MATERIAIS UTILIZADOS (' + itens.length + ' itens)</div>'
+      + '<table style="width:100%;border-collapse:collapse;">'
+      + '<thead><tr style="background:var(--bg)"><th style="padding:5px 8px;font-size:10px;text-align:left">Material</th><th style="padding:5px 8px;font-size:10px;text-align:center;width:50px">Qtd</th><th style="padding:5px 8px;font-size:10px;text-align:left">Obs</th></tr></thead><tbody>'
+      + itens.map(i=>'<tr style="border-top:1px solid var(--border)"><td style="padding:5px 8px;font-size:11px">'+i.descricao+'</td><td style="padding:5px 8px;font-size:11px;text-align:center">'+i.quantidade+'</td><td style="padding:5px 8px;font-size:11px;color:var(--text-muted)">'+(i.obs||'')+'</td></tr>').join('')
+      + '</tbody></table>';
+  } else {
+    prevEl.style.display = 'none';
+  }
+
+  // Atualizar info do anexo ao selecionar
+  document.getElementById('ecm-anexo').onchange = function(){
+    const f = this.files[0];
+    document.getElementById('ecm-anexo-info').textContent = f ? '📎 ' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)' : '';
+  };
+
+  document.getElementById('email-conclusao-mont-modal').style.display = 'flex';
+}
+
+async function enviarEmailConclusaoMontagem(){
+  const m = montagemDados.find(x=>x.id===ecmMontagemId);
+  if(!m){ alert('Dados da montagem não encontrados.'); return; }
+
+  const destinatarios = document.getElementById('ecm-destinatarios').value.trim();
+  if(!destinatarios){ alert('Informe ao menos um destinatário.'); return; }
+
+  const mensagem    = document.getElementById('ecm-mensagem').value.trim();
+  const cl          = m.checklist ? JSON.parse(m.checklist) : {itens:[],tec:{}};
+  const itens       = cl.itens||[];
+  const tecnico     = cl.tec?.nome || m.tecnico_montagem || '—';
+  const dataConc    = cl.tec?.data ? new Date(cl.tec.data+'T12:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const os          = cl.tec?.os||'';
+  const obsMatl     = cl.tec?.obs||'';
+
+  const btn = document.getElementById('ecm-btn-enviar');
+  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
+
+  // Converter anexo para base64
+  let anexoBase64 = null, anexoNome = null, anexoMime = null;
+  const anexoFile = document.getElementById('ecm-anexo').files[0];
+  if(anexoFile){
+    anexoBase64 = await new Promise(res => {
+      const r = new FileReader();
+      r.onload = ()=>res(r.result.split(',')[1]);
+      r.readAsDataURL(anexoFile);
+    });
+    anexoNome = anexoFile.name;
+    anexoMime = anexoFile.type;
+  }
+
+  // Montar tabela de itens
+  const tabelaItens = itens.length
+    ? `<table style="width:100%;border-collapse:collapse;margin-top:10px;background:#1a1a1a;border-radius:8px;overflow:hidden">
+        <thead><tr style="background:#222">
+          <th style="padding:8px 12px;font-size:11px;color:#F5B800;text-align:left;text-transform:uppercase">Material</th>
+          <th style="padding:8px 12px;font-size:11px;color:#F5B800;text-align:center;text-transform:uppercase;width:60px">Qtd</th>
+          <th style="padding:8px 12px;font-size:11px;color:#F5B800;text-align:left;text-transform:uppercase">Obs</th>
+        </tr></thead>
+        <tbody>${itens.map(i=>`<tr style="border-top:1px solid #2a2a2a">
+          <td style="padding:8px 12px;color:#fff;font-size:12px">${i.descricao}</td>
+          <td style="padding:8px 12px;color:#F5B800;font-size:12px;text-align:center;font-weight:700">${i.quantidade}</td>
+          <td style="padding:8px 12px;color:#888;font-size:11px">${i.obs||''}</td>
+        </tr>`).join('')}</tbody>
+      </table>`
+    : '<div style="padding:10px;color:#888;font-size:12px">Nenhum material registrado.</div>';
+
+  const htmlEmail = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0d0d0d;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:24px 12px;"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+<tr><td style="background:#111;border-radius:12px 12px 0 0;padding:22px 28px;border-bottom:3px solid #2ecc71;">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td><span style="font-size:18px;font-weight:900;color:#fff">Blin<span style="color:#F5B800">Track</span></span>
+      <div style="font-size:10px;color:#555;margin-top:2px;letter-spacing:2px;text-transform:uppercase">Montagem Operacional</div></td>
+    <td align="right"><span style="background:#0a1a0a;color:#2ecc71;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid #2ecc71">✅ Montagem Concluída</span></td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:#111;padding:28px;">
+  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">${m.nome}</div>
+  <div style="font-size:14px;color:#888;margin-bottom:20px">${m.tipo||''}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #222;margin-bottom:20px">
+    <tr><td style="padding:10px 16px;border-bottom:1px solid #222;width:40%"><span style="color:#555;font-size:12px">Técnico</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px;font-weight:600">${tecnico}</span></td></tr>
+    <tr><td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#555;font-size:12px">Data de conclusão</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#2ecc71;font-size:13px;font-weight:600">${dataConc}</span></td></tr>
+    ${os?`<tr><td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#555;font-size:12px">OS</span></td><td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px">${os}</span></td></tr>`:''}
+    <tr><td style="padding:10px 16px"><span style="color:#555;font-size:12px">Materiais</span></td>
+        <td style="padding:10px 16px"><span style="color:#F5B800;font-size:13px;font-weight:700">${itens.length} item(ns)</span></td></tr>
+  </table>
+  <div style="font-size:12px;font-weight:700;color:#F5B800;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📦 Materiais utilizados</div>
+  ${tabelaItens}
+  ${obsMatl?`<div style="margin-top:14px;padding:12px;background:#1a1a1a;border-radius:8px;border:1px solid #222"><span style="color:#555;font-size:11px;display:block;margin-bottom:4px">Observações técnicas</span><span style="color:#ddd;font-size:12px">${obsMatl}</span></div>`:''}
+  ${mensagem?`<div style="margin-top:14px;padding:12px;background:#1a1500;border-radius:8px;border:1px solid #2a2000"><span style="color:#F5B800;font-size:11px;font-weight:600;display:block;margin-bottom:4px">Mensagem adicional</span><span style="color:#ddd;font-size:12px;white-space:pre-wrap">${mensagem}</span></div>`:''}
+  ${anexoNome?`<div style="margin-top:14px;padding:10px 14px;background:#0a1a0a;border-radius:8px;border:1px solid #1a3a1a"><span style="color:#2ecc71;font-size:12px">📎 Anexo: <b>${anexoNome}</b></span></div>`:''}
+</td></tr>
+<tr><td style="background:#0a0a0a;border-radius:0 0 12px 12px;padding:18px 28px;border-top:1px solid #1a1a1a;text-align:center">
+  <a href="https://mfdourado.github.io/agenda-blincast" style="display:inline-block;background:#F5B800;color:#111;text-decoration:none;font-weight:700;font-size:13px;padding:10px 24px;border-radius:8px;margin-bottom:12px">Acessar BlinTrack →</a>
+  <div style="font-size:11px;color:#444">Blincast Media S/A · BlinTrack Operacional</div>
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  try{
+    const payload = {
+      token: getToken(),
+      action: 'enviarEmailConclusaoMontagem',
+      destinatarios: destinatarios.split(',').map(e=>e.trim()).filter(Boolean),
+      projeto: m.nome,
+      tecnico,
+      dataConc,
+      os,
+      mensagem,
+      itens,
+      htmlEmail,
+      anexo: anexoBase64 || null,
+      anexoNome: anexoNome || null,
+      anexoMime: anexoMime || null
+    };
+    const r = await fetch(API, {method:'POST', body:JSON.stringify(payload)});
+    const d = await r.json();
+    if(d.ok || !d.error){
+      document.getElementById('email-conclusao-mont-modal').style.display = 'none';
+      showToast('📧 E-mail de conclusão enviado!');
+    } else {
+      alert('Erro ao enviar: ' + (d.error||'desconhecido'));
+    }
+  }catch(e){
+    alert('Erro de conexão ao enviar e-mail.');
+  }finally{
+    btn.textContent = '📧 Enviar e-mail'; btn.disabled = false;
+  }
+}
+
+// ===================================================================
+// ===== ESTOQUE ======================================================
+// ===================================================================
+let estoqueDados = [];
+let estoqueItens = [];
+let estoqueTimerInterval = null;
+
+function iniciarEstoque(){
+  renderListaEstoque();
+}
+
+function abrirNovoEstoque(){
+  estoqueItens = [];
+  document.getElementById('est-referencia').value = '';
+  document.getElementById('est-obs').value = '';
+  document.getElementById('est-resp-nome').value = '';
+  document.getElementById('est-resp-cargo').value = '';
+  document.getElementById('est-resp-cpf').value = '';
+  document.getElementById('est-arquivo').value = '';
+  document.getElementById('est-preview').innerHTML = '';
+  document.getElementById('est-itens-wrap').style.display = 'none';
+  document.getElementById('est-itens-body').innerHTML = '';
+  document.getElementById('est-conclusao-wrap').style.display = 'none';
+  document.getElementById('est-timer-wrap').style.display = 'none';
+  document.getElementById('estoque-novo-modal').style.display = 'flex';
+}
+
+function fecharEstoqueModal(){
+  if(estoqueTimerInterval){ clearInterval(estoqueTimerInterval); estoqueTimerInterval = null; }
+  document.getElementById('estoque-novo-modal').style.display = 'none';
+}
+
+function fmtCpfEstoque(el){
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  el.value = v;
+}
+
+async function estCarregarArquivo(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const prev = document.getElementById('est-preview');
+  prev.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">⏳ Lendo arquivo...</div>';
+  try{
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if(rows.length <= 1){ prev.innerHTML='<div style="font-size:12px;color:#e00">Arquivo vazio ou sem dados.</div>'; return; }
+    const headers = rows[0].map(h=>String(h).trim());
+    // Tentar mapear colunas automaticamente
+    const findCol = (...names) => { for(const n of names){ const i=headers.findIndex(h=>h.toLowerCase().includes(n.toLowerCase())); if(i>=0)return i; } return -1; };
+    const colCod  = findCol('código','codigo','cod','ref','referencia');
+    const colDesc = findCol('descrição','descricao','desc','nome','material','item');
+    const colQtd  = findCol('quantidade','qtd','qtde','saldo','estoque');
+    const colUn   = findCol('unidade','un','und','und.');
+    const colLoc  = findCol('local','localização','localizacao','posição','posicao');
+    estoqueItens = rows.slice(1).filter(r=>r.some(c=>c!=='')).map(r=>({
+      codigo:     colCod>=0  ? String(r[colCod]||'').trim()  : '',
+      descricao:  colDesc>=0 ? String(r[colDesc]||'').trim() : String(r[0]||'').trim(),
+      quantidade: colQtd>=0  ? String(r[colQtd]||'').trim()  : '',
+      unidade:    colUn>=0   ? String(r[colUn]||'').trim()   : '',
+      local:      colLoc>=0  ? String(r[colLoc]||'').trim()  : ''
+    })).filter(i=>i.descricao);
+    document.getElementById('est-qtd-itens').textContent = estoqueItens.length;
+    prev.innerHTML = '<div style="font-size:12px;color:var(--c-andamento)">✅ '+estoqueItens.length+' itens carregados de "'+file.name+'"</div>';
+    estRenderTabela();
+    document.getElementById('est-itens-wrap').style.display = 'block';
+  }catch(e){
+    prev.innerHTML='<div style="font-size:12px;color:#e00">Erro ao ler arquivo: '+e.message+'</div>';
+  }
+}
+
+function estRenderTabela(){
+  const tbody = document.getElementById('est-itens-body');
+  if(!tbody) return;
+  tbody.innerHTML = estoqueItens.map((it,i)=>`<tr style="border-top:1px solid var(--border)">
+    <td style="padding:5px 8px;font-size:11px">${it.codigo||'—'}</td>
+    <td style="padding:5px 8px;font-size:12px">${it.descricao}</td>
+    <td style="padding:5px 8px;font-size:12px;text-align:center"><input type="number" value="${it.quantidade}" onchange="estoqueItens[${i}].quantidade=this.value" style="width:60px;border:1px solid var(--border);border-radius:3px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Sans',sans-serif;"></td>
+    <td style="padding:5px 8px;font-size:11px">${it.unidade||'—'}</td>
+    <td style="padding:5px 8px;font-size:11px">${it.local||'—'}</td>
+    <td style="padding:4px"><button onclick="estoqueItens.splice(${i},1);estRenderTabela();document.getElementById('est-qtd-itens').textContent=estoqueItens.length;" style="padding:1px 5px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00">✕</button></td>
+  </tr>`).join('');
+}
+
+function estAdicionarItemManual(){
+  const desc = prompt('Descrição do item:');
+  if(!desc) return;
+  const qtd = prompt('Quantidade:','1');
+  estoqueItens.push({codigo:'',descricao:desc,quantidade:qtd||'1',unidade:'',local:''});
+  estRenderTabela();
+  document.getElementById('est-qtd-itens').textContent = estoqueItens.length;
+  document.getElementById('est-itens-wrap').style.display = 'block';
+}
+
+function estValidarEMostrarConfirmacao(){
+  const ref  = document.getElementById('est-referencia').value.trim();
+  const nome = document.getElementById('est-resp-nome').value.trim();
+  const cpf  = document.getElementById('est-resp-cpf').value.trim();
+  const cargo= document.getElementById('est-resp-cargo').value.trim();
+  if(!ref){ alert('Informe a referência (ex: Maio/2026).'); return; }
+  if(!estoqueItens.length){ alert('Carregue o arquivo Excel com os itens de estoque.'); return; }
+  if(!nome){ alert('Informe o nome do responsável.'); return; }
+  if(!cargo){ alert('Informe o cargo do responsável.'); return; }
+  if(cpf.replace(/\D/g,'').length < 11){ alert('Informe o CPF completo.'); return; }
+  document.getElementById('est-conclusao-wrap').style.display = 'block';
+}
+
+function estIniciarTimer(){
+  document.getElementById('est-timer-wrap').style.display = 'flex';
+  document.getElementById('est-btn-confirmar').style.display = 'none';
+  let secs = 3;
+  document.getElementById('est-timer-num').textContent = secs;
+  estoqueTimerInterval = setInterval(()=>{
+    secs--;
+    document.getElementById('est-timer-num').textContent = secs;
+    if(secs <= 0){
+      clearInterval(estoqueTimerInterval);
+      estoqueTimerInterval = null;
+      const btn = document.getElementById('est-btn-ok');
+      btn.disabled = false;
+      btn.style.background = '#2e7d32';
+      btn.style.cursor = 'pointer';
+    }
+  }, 1000);
+}
+
+function estCancelarTimer(){
+  if(estoqueTimerInterval){ clearInterval(estoqueTimerInterval); estoqueTimerInterval=null; }
+  document.getElementById('est-timer-wrap').style.display = 'none';
+  document.getElementById('est-btn-confirmar').style.display = '';
+  const btn = document.getElementById('est-btn-ok');
+  btn.disabled = true; btn.style.background='#ccc'; btn.style.cursor='not-allowed';
+}
+
+async function estConcluirDefinitivo(){
+  const ref   = document.getElementById('est-referencia').value.trim();
+  const obs   = document.getElementById('est-obs').value.trim();
+  const nome  = document.getElementById('est-resp-nome').value.trim();
+  const cargo = document.getElementById('est-resp-cargo').value.trim();
+  const cpf   = document.getElementById('est-resp-cpf').value.trim();
+  const agora = new Date();
+  const dtConc = agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  const registro = {
+    id: 'est_'+Date.now(),
+    referencia: ref,
+    obs,
+    itens: estoqueItens,
+    responsavel: {nome, cpf, cargo},
+    dt_conclusao: dtConc,
+    concluido: true
+  };
+
+  // Salvar localmente
+  estoqueDados.push(registro);
+  try{ localStorage.setItem('blintrack_estoque', JSON.stringify(estoqueDados)); }catch(e){}
+
+  fecharEstoqueModal();
+  renderListaEstoque();
+  showToast('📦 Lançamento de estoque concluído!');
+
+  // Gerar PDF e enviar e-mail
+  setTimeout(()=>estExportarPDF(registro), 300);
+  await estEnviarEmail(registro);
+}
+
+function estSalvarRascunho(){
+  const ref = document.getElementById('est-referencia').value.trim();
+  if(!ref && !estoqueItens.length){ fecharEstoqueModal(); return; }
+  const registro = {
+    id: 'est_rascunho_'+Date.now(),
+    referencia: ref || 'Rascunho',
+    obs: document.getElementById('est-obs').value.trim(),
+    itens: estoqueItens,
+    responsavel: {nome: document.getElementById('est-resp-nome').value.trim(), cpf: document.getElementById('est-resp-cpf').value.trim(), cargo: document.getElementById('est-resp-cargo').value.trim()},
+    dt_conclusao: null,
+    concluido: false
+  };
+  estoqueDados.push(registro);
+  try{ localStorage.setItem('blintrack_estoque', JSON.stringify(estoqueDados)); }catch(e){}
+  fecharEstoqueModal();
+  renderListaEstoque();
+  showToast('💾 Rascunho salvo!');
+}
+
+function renderListaEstoque(){
+  // Carregar do localStorage
+  try{
+    const saved = localStorage.getItem('blintrack_estoque');
+    if(saved) estoqueDados = JSON.parse(saved);
+  }catch(e){}
+  const list = document.getElementById('estoque-lista');
+  if(!list) return;
+  if(!estoqueDados.length){
+    list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum lançamento de estoque. Clique em "+ Novo Lançamento" para começar.</div>';
+    return;
+  }
+  list.innerHTML = [...estoqueDados].reverse().map(e=>{
+    const badge = e.concluido
+      ? '<span style="background:var(--c-concluido-bg);color:var(--c-concluido);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--c-concluido)">✅ Concluído</span>'
+      : '<span style="background:var(--c-pendente-bg);color:var(--c-pendente);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--c-pendente)">📝 Rascunho</span>';
+    return `<div class="project-card">
+      <div class="project-card-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <div>
+          <div class="project-name">📦 ${e.referencia}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${e.itens.length} itens${e.responsavel?.nome?' · Resp: '+e.responsavel.nome:''} ${e.dt_conclusao?'· Concluído em '+e.dt_conclusao:''}</div>
+        </div>
+        <div class="project-meta">${badge}<span class="chevron">▼</span></div>
+      </div>
+      <div class="project-body" style="display:none;padding:14px 16px;">
+        ${e.responsavel?.nome?`<div style="font-size:12px;margin-bottom:10px;"><b>Responsável:</b> ${e.responsavel.nome} — ${e.responsavel.cargo} — CPF: ${e.responsavel.cpf}</div>`:''}
+        ${e.obs?`<div style="font-size:12px;margin-bottom:10px;color:var(--text-muted);">${e.obs}</div>`:''}
+        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="background:var(--bg)"><th style="padding:6px 10px;font-size:10px;text-align:left">Código</th><th style="padding:6px 10px;font-size:10px;text-align:left">Descrição</th><th style="padding:6px 10px;font-size:10px;text-align:center">Qtd</th><th style="padding:6px 10px;font-size:10px;text-align:left">Unid.</th><th style="padding:6px 10px;font-size:10px;text-align:left">Local</th></tr></thead>
+            <tbody>${e.itens.map(i=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 10px;font-size:11px">${i.codigo||'—'}</td><td style="padding:5px 10px;font-size:12px">${i.descricao}</td><td style="padding:5px 10px;font-size:12px;text-align:center">${i.quantidade}</td><td style="padding:5px 10px;font-size:11px">${i.unidade||'—'}</td><td style="padding:5px 10px;font-size:11px">${i.local||'—'}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="estExportarPDF(estoqueDados.find(x=>x.id==='${e.id}'))" style="padding:5px 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;background:none;cursor:pointer;color:var(--gold);font-family:'DM Sans',sans-serif;">📄 Exportar PDF</button>
+          <button onclick="estEnviarEmail(estoqueDados.find(x=>x.id==='${e.id}'))" style="padding:5px 14px;border:1px solid var(--c-andamento);border-radius:var(--radius-sm);font-size:12px;background:none;cursor:pointer;color:var(--c-andamento);font-family:'DM Sans',sans-serif;">📧 Enviar e-mail</button>
+          ${!e.concluido?`<button onclick="if(confirm('Excluir este rascunho?')){estoqueDados=estoqueDados.filter(x=>x.id!=='${e.id}');try{localStorage.setItem('blintrack_estoque',JSON.stringify(estoqueDados));}catch(e){}renderListaEstoque();}" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;background:none;cursor:pointer;color:#e00;font-family:'DM Sans',sans-serif;">🗑 Excluir rascunho</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function estExportarPDF(reg){
+  if(!reg) return;
+  const fmtD = d => d || '—';
+  const linhas = reg.itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${it.codigo||'—'}</td><td>${it.descricao}</td><td style="text-align:center">${it.quantidade}</td><td>${it.unidade||'—'}</td><td>${it.local||'—'}</td></tr>`).join('');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Estoque — ${reg.referencia}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:900px;margin:0 auto}
+  .logo{font-size:22px;font-weight:900;margin-bottom:4px}.logo span{color:#F5B800}
+  h1{font-size:17px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:8px;margin:16px 0}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th{background:#111;color:#F5B800;padding:7px 10px;font-size:10px;text-align:left;text-transform:uppercase}
+  td{padding:6px 10px;font-size:11px;border-bottom:1px solid #eee}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+  .info-box{border:1px solid #ddd;border-radius:4px;padding:8px 12px}
+  .info-box label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;display:block}
+  .info-box span{font-size:13px;font-weight:600}
+  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
+  .sig-box{border-top:1.5px solid #111;padding-top:6px;text-align:center;font-size:10px;color:#666}
+  .footer{margin-top:20px;font-size:9px;color:#aaa;text-align:right}
+  .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #2e7d32;color:#2e7d32;background:#e8f5e9;margin-bottom:12px}
+</style></head><body>
+<div class="logo">Blin<span>Track</span></div>
+<div style="font-size:10px;color:#888">Blincast Media S/A — Documento Interno</div>
+<h1>📦 Posição de Estoque — ${reg.referencia}</h1>
+${reg.concluido?'<div class="badge">✅ Lançamento Concluído</div>':'<div style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #e67e22;color:#e67e22;background:#fff3e0;margin-bottom:12px">📝 Rascunho</div>'}
+<div class="info-grid">
+  <div class="info-box"><label>Referência</label><span>${reg.referencia}</span></div>
+  <div class="info-box"><label>Total de itens</label><span>${reg.itens.length}</span></div>
+  <div class="info-box"><label>Data de conclusão</label><span>${fmtD(reg.dt_conclusao)}</span></div>
+</div>
+${reg.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${reg.obs}</div>`:''}
+<table><thead><tr><th>Código</th><th>Descrição</th><th style="text-align:center;width:60px">Qtd</th><th>Unid.</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
+<div class="sig-row">
+  <div class="sig-box">______________________________<br>${reg.responsavel?.nome||'___________'}<br>CPF: ${reg.responsavel?.cpf||'—'}<br>${reg.responsavel?.cargo||'Responsável'}<br>${reg.dt_conclusao||''}</div>
+  <div class="sig-box">______________________________<br>Gerência Operacional<br>Ciência</div>
+</div>
+<div class="footer">BlinTrack — Blincast Media S/A — gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+async function estEnviarEmail(reg){
+  if(!reg){ showToast('❌ Registro não encontrado.'); return; }
+  const linhasEmail = reg.itens.map(i=>`<tr style="border-top:1px solid #2a2a2a">
+    <td style="padding:7px 12px;color:#888;font-size:11px">${i.codigo||'—'}</td>
+    <td style="padding:7px 12px;color:#fff;font-size:12px">${i.descricao}</td>
+    <td style="padding:7px 12px;color:#F5B800;font-size:12px;text-align:center;font-weight:700">${i.quantidade}</td>
+    <td style="padding:7px 12px;color:#888;font-size:11px">${i.unidade||'—'}</td>
+    <td style="padding:7px 12px;color:#888;font-size:11px">${i.local||'—'}</td>
+  </tr>`).join('');
+
+  const htmlEmail = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0d0d0d;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:24px 12px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+<tr><td style="background:#111;border-radius:12px 12px 0 0;padding:22px 28px;border-bottom:3px solid #F5B800;">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td><span style="font-size:18px;font-weight:900;color:#fff">Blin<span style="color:#F5B800">Track</span></span>
+      <div style="font-size:10px;color:#555;margin-top:2px;letter-spacing:2px;text-transform:uppercase">Almoxarifado</div></td>
+    <td align="right"><span style="background:#1a1500;color:#F5B800;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid #F5B800">📦 Posição de Estoque</span></td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:#111;padding:28px;">
+  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">Lançamento: ${reg.referencia}</div>
+  <div style="font-size:14px;color:#888;margin-bottom:20px">${reg.itens.length} itens · ${reg.dt_conclusao||'Rascunho'}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #222;margin-bottom:20px">
+    <tr><td style="padding:10px 16px;border-bottom:1px solid #222;width:40%"><span style="color:#555;font-size:12px">Responsável</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px;font-weight:600">${reg.responsavel?.nome||'—'}</span></td></tr>
+    <tr><td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#555;font-size:12px">Cargo</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px">${reg.responsavel?.cargo||'—'}</span></td></tr>
+    <tr><td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#555;font-size:12px">CPF</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px">${reg.responsavel?.cpf||'—'}</span></td></tr>
+    <tr><td style="padding:10px 16px"><span style="color:#555;font-size:12px">Data</span></td>
+        <td style="padding:10px 16px"><span style="color:#F5B800;font-size:13px;font-weight:600">${reg.dt_conclusao||'—'}</span></td></tr>
+  </table>
+  <div style="font-size:11px;font-weight:700;color:#F5B800;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Itens de estoque</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #222;overflow:hidden;">
+    <thead><tr style="background:#222">
+      <th style="padding:8px 12px;font-size:10px;color:#555;text-align:left;text-transform:uppercase">Código</th>
+      <th style="padding:8px 12px;font-size:10px;color:#555;text-align:left;text-transform:uppercase">Descrição</th>
+      <th style="padding:8px 12px;font-size:10px;color:#555;text-align:center;text-transform:uppercase">Qtd</th>
+      <th style="padding:8px 12px;font-size:10px;color:#555;text-align:left;text-transform:uppercase">Unid.</th>
+      <th style="padding:8px 12px;font-size:10px;color:#555;text-align:left;text-transform:uppercase">Local</th>
+    </tr></thead>
+    <tbody>${linhasEmail}</tbody>
+  </table>
+  ${reg.obs?`<div style="margin-top:14px;padding:12px;background:#1a1500;border-radius:8px;border:1px solid #2a2000"><span style="color:#F5B800;font-size:11px;font-weight:600;display:block;margin-bottom:4px">Observações</span><span style="color:#ddd;font-size:12px">${reg.obs}</span></div>`:''}
+</td></tr>
+<tr><td style="background:#0a0a0a;border-radius:0 0 12px 12px;padding:18px 28px;border-top:1px solid #1a1a1a;text-align:center">
+  <a href="https://mfdourado.github.io/agenda-blincast" style="display:inline-block;background:#F5B800;color:#111;text-decoration:none;font-weight:700;font-size:13px;padding:10px 24px;border-radius:8px;margin-bottom:12px">Acessar BlinTrack →</a>
+  <div style="font-size:11px;color:#444">Blincast Media S/A · BlinTrack Operacional</div>
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  try{
+    const payload = {
+      token: getToken(),
+      action: 'enviarEmailEstoque',
+      assunto: '📦 BlinTrack — Posição de Estoque: ' + reg.referencia,
+      htmlEmail,
+      destinatarios: ['matheus.dourado@blincast.com.br','joyce.caroline@blincast.com.br','marco.menezes@blincast.com.br']
+    };
+    await fetch(API, {method:'POST', body:JSON.stringify(payload)});
+    showToast('📧 E-mail de estoque enviado!');
+  }catch(e){
+    showToast('❌ Erro ao enviar e-mail.');
+  }
+}
 </script>
 
 <!-- CLIENTES -->
@@ -5738,6 +6371,230 @@ async function excluirVistoria(id, nome){
     <button onclick="document.getElementById('ferias-popup').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;flex-shrink:0;">✕</button>
   </div>
   <button onclick="switchMainTab('ferias');document.getElementById('ferias-popup').style.display='none'" style="margin-top:10px;width:100%;padding:6px;background:var(--black);color:#F5B800;border:1px solid #F5B800;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver férias →</button>
+</div>
+
+
+<!-- ===== ABA ESTOQUE ===== -->
+<div id="page-estoque" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2 style="margin:0;font-size:20px;font-weight:800">Estoque</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Posição de estoque — lançamento mensal pelo almoxarifado</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span id="estoque-sync" style="font-size:11px;color:var(--text-muted)"></span>
+      <button onclick="abrirNovoEstoque()" style="padding:6px 16px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">+ Novo Lançamento</button>
+    </div>
+  </div>
+  <div id="estoque-lista" style="padding:12px 0;"></div>
+</div>
+
+<!-- MODAL: Novo Lançamento de Estoque -->
+<div class="modal-overlay" id="estoque-novo-modal" style="display:none" onclick="if(event.target===this)fecharEstoqueModal()">
+  <div class="modal" style="max-width:700px;width:95vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0">📦 Novo Lançamento de Estoque</h3>
+      <button onclick="fecharEstoqueModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div style="margin-bottom:16px;padding:12px;background:#fff8e1;border-radius:var(--radius-sm);border:1px solid #F5B800;font-size:12px;color:#7a5c00;">
+      ⚠️ Após conclusão com assinatura digital, o lançamento <b>não poderá ser editado</b>. Verifique todos os dados antes de concluir.
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Referência (ex: Maio/2026) *</label>
+      <input id="est-referencia" type="text" placeholder="Ex: Maio/2026" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Observações gerais</label>
+      <textarea id="est-obs" rows="2" placeholder="Observações gerais sobre este lançamento..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">📎 Arquivo Excel com posição do estoque *</label>
+      <input type="file" id="est-arquivo" accept=".xlsx,.xls,.csv" onchange="estCarregarArquivo(this)" style="font-size:12px;font-family:'DM Sans',sans-serif;">
+      <div id="est-preview" style="margin-top:10px;"></div>
+    </div>
+    <div id="est-itens-wrap" style="display:none;margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;">Itens carregados (<span id="est-qtd-itens">0</span>)</span>
+        <button onclick="estAdicionarItemManual()" style="padding:3px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Item manual</button>
+      </div>
+      <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <table style="width:100%;border-collapse:collapse;" id="est-tabela">
+          <thead><tr style="background:var(--bg);position:sticky;top:0;">
+            <th style="padding:7px 10px;font-size:11px;text-align:left;font-weight:600;">Código</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:left;font-weight:600;">Descrição</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:center;font-weight:600;">Qtd</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:left;font-weight:600;">Unidade</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:left;font-weight:600;">Local</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="est-itens-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Assinatura digital -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;background:var(--bg);">
+      <div style="font-size:12px;font-weight:700;margin-bottom:12px;">✍️ Assinatura digital do responsável</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Nome completo *</label>
+          <input id="est-resp-nome" type="text" placeholder="Nome do responsável" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Cargo *</label>
+          <input id="est-resp-cargo" type="text" placeholder="Ex: Almoxarife" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">CPF *</label>
+        <input id="est-resp-cpf" type="text" placeholder="000.000.000-00" maxlength="14" oninput="fmtCpfEstoque(this)" style="width:200px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;">
+      </div>
+      <div id="est-conclusao-wrap" style="display:none;margin-top:12px;padding:12px;background:#e8f5e9;border-radius:var(--radius-sm);border:1px solid #a5d6a7;">
+        <div style="font-size:12px;font-weight:600;color:#2e7d32;margin-bottom:8px;">✅ Confirmar lançamento definitivo</div>
+        <div style="font-size:12px;color:#444;margin-bottom:10px;">Após confirmar, este lançamento <b>não poderá ser editado</b>. Clique no botão abaixo para iniciar o timer.</div>
+        <button id="est-btn-confirmar" onclick="estIniciarTimer()" style="padding:8px 20px;background:#2e7d32;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">🔒 Concluir definitivamente</button>
+        <div id="est-timer-wrap" style="display:none;margin-top:10px;align-items:center;gap:10px;">
+          <div style="font-size:13px;font-weight:700;color:#2e7d32;">Aguarde <span id="est-timer-num">3</span>s para confirmar...</div>
+          <button id="est-btn-ok" onclick="estConcluirDefinitivo()" disabled style="padding:6px 18px;background:#ccc;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;cursor:not-allowed;font-family:'DM Sans',sans-serif;font-weight:600;">✔ Confirmar</button>
+          <button onclick="estCancelarTimer()" style="padding:6px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;background:none;cursor:pointer;color:#e00;font-family:'DM Sans',sans-serif;">Cancelar</button>
+        </div>
+      </div>
+      <button onclick="estValidarEMostrarConfirmacao()" style="margin-top:12px;padding:7px 20px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">Prosseguir para confirmação →</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="fecharEstoqueModal()" class="modal-btn secondary">Cancelar</button>
+      <button onclick="estSalvarRascunho()" style="padding:8px 20px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;">💾 Salvar rascunho</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Requisição de Viagem -->
+<div class="modal-overlay" id="req-viagem-modal" style="display:none" onclick="if(event.target===this)fecharReqViagem()">
+  <div class="modal" style="max-width:680px;width:95vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0">✈️ Requisição de Viagem</h3>
+      <div style="display:flex;gap:8px;">
+        <button onclick="exportarReqViagemPDF()" style="padding:5px 14px;background:var(--gold);color:#111;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">📄 Exportar PDF</button>
+        <button onclick="fecharReqViagem()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Projeto / Cliente *</label>
+        <input id="rv-projeto" type="text" readonly style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Data da solicitação</label>
+        <input id="rv-data-solic" type="date" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Nome do técnico *</label>
+        <input id="rv-tecnico" type="text" placeholder="Nome completo" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Cargo / Função</label>
+        <input id="rv-cargo" type="text" placeholder="Ex: Técnico de instalação" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Destino *</label>
+        <input id="rv-destino" type="text" placeholder="Cidade / Estado" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Endereço do local</label>
+        <input id="rv-endereco" type="text" placeholder="Endereço completo" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Data de saída *</label>
+        <input id="rv-saida" type="date" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Data de retorno *</label>
+        <input id="rv-retorno" type="date" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:6px">Transporte necessário</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rv-tr-passagem" style="accent-color:var(--black)"> Passagem aérea</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rv-tr-rodoviario" style="accent-color:var(--black)"> Rodoviário</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rv-tr-uber" style="accent-color:var(--black)"> Uber/Táxi</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rv-tr-veiculo" style="accent-color:var(--black)"> Veículo próprio</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rv-tr-frota" style="accent-color:var(--black)"> Veículo da frota</label>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Hospedagem</label>
+        <select id="rv-hospedagem" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;">
+          <option value="">— Selecionar —</option>
+          <option value="Não necessário">Não necessário</option>
+          <option value="Hotel — Blincast reserva">Hotel — Blincast reserva</option>
+          <option value="Hotel — colaborador reserva">Hotel — colaborador reserva</option>
+          <option value="No próprio cliente">No próprio cliente</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Diárias solicitadas</label>
+        <input id="rv-diarias" type="number" min="0" placeholder="0" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Adiantamento solicitado (R$)</label>
+        <input id="rv-adiantamento" type="text" placeholder="0,00" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Número de técnicos</label>
+        <input id="rv-qtd-tec" type="number" min="1" value="1" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Objetivo / Descrição do serviço *</label>
+      <textarea id="rv-objetivo" rows="3" placeholder="Descreva o serviço a ser executado..." style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Observações adicionais</label>
+      <textarea id="rv-obs" rows="2" placeholder="Qualquer informação adicional..." style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="fecharReqViagem()" class="modal-btn secondary">Cancelar</button>
+      <button onclick="exportarReqViagemPDF()" style="padding:8px 20px;background:var(--black);color:var(--gold);border:1px solid var(--gold);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">📄 Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: E-mail de Conclusão de Montagem -->
+<div class="modal-overlay" id="email-conclusao-mont-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:560px;width:95vw;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0">📧 E-mail de Conclusão de Montagem</h3>
+      <button onclick="document.getElementById('email-conclusao-mont-modal').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+    <div id="ecm-projeto-info" style="padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;font-weight:600;"></div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Destinatários (separados por vírgula)</label>
+      <input id="ecm-destinatarios" type="text" placeholder="email@blincast.com.br, outro@..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Mensagem adicional (opcional)</label>
+      <textarea id="ecm-mensagem" rows="3" placeholder="Adicione informações complementares ao e-mail..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:6px">📎 Anexar arquivo (JPEG, JPG ou PDF)</label>
+      <input type="file" id="ecm-anexo" accept=".jpg,.jpeg,.pdf" style="font-size:12px;font-family:'DM Sans',sans-serif;">
+      <div id="ecm-anexo-info" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+    </div>
+    <div id="ecm-itens-preview" style="margin-bottom:16px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;display:none;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="document.getElementById('email-conclusao-mont-modal').style.display='none'" class="modal-btn secondary">Cancelar</button>
+      <button id="ecm-btn-enviar" onclick="enviarEmailConclusaoMontagem()" style="padding:8px 20px;background:var(--c-concluido);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">📧 Enviar e-mail</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="impl-preview-modal" style="display:none" onclick="if(event.target===this)document.getElementById('impl-preview-modal').style.display='none'">
