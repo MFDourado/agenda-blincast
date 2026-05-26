@@ -4958,12 +4958,13 @@ function renderListaViagem(){
     +'</tr></thead><tbody>'
     + viagemRegistros.map((v,i)=>{
       const total = (parseFloat(v.total_diarias||0)).toFixed(2).replace('.',',');
+      const totalGeral = (parseFloat(v.total_diarias||0)+parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',');
       const sc = statusColor[v.status]||'#999';
       return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
         <td style="padding:10px 12px;font-weight:600">${v.numero_req||'-'}</td>
         <td style="padding:10px 12px">${v.solicitante||'-'}</td>
         <td style="padding:10px 12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(v.missao||'').replace(/"/g,'&quot;')}">${v.missao||'-'}</td>
-        <td style="padding:10px 12px;font-weight:600">R$ ${total}</td>
+        <td style="padding:10px 12px;font-weight:600">R$ ${totalGeral}</td>
         <td style="padding:10px 12px">${v.data||'-'}</td>
         <td style="padding:10px 12px"><span style="background:${sc}22;color:${sc};padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">${v.status||'Pendente'}</span></td>
         <td style="padding:10px 12px;display:flex;gap:8px;">
@@ -4982,7 +4983,7 @@ function abrirNovaViagem(){
   // Limpar campos
   ['viagem-numero','viagem-solicitante','viagem-email','viagem-cpf','viagem-rg',
    'viagem-nascimento','viagem-sexo','viagem-missao','viagem-transporte',
-   'viagem-trecho','viagem-dt-ida','viagem-dt-volta','viagem-cia',
+   'viagem-trecho-ida','viagem-trecho-volta','viagem-dt-ida','viagem-dt-volta','viagem-vl-ida','viagem-vl-volta','viagem-cia',
    'viagem-hospedagem','viagem-hotel','viagem-noites','viagem-vl-diaria',
    'viagem-antecipacao','viagem-num-antecipacao','viagem-centro-custo','viagem-cartao',
    'viagem-aprovado-por','viagem-status'].forEach(id=>{
@@ -5010,7 +5011,11 @@ function editarViagem(i){
   set('viagem-sexo', v.sexo);
   set('viagem-missao', v.missao);
   set('viagem-transporte', v.transporte);
-  set('viagem-trecho', v.trecho);
+  set('viagem-trecho-ida', v.trecho_ida||v.trecho||'');
+  set('viagem-trecho-volta', v.trecho_volta||'');
+  set('viagem-vl-ida', v.vl_ida||'');
+  set('viagem-vl-volta', v.vl_volta||'');
+  setTimeout(calcTotalTransporte,50);
   set('viagem-dt-ida', v.dt_ida);
   set('viagem-dt-volta', v.dt_volta);
   set('viagem-cia', v.cia);
@@ -5038,6 +5043,24 @@ function fecharViagemModal(){
   document.getElementById('viagem-modal').style.display='none';
 }
 
+function calcTotalTransporte(){
+  const ida   = parseFloat(document.getElementById('viagem-vl-ida')?.value||0);
+  const volta = parseFloat(document.getElementById('viagem-vl-volta')?.value||0);
+  const el = document.getElementById('viagem-total-transporte');
+  if(el) el.textContent = 'R$ '+(ida+volta).toFixed(2).replace('.',',');
+  calcTotalGeral();
+}
+function calcTotalGeral(){
+  const transp = parseFloat(document.getElementById('viagem-vl-ida')?.value||0)
+               + parseFloat(document.getElementById('viagem-vl-volta')?.value||0);
+  let diarias = 0;
+  document.querySelectorAll('#viagem-diarias-body tr').forEach(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    diarias += (parseFloat(inputs[2]?.value||0) * parseFloat(inputs[3]?.value||0));
+  });
+  const el = document.getElementById('viagem-total-diarias');
+  if(el) el.textContent = 'R$ '+(diarias + transp).toFixed(2).replace('.',',');
+}
 function adicionarDiaria(dados){
   const tbody = document.getElementById('viagem-diarias-body');
   const tr = document.createElement('tr');
@@ -5085,7 +5108,9 @@ async function salvarViagem(){
       });
     }
   });
-  const total = diarias.reduce((s,d)=>s+(d.dias*d.valor_diaria),0);
+  const totalDiarias = diarias.reduce((s,d)=>s+(d.dias*d.valor_diaria),0);
+  const totalTransporte = parseFloat(get('viagem-vl-ida')||0)+parseFloat(get('viagem-vl-volta')||0);
+  const total = totalDiarias + totalTransporte;
   const payload = {
     numero_req: get('viagem-numero'),
     solicitante: get('viagem-solicitante'),
@@ -5096,7 +5121,11 @@ async function salvarViagem(){
     sexo: get('viagem-sexo'),
     missao: get('viagem-missao'),
     transporte: get('viagem-transporte'),
-    trecho: get('viagem-trecho'),
+    trecho_ida: get('viagem-trecho-ida'),
+    trecho_volta: get('viagem-trecho-volta'),
+    vl_ida: parseFloat(get('viagem-vl-ida')||0),
+    vl_volta: parseFloat(get('viagem-vl-volta')||0),
+    total_transporte: (parseFloat(get('viagem-vl-ida')||0)+parseFloat(get('viagem-vl-volta')||0)),
     dt_ida: get('viagem-dt-ida'),
     dt_volta: get('viagem-dt-volta'),
     cia: get('viagem-cia'),
@@ -5122,8 +5151,11 @@ async function salvarViagem(){
     const r = await fetch(API, {method:'POST',body:JSON.stringify({token:getToken(),action:'salvarViagem',...payload})});
     const d = await r.json();
     if(d.ok){
-      fecharViagemModal();
-      iniciarViagem();
+      await iniciarViagem();
+      // Reabre em modo visualização (readonly)
+      const saved = viagemRegistros.find(r=>r.numero_req===payload.numero_req);
+      const savedIdx = viagemRegistros.indexOf(saved);
+      if(savedIdx>=0) editarViagem(savedIdx);
     } else { alert('Erro ao salvar: '+(d.error||'desconhecido')); }
   }catch(e){ alert('Erro de comunicação: '+e.message); }
 }
@@ -5192,7 +5224,10 @@ function exportarViagemPDF(i){
 <div class="grid">
   <div class="field full"><label>Missão / Objetivo</label><span style="font-weight:400;white-space:pre-wrap">${v.missao||'—'}</span></div>
   <div class="field"><label>Transporte</label><span>${v.transporte||'—'}</span></div>
-  <div class="field"><label>Trecho</label><span>${v.trecho||'—'}</span></div>
+  <div class="field"><label>Trecho Ida</label><span>${v.trecho_ida||v.trecho||'—'}</span></div>
+  <div class="field"><label>Valor Ida</label><span>${fmtR(v.vl_ida)}</span></div>
+  <div class="field"><label>Trecho Volta</label><span>${v.trecho_volta||'—'}</span></div>
+  <div class="field"><label>Valor Volta</label><span>${fmtR(v.vl_volta)}</span></div>
   <div class="field"><label>Data de ida</label><span>${fmtD(v.dt_ida)}</span></div>
   <div class="field"><label>Data de volta</label><span>${fmtD(v.dt_volta)}</span></div>
   <div class="field"><label>Cia / Empresa</label><span>${v.cia||'—'}</span></div>
@@ -5211,7 +5246,9 @@ ${diarias.length ? `<table>
   <thead><tr><th>Data</th><th>Cidade</th><th>Valor</th><th>Obs</th></tr></thead>
   <tbody>${diarias.map(d=>`<tr><td>${fmtD(d.data)}</td><td>${d.cidade||'—'}</td><td>${fmtR(d.valor)}</td><td>${d.obs||''}</td></tr>`).join('')}</tbody>
 </table>` : '<p style="color:#999;font-size:11px;margin-bottom:10px">Nenhuma diária registrada.</p>'}
-<div style="text-align:right;font-weight:700;font-size:13px;margin-bottom:12px">Total Diárias: R$ ${totalDiarias}</div>
+<div style="text-align:right;font-weight:700;font-size:12px;margin-bottom:4px;color:#555">Subtotal Diárias: R$ ${totalDiarias}</div>
+<div style="text-align:right;font-weight:700;font-size:12px;margin-bottom:4px;color:#555">Total Transporte: R$ ${(parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',')}</div>
+<div style="text-align:right;font-weight:800;font-size:15px;margin-bottom:12px;border-top:2px solid #F5B800;padding-top:6px">TOTAL GERAL: R$ ${(parseFloat(v.total_diarias||0)+parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',')}</div>
 
 <div class="section">Antecipação e Financeiro</div>
 <div class="grid">
@@ -6565,9 +6602,19 @@ async function estEnviarEmail(reg){
         </select>
       </div>
       <div class="modal-field"><label>Companhia / Empresa</label><input type="text" id="viagem-cia" placeholder="Ex: Latam, Localiza..."></div>
-      <div class="modal-field" style="grid-column:span 2"><label>Trecho (Origem → Destino)</label><input type="text" id="viagem-trecho" placeholder="Ex: São Paulo (SP) → Casas Brancas (SP)"></div>
+      <!-- IDA -->
+      <div style="grid-column:span 2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-top:4px">✈️ Ida</div>
+      <div class="modal-field" style="grid-column:span 2"><label>Trecho Ida (Origem → Destino)</label><input type="text" id="viagem-trecho-ida" placeholder="Ex: São Paulo (SP) → Casas Brancas (SP)"></div>
       <div class="modal-field"><label>Data de Ida</label><input type="date" id="viagem-dt-ida"></div>
+      <div class="modal-field"><label>Valor do Transporte Ida (R$)</label><input type="number" min="0" step="0.01" id="viagem-vl-ida" placeholder="0,00" oninput="calcTotalTransporte()"></div>
+      <!-- VOLTA -->
+      <div style="grid-column:span 2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-top:4px">🔄 Volta</div>
+      <div class="modal-field" style="grid-column:span 2"><label>Trecho Volta (Destino → Origem)</label><input type="text" id="viagem-trecho-volta" placeholder="Ex: Casas Brancas (SP) → São Paulo (SP)"></div>
       <div class="modal-field"><label>Data de Retorno</label><input type="date" id="viagem-dt-volta"></div>
+      <div class="modal-field"><label>Valor do Transporte Volta (R$)</label><input type="number" min="0" step="0.01" id="viagem-vl-volta" placeholder="0,00" oninput="calcTotalTransporte()"></div>
+      <div style="grid-column:span 2;display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:13px;font-weight:700">
+        Total Transporte: <span id="viagem-total-transporte" style="color:var(--accent)">R$ 0,00</span>
+      </div>
     </div>
 
     <!-- HOSPEDAGEM -->
