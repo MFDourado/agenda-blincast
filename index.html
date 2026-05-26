@@ -303,6 +303,20 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .survey-progress{height:3px;background:#333;border-radius:2px;margin-top:12px;overflow:hidden;}
 .survey-progress-bar{height:3px;background:#F5B800;border-radius:2px;width:0%;transition:width linear;}
 
+
+#v2-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.v2-popup{background:#18191D;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;width:100%;max-width:480px;}
+.v2-badge{display:inline-block;background:rgba(245,184,0,0.15);color:#F5B800;border:1px solid rgba(245,184,0,0.3);border-radius:20px;font-size:11px;font-weight:600;padding:4px 12px;letter-spacing:.5px;margin-bottom:16px;}
+.v2-title{font-size:22px;font-weight:700;color:#F0F0F0;margin-bottom:4px;}
+.v2-title span{color:#F5B800;}
+.v2-sub{font-size:13px;color:#888;margin-bottom:24px;}
+.v2-divider{height:1px;background:rgba(255,255,255,0.07);margin-bottom:20px;}
+.v2-section{font-size:10px;color:#555;letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;}
+.v2-item{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.v2-icon{width:32px;height:32px;border-radius:8px;background:rgba(245,184,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:#F5B800;}
+.v2-text-title{font-size:13px;font-weight:600;color:#F0F0F0;margin-bottom:2px;}
+.v2-text-desc{font-size:12px;color:#666;line-height:1.5;}
+.v2-btn{width:100%;margin-top:24px;padding:11px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -839,6 +853,7 @@ function iniciarApp(){
         if(u.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
         carregarConfig();
         switchMainTab('pipeline');
+        verificarV2Popup();
         apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         return;
       }
@@ -872,6 +887,7 @@ async function fazerLogin(){
       if(d.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display=''; }
       carregarConfig();
       switchMainTab('pipeline');
+      verificarV2Popup();
       apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
       setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
@@ -7167,9 +7183,53 @@ async function loadOS(){const s=document.getElementById('os-sync');if(s)s.textCo
 function renderOS(){const b=(document.getElementById('os-busca')?.value||'').toLowerCase();const fs=document.getElementById('os-filtro-status')?.value||'';const sc={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};let lista=osLista.filter(o=>(!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))&&(!fs||o.status===fs)).sort((a,c)=>String(c.id).localeCompare(String(a.id)));if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px;color:#555;font-size:13px;">Nenhuma OS encontrada</div>';return;}document.getElementById('os-lista').innerHTML=lista.map(o=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:16px;"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc[o.status]||'#888'}22;color:${sc[o.status]||'#888'};border:1px solid ${sc[o.status]||'#888'}44;">${o.status}</span></div><div style="font-size:12px;color:#888;display:flex;gap:16px;flex-wrap:wrap;"><span>Cliente: <strong style="color:var(--text)">${o.cliente||'—'}</strong></span><span>Técnico: <strong style="color:var(--text)">${o.tecnico||'—'}</strong></span><span>Data: <strong style="color:var(--text)">${o.data||'—'}</strong></span></div>${o.descricao?`<div style="font-size:12px;color:#777;margin-top:6px;">${o.descricao}</div>`:''}</div><div style="display:flex;gap:6px;"><button onclick="editarOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Editar</button><button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Excluir</button></div></div>`).join('');}
 function abrirNovaOS(){osEditId=null;document.getElementById('os-modal-title').textContent='Nova OS';document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');document.getElementById('os-data').value=new Date().toISOString().split('T')[0];['os-cliente','os-tecnico','os-descricao'].forEach(id=>document.getElementById(id).value='');document.getElementById('os-status').value='Aberta';document.getElementById('os-modal').style.display='flex';}
 function editarOS(id){const o=osLista.find(x=>String(x.id)===String(id));if(!o)return;osEditId=id;document.getElementById('os-modal-title').textContent='Editar OS';document.getElementById('os-num').value=o.numero||'';document.getElementById('os-data').value=o.data||'';document.getElementById('os-cliente').value=o.cliente||'';document.getElementById('os-tecnico').value=o.tecnico||'';document.getElementById('os-status').value=o.status||'Aberta';document.getElementById('os-descricao').value=o.descricao||'';document.getElementById('os-modal').style.display='flex';}
+
+function fecharV2Popup(){
+  document.getElementById('v2-overlay').style.display='none';
+  localStorage.setItem('blintrack_v2_visto','1');
+}
+function verificarV2Popup(){
+  if(!localStorage.getItem('blintrack_v2_visto')){
+    document.getElementById('v2-overlay').style.display='flex';
+  }
+}
+
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 async function salvarOS(){const os={id:osEditId||String(Date.now()),numero:document.getElementById('os-num').value.trim(),data:document.getElementById('os-data').value,cliente:document.getElementById('os-cliente').value.trim(),tecnico:document.getElementById('os-tecnico').value.trim(),status:document.getElementById('os-status').value,descricao:document.getElementById('os-descricao').value.trim()};if(!os.numero||!os.cliente){alert('Preencha número e cliente.');return;}try{await fetch(API,{method:'POST',body:JSON.stringify({...os,token:getToken(),action:'saveOS'})});}catch(e){alert('Erro ao salvar');return;}fecharModalOS();loadOS();}
 async function excluirOS(id){if(!confirm('Excluir esta OS?'))return;try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id})});}catch(e){alert('Erro ao excluir');return;}loadOS();}
 </script>
+
+<div id="v2-overlay" style="display:none;">
+  <div class="v2-popup">
+    <div class="v2-badge">NOVIDADE</div>
+    <div class="v2-title">Bem-vindo ao <span>BlinTrack</span> v2</div>
+    <div class="v2-sub">Confira o que mudou nesta versão</div>
+    <div class="v2-divider"></div>
+    <div class="v2-section">O que mudou</div>
+    <div class="v2-item">
+      <div class="v2-icon">&#9776;</div>
+      <div>
+        <div class="v2-text-title">Menu lateral vertical</div>
+        <div class="v2-text-desc">O menu horizontal foi substituído por um menu vertical à esquerda, com submenus organizados por categoria para facilitar a navegação.</div>
+      </div>
+    </div>
+    <div class="v2-item">
+      <div class="v2-icon">&#128193;</div>
+      <div>
+        <div class="v2-text-title">Submenus por categoria</div>
+        <div class="v2-text-desc">Principal, Operacional, Financeiro e Equipe — tudo agrupado e com espaço para novos submenus conforme o sistema cresce.</div>
+      </div>
+    </div>
+    <div class="v2-item">
+      <div class="v2-icon">&#128295;</div>
+      <div>
+        <div class="v2-text-title">Ordens de Serviço</div>
+        <div class="v2-text-desc">Novo módulo para criar, acompanhar e encerrar ordens de serviço diretamente no sistema.</div>
+      </div>
+    </div>
+    <button class="v2-btn" onclick="fecharV2Popup()">Entendido, vamos lá!</button>
+  </div>
+</div>
+
 </body>
 </html>
