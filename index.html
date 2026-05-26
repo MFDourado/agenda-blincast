@@ -4958,7 +4958,7 @@ function renderListaViagem(){
     +'</tr></thead><tbody>'
     + viagemRegistros.map((v,i)=>{
       const total = (parseFloat(v.total_diarias||0)).toFixed(2).replace('.',',');
-      const totalGeral = (parseFloat(v.total_diarias||0)+parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',');
+      const totalGeral = (parseFloat(v.total_diarias||0)||0).toFixed(2).replace('.',',');
       const sc = statusColor[v.status]||'#999';
       return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
         <td style="padding:10px 12px;font-weight:600">${v.numero_req||'-'}</td>
@@ -5320,8 +5320,9 @@ function exportarViagemPDF(i){
   })();
   const diarias = (()=>{ try{ const d=v.diarias; return typeof d==='string'?JSON.parse(d):d||[]; }catch(e){ return []; } })();
   const totalTransporte = trechos.reduce((s,t)=>s+parseFloat(t.valor||0), 0);
-  const totalGeral      = parseFloat(v.total_diarias||0);
-  const totalDiariasVal = totalGeral - totalTransporte;
+  const totalDiariasRaw = parseFloat(v.total_diarias)||0;
+  const totalGeral      = totalDiariasRaw > 0 ? totalDiariasRaw : (trechos.reduce((s,t)=>s+parseFloat(t.valor||0),0) + (()=>{try{const d=v.diarias;const arr=typeof d==='string'?JSON.parse(d):d||[];return arr.reduce((s,x)=>s+(parseFloat(x.dias||1)*parseFloat(x.valor_diaria||x.valor||0)),0);}catch(e){return 0;}})());
+  const totalDiariasVal = Math.max(0, totalGeral - totalTransporte);
 
   const trechoRows = trechos.map(t=>
     '<tr><td>'+esc(t.tipo)+'</td><td>'+esc(t.trecho)+'</td><td>'+fmtD(t.data)+'</td><td class="r">'+fmtR(t.valor)+'</td></tr>'
@@ -5338,9 +5339,9 @@ function exportarViagemPDF(i){
   +'body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;padding:8mm 12mm;max-width:210mm;margin:0 auto}'
   +'.logo{font-size:17px;font-weight:900;line-height:1}.logo span{color:#F5B800}'
   +'.sub{font-size:7px;color:#888;margin-bottom:1.5mm}'
-  +'h1{font-size:12px;font-weight:800;border-bottom:2px solid #F5B800;padding-bottom:2mm;margin:3mm 0 2.5mm}'
-  +'.sec{font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin:3mm 0 1mm;padding-bottom:.8mm;border-bottom:.5px solid #ddd}'
-  +'.grid{display:grid;gap:1.5mm;margin-bottom:2mm}'
+  +'h1{font-size:12px;font-weight:800;border-bottom:2px solid #F5B800;padding-bottom:1.5mm;margin:2mm 0 2mm}'
+  +'.sec{font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin:2mm 0 1mm;padding-bottom:.5mm;border-bottom:.5px solid #ddd}'
+  +'.grid{display:grid;gap:1mm;margin-bottom:1.5mm}'
   +'.g2{grid-template-columns:1fr 1fr}'
   +'.g3{grid-template-columns:1fr 1fr 1fr}'
   +'.g31{grid-template-columns:1.5fr .5fr}'
@@ -5350,21 +5351,21 @@ function exportarViagemPDF(i){
   +'.field{border:.4px solid #ddd;border-radius:2px;padding:1.2mm 2mm}'
   +'.field label{font-size:6px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:.5mm}'
   +'.field span{font-size:8.5px;font-weight:700}'
-  +'.missao-box{border:.4px solid #ddd;border-radius:2px;padding:1.5mm 2mm;margin-bottom:2mm}'
+  +'.missao-box{border:.4px solid #ddd;border-radius:2px;padding:1mm 2mm;margin-bottom:1.5mm}'
   +'.missao-box label{font-size:6px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1mm}'
   +'.missao-box p{font-size:8px;line-height:1.4}'
   +'table{width:100%;border-collapse:collapse;font-size:7.5px;margin-bottom:1.5mm}'
   +'th{background:#f5f5f5;color:#666;font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1.5mm 2mm;border:.4px solid #ddd;text-align:left}'
   +'td{padding:1.5mm 2mm;border:.4px solid #ddd}'
   +'.r{text-align:right}'
-  +'.totais{text-align:right;font-size:7.5px;color:#555;line-height:2;margin-bottom:2mm}'
+  +'.totais{text-align:right;font-size:7.5px;color:#555;line-height:1.8;margin-bottom:1.5mm}'
   +'.totais .linha-ouro{border-top:1.5px solid #F5B800;padding-top:1mm;font-size:9px;font-weight:800;color:#111}'
-  +'.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm}'
+  +'.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:5mm}'
   +'.sig-box{border-top:.8px solid #111;padding-top:2.5mm;text-align:center}'
   +'.sig-box .nome{font-size:7.5px;font-weight:700;display:block}'
   +'.sig-box .cargo{font-size:6.5px;color:#666;display:block;margin-top:.5mm}'
   +'.footer{font-size:6px;color:#aaa;text-align:right;margin-top:3mm}'
-  +'@media print{body{padding:6mm 12mm}}'
+  +'@media print{body{padding:5mm 10mm}@page{margin:5mm;size:A4}}'
   +'<\/style><\/head><body>'
 
   // cabeçalho
