@@ -5044,7 +5044,7 @@ function editarViagem(i){
   // Diárias
   const tbody = document.getElementById('viagem-diarias-body');
   tbody.innerHTML = '';
-  const diarias = v.diarias || [];
+  const diarias = (() => { try{ const d=v.diarias; return typeof d==='string'?JSON.parse(d):d||[]; }catch(e){return[];} })();
   if(diarias.length) diarias.forEach(d=>adicionarDiaria(d));
   else adicionarDiaria();
   calcularTotalViagem();
@@ -5250,107 +5250,154 @@ function exportarViagemPDFmodal(){
 }
 function exportarViagemPDF(i){
   const v = viagemRegistros[i];
-  if(!v){ alert('Registro não encontrado.'); return; }
-  const fmtD = d => { try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d||'—'; } };
-  const fmtR = v => v ? 'R$ '+parseFloat(v).toFixed(2).replace('.',',') : '—';
-  const diarias = (() => {
-    try{ return JSON.parse(v.diarias||'[]'); }catch(e){ return []; }
-  })();
-  const totalDiarias = parseFloat(v.total_diarias||0).toFixed(2).replace('.',',');
+  if(!v){ alert('Registro n\u00e3o encontrado.'); return; }
+
+  const fmtD = raw => {
+    if(!raw || raw==='Invalid Date') return '\u2014';
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(raw)){ const [y,m,d]=raw.split('-'); return d+'/'+m+'/'+y; }
+    const dt = new Date(raw);
+    if(!isNaN(dt)) return dt.toLocaleDateString('pt-BR');
+    return raw||'\u2014';
+  };
+  const fmtR = val => (val!==null&&val!==undefined&&val!=='') ? 'R$\u00a0'+parseFloat(val||0).toFixed(2).replace('.',',') : '\u2014';
+  const esc  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const trechos = (()=>{ try{ return JSON.parse(v.trechos||'[]'); }catch(e){ return []; } })();
+  const diarias = (()=>{ try{ const d=v.diarias; return typeof d==='string'?JSON.parse(d):d||[]; }catch(e){ return []; } })();
+  const totalTransporte = parseFloat(v.total_transporte||0);
+  const totalGeral      = parseFloat(v.total_diarias||0);
+  const totalDiariasVal = totalGeral - totalTransporte;
+
+  const trechoRows = trechos.map(t=>
+    '<tr><td>'+esc(t.tipo)+'</td><td>'+esc(t.trecho)+'</td><td>'+fmtD(t.data)+'</td><td class="r">'+fmtR(t.valor)+'</td></tr>'
+  ).join('');
+
+  const diariaRows = diarias.map(d=>
+    '<tr><td>'+esc(d.descricao||d.cidade||'')+'</td><td>'+esc(d.justificativa||d.obs||'')+'</td><td class="r">'+esc(d.dias||'')+'</td><td class="r">'+fmtR(d.valor_diaria||d.valor)+'</td><td class="r">'+fmtR((d.dias||1)*(d.valor_diaria||d.valor||0))+'</td></tr>'
+  ).join('');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+  +'<title>Req. Viagem \u2014 '+esc(v.numero_req||'S/N')+'<\/title>'
+  +'<style>'
+  +'*{box-sizing:border-box;margin:0;padding:0}'
+  +'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:16mm 14mm;max-width:210mm;margin:0 auto}'
+  +'.logo{font-size:20px;font-weight:900;line-height:1}.logo span{color:#F5B800}'
+  +'.sub{font-size:8px;color:#888;margin-bottom:2mm}'
+  +'h1{font-size:13px;font-weight:800;border-bottom:2.5px solid #F5B800;padding-bottom:3mm;margin:4mm 0 3mm}'
+  +'.sec{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin:4mm 0 1.5mm;padding-bottom:1mm;border-bottom:.5px solid #ddd}'
+  +'.grid{display:grid;gap:2mm;margin-bottom:3mm}'
+  +'.g2{grid-template-columns:1fr 1fr}'
+  +'.g3{grid-template-columns:1fr 1fr 1fr}'
+  +'.g31{grid-template-columns:1.5fr .5fr}'
+  +'.g13{grid-template-columns:.5fr 1fr 1fr}'
+  +'.g211{grid-template-columns:2fr 1fr 1fr}'
+  +'.span2{grid-column:span 2}.span3{grid-column:span 3}'
+  +'.field{border:.4px solid #ddd;border-radius:2px;padding:2mm 2.5mm}'
+  +'.field label{font-size:6.5px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1mm}'
+  +'.field span{font-size:9px;font-weight:700}'
+  +'.missao-box{border:.4px solid #ddd;border-radius:2px;padding:2mm 2.5mm;margin-bottom:3mm}'
+  +'.missao-box label{font-size:6.5px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1.5mm}'
+  +'.missao-box p{font-size:8.5px;line-height:1.5}'
+  +'table{width:100%;border-collapse:collapse;font-size:8px;margin-bottom:2mm}'
+  +'th{background:#f5f5f5;color:#666;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2mm 2.5mm;border:.4px solid #ddd;text-align:left}'
+  +'td{padding:2mm 2.5mm;border:.4px solid #ddd}'
+  +'.r{text-align:right}'
+  +'.totais{text-align:right;font-size:8px;color:#555;line-height:2.2;margin-bottom:3mm}'
+  +'.totais .linha-ouro{border-top:1.5px solid #F5B800;padding-top:1.5mm;font-size:10px;font-weight:800;color:#111}'
+  +'.sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;margin-top:10mm}'
+  +'.sig-box{border-top:.8px solid #111;padding-top:3mm;text-align:center}'
+  +'.sig-box .nome{font-size:8px;font-weight:700;display:block}'
+  +'.sig-box .cargo{font-size:7px;color:#666;display:block;margin-top:.5mm}'
+  +'.footer{font-size:6.5px;color:#aaa;text-align:right;margin-top:5mm}'
+  +'@media print{body{padding:10mm 14mm}}'
+  +'<\/style><\/head><body>'
+
+  // cabeçalho
+  +'<div class="logo">Blin<span>Track<\/span><\/div>'
+  +'<div class="sub">Blincast Media S/A \u2014 Documento Interno<\/div>'
+  +'<h1>\u2708\ufe0f Requisi\u00e7\u00e3o de Viagem \u2014 '+esc(v.numero_req||'S/N')+'<\/h1>'
+
+  // identificação
+  +'<div class="sec">Identifica\u00e7\u00e3o<\/div>'
+  +'<div class="grid g2">'
+  +'<div class="field"><label>N\u00ba Requisi\u00e7\u00e3o<\/label><span>'+esc(v.numero_req||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Status<\/label><span>'+esc(v.status||'Pendente')+'<\/span><\/div>'
+  +'<\/div>'
+  +'<div class="grid g31">'
+  +'<div class="field"><label>Solicitante<\/label><span>'+esc(v.solicitante||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Data<\/label><span>'+fmtD(v.data)+'<\/span><\/div>'
+  +'<\/div>'
+  +'<div class="grid g3">'
+  +'<div class="field"><label>CPF<\/label><span>'+esc(v.cpf||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>RG<\/label><span>'+esc(v.rg||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Nascimento<\/label><span>'+fmtD(v.nascimento)+'<\/span><\/div>'
+  +'<\/div>'
+  +'<div class="grid g2" style="margin-bottom:3mm">'
+  +'<div class="field"><label>Sexo<\/label><span>'+esc(v.sexo||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>E-mail<\/label><span>'+esc(v.email||'\u2014')+'<\/span><\/div>'
+  +'<\/div>'
+
+  // missão
+  +'<div class="sec">Miss\u00e3o \/ Objetivo<\/div>'
+  +'<div class="missao-box"><label>Miss\u00e3o \/ Objetivo da Viagem<\/label><p>'+esc(v.missao||'\u2014')+'<\/p><\/div>'
+
+  // trechos
+  +'<div class="sec">Trechos de Viagem<\/div>'
+  +'<div class="grid g2" style="margin-bottom:2mm">'
+  +'<div class="field"><label>Tipo de Transporte<\/label><span>'+esc(v.transporte||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Cia \/ Empresa<\/label><span>'+esc(v.cia||'\u2014')+'<\/span><\/div>'
+  +'<\/div>'
+  +(trechos.length
+    ? '<table><thead><tr><th>Tipo<\/th><th>Trecho<\/th><th>Data<\/th><th class="r">Valor (R$)<\/th><\/tr><\/thead><tbody>'+trechoRows+'<\/tbody><\/table>'
+    : '<p style="color:#999;font-size:8px;margin-bottom:2mm">Nenhum trecho registrado.<\/p>')
+  +'<div class="totais"><span style="color:#c90;font-weight:700">Total Transporte: '+fmtR(totalTransporte)+'<\/span><\/div>'
+
+  // hospedagem
+  +'<div class="sec">Hospedagem<\/div>'
+  +'<div class="grid g3" style="margin-bottom:3mm">'
+  +'<div class="field"><label>Hospedagem<\/label><span>'+esc(v.hospedagem||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Hotel \/ Local<\/label><span>'+esc(v.hotel||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>N\u00ba de Noites<\/label><span>'+esc(v.noites||'\u2014')+'<\/span><\/div>'
+  +'<\/div>'
+
+  // diárias
+  +'<div class="sec">Di\u00e1rias e Despesas<\/div>'
+  +(diarias.length
+    ? '<table><thead><tr><th>Descri\u00e7\u00e3o<\/th><th>Justificativa<\/th><th class="r">Dias<\/th><th class="r">Valor\/Dia<\/th><th class="r">Total<\/th><\/tr><\/thead><tbody>'+diariaRows+'<\/tbody><\/table>'
+    : '<p style="color:#999;font-size:8px;margin-bottom:2mm">Nenhuma di\u00e1ria registrada.<\/p>')
+  +'<div class="totais">'
+  +'Subtotal Di\u00e1rias: '+fmtR(totalDiariasVal)+'<br>'
+  +'Total Transporte: '+fmtR(totalTransporte)+'<br>'
+  +'<div class="linha-ouro">TOTAL GERAL: '+fmtR(totalGeral)+'<\/div>'
+  +'<\/div>'
+
+  // antecipação
+  +'<div class="sec">Antecipa\u00e7\u00e3o e Pagamento<\/div>'
+  +'<div class="grid g3">'
+  +'<div class="field"><label>Antecipa\u00e7\u00e3o<\/label><span>'+esc(v.antecipacao||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>N\u00ba Antecipa\u00e7\u00e3o<\/label><span>'+esc(v.num_antecipacao||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Centro de Custo<\/label><span>'+esc(v.centro_custo||'\u2014')+'<\/span><\/div>'
+  +'<\/div>'
+  +'<div class="grid g2" style="margin-bottom:3mm">'
+  +'<div class="field"><label>Cart\u00e3o<\/label><span>'+esc(v.cartao||'\u2014')+'<\/span><\/div>'
+  +'<div class="field"><label>Aprovado por<\/label><span>'+esc(v.aprovado_por||'\u2014')+'<\/span><\/div>'
+  +'<\/div>'
+
+  // assinaturas
+  +'<div class="sec">Assinaturas<\/div>'
+  +'<div class="sig-row">'
+  +'<div class="sig-box"><span class="nome">'+esc(v.solicitante||'Solicitante')+'<\/span><span class="cargo">Solicitante<\/span><\/div>'
+  +'<div class="sig-box"><span class="nome">Gestor Operacional<\/span><span class="cargo">Aprova\u00e7\u00e3o<\/span><\/div>'
+  +'<div class="sig-box"><span class="nome">Financeiro<\/span><span class="cargo">Aprova\u00e7\u00e3o<\/span><\/div>'
+  +'<\/div>'
+
+  +'<div class="footer">BlinTrack \u2014 Blincast Media S/A \u2014 gerado em '+new Date().toLocaleDateString('pt-BR')+'<\/div>'
+  +'<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>'
+  +'<\/body><\/html>';
 
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Req. de Viagem — ${v.numero_req||'S/N'}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:800px;margin:0 auto}
-  .logo{font-size:22px;font-weight:900;margin-bottom:2px}
-  .logo span{color:#F5B800}
-  h1{font-size:17px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:8px;margin:16px 0 14px}
-  .section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #eee}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
-  .field{border:1px solid #ddd;border-radius:4px;padding:7px 10px}
-  .field label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#999;display:block;margin-bottom:2px}
-  .field span{font-size:12px;font-weight:600}
-  .full{grid-column:1/-1}
-  table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px}
-  th{background:#f5f5f5;padding:6px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:1px solid #ddd}
-  td{padding:6px 10px;border:1px solid #ddd}
-  .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700}
-  .sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:36px}
-  .sig-box{border-top:1.5px solid #111;padding-top:6px;text-align:center;font-size:10px;color:#666}
-  .footer{margin-top:20px;font-size:9px;color:#aaa;text-align:right}
-  @media print{body{padding:20px}}
-</style></head><body>
-<div class="logo">Blin<span>Track</span></div>
-<div style="font-size:10px;color:#888">Blincast Media S/A — Documento Interno</div>
-<h1>✈️ Requisição de Viagem — ${v.numero_req||'S/N'}</h1>
-
-<div class="section">Identificação</div>
-<div class="grid">
-  <div class="field"><label>Nº Requisição</label><span>${v.numero_req||'—'}</span></div>
-  <div class="field"><label>Status</label><span>${v.status||'Pendente'}</span></div>
-  <div class="field"><label>Solicitante</label><span>${v.solicitante||'—'}</span></div>
-  <div class="field"><label>Data</label><span>${fmtD(v.data)}</span></div>
-  <div class="field"><label>CPF</label><span>${v.cpf||'—'}</span></div>
-  <div class="field"><label>RG</label><span>${v.rg||'—'}</span></div>
-  <div class="field"><label>Nascimento</label><span>${fmtD(v.nascimento)}</span></div>
-  <div class="field"><label>Sexo</label><span>${v.sexo||'—'}</span></div>
-</div>
-
-<div class="section">Missão e Destino</div>
-<div class="grid">
-  <div class="field full"><label>Missão / Objetivo</label><span style="font-weight:400;white-space:pre-wrap">${v.missao||'—'}</span></div>
-  <div class="field"><label>Transporte</label><span>${v.transporte||'—'}</span></div>
-  <div class="field"><label>Trecho Ida</label><span>${v.trecho_ida||v.trecho||'—'}</span></div>
-  <div class="field"><label>Valor Ida</label><span>${fmtR(v.vl_ida)}</span></div>
-  <div class="field"><label>Trecho Volta</label><span>${v.trecho_volta||'—'}</span></div>
-  <div class="field"><label>Valor Volta</label><span>${fmtR(v.vl_volta)}</span></div>
-  <div class="field"><label>Data de ida</label><span>${fmtD(v.dt_ida)}</span></div>
-  <div class="field"><label>Data de volta</label><span>${fmtD(v.dt_volta)}</span></div>
-  <div class="field"><label>Cia / Empresa</label><span>${v.cia||'—'}</span></div>
-</div>
-
-<div class="section">Hospedagem</div>
-<div class="grid">
-  <div class="field"><label>Hospedagem</label><span>${v.hospedagem||'—'}</span></div>
-  <div class="field"><label>Hotel</label><span>${v.hotel||'—'}</span></div>
-  <div class="field"><label>Nº de noites</label><span>${v.noites||'—'}</span></div>
-  <div class="field"><label>Valor da diária</label><span>${fmtR(v.vl_diaria)}</span></div>
-</div>
-
-<div class="section">Diárias Solicitadas</div>
-${diarias.length ? `<table>
-  <thead><tr><th>Data</th><th>Cidade</th><th>Valor</th><th>Obs</th></tr></thead>
-  <tbody>${diarias.map(d=>`<tr><td>${fmtD(d.data)}</td><td>${d.cidade||'—'}</td><td>${fmtR(d.valor)}</td><td>${d.obs||''}</td></tr>`).join('')}</tbody>
-</table>` : '<p style="color:#999;font-size:11px;margin-bottom:10px">Nenhuma diária registrada.</p>'}
-<div style="text-align:right;font-weight:700;font-size:12px;margin-bottom:4px;color:#555">Subtotal Diárias: R$ ${totalDiarias}</div>
-<div style="text-align:right;font-weight:700;font-size:12px;margin-bottom:4px;color:#555">Total Transporte: R$ ${(parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',')}</div>
-<div style="text-align:right;font-weight:800;font-size:15px;margin-bottom:12px;border-top:2px solid #F5B800;padding-top:6px">TOTAL GERAL: R$ ${(parseFloat(v.total_diarias||0)+parseFloat(v.total_transporte||0)).toFixed(2).replace('.',',')}</div>
-
-<div class="section">Antecipação e Financeiro</div>
-<div class="grid">
-  <div class="field"><label>Antecipação</label><span>${v.antecipacao||'—'}</span></div>
-  <div class="field"><label>Nº Antecipação</label><span>${v.num_antecipacao||'—'}</span></div>
-  <div class="field"><label>Centro de Custo</label><span>${v.centro_custo||'—'}</span></div>
-  <div class="field"><label>Cartão</label><span>${v.cartao||'—'}</span></div>
-</div>
-
-<div class="section">Aprovação</div>
-<div class="grid">
-  <div class="field"><label>Aprovado por</label><span>${v.aprovado_por||'—'}</span></div>
-  <div class="field"><label>E-mail</label><span>${v.email||'—'}</span></div>
-</div>
-
-<div class="section">Assinaturas</div>
-<div class="sig-row">
-  <div class="sig-box">______________________________<br>${v.solicitante||'Solicitante'}<br>Solicitante</div>
-  <div class="sig-box">______________________________<br>Gestor Operacional<br>Aprovação</div>
-  <div class="sig-box">______________________________<br>Financeiro<br>Aprovação</div>
-</div>
-<div class="footer">BlinTrack — Blincast Media S/A — gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
-<script>window.onload=()=>{ setTimeout(()=>window.print(),400); }<\/script>
-</body></html>`);
+  w.document.write(html);
   w.document.close();
 }
 
