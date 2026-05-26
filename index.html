@@ -5147,74 +5147,91 @@ function calcularTotalViagem(){
 }
 
 async function salvarViagem(){
-  const get = id => (document.getElementById(id)||{}).value||'';
-  const diarias = [];
-  document.querySelectorAll('#viagem-diarias-body tr').forEach(tr=>{
-    const inputs = tr.querySelectorAll('input');
-    const desc = inputs[0]?.value?.trim();
-    if(desc){
-      diarias.push({
-        descricao: desc,
-        justificativa: inputs[1]?.value||'',
-        dias: parseFloat(inputs[2]?.value||0),
-        valor_diaria: parseFloat(inputs[3]?.value||0),
-      });
-    }
-  });
-  const trechos = [];
-  document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
-    trechos.push({
-      tipo:   tr.querySelector('.trecho-tipo')?.value||'',
-      trecho: tr.querySelector('.trecho-desc')?.value||'',
-      data:   tr.querySelector('.trecho-data')?.value||'',
-      valor:  parseFloat(tr.querySelector('.trecho-valor')?.value||0),
-    });
-  });
-  const totalTransporte = trechos.reduce((s,t)=>s+t.valor,0);
-  const totalDiarias = diarias.reduce((s,d)=>s+(d.dias*d.valor_diaria),0);
-  const total = totalDiarias + totalTransporte;
-  const payload = {
-    numero_req: get('viagem-numero'),
-    solicitante: get('viagem-solicitante'),
-    email: get('viagem-email'),
-    cpf: get('viagem-cpf'),
-    rg: get('viagem-rg'),
-    nascimento: get('viagem-nascimento'),
-    sexo: get('viagem-sexo'),
-    missao: get('viagem-missao'),
-    transporte: get('viagem-transporte'),
-    cia: get('viagem-cia'),
-    hospedagem: get('viagem-hospedagem'),
-    hotel: get('viagem-hotel'),
-    noites: get('viagem-noites'),
-    vl_diaria_hotel: get('viagem-vl-diaria'),
-    antecipacao: get('viagem-antecipacao'),
-    num_antecipacao: get('viagem-num-antecipacao'),
-    diarias,
-    trechos: JSON.stringify(trechos),
-    total_transporte: totalTransporte,
-    total_diarias: total,
-    centro_custo: get('viagem-centro-custo'),
-    cartao: get('viagem-cartao'),
-    aprovado_por: get('viagem-aprovado-por'),
-    status: get('viagem-status'),
-    data: new Date().toLocaleDateString('pt-BR'),
+  const btn = document.querySelector('#viagem-modal button[onclick="salvarViagem()"]');
+  if(btn){ btn.textContent='⏳ Salvando...'; btn.disabled=true; }
+  const erro = msg => {
+    if(btn){ btn.textContent='Salvar'; btn.disabled=false; }
+    alert('Erro: '+msg);
   };
-  const idx = document.getElementById('viagem-edit-idx').value;
-  if(idx !== '') payload.idx = parseInt(idx);
-
   try{
-    const r = await fetch(API, {method:'POST',body:JSON.stringify({token:getToken(),action:'salvarViagem',...payload})});
+    const get = id => (document.getElementById(id)||{}).value||'';
+    const numero = get('viagem-numero');
+    if(!numero){ erro('Preencha o Nº da Requisição.'); return; }
+    const diarias = [];
+    document.querySelectorAll('#viagem-diarias-body tr').forEach(tr=>{
+      const inputs = tr.querySelectorAll('input');
+      const desc = inputs[0]?.value?.trim();
+      if(desc){
+        diarias.push({
+          descricao: desc,
+          justificativa: inputs[1]?.value||'',
+          dias: parseFloat(inputs[2]?.value||0),
+          valor_diaria: parseFloat(inputs[3]?.value||0),
+        });
+      }
+    });
+    const trechos = [];
+    document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
+      trechos.push({
+        tipo:   tr.querySelector('.trecho-tipo')?.value||'',
+        trecho: tr.querySelector('.trecho-desc')?.value||'',
+        data:   tr.querySelector('.trecho-data')?.value||'',
+        valor:  parseFloat(tr.querySelector('.trecho-valor')?.value||0),
+      });
+    });
+    const totalTransporte = trechos.reduce((s,t)=>s+t.valor, 0);
+    const totalDiarias    = diarias.reduce((s,d)=>s+(d.dias*d.valor_diaria), 0);
+    const payload = {
+      numero_req:      numero,
+      solicitante:     get('viagem-solicitante'),
+      email:           get('viagem-email'),
+      cpf:             get('viagem-cpf'),
+      rg:              get('viagem-rg'),
+      nascimento:      get('viagem-nascimento'),
+      sexo:            get('viagem-sexo'),
+      missao:          get('viagem-missao'),
+      transporte:      get('viagem-transporte'),
+      cia:             get('viagem-cia'),
+      hospedagem:      get('viagem-hospedagem'),
+      hotel:           get('viagem-hotel'),
+      noites:          get('viagem-noites'),
+      vl_diaria_hotel: get('viagem-vl-diaria'),
+      antecipacao:     get('viagem-antecipacao'),
+      num_antecipacao: get('viagem-num-antecipacao'),
+      centro_custo:    get('viagem-centro-custo'),
+      cartao:          get('viagem-cartao'),
+      aprovado_por:    get('viagem-aprovado-por'),
+      status:          get('viagem-status'),
+      data:            new Date().toLocaleDateString('pt-BR'),
+      diarias:         JSON.stringify(diarias),
+      trechos:         JSON.stringify(trechos),
+      total_transporte: totalTransporte,
+      total_diarias:   totalDiarias + totalTransporte,
+    };
+    const idxEl = document.getElementById('viagem-edit-idx');
+    if(idxEl && idxEl.value !== '') payload.idx = parseInt(idxEl.value);
+
+    const r = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({token: getToken(), action: 'salvarViagem', ...payload})
+    });
     const d = await r.json();
     if(d.ok){
+      if(btn){ btn.textContent='✅ Salvo!'; btn.disabled=false; }
       await iniciarViagem();
-      // Reabre em modo visualização (readonly)
-      const saved = viagemRegistros.find(r=>r.numero_req===payload.numero_req);
-      const savedIdx = viagemRegistros.indexOf(saved);
-      if(savedIdx>=0){ editarViagem(savedIdx); }
-    } else { alert('Erro ao salvar: '+(d.error||'desconhecido')); }
-  }catch(e){ alert('Erro de comunicação: '+e.message); }
+      const saved = viagemRegistros.find(rec => rec.numero_req === payload.numero_req);
+      const savedIdx = saved ? viagemRegistros.indexOf(saved) : -1;
+      if(savedIdx >= 0){
+        setTimeout(() => editarViagem(savedIdx), 200);
+      }
+    } else {
+      erro(d.error || 'Resposta inesperada do servidor.');
+    }
+  } catch(e){
+    erro(e.message || 'Falha de comunicação com o servidor.');
+  }
 }
+
 
 async function excluirViagem(i){
   if(!confirm('Excluir esta requisição de viagem?')) return;
