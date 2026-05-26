@@ -5055,6 +5055,14 @@ function fecharViagemModal(){
   document.getElementById('viagem-modal').style.display='none';
 }
 
+function mascaraCPF(el){
+  let v = el.value.replace(/\D/g,'');
+  if(v.length > 11) v = v.slice(0,11);
+  if(v.length > 9)      v = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+  else if(v.length > 6) v = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+  else if(v.length > 3) v = v.slice(0,3)+'.'+v.slice(3);
+  el.value = v;
+}
 function calcTotalTransporte(){
   let total = 0;
   document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
@@ -5157,6 +5165,8 @@ async function salvarViagem(){
     const get = id => (document.getElementById(id)||{}).value||'';
     const numero = get('viagem-numero');
     if(!numero){ erro('Preencha o Nº da Requisição.'); return; }
+    const cpfVal = get('viagem-cpf').replace(/\D/g,'');
+    if(!cpfVal||cpfVal.length!==11){ erro('CPF obrigatório e deve ter 11 dígitos (000.000.000-00).'); return; }
     const diarias = [];
     document.querySelectorAll('#viagem-diarias-body tr').forEach(tr=>{
       const inputs = tr.querySelectorAll('input');
@@ -5219,10 +5229,18 @@ async function salvarViagem(){
     if(d.ok){
       if(btn){ btn.textContent='✅ Salvo!'; btn.disabled=false; }
       await iniciarViagem();
-      const saved = viagemRegistros.find(rec => rec.numero_req === payload.numero_req);
-      const savedIdx = saved ? viagemRegistros.indexOf(saved) : -1;
+      // Reabre o modal com os dados atualizados
+      const savedIdx = viagemRegistros.findIndex(rec =>
+        rec.numero_req && payload.numero_req &&
+        rec.numero_req.trim().toLowerCase() === payload.numero_req.trim().toLowerCase()
+      );
       if(savedIdx >= 0){
-        setTimeout(() => editarViagem(savedIdx), 200);
+        setTimeout(() => editarViagem(savedIdx), 150);
+      } else {
+        // fallback: manter modal aberto com dados atuais
+        const pdfBtn = document.getElementById('viagem-pdf-btn');
+        if(pdfBtn) pdfBtn.style.display = 'inline-block';
+        if(btn) setTimeout(()=>{ btn.textContent='Salvar'; },2000);
       }
     } else {
       erro(d.error || 'Resposta inesperada do servidor.');
@@ -6719,7 +6737,7 @@ async function estEnviarEmail(reg){
       </div>
       <div class="modal-field" style="grid-column:span 2"><label>Solicitante</label><input type="text" id="viagem-solicitante" placeholder="Nome completo"></div>
       <div class="modal-field"><label>E-mail</label><input type="email" id="viagem-email" placeholder="colaborador@blincast.com.br"></div>
-      <div class="modal-field"><label>CPF</label><input type="text" id="viagem-cpf" placeholder="000.000.000-00"></div>
+      <div class="modal-field"><label>CPF <span style="color:#e00">*</span></label><input type="text" id="viagem-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" style="letter-spacing:.5px"></div>
       <div class="modal-field"><label>RG</label><input type="text" id="viagem-rg"></div>
       <div class="modal-field"><label>Data de Nascimento</label><input type="date" id="viagem-nascimento"></div>
       <div class="modal-field"><label>Sexo</label>
@@ -6813,7 +6831,7 @@ async function estEnviarEmail(reg){
           <option value="Não">Não</option>
         </select>
       </div>
-      <div class="modal-field"><label>Nº Requisição de Antecipação</label><input type="text" id="viagem-num-antecipacao" placeholder="RQA..."></div>
+      <div class="modal-field"><label>Nº Requisição de Antecipação</label><input type="text" id="viagem-num-antecipacao" placeholder="RQA..." onfocus="if(!this.value){ const n=document.getElementById('viagem-numero').value; if(n) this.value=n; }"></div>
       <div class="modal-field"><label>Cartão</label><input type="text" id="viagem-cartao" placeholder="Ex: Cartão 05"></div>
       <div class="modal-field"><label>Centro de Custo</label><input type="text" id="viagem-centro-custo" placeholder="Ex: Operacional"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Viagem aprovada por</label><input type="text" id="viagem-aprovado-por" placeholder="Nome do superior direto"></div>
