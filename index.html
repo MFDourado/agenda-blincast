@@ -5263,9 +5263,27 @@ function exportarViagemPDF(i){
   const fmtR = val => (val!==null&&val!==undefined&&val!=='') ? 'R$\u00a0'+parseFloat(val||0).toFixed(2).replace('.',',') : '\u2014';
   const esc  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-  const trechos = (()=>{ try{ return JSON.parse(v.trechos||'[]'); }catch(e){ return []; } })();
+  const trechos = (()=>{
+    try{
+      const t = v.trechos;
+      const arr = t ? (typeof t==='string' ? JSON.parse(t) : t) : [];
+      if(arr && arr.length) return arr;
+      // fallback: campos antigos trecho/dt_ida/vl_ida
+      const fb = [];
+      if(v.trecho_ida||v.trecho||v.dt_ida||v.vl_ida)
+        fb.push({tipo:'Ida',   trecho:v.trecho_ida||v.trecho||'', data:v.dt_ida||'',   valor:parseFloat(v.vl_ida||0)});
+      if(v.trecho_volta||v.dt_volta||v.vl_volta)
+        fb.push({tipo:'Volta', trecho:v.trecho_volta||'',          data:v.dt_volta||'', valor:parseFloat(v.vl_volta||0)});
+      return fb;
+    }catch(e){ return []; }
+  })();
   const diarias = (()=>{ try{ const d=v.diarias; return typeof d==='string'?JSON.parse(d):d||[]; }catch(e){ return []; } })();
-  const totalTransporte = parseFloat(v.total_transporte||0);
+  const totalTransporte = (()=>{
+    const saved = parseFloat(v.total_transporte||0);
+    if(saved > 0) return saved;
+    // recalcular a partir dos trechos
+    return trechos.reduce((s,t)=>s+parseFloat(t.valor||0),0);
+  })();
   const totalGeral      = parseFloat(v.total_diarias||0);
   const totalDiariasVal = totalGeral - totalTransporte;
 
