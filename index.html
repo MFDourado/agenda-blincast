@@ -5199,7 +5199,6 @@ async function salvarViagem(){
     aprovado_por: get('viagem-aprovado-por'),
     status: get('viagem-status'),
     data: new Date().toLocaleDateString('pt-BR'),
-    empresa: EMPRESA_ATUAL,
   };
   const idx = document.getElementById('viagem-edit-idx').value;
   if(idx !== '') payload.idx = parseInt(idx);
