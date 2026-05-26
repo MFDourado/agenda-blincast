@@ -11,7 +11,7 @@
 :root{--black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;--radius:10px;--radius-sm:6px;--c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;--c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;--c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;--c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;--c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
-header{background:var(--black);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+header{background:var(--black);padding:0 2rem;height:56px;position:relative;display:none;align-items:center;justify-content:space-between;}
 .logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:2px;font-weight:500;}
 .status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
@@ -333,43 +333,48 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 <div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;"></div>
 
 <!-- SIDEBAR -->
-<nav id="sidebar" style="position:fixed;top:0;left:0;bottom:0;width:240px;background:#18191D;border-right:1px solid rgba(255,255,255,0.07);z-index:901;transform:translateX(-240px);transition:transform .25s ease;display:flex;flex-direction:column;">
+<nav id="sidebar" style="position:fixed;top:0;left:0;bottom:0;width:240px;background:#18191D;border-right:1px solid rgba(255,255,255,0.07);z-index:901;transform:translateX(-240px);transition:transform .25s ease;display:none;flex-direction:column;">
   <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;">
     <div style="font-size:15px;font-weight:700;color:#F0F0F0;">Blin<span style="color:#F5B800">Track</span> <span style="color:#444;font-weight:400;font-size:11px">| Operacional</span></div>
     <button onclick="closeSidebar()" style="background:none;border:none;color:#606068;cursor:pointer;font-size:18px;padding:4px;line-height:1;" title="Fechar">✕</button>
   </div>
   <div style="flex:1;overflow-y:auto;padding:8px 0;">
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Principal</div>
-    <button class="snav-btn active" id="mt-pipeline" onclick="switchMainTab('pipeline');closeSidebar()">🗂 Pipeline</button>
-    <button class="snav-btn" id="mt-vistoria" onclick="switchMainTab('vistoria');closeSidebar()">📋 Vistorias</button>
-    <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">📅 Agenda</button>
-    <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">📊 Dashboard</button>
+    <button class="snav-btn active" id="mt-pipeline" onclick="switchMainTab('pipeline');closeSidebar()">Pipeline</button>
+    <button class="snav-btn" id="mt-vistoria-group" onclick="toggleSubMenu('vistoria-sub')">Vistorias <span id="arrow-vistoria-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="vistoria-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-vistoria" onclick="switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Instalação</button>
+      <button class="snav-btn" id="mt-vistoria-preventiva" onclick="switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Preventiva</button>
+    </div>
+    <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
+    <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">Dashboard</button>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Operacional</div>
-    <button class="snav-btn" id="mt-comercial" onclick="switchMainTab('comercial');closeSidebar()">💼 Comercial</button>
-    <button class="snav-btn" id="mt-clientes" onclick="switchMainTab('clientes');closeSidebar()">👥 Clientes</button>
-    <button class="snav-btn" id="mt-cronograma" onclick="switchMainTab('cronograma');closeSidebar()">📆 Cronograma</button>
-    <button class="snav-btn" id="mt-ata" onclick="switchMainTab('ata');closeSidebar()">📝 Ata do Dia</button>
-    <button class="snav-btn" id="mt-implantacoes" onclick="switchMainTab('implantacoes');closeSidebar()">🚀 Implantações</button>
-    <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">🔧 Montagem</button>
-    <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">🧪 PoC</button>
-    <button class="snav-btn" id="mt-estoque" onclick="switchMainTab('estoque');closeSidebar()">📦 Estoque</button>
+    <button class="snav-btn" id="mt-comercial" onclick="switchMainTab('comercial');closeSidebar()">Comercial</button>
+    <button class="snav-btn" id="mt-clientes" onclick="switchMainTab('clientes');closeSidebar()">Clientes</button>
+    <button class="snav-btn" id="mt-cronograma" onclick="switchMainTab('cronograma');closeSidebar()">Cronograma</button>
+    <button class="snav-btn" id="mt-ata" onclick="switchMainTab('ata');closeSidebar()">Ata do Dia</button>
+    <button class="snav-btn" id="mt-implantacoes" onclick="switchMainTab('implantacoes');closeSidebar()">Implantações</button>
+    <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
+    <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
+    <button class="snav-btn" id="mt-estoque" onclick="switchMainTab('estoque');closeSidebar()">Estoque</button>
+    <button class="snav-btn" id="mt-os" onclick="switchMainTab('os');closeSidebar()">Ordens de Serviço</button>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Financeiro</div>
-    <button class="snav-btn" id="mt-orcamento" onclick="switchMainTab('orcamento');closeSidebar()">🧮 Orçamento</button>
-    <button class="snav-btn" id="mt-distrato" onclick="switchMainTab('distrato');closeSidebar()">📄 Distrato</button>
+    <button class="snav-btn" id="mt-orcamento" onclick="switchMainTab('orcamento');closeSidebar()">Orçamento</button>
+    <button class="snav-btn" id="mt-distrato" onclick="switchMainTab('distrato');closeSidebar()">Distrato</button>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Equipe</div>
-    <button class="snav-btn" id="mt-ferias" onclick="switchMainTab('ferias');closeSidebar()">🏖 Férias</button>
-    <button class="snav-btn" id="mt-viagem" onclick="switchMainTab('viagem');closeSidebar()">✈️ Viagem</button>
-    <button class="snav-btn" id="mt-requisicoes" onclick="switchMainTab('requisicoes');closeSidebar()">📋 Requisições</button>
+    <button class="snav-btn" id="mt-ferias" onclick="switchMainTab('ferias');closeSidebar()">Férias</button>
+    <button class="snav-btn" id="mt-viagem" onclick="switchMainTab('viagem');closeSidebar()">Viagem</button>
+    <button class="snav-btn" id="mt-requisicoes" onclick="switchMainTab('requisicoes');closeSidebar()">Requisições</button>
   </div>
 </nav>
 
 <!-- HEADER -->
 <header>
   <button onclick="openSidebar()" title="Menu" style="background:none;border:none;color:#888;cursor:pointer;font-size:20px;padding:4px 8px 4px 0;line-height:1;transition:color .15s;" onmouseover="this.style.color='#F5B800'" onmouseout="this.style.color='#888'">☰</button>
-  <div class="logo">Blin<span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> Operacional</div>
+  <div class="logo" style="position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;"><span style="color:#fff">Blin</span><span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> <span style="color:#fff">Operacional</span></div>
   <div class="status-bar">
     <button onclick="sincronizarOperacional()" title="Sincronizar todos os dados" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:4px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⟳ Sincronizar</button>
     <button onclick="forceRefresh()" title="Recarregar sistema" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:8px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">↻ Refresh</button>
@@ -825,6 +830,8 @@ function iniciarApp(){
         usuarioLogado = u;
         if(u.token) API_TOKEN_RUNTIME = u.token;
         document.getElementById('login-overlay').style.display='none';
+        document.querySelector('header').style.display='flex';
+        document.getElementById('sidebar').style.display='flex';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
         const hUser = document.getElementById('header-user');
@@ -856,6 +863,8 @@ async function fazerLogin(){
       if(d.token) API_TOKEN_RUNTIME = d.token;
       d.login_ts = Date.now(); sessionStorage.setItem('blintrack_user', JSON.stringify(d));
       document.getElementById('login-overlay').style.display='none';
+      document.querySelector('header').style.display='flex';
+      document.getElementById('sidebar').style.display='flex';
       document.getElementById('login-user-badge').style.display='block';
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
       const hUser = document.getElementById('header-user');
@@ -936,6 +945,8 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ===================== TABS =====================
 
+function toggleSubMenu(id){const el=document.getElementById(id);const arrow=document.getElementById("arrow-"+id);if(!el)return;const open=el.style.display==="block";el.style.display=open?"none":"block";if(arrow)arrow.style.transform=open?"":"rotate(180deg)";}
+
 function openSidebar(){
   document.getElementById('sidebar').style.transform='translateX(0)';
   document.getElementById('sidebar-overlay').style.display='block';
@@ -945,7 +956,7 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').style.display='none';
 }
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -968,6 +979,7 @@ function switchMainTab(t){
   if(t==='viagem')iniciarViagem();
   if(t==='implantacoes')loadImplantacoes();
   if(t==='estoque')iniciarEstoque();
+  if(t==='os')loadOS();
 }
 
 // ===================== AGENDA =====================
@@ -3844,6 +3856,8 @@ function fazerLogout(){
   sessionStorage.removeItem('blintrack_user');
   usuarioLogado = null;
   document.getElementById('login-overlay').style.display='flex';
+  document.querySelector('header').style.display='none';
+  document.getElementById('sidebar').style.display='none';
   document.getElementById('login-usuario').value='';
   document.getElementById('login-senha').value='';
   document.getElementById('login-error').textContent='';
@@ -7115,5 +7129,47 @@ async function estEnviarEmail(reg){
 
 
 
+
+<!-- ORDENS DE SERVICO -->
+<div id="page-os" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div><h2>Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
+    <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
+  </div>
+  <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+    <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+    <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+      <option value="">Todos os status</option><option>Aberta</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option>
+    </select>
+  </div>
+  <div id="os-lista" style="padding:16px 20px;"></div>
+  <div id="os-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:#1a1a1a;border-radius:12px;padding:24px;width:100%;max-width:500px;border:1px solid #2a2a2a;">
+      <h3 id="os-modal-title" style="font-size:15px;font-weight:700;color:#fff;margin-bottom:16px;">Nova OS</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Número</label><input id="os-num" type="text" placeholder="OS-001" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Data</label><input id="os-data" type="date" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Cliente</label><input id="os-cliente" type="text" placeholder="Nome do cliente" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Técnico</label><input id="os-tecnico" type="text" placeholder="Nome do técnico" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
+        <div style="grid-column:span 2;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Status</label><select id="os-status" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;"><option>Aberta</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option></select></div>
+        <div style="grid-column:span 2;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Descrição</label><textarea id="os-descricao" rows="3" placeholder="Descreva o serviço..." style="width:100%;padding:8px 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button onclick="fecharModalOS()" style="padding:7px 14px;border:1px solid #333;border-radius:6px;background:none;color:#888;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
+        <button onclick="salvarOS()" style="padding:7px 18px;background:#F5B800;color:#111;border:none;border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let osLista=[],osEditId=null;
+async function loadOS(){const s=document.getElementById('os-sync');if(s)s.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS');const d=await r.json();osLista=Array.isArray(d.os)?d.os:[];if(s)s.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){if(s)s.textContent='Erro de conexão';}renderOS();}
+function renderOS(){const b=(document.getElementById('os-busca')?.value||'').toLowerCase();const fs=document.getElementById('os-filtro-status')?.value||'';const sc={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};let lista=osLista.filter(o=>(!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))&&(!fs||o.status===fs)).sort((a,c)=>String(c.id).localeCompare(String(a.id)));if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px;color:#555;font-size:13px;">Nenhuma OS encontrada</div>';return;}document.getElementById('os-lista').innerHTML=lista.map(o=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:16px;"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc[o.status]||'#888'}22;color:${sc[o.status]||'#888'};border:1px solid ${sc[o.status]||'#888'}44;">${o.status}</span></div><div style="font-size:12px;color:#888;display:flex;gap:16px;flex-wrap:wrap;"><span>Cliente: <strong style="color:var(--text)">${o.cliente||'—'}</strong></span><span>Técnico: <strong style="color:var(--text)">${o.tecnico||'—'}</strong></span><span>Data: <strong style="color:var(--text)">${o.data||'—'}</strong></span></div>${o.descricao?`<div style="font-size:12px;color:#777;margin-top:6px;">${o.descricao}</div>`:''}</div><div style="display:flex;gap:6px;"><button onclick="editarOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Editar</button><button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Excluir</button></div></div>`).join('');}
+function abrirNovaOS(){osEditId=null;document.getElementById('os-modal-title').textContent='Nova OS';document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');document.getElementById('os-data').value=new Date().toISOString().split('T')[0];['os-cliente','os-tecnico','os-descricao'].forEach(id=>document.getElementById(id).value='');document.getElementById('os-status').value='Aberta';document.getElementById('os-modal').style.display='flex';}
+function editarOS(id){const o=osLista.find(x=>String(x.id)===String(id));if(!o)return;osEditId=id;document.getElementById('os-modal-title').textContent='Editar OS';document.getElementById('os-num').value=o.numero||'';document.getElementById('os-data').value=o.data||'';document.getElementById('os-cliente').value=o.cliente||'';document.getElementById('os-tecnico').value=o.tecnico||'';document.getElementById('os-status').value=o.status||'Aberta';document.getElementById('os-descricao').value=o.descricao||'';document.getElementById('os-modal').style.display='flex';}
+function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
+async function salvarOS(){const os={id:osEditId||String(Date.now()),numero:document.getElementById('os-num').value.trim(),data:document.getElementById('os-data').value,cliente:document.getElementById('os-cliente').value.trim(),tecnico:document.getElementById('os-tecnico').value.trim(),status:document.getElementById('os-status').value,descricao:document.getElementById('os-descricao').value.trim()};if(!os.numero||!os.cliente){alert('Preencha número e cliente.');return;}try{await fetch(API,{method:'POST',body:JSON.stringify({...os,token:getToken(),action:'saveOS'})});}catch(e){alert('Erro ao salvar');return;}fecharModalOS();loadOS();}
+async function excluirOS(id){if(!confirm('Excluir esta OS?'))return;try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id})});}catch(e){alert('Erro ao excluir');return;}loadOS();}
+</script>
 </body>
 </html>
