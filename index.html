@@ -4979,6 +4979,7 @@ function renderListaViagem(){
 
 function abrirNovaViagem(){
   document.getElementById('viagem-modal-titulo').textContent = 'Nova Requisição de Viagem';
+  const _pb = document.getElementById('viagem-pdf-btn'); if(_pb) _pb.style.display='none';
   document.getElementById('viagem-edit-idx').value = '';
   // Limpar campos
   ['viagem-numero','viagem-solicitante','viagem-email','viagem-cpf','viagem-rg',
@@ -5016,6 +5017,8 @@ function editarViagem(i){
   set('viagem-vl-ida', v.vl_ida||'');
   set('viagem-vl-volta', v.vl_volta||'');
   setTimeout(calcTotalTransporte,50);
+  const pdfBtn = document.getElementById('viagem-pdf-btn');
+  if(pdfBtn) pdfBtn.style.display = 'inline-block';
   set('viagem-dt-ida', v.dt_ida);
   set('viagem-dt-volta', v.dt_volta);
   set('viagem-cia', v.cia);
@@ -5155,7 +5158,7 @@ async function salvarViagem(){
       // Reabre em modo visualização (readonly)
       const saved = viagemRegistros.find(r=>r.numero_req===payload.numero_req);
       const savedIdx = viagemRegistros.indexOf(saved);
-      if(savedIdx>=0) editarViagem(savedIdx);
+      if(savedIdx>=0){ editarViagem(savedIdx); }
     } else { alert('Erro ao salvar: '+(d.error||'desconhecido')); }
   }catch(e){ alert('Erro de comunicação: '+e.message); }
 }
@@ -5169,6 +5172,11 @@ async function excluirViagem(i){
     if(d.ok) iniciarViagem();
     else alert('Erro ao excluir: '+(d.error||'desconhecido'));
   }catch(e){ alert('Erro: '+e.message); }
+}
+function exportarViagemPDFmodal(){
+  const idx = document.getElementById('viagem-edit-idx')?.value;
+  if(idx === '' || idx === undefined || idx === null) { alert('Salve a requisição antes de exportar o PDF.'); return; }
+  exportarViagemPDF(parseInt(idx));
 }
 function exportarViagemPDF(i){
   const v = viagemRegistros[i];
@@ -6671,6 +6679,7 @@ async function estEnviarEmail(reg){
 
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
       <button onclick="fecharViagemModal()" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text)">Cancelar</button>
+      <button id="viagem-pdf-btn" onclick="exportarViagemPDFmodal()" style="display:none;padding:8px 20px;background:#F5B800;border:1px solid #d4a000;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#111">📄 Exportar PDF</button>
       <button onclick="salvarViagem()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Salvar</button>
     </div>
   </div>
