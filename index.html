@@ -4965,7 +4965,7 @@ function renderListaViagem(){
         <td style="padding:10px 12px">${v.solicitante||'-'}</td>
         <td style="padding:10px 12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(v.missao||'').replace(/"/g,'&quot;')}">${v.missao||'-'}</td>
         <td style="padding:10px 12px;font-weight:600">R$ ${totalGeral}</td>
-        <td style="padding:10px 12px">${v.data||'-'}</td>
+        <td style="padding:10px 12px">${(d=>{if(!d||d==='-')return'-';if(/^\d{2}\/\d{2}\/\d{4}$/.test(d))return d;const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString('pt-BR')})(v.data)}</td>
         <td style="padding:10px 12px"><span style="background:${sc}22;color:${sc};padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">${v.status||'Pendente'}</span></td>
         <td style="padding:10px 12px;display:flex;gap:8px;">
           <button onclick="exportarViagemPDF(${i})" style="padding:4px 10px;font-size:11px;background:var(--gold);border:1px solid var(--gold-dark);border-radius:var(--radius-sm);cursor:pointer;color:#111;font-weight:600;">📄 PDF</button>
@@ -5290,25 +5290,36 @@ function exportarViagemPDF(i){
 
   const trechos = (()=>{
     try{
+      // Tentar ler novo formato (array JSON)
       const t = v.trechos;
-      const arr = t ? (typeof t==='string' ? JSON.parse(t) : t) : [];
-      if(arr && arr.length) return arr;
-      // fallback: campos antigos trecho/dt_ida/vl_ida
+      if(t && t !== '[]' && t !== ''){
+        const arr = typeof t==='string' ? JSON.parse(t) : t;
+        if(Array.isArray(arr) && arr.length) return arr;
+      }
+      // Fallback: reconstruir a partir dos campos legados
+      // O campo trecho pode ser "Ida: GIG→CWB | Volta: CWB→GIG" ou só "GIG | CWB"
       const fb = [];
-      if(v.trecho_ida||v.trecho||v.dt_ida||v.vl_ida)
-        fb.push({tipo:'Ida',   trecho:v.trecho_ida||v.trecho||'', data:v.dt_ida||'',   valor:parseFloat(v.vl_ida||0)});
-      if(v.trecho_volta||v.dt_volta||v.vl_volta)
-        fb.push({tipo:'Volta', trecho:v.trecho_volta||'',          data:v.dt_volta||'', valor:parseFloat(v.vl_volta||0)});
+      const trechoLegado = v.trecho || '';
+      const partes = trechoLegado.split('|').map(s=>s.trim()).filter(Boolean);
+      const dtIda   = v.dt_ida   || '';
+      const dtVolta = v.dt_volta || '';
+      const vlIda   = parseFloat(v.vl_ida||0);
+      const vlVolta = parseFloat(v.vl_volta||0);
+      if(partes.length >= 2){
+        fb.push({tipo:'Ida',   trecho: partes[0], data: dtIda,   valor: vlIda});
+        fb.push({tipo:'Volta', trecho: partes[1], data: dtVolta, valor: vlVolta});
+      } else if(partes.length === 1){
+        fb.push({tipo:'Ida',   trecho: partes[0], data: dtIda,   valor: vlIda});
+        if(dtVolta) fb.push({tipo:'Volta', trecho:'', data: dtVolta, valor: vlVolta});
+      } else {
+        if(dtIda)   fb.push({tipo:'Ida',   trecho:'', data: dtIda,   valor: vlIda});
+        if(dtVolta) fb.push({tipo:'Volta', trecho:'', data: dtVolta, valor: vlVolta});
+      }
       return fb;
     }catch(e){ return []; }
   })();
   const diarias = (()=>{ try{ const d=v.diarias; return typeof d==='string'?JSON.parse(d):d||[]; }catch(e){ return []; } })();
-  const totalTransporte = (()=>{
-    const saved = parseFloat(v.total_transporte||0);
-    if(saved > 0) return saved;
-    // recalcular a partir dos trechos
-    return trechos.reduce((s,t)=>s+parseFloat(t.valor||0),0);
-  })();
+  const totalTransporte = trechos.reduce((s,t)=>s+parseFloat(t.valor||0), 0);
   const totalGeral      = parseFloat(v.total_diarias||0);
   const totalDiariasVal = totalGeral - totalTransporte;
 
@@ -5324,36 +5335,36 @@ function exportarViagemPDF(i){
   +'<title>Req. Viagem \u2014 '+esc(v.numero_req||'S/N')+'<\/title>'
   +'<style>'
   +'*{box-sizing:border-box;margin:0;padding:0}'
-  +'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:16mm 14mm;max-width:210mm;margin:0 auto}'
-  +'.logo{font-size:20px;font-weight:900;line-height:1}.logo span{color:#F5B800}'
-  +'.sub{font-size:8px;color:#888;margin-bottom:2mm}'
-  +'h1{font-size:13px;font-weight:800;border-bottom:2.5px solid #F5B800;padding-bottom:3mm;margin:4mm 0 3mm}'
-  +'.sec{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin:4mm 0 1.5mm;padding-bottom:1mm;border-bottom:.5px solid #ddd}'
-  +'.grid{display:grid;gap:2mm;margin-bottom:3mm}'
+  +'body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;padding:8mm 12mm;max-width:210mm;margin:0 auto}'
+  +'.logo{font-size:17px;font-weight:900;line-height:1}.logo span{color:#F5B800}'
+  +'.sub{font-size:7px;color:#888;margin-bottom:1.5mm}'
+  +'h1{font-size:12px;font-weight:800;border-bottom:2px solid #F5B800;padding-bottom:2mm;margin:3mm 0 2.5mm}'
+  +'.sec{font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin:3mm 0 1mm;padding-bottom:.8mm;border-bottom:.5px solid #ddd}'
+  +'.grid{display:grid;gap:1.5mm;margin-bottom:2mm}'
   +'.g2{grid-template-columns:1fr 1fr}'
   +'.g3{grid-template-columns:1fr 1fr 1fr}'
   +'.g31{grid-template-columns:1.5fr .5fr}'
   +'.g13{grid-template-columns:.5fr 1fr 1fr}'
   +'.g211{grid-template-columns:2fr 1fr 1fr}'
   +'.span2{grid-column:span 2}.span3{grid-column:span 3}'
-  +'.field{border:.4px solid #ddd;border-radius:2px;padding:2mm 2.5mm}'
-  +'.field label{font-size:6.5px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1mm}'
-  +'.field span{font-size:9px;font-weight:700}'
-  +'.missao-box{border:.4px solid #ddd;border-radius:2px;padding:2mm 2.5mm;margin-bottom:3mm}'
-  +'.missao-box label{font-size:6.5px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1.5mm}'
-  +'.missao-box p{font-size:8.5px;line-height:1.5}'
-  +'table{width:100%;border-collapse:collapse;font-size:8px;margin-bottom:2mm}'
-  +'th{background:#f5f5f5;color:#666;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2mm 2.5mm;border:.4px solid #ddd;text-align:left}'
-  +'td{padding:2mm 2.5mm;border:.4px solid #ddd}'
+  +'.field{border:.4px solid #ddd;border-radius:2px;padding:1.2mm 2mm}'
+  +'.field label{font-size:6px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:.5mm}'
+  +'.field span{font-size:8.5px;font-weight:700}'
+  +'.missao-box{border:.4px solid #ddd;border-radius:2px;padding:1.5mm 2mm;margin-bottom:2mm}'
+  +'.missao-box label{font-size:6px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:1mm}'
+  +'.missao-box p{font-size:8px;line-height:1.4}'
+  +'table{width:100%;border-collapse:collapse;font-size:7.5px;margin-bottom:1.5mm}'
+  +'th{background:#f5f5f5;color:#666;font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1.5mm 2mm;border:.4px solid #ddd;text-align:left}'
+  +'td{padding:1.5mm 2mm;border:.4px solid #ddd}'
   +'.r{text-align:right}'
-  +'.totais{text-align:right;font-size:8px;color:#555;line-height:2.2;margin-bottom:3mm}'
-  +'.totais .linha-ouro{border-top:1.5px solid #F5B800;padding-top:1.5mm;font-size:10px;font-weight:800;color:#111}'
-  +'.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:10mm}'
-  +'.sig-box{border-top:.8px solid #111;padding-top:3mm;text-align:center}'
-  +'.sig-box .nome{font-size:8px;font-weight:700;display:block}'
-  +'.sig-box .cargo{font-size:7px;color:#666;display:block;margin-top:.5mm}'
-  +'.footer{font-size:6.5px;color:#aaa;text-align:right;margin-top:5mm}'
-  +'@media print{body{padding:10mm 14mm}}'
+  +'.totais{text-align:right;font-size:7.5px;color:#555;line-height:2;margin-bottom:2mm}'
+  +'.totais .linha-ouro{border-top:1.5px solid #F5B800;padding-top:1mm;font-size:9px;font-weight:800;color:#111}'
+  +'.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm}'
+  +'.sig-box{border-top:.8px solid #111;padding-top:2.5mm;text-align:center}'
+  +'.sig-box .nome{font-size:7.5px;font-weight:700;display:block}'
+  +'.sig-box .cargo{font-size:6.5px;color:#666;display:block;margin-top:.5mm}'
+  +'.footer{font-size:6px;color:#aaa;text-align:right;margin-top:3mm}'
+  +'@media print{body{padding:6mm 12mm}}'
   +'<\/style><\/head><body>'
 
   // cabeçalho
