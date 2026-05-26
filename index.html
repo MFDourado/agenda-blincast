@@ -6562,8 +6562,9 @@ async function estEnviarEmail(reg){
 
 <!-- MODAL REQUISIÇÃO DE VIAGEM -->
 <div class="modal-overlay" id="viagem-modal" style="display:none" onclick="if(event.target===this)fecharViagemModal()">
-  <div class="modal" style="max-width:760px;max-height:90vh;overflow-y:auto;">
+  <div class="modal" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
     <input type="hidden" id="viagem-edit-idx">
+    <div style="flex:1;overflow-y:auto;padding:24px 24px 0 24px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3 id="viagem-modal-titulo" style="margin:0">Nova Requisição de Viagem</h3>
       <button onclick="fecharViagemModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">✕</button>
@@ -6677,7 +6678,8 @@ async function estEnviarEmail(reg){
       <div class="modal-field" style="grid-column:span 2"><label>Viagem aprovada por</label><input type="text" id="viagem-aprovado-por" placeholder="Nome do superior direto"></div>
     </div>
 
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
+    </div><!-- fim scroll -->
+    <div style="padding:16px 24px;border-top:1px solid var(--border);background:var(--modal-bg,var(--surface));display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
       <button onclick="fecharViagemModal()" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text)">Cancelar</button>
       <button id="viagem-pdf-btn" onclick="exportarViagemPDFmodal()" style="display:none;padding:8px 20px;background:#F5B800;border:1px solid #d4a000;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#111">📄 Exportar PDF</button>
       <button onclick="salvarViagem()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Salvar</button>
