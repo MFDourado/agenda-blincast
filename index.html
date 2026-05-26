@@ -5214,9 +5214,16 @@ async function salvarViagem(){
       status:          get('viagem-status'),
       data:            new Date().toLocaleDateString('pt-BR'),
       diarias:         JSON.stringify(diarias),
+      diarias_json:    JSON.stringify(diarias),
       trechos:         JSON.stringify(trechos),
       total_transporte: totalTransporte,
       total_diarias:   totalDiarias + totalTransporte,
+      // campos legados que o servidor atual usa
+      trecho:          trechos.map(t=>t.trecho).filter(Boolean).join(' | '),
+      dt_ida:          (trechos.find(t=>t.tipo==='Ida')||{}).data||'',
+      dt_volta:        (trechos.find(t=>t.tipo==='Volta')||{}).data||'',
+      vl_ida:          (trechos.find(t=>t.tipo==='Ida')||{}).valor||0,
+      vl_volta:        (trechos.find(t=>t.tipo==='Volta')||{}).valor||0,
     };
     const idxEl = document.getElementById('viagem-edit-idx');
     if(idxEl && idxEl.value !== '') payload.idx = parseInt(idxEl.value);
