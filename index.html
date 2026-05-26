@@ -5082,26 +5082,35 @@ function adicionarTrecho(dados){
   const tbody = document.getElementById('viagem-trechos-body');
   if(!tbody) return;
   const idx = tbody.querySelectorAll('tr').length;
-  const tipo  = dados?.tipo  || (idx===0 ? 'Ida' : idx===1 ? 'Volta' : 'Conexão');
-  const trecho= dados?.trecho|| '';
-  const data  = dados?.data  || '';
-  const valor = dados?.valor != null ? dados.valor : '';
+  const tipo   = dados?.tipo   || (idx===0 ? 'Ida' : idx===1 ? 'Volta' : 'Conexão');
+  const trecho = dados?.trecho || '';
+  const data   = dados?.data   || '';
+  const valor  = dados?.valor  != null ? dados.valor : '';
+  const s = "width:100%;min-width:160px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 8px;box-sizing:border-box";
+  const sn = "width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px;text-align:right";
+  const ss = "width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px";
+  const sd = "height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px";
+  const optIda     = tipo==='Ida'     ? ' selected' : '';
+  const optVolta   = tipo==='Volta'   ? ' selected' : '';
+  const optConexao = tipo==='Conexão' ? ' selected' : '';
+  const optOutros  = tipo==='Outros'  ? ' selected' : '';
   const tr = document.createElement('tr');
   tr.style.borderTop = '1px solid var(--border)';
-  tr.innerHTML = `
-    <td style="padding:4px 6px">
-      <select class="trecho-tipo" style="width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px">
-        <option\${tipo==='Ida'?' selected':''}>Ida</option>
-        <option\${tipo==='Volta'?' selected':''}>Volta</option>
-        <option\${tipo==='Conexão'?' selected':''}>Conexão</option>
-        <option\${tipo==='Outros'?' selected':''}>Outros</option>
-      </select>
-    </td>
-    <td style="padding:4px 6px"><input class="trecho-desc" type="text" value="\${trecho}" placeholder="Ex: SP → Casas Brancas" style="width:100%;min-width:160px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 8px;box-sizing:border-box"></td>
-    <td style="padding:4px 6px"><input class="trecho-data" type="date" value="\${data}" style="height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px"></td>
-    <td style="padding:4px 6px"><input class="trecho-valor" type="number" min="0" step="0.01" value="\${valor}" placeholder="0,00" oninput="calcTotalTransporte()" style="width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px;text-align:right"></td>
-    <td style="padding:4px 6px;text-align:center"><button type="button" onclick="this.closest('tr').remove();calcTotalTransporte()" style="padding:2px 7px;border:1px solid #e00;border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">✕</button></td>
-  `;
+  const sel = '<select class="trecho-tipo" style="'+ss+'">'
+    + '<option'+optIda+'>Ida</option>'
+    + '<option'+optVolta+'>Volta</option>'
+    + '<option'+optConexao+'>Conexão</option>'
+    + '<option'+optOutros+'>Outros</option>'
+    + '</select>';
+  const inp = '<input class="trecho-desc" type="text" value="'+trecho+'" placeholder="Ex: SP → Casas Brancas" style="'+s+'">';
+  const dtinp = '<input class="trecho-data" type="date" value="'+data+'" style="'+sd+'">';
+  const vlinp = '<input class="trecho-valor" type="number" min="0" step="0.01" value="'+valor+'" placeholder="0,00" oninput="calcTotalTransporte()" style="'+sn+'">';
+  const delbtn = '<button type="button" onclick="this.closest(\'tr\').remove();calcTotalTransporte()" style="padding:2px 7px;border:1px solid #e00;border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">✕</button>';
+  tr.innerHTML = '<td style="padding:4px 6px">'+sel+'</td>'
+    + '<td style="padding:4px 6px">'+inp+'</td>'
+    + '<td style="padding:4px 6px">'+dtinp+'</td>'
+    + '<td style="padding:4px 6px">'+vlinp+'</td>'
+    + '<td style="padding:4px 6px;text-align:center">'+delbtn+'</td>';
   tbody.appendChild(tr);
   calcTotalTransporte();
 }
