@@ -786,7 +786,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(sessionStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
-const LOGIN_API = 'https://script.google.com/macros/s/AKfycbwJiG9bNJUQZvRQpZC18ie29TieqqLabQx3kKaP_9EQxMwz8hof67TCnIbSMv7trAfI/exec';
+const LOGIN_API = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
 
@@ -863,7 +863,7 @@ async function esqueceuSenha(){
 
 document.addEventListener('DOMContentLoaded', iniciarApp);
 
-const API='https://script.google.com/macros/s/AKfycbwJiG9bNJUQZvRQpZC18ie29TieqqLabQx3kKaP_9EQxMwz8hof67TCnIbSMv7trAfI/exec';
+const API='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const DAYS_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
