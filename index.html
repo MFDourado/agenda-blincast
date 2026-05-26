@@ -4984,7 +4984,7 @@ function abrirNovaViagem(){
   // Limpar campos
   ['viagem-numero','viagem-solicitante','viagem-email','viagem-cpf','viagem-rg',
    'viagem-nascimento','viagem-sexo','viagem-missao','viagem-transporte',
-   'viagem-trecho-ida','viagem-trecho-volta','viagem-dt-ida','viagem-dt-volta','viagem-vl-ida','viagem-vl-volta','viagem-cia',
+   'viagem-dt-ida','viagem-dt-volta','viagem-cia',
    'viagem-hospedagem','viagem-hotel','viagem-noites','viagem-vl-diaria',
    'viagem-antecipacao','viagem-num-antecipacao','viagem-centro-custo','viagem-cartao',
    'viagem-aprovado-por','viagem-status'].forEach(id=>{
@@ -4993,6 +4993,9 @@ function abrirNovaViagem(){
   });
   // Limpar diárias
   document.getElementById('viagem-diarias-body').innerHTML = '';
+  document.getElementById('viagem-trechos-body').innerHTML = '';
+  adicionarTrecho({tipo:'Ida'});
+  adicionarTrecho({tipo:'Volta'});
   adicionarDiaria();
   calcularTotalViagem();
   document.getElementById('viagem-modal').style.display='flex';
@@ -5012,10 +5015,16 @@ function editarViagem(i){
   set('viagem-sexo', v.sexo);
   set('viagem-missao', v.missao);
   set('viagem-transporte', v.transporte);
-  set('viagem-trecho-ida', v.trecho_ida||v.trecho||'');
-  set('viagem-trecho-volta', v.trecho_volta||'');
-  set('viagem-vl-ida', v.vl_ida||'');
-  set('viagem-vl-volta', v.vl_volta||'');
+  // Carregar trechos dinâmicos
+  document.getElementById('viagem-trechos-body').innerHTML = '';
+  const trechosSalvos = (() => { try{ return JSON.parse(v.trechos||'[]'); }catch(e){ return []; } })();
+  if(trechosSalvos.length){
+    trechosSalvos.forEach(t => adicionarTrecho(t));
+  } else {
+    // compatibilidade com registros antigos
+    adicionarTrecho({tipo:'Ida',  trecho: v.trecho_ida||v.trecho||'', data: v.dt_ida||'',  valor: v.vl_ida||0});
+    adicionarTrecho({tipo:'Volta',trecho: v.trecho_volta||'',         data: v.dt_volta||'', valor: v.vl_volta||0});
+  }
   setTimeout(calcTotalTransporte,50);
   const pdfBtn = document.getElementById('viagem-pdf-btn');
   if(pdfBtn) pdfBtn.style.display = 'inline-block';
@@ -5047,15 +5056,20 @@ function fecharViagemModal(){
 }
 
 function calcTotalTransporte(){
-  const ida   = parseFloat(document.getElementById('viagem-vl-ida')?.value||0);
-  const volta = parseFloat(document.getElementById('viagem-vl-volta')?.value||0);
+  let total = 0;
+  document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
+    const vl = tr.querySelector('.trecho-valor');
+    total += parseFloat(vl?.value||0);
+  });
   const el = document.getElementById('viagem-total-transporte');
-  if(el) el.textContent = 'R$ '+(ida+volta).toFixed(2).replace('.',',');
+  if(el) el.textContent = 'R$ '+total.toFixed(2).replace('.',',');
   calcTotalGeral();
 }
 function calcTotalGeral(){
-  const transp = parseFloat(document.getElementById('viagem-vl-ida')?.value||0)
-               + parseFloat(document.getElementById('viagem-vl-volta')?.value||0);
+  let transp = 0;
+  document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
+    transp += parseFloat(tr.querySelector('.trecho-valor')?.value||0);
+  });
   let diarias = 0;
   document.querySelectorAll('#viagem-diarias-body tr').forEach(tr=>{
     const inputs = tr.querySelectorAll('input');
@@ -5063,6 +5077,33 @@ function calcTotalGeral(){
   });
   const el = document.getElementById('viagem-total-diarias');
   if(el) el.textContent = 'R$ '+(diarias + transp).toFixed(2).replace('.',',');
+}
+function adicionarTrecho(dados){
+  const tbody = document.getElementById('viagem-trechos-body');
+  if(!tbody) return;
+  const idx = tbody.querySelectorAll('tr').length;
+  const tipo  = dados?.tipo  || (idx===0 ? 'Ida' : idx===1 ? 'Volta' : 'Conexão');
+  const trecho= dados?.trecho|| '';
+  const data  = dados?.data  || '';
+  const valor = dados?.valor != null ? dados.valor : '';
+  const tr = document.createElement('tr');
+  tr.style.borderTop = '1px solid var(--border)';
+  tr.innerHTML = `
+    <td style="padding:4px 6px">
+      <select class="trecho-tipo" style="width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px">
+        <option\${tipo==='Ida'?' selected':''}>Ida</option>
+        <option\${tipo==='Volta'?' selected':''}>Volta</option>
+        <option\${tipo==='Conexão'?' selected':''}>Conexão</option>
+        <option\${tipo==='Outros'?' selected':''}>Outros</option>
+      </select>
+    </td>
+    <td style="padding:4px 6px"><input class="trecho-desc" type="text" value="\${trecho}" placeholder="Ex: SP → Casas Brancas" style="width:100%;min-width:160px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 8px;box-sizing:border-box"></td>
+    <td style="padding:4px 6px"><input class="trecho-data" type="date" value="\${data}" style="height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px"></td>
+    <td style="padding:4px 6px"><input class="trecho-valor" type="number" min="0" step="0.01" value="\${valor}" placeholder="0,00" oninput="calcTotalTransporte()" style="width:90px;height:30px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);padding:0 6px;text-align:right"></td>
+    <td style="padding:4px 6px;text-align:center"><button type="button" onclick="this.closest('tr').remove();calcTotalTransporte()" style="padding:2px 7px;border:1px solid #e00;border-radius:4px;font-size:11px;background:none;cursor:pointer;color:#e00">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  calcTotalTransporte();
 }
 function adicionarDiaria(dados){
   const tbody = document.getElementById('viagem-diarias-body');
@@ -5111,8 +5152,17 @@ async function salvarViagem(){
       });
     }
   });
+  const trechos = [];
+  document.querySelectorAll('#viagem-trechos-body tr').forEach(tr=>{
+    trechos.push({
+      tipo:   tr.querySelector('.trecho-tipo')?.value||'',
+      trecho: tr.querySelector('.trecho-desc')?.value||'',
+      data:   tr.querySelector('.trecho-data')?.value||'',
+      valor:  parseFloat(tr.querySelector('.trecho-valor')?.value||0),
+    });
+  });
+  const totalTransporte = trechos.reduce((s,t)=>s+t.valor,0);
   const totalDiarias = diarias.reduce((s,d)=>s+(d.dias*d.valor_diaria),0);
-  const totalTransporte = parseFloat(get('viagem-vl-ida')||0)+parseFloat(get('viagem-vl-volta')||0);
   const total = totalDiarias + totalTransporte;
   const payload = {
     numero_req: get('viagem-numero'),
@@ -5124,13 +5174,6 @@ async function salvarViagem(){
     sexo: get('viagem-sexo'),
     missao: get('viagem-missao'),
     transporte: get('viagem-transporte'),
-    trecho_ida: get('viagem-trecho-ida'),
-    trecho_volta: get('viagem-trecho-volta'),
-    vl_ida: parseFloat(get('viagem-vl-ida')||0),
-    vl_volta: parseFloat(get('viagem-vl-volta')||0),
-    total_transporte: (parseFloat(get('viagem-vl-ida')||0)+parseFloat(get('viagem-vl-volta')||0)),
-    dt_ida: get('viagem-dt-ida'),
-    dt_volta: get('viagem-dt-volta'),
     cia: get('viagem-cia'),
     hospedagem: get('viagem-hospedagem'),
     hotel: get('viagem-hotel'),
@@ -5139,6 +5182,8 @@ async function salvarViagem(){
     antecipacao: get('viagem-antecipacao'),
     num_antecipacao: get('viagem-num-antecipacao'),
     diarias,
+    trechos: JSON.stringify(trechos),
+    total_transporte: totalTransporte,
     total_diarias: total,
     centro_custo: get('viagem-centro-custo'),
     cartao: get('viagem-cartao'),
@@ -6611,19 +6656,25 @@ async function estEnviarEmail(reg){
         </select>
       </div>
       <div class="modal-field"><label>Companhia / Empresa</label><input type="text" id="viagem-cia" placeholder="Ex: Latam, Localiza..."></div>
-      <!-- IDA -->
-      <div style="grid-column:span 2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-top:4px">✈️ Ida</div>
-      <div class="modal-field" style="grid-column:span 2"><label>Trecho Ida (Origem → Destino)</label><input type="text" id="viagem-trecho-ida" placeholder="Ex: São Paulo (SP) → Casas Brancas (SP)"></div>
-      <div class="modal-field"><label>Data de Ida</label><input type="date" id="viagem-dt-ida"></div>
-      <div class="modal-field"><label>Valor do Transporte Ida (R$)</label><input type="number" min="0" step="0.01" id="viagem-vl-ida" placeholder="0,00" oninput="calcTotalTransporte()"></div>
-      <!-- VOLTA -->
-      <div style="grid-column:span 2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-top:4px">🔄 Volta</div>
-      <div class="modal-field" style="grid-column:span 2"><label>Trecho Volta (Destino → Origem)</label><input type="text" id="viagem-trecho-volta" placeholder="Ex: Casas Brancas (SP) → São Paulo (SP)"></div>
-      <div class="modal-field"><label>Data de Retorno</label><input type="date" id="viagem-dt-volta"></div>
-      <div class="modal-field"><label>Valor do Transporte Volta (R$)</label><input type="number" min="0" step="0.01" id="viagem-vl-volta" placeholder="0,00" oninput="calcTotalTransporte()"></div>
-      <div style="grid-column:span 2;display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:13px;font-weight:700">
-        Total Transporte: <span id="viagem-total-transporte" style="color:var(--accent)">R$ 0,00</span>
-      </div>
+    </div>
+
+    <!-- TRECHOS DINÂMICOS -->
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600;margin-top:4px">Trechos de Viagem</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px">
+      <thead>
+        <tr style="background:var(--surface);color:var(--text-muted);font-size:11px">
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Tipo</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Trecho</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Data</th>
+          <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border)">Valor (R$)</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border)"></th>
+        </tr>
+      </thead>
+      <tbody id="viagem-trechos-body"></tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <button type="button" onclick="adicionarTrecho()" style="padding:5px 12px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text)">+ Adicionar trecho</button>
+      <div style="font-weight:700;font-size:13px">Total Transporte: <span id="viagem-total-transporte" style="color:var(--accent)">R$ 0,00</span></div>
     </div>
 
     <!-- HOSPEDAGEM -->
@@ -6679,10 +6730,10 @@ async function estEnviarEmail(reg){
     </div>
 
     </div><!-- fim scroll -->
-    <div style="padding:16px 24px;border-top:1px solid var(--border);background:var(--modal-bg,var(--surface));display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
-      <button onclick="fecharViagemModal()" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text)">Cancelar</button>
-      <button id="viagem-pdf-btn" onclick="exportarViagemPDFmodal()" style="display:none;padding:8px 20px;background:#F5B800;border:1px solid #d4a000;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#111">📄 Exportar PDF</button>
-      <button onclick="salvarViagem()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Salvar</button>
+    <div style="padding:16px 24px;border-top:2px solid var(--border);background:#fff;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
+      <button type="button" onclick="fecharViagemModal()" style="padding:8px 20px;background:#f5f5f5;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:#333">Cancelar</button>
+      <button type="button" id="viagem-pdf-btn" onclick="exportarViagemPDFmodal()" style="padding:8px 20px;background:#F5B800;border:1px solid #d4a000;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#111">📄 Exportar PDF</button>
+      <button type="button" onclick="salvarViagem()" style="padding:8px 20px;background:#1A5FC8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700">Salvar</button>
     </div>
   </div>
 </div>
