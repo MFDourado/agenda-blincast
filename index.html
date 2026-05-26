@@ -5021,9 +5021,10 @@ function editarViagem(i){
   if(trechosSalvos.length){
     trechosSalvos.forEach(t => adicionarTrecho(t));
   } else {
-    // compatibilidade com registros antigos
-    adicionarTrecho({tipo:'Ida',  trecho: v.trecho_ida||v.trecho||'', data: v.dt_ida||'',  valor: v.vl_ida||0});
-    adicionarTrecho({tipo:'Volta',trecho: v.trecho_volta||'',         data: v.dt_volta||'', valor: v.vl_volta||0});
+    // compatibilidade com registros antigos — trecho pode ser "GIG | MGF"
+    const partes = (v.trecho||'').split('|').map(s=>s.trim()).filter(Boolean);
+    adicionarTrecho({tipo:'Ida',   trecho: partes[0]||'', data: v.dt_ida||'',   valor: parseFloat(v.vl_ida)||0});
+    adicionarTrecho({tipo:'Volta', trecho: partes[1]||'', data: v.dt_volta||'', valor: parseFloat(v.vl_volta)||0});
   }
   setTimeout(calcTotalTransporte,50);
   const pdfBtn = document.getElementById('viagem-pdf-btn');
