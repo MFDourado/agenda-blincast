@@ -194,7 +194,7 @@ async function fazerLoginCampo(){
   try{
     const r = await fetch(LOGIN_API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
     const d = await r.json();
-    if(d.success){
+    if(d.ok){
       usuarioCampo = d;
       sessionStorage.setItem('campo_user', JSON.stringify(d));
       iniciarAppCampo();
