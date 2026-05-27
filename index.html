@@ -7184,15 +7184,19 @@ async function estEnviarEmail(reg){
 
 
 
-<!-- ORDENS DE SERVICO -->
-<div id="page-os" class="main" style="display:none">
-  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
-    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
-    <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
+<!-- ORDENS DE SERVICO<div id="page-os" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Ordens de Serviço</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="os-sync">Ordens de serviço da equipe técnica</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
+    </div>
   </div>
   <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
-    <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
-    <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+    <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
       <option value="">Todos os status</option>
       <option value="Aberta">Aberta</option>
       <option value="Em andamento">Em andamento</option>
@@ -7200,7 +7204,7 @@ async function estEnviarEmail(reg){
       <option value="Cancelada">Cancelada</option>
     </select>
   </div>
-  <div id="os-lista" style="padding:16px 20px;"></div>
+  <div id="os-lista" style="padding:0 20px;"></div>
 </div>
 
 <!-- MODAL OS COMPLETO -->
@@ -7455,20 +7459,22 @@ async function excluirOS(id){
 </div>
 
 
-<!-- COLABORADORES -->
-<div id="page-colaboradores" style="display:none;">
-  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+<!-- COLABORADORES<div id="page-colaboradores" class="main" style="display:none">
+  <div class="pipeline-header">
     <div>
-      <div style="font-size:18px;font-weight:700;color:inherit;">Colaboradores</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="colab-sync">0 colaborador(es)</div>
+      <h2>Colaboradores</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="colab-sync">Equipe Blincast</div>
     </div>
-    <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
+    </div>
   </div>
   <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
-    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="width:100%;max-width:400px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;width:100%;max-width:400px;">
   </div>
-  <div id="colab-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+  <div id="colab-lista" style="padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding-top:16px;padding-bottom:16px;"></div>
 </div>
+
 
 <!-- MODAL COLABORADOR -->
 <div class="modal-overlay" id="colab-modal" style="display:none" onclick="if(event.target===this)fecharColabModal()">
