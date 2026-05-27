@@ -838,10 +838,12 @@ const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
 
 function iniciarApp(){
-  // Sempre pedir login ao abrir
+  // Sempre mostrar login ao carregar a página
   localStorage.removeItem('blintrack_user');
   document.getElementById('login-overlay').style.display='flex';
-  return;
+}
+
+function _iniciarAppOriginal(){
   if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
     const sess = localStorage.getItem('blintrack_user');
@@ -868,9 +870,6 @@ function iniciarApp(){
       }
     }
   }catch(e){ console.warn('iniciarApp erro:', e); }
-  // Se chegou aqui sem return, verificar sessão
-  const _s2 = localStorage.getItem('blintrack_user');
-  if(_s2){ try{ const _u2=JSON.parse(_s2); if(_u2&&_u2.token){ location.reload(); return; } }catch(e2){} }
   document.getElementById('login-overlay').style.display='flex';
 }
 
