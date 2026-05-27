@@ -838,6 +838,10 @@ const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
 
 function iniciarApp(){
+  // Sempre pedir login ao abrir
+  localStorage.removeItem('blintrack_user');
+  document.getElementById('login-overlay').style.display='flex';
+  return;
   if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
     const sess = localStorage.getItem('blintrack_user');
@@ -2062,7 +2066,8 @@ function verificarSessaoExpirada() {
     const agora = Date.now();
     const oitoHoras = 8 * 60 * 60 * 1000;
     if (agora - u.login_ts > oitoHoras) {
-      localStorage.removeItem('blintrack_user');
+      localStorage.removeItem('blintrack_user')
+  localStorage.removeItem('blintrack_v2_visto');
       return true;
     }
     return false;
@@ -7323,7 +7328,7 @@ function renderOS(){
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
-  if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada ainda.<br><br><button onclick="abrirNovaOS()" style="margin-top:12px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
+  if(!lista.length){document.getElementById('os-lista').innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma OS cadastrada. Clique em "+ Nova OS" para criar.</div>';return;}
   if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada.<br><br><button onclick="abrirNovaOS()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
   document.getElementById('os-lista').innerHTML=lista.map(o=>`
@@ -7585,7 +7590,7 @@ function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
   const el=document.getElementById('colab-lista');
-  if(!lista.length){el.innerHTML='<div style="padding:60px 20px;text-align:center;font-size:14px;color:#888;">Nenhum colaborador cadastrado.<br><br><button onclick="abrirNovoColab()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Cadastrar primeiro</button></div>';return;}
+  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum colaborador cadastrado. Clique em "+ Novo Colaborador" para cadastrar.</div>';return;}
   const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
   el.innerHTML=lista.map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
@@ -7671,6 +7676,13 @@ async function excluirColab(id){
   }catch(e){alert('Erro ao excluir');return;}
   loadColaboradores();
 }
+</script>
+
+
+<script>
+window.addEventListener('beforeunload', function(){
+  localStorage.removeItem('blintrack_user');
+});
 </script>
 
 </body>
