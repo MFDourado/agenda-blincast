@@ -109,6 +109,7 @@ textarea.obs-input{width:100%;min-height:100px;padding:10px;border:1px solid var
     <div class="topbar-logo">Blin<span>Track</span> <span style="color:#555;font-size:12px;font-weight:400">Campo</span></div>
     <div class="topbar-right">
       <span class="user-pill" id="c-user-pill"></span>
+      <button class="btn-sair" id="btn-sync-campo" onclick="sincronizarCampo()" style="border-color:#F5B800;color:#F5B800;">↻ Sync</button>
       <button class="btn-sair" onclick="fazerLogoutCampo()">Sair</button>
     </div>
   </div>
@@ -224,6 +225,13 @@ function fazerLogoutCampo(){
 }
 
 // ── CARREGAR OS ───────────────────────────────────────────────────────────────
+async function sincronizarCampo(){
+  const btn = document.getElementById('btn-sync-campo');
+  if(btn){ btn.textContent='⟳ Sync'; btn.disabled=true; }
+  await carregarOS();
+  if(btn){ btn.textContent='↻ Sync'; btn.disabled=false; }
+}
+
 async function carregarOS(){
   const s = document.getElementById('c-sync');
   s.textContent='Sincronizando...';
