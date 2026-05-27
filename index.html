@@ -384,6 +384,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-ferias" onclick="switchMainTab('ferias');closeSidebar()">Férias</button>
     <button class="snav-btn" id="mt-viagem" onclick="switchMainTab('viagem');closeSidebar()">Viagem</button>
     <button class="snav-btn" id="mt-requisicoes" onclick="switchMainTab('requisicoes');closeSidebar()">Requisições</button>
+    <button class="snav-btn" id="mt-colaboradores" onclick="switchMainTab('colaboradores');closeSidebar()">Colaboradores</button>
   </div>
 </nav>
 
@@ -891,7 +892,7 @@ async function fazerLogin(){
       switchMainTab('pipeline');
       verificarV2Popup();
       apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
-      setTimeout(verificarNotificacoesFerias, 8000);
+      if(localStorage.getItem('blintrack_v2_visto')) setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -974,7 +975,7 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').style.display='none';
 }
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -998,6 +999,7 @@ function switchMainTab(t){
   if(t==='implantacoes')loadImplantacoes();
   if(t==='estoque')iniciarEstoque();
   if(t==='os')loadOS();
+  if(t==='colaboradores')loadColaboradores();
 }
 
 // ===================== AGENDA =====================
@@ -6822,6 +6824,12 @@ async function estEnviarEmail(reg){
           <option value="Rejeitada">Rejeitada</option>
         </select>
       </div>
+      <div class="modal-field" style="grid-column:span 2">
+        <label>Colaborador <span style="font-size:11px;color:var(--text-muted)">(selecione para preencher automaticamente)</span></label>
+        <select id="viagem-colaborador-sel" onchange="preencherColaboradorViagem()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione um colaborador...</option>
+        </select>
+      </div>
       <div class="modal-field" style="grid-column:span 2"><label>Solicitante</label><input type="text" id="viagem-solicitante" placeholder="Nome completo"></div>
       <div class="modal-field"><label>E-mail</label><input type="email" id="viagem-email" placeholder="colaborador@blincast.com.br"></div>
       <div class="modal-field"><label>CPF <span style="color:#e00">*</span></label><input type="text" id="viagem-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" style="letter-spacing:.5px"></div>
@@ -7151,54 +7159,235 @@ async function estEnviarEmail(reg){
 <!-- ORDENS DE SERVICO -->
 <div id="page-os" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
-    <div><h2>Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
     <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
   </div>
   <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
     <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
     <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
-      <option value="">Todos os status</option><option>Aberta</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option>
+      <option value="">Todos os status</option>
+      <option value="Aberta">Aberta</option>
+      <option value="Em andamento">Em andamento</option>
+      <option value="Concluída">Concluída</option>
+      <option value="Cancelada">Cancelada</option>
     </select>
   </div>
   <div id="os-lista" style="padding:16px 20px;"></div>
-  <div id="os-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:1rem;">
-    <div style="background:#1a1a1a;border-radius:12px;padding:24px;width:100%;max-width:500px;border:1px solid #2a2a2a;">
-      <h3 id="os-modal-title" style="font-size:15px;font-weight:700;color:#fff;margin-bottom:16px;">Nova OS</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Número</label><input id="os-num" type="text" placeholder="OS-001" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
-        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Data</label><input id="os-data" type="date" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
-        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Cliente</label><input id="os-cliente" type="text" placeholder="Nome do cliente" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
-        <div><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Técnico</label><input id="os-tecnico" type="text" placeholder="Nome do técnico" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>
-        <div style="grid-column:span 2;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Status</label><select id="os-status" style="width:100%;height:34px;padding:0 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;"><option>Aberta</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option></select></div>
-        <div style="grid-column:span 2;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Descrição</label><textarea id="os-descricao" rows="3" placeholder="Descreva o serviço..." style="width:100%;padding:8px 10px;border:1px solid #333;border-radius:6px;background:#111;color:#fff;font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;"></textarea></div>
+</div>
+
+<!-- MODAL OS COMPLETO -->
+<div class="modal-overlay" id="os-modal" style="display:none" onclick="if(event.target===this)fecharModalOS()">
+  <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto;">
+    <h3 id="os-modal-title">Nova Ordem de Serviço</h3>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Identificação</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>Número da OS</label><input type="text" id="os-num" placeholder="Ex: OS-001"></div>
+      <div class="modal-field"><label>Data de Abertura</label><input type="date" id="os-data"></div>
+      <div class="modal-field"><label>Status</label>
+        <select id="os-status" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option>Aberta</option>
+          <option>Em andamento</option>
+          <option>Concluída</option>
+          <option>Cancelada</option>
+        </select>
       </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
-        <button onclick="fecharModalOS()" style="padding:7px 14px;border:1px solid #333;border-radius:6px;background:none;color:#888;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
-        <button onclick="salvarOS()" style="padding:7px 18px;background:#F5B800;color:#111;border:none;border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;">Salvar</button>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Cliente</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="os-cliente" placeholder="Nome do cliente"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="os-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field"><label>Cidade / UF</label><input type="text" id="os-cidade" placeholder="Ex: São Paulo, SP"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="os-endereco" placeholder="Rua, número, bairro"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Serviço</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>Tipo de serviço</label>
+        <select id="os-tipo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione...</option>
+          <option>Instalação</option>
+          <option>Manutenção</option>
+          <option>Vistoria</option>
+          <option>Preventiva</option>
+          <option>Desinstalação</option>
+        </select>
       </div>
+      <div class="modal-field"><label>Produto</label>
+        <select id="os-produto" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione...</option>
+          <option>Rack HD</option>
+          <option>Rack SD</option>
+          <option>STB</option>
+          <option>STR</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2"><label>Descrição do serviço *</label>
+        <textarea id="os-descricao" rows="3" placeholder="Descreva o serviço a ser realizado..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Execução</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>Técnico responsável <span style="font-size:11px;color:var(--text-muted)">(deixe vazio = pool)</span></label>
+        <input type="text" id="os-tecnico" list="os-tecnico-list" placeholder="Digite ou selecione..." autocomplete="off"
+          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <datalist id="os-tecnico-list"></datalist>
+      </div>
+      <div class="modal-field"><label>Data prevista</label><input type="date" id="os-data-prevista"></div>
+      <div class="modal-field"><label>Data de conclusão</label><input type="date" id="os-data-conclusao"></div>
+      <div class="modal-field"><label>Horas trabalhadas</label><input type="number" id="os-horas" placeholder="Ex: 4" min="0" step="0.5"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Observações</div>
+    <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>Observações gerais</label>
+        <textarea id="os-obs" rows="2" placeholder="Observações adicionais..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div class="modal-field"><label>Materiais utilizados</label>
+        <textarea id="os-materiais" rows="2" placeholder="Liste os materiais usados..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+
+    <input type="hidden" id="os-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharModalOS()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarOS()">Salvar</button>
     </div>
   </div>
 </div>
 <script>
 let osLista=[],osEditId=null;
-async function loadOS(){const s=document.getElementById('os-sync');if(s)s.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS');const d=await r.json();osLista=Array.isArray(d.os)?d.os:[];if(s)s.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){if(s)s.textContent='Erro de conexão';}renderOS();}
-function renderOS(){const b=(document.getElementById('os-busca')?.value||'').toLowerCase();const fs=document.getElementById('os-filtro-status')?.value||'';const sc={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};let lista=osLista.filter(o=>(!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))&&(!fs||o.status===fs)).sort((a,c)=>String(c.id).localeCompare(String(a.id)));if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px;color:#555;font-size:13px;">Nenhuma OS encontrada</div>';return;}document.getElementById('os-lista').innerHTML=lista.map(o=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:16px;"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc[o.status]||'#888'}22;color:${sc[o.status]||'#888'};border:1px solid ${sc[o.status]||'#888'}44;">${o.status}</span></div><div style="font-size:12px;color:#888;display:flex;gap:16px;flex-wrap:wrap;"><span>Cliente: <strong style="color:var(--text)">${o.cliente||'—'}</strong></span><span>Técnico: <strong style="color:var(--text)">${o.tecnico||'—'}</strong></span><span>Data: <strong style="color:var(--text)">${o.data||'—'}</strong></span></div>${o.descricao?`<div style="font-size:12px;color:#777;margin-top:6px;">${o.descricao}</div>`:''}</div><div style="display:flex;gap:6px;"><button onclick="editarOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Editar</button><button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">Excluir</button></div></div>`).join('');}
-function abrirNovaOS(){osEditId=null;document.getElementById('os-modal-title').textContent='Nova OS';document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');document.getElementById('os-data').value=new Date().toISOString().split('T')[0];['os-cliente','os-tecnico','os-descricao'].forEach(id=>document.getElementById(id).value='');document.getElementById('os-status').value='Aberta';document.getElementById('os-modal').style.display='flex';}
-function editarOS(id){const o=osLista.find(x=>String(x.id)===String(id));if(!o)return;osEditId=id;document.getElementById('os-modal-title').textContent='Editar OS';document.getElementById('os-num').value=o.numero||'';document.getElementById('os-data').value=o.data||'';document.getElementById('os-cliente').value=o.cliente||'';document.getElementById('os-tecnico').value=o.tecnico||'';document.getElementById('os-status').value=o.status||'Aberta';document.getElementById('os-descricao').value=o.descricao||'';document.getElementById('os-modal').style.display='flex';}
 
-function fecharV2Popup(){
-  document.getElementById('v2-overlay').style.display='none';
-  localStorage.setItem('blintrack_v2_visto','1');
-}
-function verificarV2Popup(){
-  if(!localStorage.getItem('blintrack_v2_visto')){
-    document.getElementById('v2-overlay').style.display='flex';
+function popularSelectTecnicosOS(){
+  const dl=document.getElementById('os-tecnico-list');
+  if(!dl) return;
+  dl.innerHTML='';
+  if(typeof colabLista!=='undefined'){
+    colabLista.filter(c=>c.status==='Ativo').forEach(c=>{
+      const o=document.createElement('option');
+      // Gravar o usuario para filtrar corretamente no tecnicocampo
+      o.value=c.usuario||c.nome;
+      o.label=c.nome+(c.cargo?' — '+c.cargo:'');
+      dl.appendChild(o);
+    });
   }
 }
 
+async function loadOS(){
+  const s=document.getElementById('os-sync');
+  if(s)s.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS');
+    const d=await r.json();
+    osLista=Array.isArray(d.os)?d.os:[];
+    if(s)s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){if(s)s.textContent='Erro de conexão';}
+  renderOS();
+}
+
+function renderOS(){
+  const b=(document.getElementById('os-busca')?.value||'').toLowerCase();
+  const fs=document.getElementById('os-filtro-status')?.value||'';
+  const sc={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
+  let lista=osLista.filter(o=>
+    (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
+    &&(!fs||o.status===fs)
+  ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
+  if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">Nenhuma OS encontrada</div>';return;}
+  const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
+  document.getElementById('os-lista').innerHTML=lista.map(o=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${o.status||'—'}</span>
+            ${o.tipo?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.tipo}</span>`:''}
+            ${o.produto?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.produto}</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${o.cliente||'—'}</div>
+          <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
+            ${o.cidade?`<span>📍 ${o.cidade}</span>`:''}
+            ${o.tecnico?`<span>👤 ${o.tecnico}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
+            ${o.data_prevista?`<span>📅 Previsto: ${o.data_prevista}</span>`:''}
+          </div>
+          ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button onclick="editarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
+          <button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function abrirNovaOS(){
+  osEditId=null;
+  document.getElementById('os-modal-title').textContent='Nova Ordem de Serviço';
+  document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');
+  document.getElementById('os-data').value=new Date().toISOString().split('T')[0];
+  ['os-cliente','os-cnpj','os-cidade','os-endereco','os-descricao','os-obs','os-materiais','os-horas','os-data-prevista','os-data-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('os-status').value='Aberta';
+  document.getElementById('os-tipo').value='';
+  document.getElementById('os-produto').value='';
+  document.getElementById('os-edit-id').value='';
+  popularSelectTecnicosOS();
+  document.getElementById('os-modal').style.display='flex';
+}
+
+function editarOS(id){
+  const o=osLista.find(x=>String(x.id)===String(id));
+  if(!o) return;
+  osEditId=id;
+  document.getElementById('os-modal-title').textContent='Editar Ordem de Serviço';
+  const set=(el,val)=>{const e=document.getElementById(el);if(e)e.value=val||'';};
+  set('os-num',o.numero); set('os-data',o.data); set('os-cliente',o.cliente);
+  set('os-cnpj',o.cnpj); set('os-cidade',o.cidade); set('os-endereco',o.endereco);
+  set('os-descricao',o.descricao); set('os-obs',o.obs); set('os-materiais',o.materiais);
+  set('os-horas',o.horas); set('os-data-prevista',o.data_prevista); set('os-data-conclusao',o.data_conclusao);
+  document.getElementById('os-status').value=o.status||'Aberta';
+  document.getElementById('os-tipo').value=o.tipo||'';
+  document.getElementById('os-produto').value=o.produto||'';
+  document.getElementById('os-edit-id').value=id;
+  popularSelectTecnicosOS();
+  document.getElementById('os-tecnico').value=o.tecnico||'';
+  document.getElementById('os-modal').style.display='flex';
+}
+
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
-async function salvarOS(){const os={id:osEditId||String(Date.now()),numero:document.getElementById('os-num').value.trim(),data:document.getElementById('os-data').value,cliente:document.getElementById('os-cliente').value.trim(),tecnico:document.getElementById('os-tecnico').value.trim(),status:document.getElementById('os-status').value,descricao:document.getElementById('os-descricao').value.trim()};if(!os.numero||!os.cliente){alert('Preencha número e cliente.');return;}try{await fetch(API,{method:'POST',body:JSON.stringify({...os,token:getToken(),action:'saveOS'})});}catch(e){alert('Erro ao salvar');return;}fecharModalOS();loadOS();}
-async function excluirOS(id){if(!confirm('Excluir esta OS?'))return;try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id})});}catch(e){alert('Erro ao excluir');return;}loadOS();}
+
+async function salvarOS(){
+  const g=(id)=>document.getElementById(id)?.value?.trim()||'';
+  const os={
+    id: osEditId||String(Date.now()),
+    numero: g('os-num'), data: g('os-data'), status: g('os-status'),
+    cliente: g('os-cliente'), cnpj: g('os-cnpj'), cidade: g('os-cidade'), endereco: g('os-endereco'),
+    tipo: g('os-tipo'), produto: g('os-produto'), descricao: g('os-descricao'),
+    tecnico: g('os-tecnico'), data_prevista: g('os-data-prevista'),
+    data_conclusao: g('os-data-conclusao'), horas: g('os-horas'),
+    obs: g('os-obs'), materiais: g('os-materiais'),
+    criado_em: osEditId?undefined:new Date().toLocaleString('pt-BR'),
+  };
+  if(!os.cliente){alert('Informe o cliente.');return;}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({...os,token:getToken(),action:'saveOS'})});
+    const d=await r.json();
+    if(d.error){alert('Erro: '+d.error);return;}
+  }catch(e){alert('Erro ao salvar OS');return;}
+  fecharModalOS();
+  loadOS();
+}
+
+async function excluirOS(id){
+  if(!confirm('Excluir esta OS?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id})});
+  }catch(e){alert('Erro ao excluir');return;}
+  loadOS();
+}
 </script>
 
 <div id="v2-overlay" style="display:none;">
@@ -7232,6 +7421,226 @@ async function excluirOS(id){if(!confirm('Excluir esta OS?'))return;try{await fe
     <button class="v2-btn" onclick="fecharV2Popup()">Entendido, vamos lá!</button>
   </div>
 </div>
+
+
+<!-- COLABORADORES -->
+<div id="page-colaboradores" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div>
+      <h2 style="font-size:18px;font-weight:700;color:var(--text)">Colaboradores</h2>
+      <span class="dash-sync" id="colab-sync"></span>
+    </div>
+    <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
+  </div>
+  <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+  </div>
+  <div id="colab-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+</div>
+
+<!-- MODAL COLABORADOR -->
+<div class="modal-overlay" id="colab-modal" style="display:none" onclick="if(event.target===this)fecharColabModal()">
+  <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto;">
+    <h3 id="colab-modal-titulo">Novo Colaborador</h3>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Dados Pessoais</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field" style="grid-column:span 2"><label>Nome completo *</label><input type="text" id="colab-nome" placeholder="Nome do colaborador"></div>
+      <div class="modal-field"><label>CPF *</label><input type="text" id="colab-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)"></div>
+      <div class="modal-field"><label>RG</label><input type="text" id="colab-rg" placeholder="Ex: 12.345.678-9"></div>
+      <div class="modal-field"><label>Data de Nascimento</label><input type="date" id="colab-nascimento"></div>
+      <div class="modal-field"><label>Sexo</label>
+        <select id="colab-sexo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione</option>
+          <option value="M">Masculino</option>
+          <option value="F">Feminino</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Contato</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>E-mail *</label><input type="email" id="colab-email" placeholder="colaborador@blincast.com.br"></div>
+      <div class="modal-field"><label>Usuário (login) *</label><input type="text" id="colab-usuario" placeholder="Ex: mozart.silva"></div>
+      <div class="modal-field"><label>Telefone / WhatsApp</label><input type="text" id="colab-telefone" placeholder="(11) 99999-9999" maxlength="15"></div>
+      <div class="modal-field"><label>Ramal / Telefone fixo</label><input type="text" id="colab-ramal" placeholder="(11) 3333-3333"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Empresa</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field"><label>Cargo / Função</label><input type="text" id="colab-cargo" placeholder="Ex: Técnico de Campo"></div>
+      <div class="modal-field"><label>Setor</label><input type="text" id="colab-setor" placeholder="Ex: Operacional"></div>
+      <div class="modal-field"><label>Data de Admissão</label><input type="date" id="colab-admissao"></div>
+      <div class="modal-field"><label>Status</label>
+        <select id="colab-status" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="Ativo">Ativo</option>
+          <option value="Inativo">Inativo</option>
+          <option value="Férias">Férias</option>
+          <option value="Afastado">Afastado</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Dados Bancários</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="modal-field" style="grid-column:span 2"><label>Banco</label><input type="text" id="colab-banco" placeholder="Ex: Bradesco, Nubank..."></div>
+      <div class="modal-field"><label>Agência</label><input type="text" id="colab-agencia" placeholder="Ex: 1234-5"></div>
+      <div class="modal-field"><label>Conta</label><input type="text" id="colab-conta" placeholder="Ex: 123456-7"></div>
+      <div class="modal-field"><label>Tipo de conta</label>
+        <select id="colab-tipo-conta" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Selecione</option>
+          <option value="Corrente">Corrente</option>
+          <option value="Poupança">Poupança</option>
+          <option value="PIX">PIX</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>Chave PIX</label><input type="text" id="colab-pix" placeholder="CPF, e-mail ou telefone"></div>
+    </div>
+
+    <input type="hidden" id="colab-edit-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharColabModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarColab()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let colabLista = [];
+let colabEditId = null;
+
+async function loadColaboradores(){
+  const s=document.getElementById('colab-sync');
+  if(s) s.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getColaboradores');
+    const d=await r.json();
+    colabLista=Array.isArray(d.colaboradores)?d.colaboradores:[];
+    if(s) s.textContent=colabLista.length+' colaborador(es)';
+  }catch(e){if(s)s.textContent='Erro de conexão';}
+  renderColaboradores();
+  popularSelectColaboradores();
+}
+
+function popularSelectColaboradores(){
+  const sel=document.getElementById('viagem-colaborador-sel');
+  if(!sel) return;
+  const val=sel.value;
+  sel.innerHTML='<option value="">Selecione um colaborador...</option>';
+  colabLista.filter(c=>c.status==='Ativo').forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.id;
+    opt.textContent=c.nome+(c.cargo?' — '+c.cargo:'');
+    sel.appendChild(opt);
+  });
+  sel.value=val;
+}
+
+function preencherColaboradorViagem(){
+  const sel=document.getElementById('viagem-colaborador-sel');
+  if(!sel||!sel.value) return;
+  const c=colabLista.find(x=>String(x.id)===String(sel.value));
+  if(!c) return;
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+  set('viagem-solicitante',c.nome);
+  set('viagem-email',c.email);
+  set('viagem-cpf',c.cpf);
+  set('viagem-rg',c.rg);
+  if(c.nascimento) set('viagem-nascimento',c.nascimento);
+  if(c.sexo){const s=document.getElementById('viagem-sexo');if(s)s.value=c.sexo;}
+}
+
+function renderColaboradores(){
+  const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
+  const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
+  const el=document.getElementById('colab-lista');
+  if(!lista.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum colaborador cadastrado</div>';return;}
+  const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
+  el.innerHTML=lista.map(c=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(245,184,0,.15);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#F5B800;flex-shrink:0;">${(c.nome||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nome||'—'}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${c.cargo||'—'}</div>
+        </div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${statusColor[c.status]||'#888'}22;color:${statusColor[c.status]||'#888'};border:1px solid ${statusColor[c.status]||'#888'}44;white-space:nowrap;">${c.status||'Ativo'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
+        ${c.email?`<div>✉ ${c.email}</div>`:''}
+        ${c.telefone?`<div>📱 ${c.telefone}</div>`:''}
+        ${c.cpf?`<div>CPF: ${c.cpf}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button onclick="editarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
+        <button onclick="excluirColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirNovoColab(){
+  colabEditId=null;
+  document.getElementById('colab-modal-titulo').textContent='Novo Colaborador';
+  ['colab-nome','colab-usuario','colab-cpf','colab-rg','colab-email','colab-telefone','colab-ramal','colab-cargo','colab-setor','colab-banco','colab-agencia','colab-conta','colab-pix'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('colab-sexo').value='';
+  document.getElementById('colab-status').value='Ativo';
+  document.getElementById('colab-tipo-conta').value='';
+  document.getElementById('colab-nascimento').value='';
+  document.getElementById('colab-admissao').value='';
+  document.getElementById('colab-edit-id').value='';
+  document.getElementById('colab-modal').style.display='flex';
+}
+
+function editarColab(id){
+  const c=colabLista.find(x=>String(x.id)===String(id));
+  if(!c) return;
+  colabEditId=id;
+  document.getElementById('colab-modal-titulo').textContent='Editar Colaborador';
+  const set=(el,val)=>{const e=document.getElementById(el);if(e)e.value=val||'';};
+  set('colab-nome',c.nome); set('colab-cpf',c.cpf); set('colab-rg',c.rg);
+  set('colab-email',c.email); set('colab-usuario',c.usuario); set('colab-telefone',c.telefone); set('colab-ramal',c.ramal);
+  set('colab-cargo',c.cargo); set('colab-setor',c.setor);
+  set('colab-banco',c.banco); set('colab-agencia',c.agencia); set('colab-conta',c.conta); set('colab-pix',c.pix);
+  set('colab-nascimento',c.nascimento); set('colab-admissao',c.admissao);
+  document.getElementById('colab-sexo').value=c.sexo||'';
+  document.getElementById('colab-status').value=c.status||'Ativo';
+  document.getElementById('colab-tipo-conta').value=c.tipoConta||'';
+  document.getElementById('colab-edit-id').value=id;
+  document.getElementById('colab-modal').style.display='flex';
+}
+
+function fecharColabModal(){document.getElementById('colab-modal').style.display='none';}
+
+async function salvarColab(){
+  const g=(id)=>document.getElementById(id)?.value?.trim()||'';
+  const c={
+    id: colabEditId||String(Date.now()),
+    nome:g('colab-nome'), usuario:g('colab-usuario'), cpf:g('colab-cpf'), rg:g('colab-rg'),
+    nascimento:g('colab-nascimento'), sexo:g('colab-sexo'),
+    email:g('colab-email'), telefone:g('colab-telefone'), ramal:g('colab-ramal'),
+    cargo:g('colab-cargo'), setor:g('colab-setor'), admissao:g('colab-admissao'),
+    status:g('colab-status'),
+    banco:g('colab-banco'), agencia:g('colab-agencia'), conta:g('colab-conta'),
+    tipoConta:g('colab-tipo-conta'), pix:g('colab-pix'),
+  };
+  if(!c.nome){alert('Informe o nome do colaborador.');return;}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({...c,token:getToken(),action:'saveColaborador'})});
+    const d=await r.json();
+    if(d.error){alert('Erro: '+d.error);return;}
+  }catch(e){alert('Erro ao salvar');return;}
+  fecharColabModal();
+  loadColaboradores();
+}
+
+async function excluirColab(id){
+  if(!confirm('Excluir este colaborador?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteColaborador',id})});
+  }catch(e){alert('Erro ao excluir');return;}
+  loadColaboradores();
+}
+</script>
 
 </body>
 </html>
