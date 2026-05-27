@@ -838,12 +838,11 @@ const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
 
 function iniciarApp(){
-  // Sempre mostrar login ao carregar a página
   localStorage.removeItem('blintrack_user');
   document.getElementById('login-overlay').style.display='flex';
+  return;
 }
-
-function _iniciarAppOriginal(){
+function _unused_(){
   if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
     const sess = localStorage.getItem('blintrack_user');
@@ -869,7 +868,7 @@ function _iniciarAppOriginal(){
         return;
       }
     }
-  }catch(e){ console.warn('iniciarApp erro:', e); }
+  }catch(e){}
   document.getElementById('login-overlay').style.display='flex';
 }
 
@@ -983,18 +982,8 @@ function closeSidebar(){
   document.getElementById('sidebar').style.transform='translateX(-240px)';
   document.getElementById('sidebar-overlay').style.display='none';
 }
-
-function verificarV2Popup(){
-  if(!localStorage.getItem('blintrack_v2_visto')){
-    document.getElementById('v2-overlay').style.display='flex';
-  }
-}
-
-function fecharV2Popup(){
-  document.getElementById('v2-overlay').style.display='none';
-  localStorage.setItem('blintrack_v2_visto','1');
-  setTimeout(verificarNotificacoesFerias, 500);
-}
+function verificarV2Popup(){}
+function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 function switchMainTab(t){
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
@@ -2065,8 +2054,7 @@ function verificarSessaoExpirada() {
     const agora = Date.now();
     const oitoHoras = 8 * 60 * 60 * 1000;
     if (agora - u.login_ts > oitoHoras) {
-      localStorage.removeItem('blintrack_user')
-  localStorage.removeItem('blintrack_v2_visto');
+      localStorage.removeItem('blintrack_user');
       return true;
     }
     return false;
@@ -7184,19 +7172,15 @@ async function estEnviarEmail(reg){
 
 
 
-<!-- ORDENS DE SERVICO<div id="page-os" class="main" style="display:none">
-  <div class="pipeline-header">
-    <div>
-      <h2>Ordens de Serviço</h2>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="os-sync">Ordens de serviço da equipe técnica</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
-    </div>
+<!-- ORDENS DE SERVICO -->
+<div id="page-os" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
+    <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
   </div>
   <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
-    <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
-    <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+    <select id="os-filtro-status" onchange="renderOS()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
       <option value="">Todos os status</option>
       <option value="Aberta">Aberta</option>
       <option value="Em andamento">Em andamento</option>
@@ -7204,7 +7188,7 @@ async function estEnviarEmail(reg){
       <option value="Cancelada">Cancelada</option>
     </select>
   </div>
-  <div id="os-lista" style="padding:0 20px;"></div>
+  <div id="os-lista" style="padding:16px 20px;"></div>
 </div>
 
 <!-- MODAL OS COMPLETO -->
@@ -7316,13 +7300,9 @@ async function loadOS(){
     const d=await r.json();
     osLista=Array.isArray(d.os)?d.os:[];
     if(s)s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){
-    osLista=osLista||[];
-    if(s)s.textContent='Nenhuma OS ainda';
-  }
+  }catch(e){osLista=[];if(s)s.textContent='Nenhuma OS ainda';}
   renderOS();
 }
-
 function renderOS(){
   const b=(document.getElementById('os-busca')?.value||'').toLowerCase();
   const fs=document.getElementById('os-filtro-status')?.value||'';
@@ -7331,11 +7311,9 @@ function renderOS(){
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
-  const _osEl=document.getElementById('os-lista'); if(!_osEl)return;
-  if(!lista.length){_osEl.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma OS cadastrada. Clique em "+ Nova OS" para criar.</div>';return;}
   if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada.<br><br><button onclick="abrirNovaOS()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
-  _osEl.innerHTML=lista.map(o=>`
+  document.getElementById('os-lista').innerHTML=lista.map(o=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <div style="flex:1;">
@@ -7460,22 +7438,20 @@ async function excluirOS(id){
 </div>
 
 
-<!-- COLABORADORES<div id="page-colaboradores" class="main" style="display:none">
-  <div class="pipeline-header">
+<!-- COLABORADORES -->
+<div id="page-colaboradores" class="main" style="display:none">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
-      <h2>Colaboradores</h2>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="colab-sync">Equipe Blincast</div>
+      <div style="font-size:18px;font-weight:700;color:inherit;">Colaboradores</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="colab-sync">0 colaborador(es)</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
-    </div>
+    <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
   </div>
   <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
-    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;width:100%;max-width:400px;">
+    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="width:100%;max-width:400px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
   </div>
-  <div id="colab-lista" style="padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding-top:16px;padding-bottom:16px;"></div>
+  <div id="colab-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
 </div>
-
 
 <!-- MODAL COLABORADOR -->
 <div class="modal-overlay" id="colab-modal" style="display:none" onclick="if(event.target===this)fecharColabModal()">
@@ -7550,16 +7526,13 @@ let colabEditId = null;
 
 async function loadColaboradores(){
   const s=document.getElementById('colab-sync');
-  if(s)s.textContent='Carregando...';
+  if(s) s.textContent='Carregando...';
   try{
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getColaboradores');
     const d=await r.json();
     colabLista=Array.isArray(d.colaboradores)?d.colaboradores:[];
-    if(s)s.textContent=colabLista.length+' colaborador(es)';
-  }catch(e){
-    colabLista=colabLista||[];
-    if(s)s.textContent='Nenhum colaborador ainda';
-  }
+    if(s) s.textContent=colabLista.length+' colaborador(es) cadastrado(s)';
+  }catch(e){colabLista=[];if(s)s.textContent='Nenhum colaborador ainda';}
   renderColaboradores();
   popularSelectColaboradores();
 }
@@ -7595,9 +7568,16 @@ function preencherColaboradorViagem(){
 function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
-  const el=document.getElementById('colab-lista');
-  if(!el) return;
-  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum colaborador cadastrado. Clique em "+ Novo Colaborador" para cadastrar.</div>';return;}
+  let el=document.getElementById('colab-lista');
+  if(!el){
+    const pg=document.getElementById('page-colaboradores');
+    if(!pg)return;
+    el=document.createElement('div');
+    el.id='colab-lista';
+    el.style.cssText='padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;';
+    pg.appendChild(el);
+  }
+  if(!lista.length){el.innerHTML='<div style="padding:60px 20px;text-align:center;font-size:14px;color:#888;">Nenhum colaborador cadastrado.<br><br><button onclick="abrirNovoColab()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Cadastrar primeiro</button></div>';return;}
   const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
   el.innerHTML=lista.map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
@@ -7686,11 +7666,6 @@ async function excluirColab(id){
 </script>
 
 
-<script>
-window.addEventListener('beforeunload', function(){
-  localStorage.removeItem('blintrack_user');
-});
-</script>
-
+<script>window.addEventListener('beforeunload',function(){localStorage.removeItem('blintrack_user');});</script>
 </body>
 </html>
