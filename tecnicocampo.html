@@ -188,7 +188,7 @@ async function fazerLoginCampo(){
   const btn = document.getElementById('c-btn-login');
   const err = document.getElementById('c-erro');
   const usuario = document.getElementById('c-usuario').value.trim();
-  const senha = document.getElementById('c-senha').value;
+  const senha = document.getElementById('c-senha').value.trim();
   if(!usuario||!senha){err.textContent='Preencha usuário e senha.';return;}
   btn.disabled=true; btn.textContent='Entrando...'; err.textContent='';
   try{
