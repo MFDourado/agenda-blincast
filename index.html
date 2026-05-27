@@ -7293,10 +7293,9 @@ async function loadOS(){
     const d=await r.json();
     osLista=Array.isArray(d.os)?d.os:[];
     if(s)s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){if(s)s.textContent='Erro de conexão';}
+  }catch(e){osLista=[];if(s)s.textContent='Nenhuma OS ainda';}
   renderOS();
 }
-
 function renderOS(){
   const b=(document.getElementById('os-busca')?.value||'').toLowerCase();
   const fs=document.getElementById('os-filtro-status')?.value||'';
@@ -7305,7 +7304,7 @@ function renderOS(){
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
-  if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">Nenhuma OS encontrada</div>';return;}
+  if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada.<br><br><button onclick="abrirNovaOS()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
   document.getElementById('os-lista').innerHTML=lista.map(o=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
@@ -7436,7 +7435,7 @@ async function excluirOS(id){
 <div id="page-colaboradores" style="display:none;">
   <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
-      <div style="font-size:18px;font-weight:700;color:var(--text);">Colaboradores</div>
+      <div style="font-size:18px;font-weight:700;color:inherit;">Colaboradores</div>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="colab-sync">0 colaborador(es)</div>
     </div>
     <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
@@ -7525,8 +7524,8 @@ async function loadColaboradores(){
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getColaboradores');
     const d=await r.json();
     colabLista=Array.isArray(d.colaboradores)?d.colaboradores:[];
-    if(s) s.textContent=colabLista.length+' colaborador(es)';
-  }catch(e){if(s)s.textContent='Erro de conexão';}
+    if(s) s.textContent=colabLista.length+' colaborador(es) cadastrado(s)';
+  }catch(e){colabLista=[];if(s)s.textContent='Nenhum colaborador ainda';}
   renderColaboradores();
   popularSelectColaboradores();
 }
@@ -7563,7 +7562,7 @@ function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
   const el=document.getElementById('colab-lista');
-  if(!lista.length){el.innerHTML='<div style="padding:40px;text-align:center;font-size:13px;opacity:.6;">Nenhum colaborador cadastrado ainda.<br><br><button onclick=\"abrirNovoColab()\" style=\"margin-top:8px;padding:8px 20px;background:#F5B800;color:#111;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:DM Sans,sans-serif;\" >+ Cadastrar primeiro colaborador</button></div>';return;}
+  if(!lista.length){el.innerHTML='<div style="padding:60px 20px;text-align:center;font-size:14px;color:#888;">Nenhum colaborador cadastrado.<br><br><button onclick="abrirNovoColab()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Cadastrar primeiro</button></div>';return;}
   const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
   el.innerHTML=lista.map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
