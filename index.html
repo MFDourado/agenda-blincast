@@ -858,6 +858,8 @@ function iniciarApp(){
         switchMainTab('pipeline');
         verificarV2Popup();
         if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+        setTimeout(sincronizarOperacional,3000);
+        setTimeout(verificarNotificacoesFerias,8000);
         return;
       }
     }
@@ -892,7 +894,8 @@ async function fazerLogin(){
       switchMainTab('pipeline');
       verificarV2Popup();
       if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
-      if(localStorage.getItem('blintrack_v2_visto')) setTimeout(verificarNotificacoesFerias, 8000);
+      setTimeout(sincronizarOperacional,3000);
+      setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -7430,16 +7433,16 @@ async function excluirOS(id){
 
 
 <!-- COLABORADORES -->
-<div id="page-colaboradores" style="display:none;background:var(--bg, #f5f5f0);color:var(--text, #111);">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px;">
+<div id="page-colaboradores" style="display:none;">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
-      <h2 style="font-size:18px;font-weight:700;margin:0;">Colaboradores</h2>
-      <span style="font-size:12px;color:var(--text-muted);" id="colab-sync"></span>
+      <div style="font-size:18px;font-weight:700;color:var(--text);">Colaboradores</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="colab-sync">0 colaborador(es)</div>
     </div>
     <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
   </div>
-  <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
-    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+  <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
+    <input id="colab-busca" type="text" placeholder="Buscar por nome ou cargo..." oninput="renderColaboradores()" style="width:100%;max-width:400px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
   </div>
   <div id="colab-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
 </div>
