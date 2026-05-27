@@ -857,7 +857,7 @@ function iniciarApp(){
         carregarConfig();
         switchMainTab('pipeline');
         verificarV2Popup();
-        if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+        if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         return;
       }
     }
@@ -891,7 +891,7 @@ async function fazerLogin(){
       carregarConfig();
       switchMainTab('pipeline');
       verificarV2Popup();
-      if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+      if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
       if(localStorage.getItem('blintrack_v2_visto')) setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
@@ -1016,6 +1016,8 @@ async function apiGet(tentativa=1){
     if(d && d.error){throw new Error(d.error);}
     events=Array.isArray(d)?d.filter(e=>e.id&&e.client&&e.date&&e.status).map(e=>({...e,date:String(e.date).slice(0,10)})):[];
     setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    // Renovar timestamp para não expirar durante uso ativo
+    try{const _s=JSON.parse(localStorage.getItem('blintrack_user')||'{}');_s.login_ts=Date.now();localStorage.setItem('blintrack_user',JSON.stringify(_s));}catch(e){}
     renderAgenda();
   }catch(e){
     if(tentativa<3){
@@ -1795,6 +1797,7 @@ function togglePocCard(id){
 
 // ===================== SINCRONIZAR OPERACIONAL =====================
 async function sincronizarOperacional(){
+  window._syncStarted=true; // garantir que não reinicia o interval
   const btn = document.querySelector('[onclick="sincronizarOperacional()"]');
   if(btn){ btn.textContent='⟳ Sincronizando...'; btn.disabled=true; }
   setStatus('loading','Sincronizando...');
