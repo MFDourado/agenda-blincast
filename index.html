@@ -2043,7 +2043,7 @@ function verificarSessaoExpirada() {
     const sess = localStorage.getItem('blintrack_user');
     if (!sess) return true;
     const u = JSON.parse(sess);
-    if (!u.login_ts) return false; // sessão antiga sem timestamp, manter
+    if (!u.login_ts) return false;
     const agora = Date.now();
     const oitoHoras = 8 * 60 * 60 * 1000;
     if (agora - u.login_ts > oitoHoras) {
@@ -2051,7 +2051,7 @@ function verificarSessaoExpirada() {
       return true;
     }
     return false;
-  } catch(e) { return true; }
+  } catch(e) { return false; } // em caso de erro, manter sessão
 }
 
 // Verificar a cada 5 minutos
