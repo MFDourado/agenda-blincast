@@ -1524,8 +1524,9 @@ function openPocModal(){
   document.getElementById('poc-edit-id').value='';
   // Popular vendedores
   const selV=document.getElementById('poc-vendedor');
-  const vendedores=[...new Set(prospects.map(p=>p.vendedor).filter(Boolean))].sort();
-  selV.innerHTML='<option value="">Selecione...</option>'+vendedores.map(v=>`<option value="${v}">${v}</option>`).join('');
+  const vendedoresPoc=['Andre Gama','Diogo','Rafael','Victor Hugo','Victor Xavier'];
+  const vendedoresDados=[...new Set([...vendedoresPoc,...prospects.map(p=>p.vendedor).filter(Boolean)])].sort();
+  selV.innerHTML='<option value="">Selecione...</option>'+vendedoresDados.map(v=>`<option value="${v}">${v}</option>`).join('');
   document.getElementById('poc-modal-title').textContent='Nova PoC';
   document.getElementById('poc-modal').style.display='flex';
 }
