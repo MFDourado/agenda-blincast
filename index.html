@@ -1000,8 +1000,6 @@ function switchMainTab(t){
   if(t==='estoque')iniciarEstoque();
   if(t==='os')loadOS();
   if(t==='colaboradores')loadColaboradores();
-  // Atualizar status ao trocar módulo
-  if(typeof apiGet==='function' && window._syncStarted) apiGet();
 }
 
 // ===================== AGENDA =====================
@@ -7432,10 +7430,10 @@ async function excluirOS(id){
 
 
 <!-- COLABORADORES -->
-<div id="page-colaboradores" style="display:none;">
+<div id="page-colaboradores" style="display:none;background:var(--bg, #f5f5f0);color:var(--text, #111);">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px;">
     <div>
-      <h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0;">Colaboradores</h2>
+      <h2 style="font-size:18px;font-weight:700;margin:0;">Colaboradores</h2>
       <span style="font-size:12px;color:var(--text-muted);" id="colab-sync"></span>
     </div>
     <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
@@ -7562,7 +7560,7 @@ function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
   const el=document.getElementById('colab-lista');
-  if(!lista.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum colaborador cadastrado</div>';return;}
+  if(!lista.length){el.innerHTML='<div style="padding:40px;text-align:center;font-size:13px;opacity:.6;">Nenhum colaborador cadastrado ainda.<br><br><button onclick=\"abrirNovoColab()\" style=\"margin-top:8px;padding:8px 20px;background:#F5B800;color:#111;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:DM Sans,sans-serif;\" >+ Cadastrar primeiro colaborador</button></div>';return;}
   const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
   el.innerHTML=lista.map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
