@@ -7399,6 +7399,52 @@ async function salvarOS(){
   if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
   fecharModalOS();
   loadOS();
+  // Notificar técnico via WhatsApp se tiver técnico definido
+  setTimeout(()=>notificarTecnicoOS(os), 500);
+}
+
+function notificarTecnicoOS(os){
+  if(!os) return;
+  const tecnico = os.tecnico||'';
+  const msg = `Nova Ordem de Serviço!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.tipo||'—'}\nEndereço: ${os.endereco||'—'}${os.cidade?' – '+os.cidade:''}\nPrevisto: ${os.data_prevista||'—'}\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
+  
+  // Buscar telefone do colaborador
+  let telTecnico = '';
+  if(tecnico && typeof colabLista !== 'undefined'){
+    const colab = colabLista.find(c=>(c.usuario||'').toLowerCase()===tecnico.toLowerCase()||(c.nome||'').toLowerCase()===tecnico.toLowerCase());
+    if(colab && colab.telefone) telTecnico = colab.telefone.replace(/\D/g,'');
+  }
+  
+  const telGrupo = '5521971471125';
+  
+  // Montar botões de notificação
+  const container = document.createElement('div');
+  container.id = 'os-wpp-notify';
+  container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;background:#18191D;border:1px solid #2a2a2a;border-radius:12px;padding:16px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);';
+  
+  let html = `<div style="font-size:13px;font-weight:600;color:#F0F0F0;margin-bottom:10px;">OS salva! Notificar via WhatsApp?</div>`;
+  html += `<div style="font-size:12px;color:#888;margin-bottom:10px;">OS ${os.numero} — ${os.cliente}</div>`;
+  
+  if(telTecnico){
+    const msgEnc = encodeURIComponent(msg);
+    html += `<a href="https://wa.me/55${telTecnico}?text=${msgEnc}" target="_blank" style="text-decoration:none;">
+      <button style="width:100%;padding:9px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;margin-bottom:6px;">
+        💬 Notificar ${tecnico.split('.')[0]||'técnico'}
+      </button></a>`;
+  } else {
+    const msgPool = `Nova OS disponível no pool!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.tipo||'—'}\nSem técnico definido — disponível para aceite.\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
+    html += `<a href="https://wa.me/${telGrupo}?text=${encodeURIComponent(msgPool)}" target="_blank" style="text-decoration:none;">
+      <button style="width:100%;padding:9px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;margin-bottom:6px;">
+        💬 Notificar grupo operacional
+      </button></a>`;
+  }
+  
+  html += `<button onclick="document.getElementById('os-wpp-notify').remove()" style="width:100%;padding:7px;background:none;border:1px solid #333;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;color:#888;cursor:pointer;">Agora não</button>`;
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  
+  // Auto-remover após 15 segundos
+  setTimeout(()=>{ const el=document.getElementById('os-wpp-notify'); if(el)el.remove(); }, 15000);
 }
 
 async function excluirOS(id){
