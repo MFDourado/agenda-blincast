@@ -857,7 +857,7 @@ function iniciarApp(){
         carregarConfig();
         switchMainTab('pipeline');
         verificarV2Popup();
-        if(!window._syncStarted){window._syncStarted=true;apiGet();setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+        if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         return;
       }
     }
@@ -891,7 +891,7 @@ async function fazerLogin(){
       carregarConfig();
       switchMainTab('pipeline');
       verificarV2Popup();
-      if(!window._syncStarted){window._syncStarted=true;apiGet();setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+      if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
       if(localStorage.getItem('blintrack_v2_visto')) setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
@@ -1000,6 +1000,8 @@ function switchMainTab(t){
   if(t==='estoque')iniciarEstoque();
   if(t==='os')loadOS();
   if(t==='colaboradores')loadColaboradores();
+  // Atualizar status ao trocar módulo
+  if(typeof apiGet==='function' && window._syncStarted) apiGet();
 }
 
 // ===================== AGENDA =====================
@@ -1007,7 +1009,7 @@ async function apiGet(tentativa=1){
   if(tentativa===1) setStatus('loading','Sincronizando...');
   try{
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(),25000);
+    const timer=setTimeout(()=>ctrl.abort(),15000);
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getAll',{signal:ctrl.signal});
     clearTimeout(timer);
     const d=await r.json();
@@ -1016,12 +1018,11 @@ async function apiGet(tentativa=1){
     setStatus('online','Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     renderAgenda();
   }catch(e){
-    if(tentativa<4){
-      setStatus('loading','Aguardando AppScript... ('+tentativa+'/3)');
-      setTimeout(()=>apiGet(tentativa+1), 8000);
+    if(tentativa<3){
+      setStatus('loading','Aguardando... ('+tentativa+'/2)');
+      setTimeout(()=>apiGet(tentativa+1), 5000);
     } else {
-      setStatus('error','Erro de conexão');
-      setTimeout(()=>apiGet(1), 30000); // tenta novamente após 30s
+      setStatus('error','Erro — clique em Sincronizar');
     }
   }
 }
@@ -2052,8 +2053,7 @@ function verificarSessaoExpirada() {
 // Verificar a cada 5 minutos
 setInterval(() => {
   if (verificarSessaoExpirada()) {
-    alert('Sua sessão expirou. Faça login novamente.');
-    location.reload();
+    fazerLogout();
   }
 }, 5 * 60 * 1000);
 
@@ -3884,9 +3884,14 @@ function fazerLogout(){
 }
 
 function forceRefresh(){
-  // Limpar sessão de retry e forçar reload completo
   window._pipelineRetry=false;
-  location.reload(true);
+  setStatus('loading','Atualizando...');
+  apiGet().then(()=>{
+    // Recarregar o módulo atual
+    const paginas = ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','colaboradores'];
+    const ativa = paginas.find(p=>{const el=document.getElementById('page-'+p);return el&&el.style.display!=='none';});
+    if(ativa) switchMainTab(ativa);
+  });
 }
 
 function iniciarDistrato(nome, cnpj){
