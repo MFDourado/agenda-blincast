@@ -758,6 +758,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <option value="acompanhar">Acompanhar</option>
           <option value="planejado">Planejado</option>
           <option value="em_atraso">Em atraso</option>
+          <option value="em_andamento_tecnico">Em andamento pelo técnico</option>
+          <option value="concluido_tecnico">Concluído pelo técnico</option>
         </select>
       </div>
       <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
@@ -3991,7 +3993,7 @@ return `<div class="cron-card"><div class="cron-header"><div style="cursor:point
 
 // ===================== ATA DO DIA =====================
 let ataRegistros=[];
-const ATA_STATUS_LABEL={feito:'Feito',em_andamento:'Em andamento',pendente:'Pendente',retornar:'Retornar',acompanhar:'Acompanhar',planejado:'Planejado',em_atraso:'Em atraso'};
+const ATA_STATUS_LABEL={feito:'Feito',em_andamento:'Em andamento',pendente:'Pendente',retornar:'Retornar',acompanhar:'Acompanhar',planejado:'Planejado',em_atraso:'Em atraso',em_andamento_tecnico:'Em andamento pelo técnico',concluido_tecnico:'Concluído pelo técnico'};
 const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'}};
 
 async function loadAta(){
@@ -4319,8 +4321,33 @@ async function salvarAta(){
   };
   closeAtaModal();
   try{
-    if(editId){await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAta',id:editId,...payload})});}
-    else{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:uid(),...payload})});}
+    const ataId = editId || uid();
+    if(editId){
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAta',id:editId,...payload})});
+    } else {
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:ataId,...payload})});
+      // Criar OS automaticamente vinculada à ATA
+      const osNum = 'OS-ATA-'+ataId.slice(-6).toUpperCase();
+      const osPayload = {
+        token: getToken(),
+        action: 'saveOS',
+        id: 'os-'+ataId,
+        numero: osNum,
+        data: payload.data || todayStr,
+        status: 'Aberta',
+        cliente: payload.cliente,
+        cidade: payload.estado||'',
+        tipo: payload.problema,
+        descricao: payload.obs||'',
+        tecnico: payload.tecnico||'',
+        data_prevista: payload.dt_prevista||'',
+        os_id_ata: ataId,
+        criado_em: new Date().toLocaleString('pt-BR'),
+      };
+      await fetch(API,{method:'POST',body:JSON.stringify(osPayload)});
+      // Notificar técnico via WhatsApp se definido
+      setTimeout(()=>notificarTecnicoOS({...osPayload, numero:osNum}), 800);
+    }
     await loadAta();
   }catch(e){setStatus('error','Erro ao salvar ata');}
 }
@@ -4339,6 +4366,10 @@ async function alterarAtaData(id, campo, valor){
     // Se conclusao preenchida, salvar status feito também
     if(campo === 'dt_conclusao' && valor){
       await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'status',valor:'feito'})});
+      // OS vinculada também é concluída
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id:'os-'+id,status:'Concluída',data_conclusao:valor})});
+      // Atualizar tela de OS se estiver visível
+      if(typeof loadOS==='function') loadOS();
     }
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
@@ -4364,6 +4395,12 @@ async function alterarAtaStatus(id, novoStatus, selEl){
   if(reg) reg.status=novoStatus;
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaStatus',id,status:novoStatus})});
+    // Item 5 do fluxo: ATA "Feito" → OS concluída automaticamente
+    if(novoStatus==='feito'){
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id:'os-'+id,status:'Concluída',data_conclusao:new Date().toISOString().split('T')[0]})});
+      // Atualizar tela de OS se estiver visível
+      if(typeof loadOS==='function') loadOS();
+    }
     document.getElementById('ata-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
     document.getElementById('ata-sync').textContent='Erro ao salvar';
