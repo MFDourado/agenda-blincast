@@ -863,7 +863,10 @@ function iniciarApp(){
         return;
       }
     }
-  }catch(e){}
+  }catch(e){ console.warn('iniciarApp erro:', e); }
+  // Se chegou aqui sem return, verificar sessão
+  const _s2 = localStorage.getItem('blintrack_user');
+  if(_s2){ try{ const _u2=JSON.parse(_s2); if(_u2&&_u2.token){ location.reload(); return; } }catch(e2){} }
   document.getElementById('login-overlay').style.display='flex';
 }
 
@@ -976,6 +979,18 @@ function openSidebar(){
 function closeSidebar(){
   document.getElementById('sidebar').style.transform='translateX(-240px)';
   document.getElementById('sidebar-overlay').style.display='none';
+}
+
+function verificarV2Popup(){
+  if(!localStorage.getItem('blintrack_v2_visto')){
+    document.getElementById('v2-overlay').style.display='flex';
+  }
+}
+
+function fecharV2Popup(){
+  document.getElementById('v2-overlay').style.display='none';
+  localStorage.setItem('blintrack_v2_visto','1');
+  setTimeout(verificarNotificacoesFerias, 500);
 }
 function switchMainTab(t){
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','colaboradores'].forEach(tab=>{
@@ -7293,9 +7308,13 @@ async function loadOS(){
     const d=await r.json();
     osLista=Array.isArray(d.os)?d.os:[];
     if(s)s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){osLista=[];if(s)s.textContent='Nenhuma OS ainda';}
+  }catch(e){
+    osLista=osLista||[];
+    if(s)s.textContent='Nenhuma OS ainda';
+  }
   renderOS();
 }
+
 function renderOS(){
   const b=(document.getElementById('os-busca')?.value||'').toLowerCase();
   const fs=document.getElementById('os-filtro-status')?.value||'';
@@ -7304,6 +7323,7 @@ function renderOS(){
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
+  if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada ainda.<br><br><button onclick="abrirNovaOS()" style="margin-top:12px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada.<br><br><button onclick="abrirNovaOS()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
   document.getElementById('os-lista').innerHTML=lista.map(o=>`
@@ -7519,13 +7539,16 @@ let colabEditId = null;
 
 async function loadColaboradores(){
   const s=document.getElementById('colab-sync');
-  if(s) s.textContent='Carregando...';
+  if(s)s.textContent='Carregando...';
   try{
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getColaboradores');
     const d=await r.json();
     colabLista=Array.isArray(d.colaboradores)?d.colaboradores:[];
-    if(s) s.textContent=colabLista.length+' colaborador(es) cadastrado(s)';
-  }catch(e){colabLista=[];if(s)s.textContent='Nenhum colaborador ainda';}
+    if(s)s.textContent=colabLista.length+' colaborador(es)';
+  }catch(e){
+    colabLista=colabLista||[];
+    if(s)s.textContent='Nenhum colaborador ainda';
+  }
   renderColaboradores();
   popularSelectColaboradores();
 }
