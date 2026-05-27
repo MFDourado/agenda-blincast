@@ -832,7 +832,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 // ===================== LOGIN =====================
 const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
-function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(sessionStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
+function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(localStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
 const LOGIN_API = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
@@ -840,7 +840,7 @@ let usuarioLogado = null;
 function iniciarApp(){
   if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
-    const sess = sessionStorage.getItem('blintrack_user');
+    const sess = localStorage.getItem('blintrack_user');
     if(sess){
       const u = JSON.parse(sess);
       if(PERFIS_OPERACIONAL.includes(u.perfil)){
@@ -857,7 +857,7 @@ function iniciarApp(){
         carregarConfig();
         switchMainTab('pipeline');
         verificarV2Popup();
-        apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+        if(!window._syncStarted){window._syncStarted=true;apiGet();setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         return;
       }
     }
@@ -879,7 +879,7 @@ async function fazerLogin(){
     if(d.ok && PERFIS_OPERACIONAL.includes(d.perfil)){
       usuarioLogado = d;
       if(d.token) API_TOKEN_RUNTIME = d.token;
-      d.login_ts = Date.now(); sessionStorage.setItem('blintrack_user', JSON.stringify(d));
+      d.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(d));
       document.getElementById('login-overlay').style.display='none';
       document.querySelector('header').style.display='flex';
       document.getElementById('sidebar').style.display='flex';
@@ -891,7 +891,7 @@ async function fazerLogin(){
       carregarConfig();
       switchMainTab('pipeline');
       verificarV2Popup();
-      apiGet();setInterval(apiGet,30000);setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
+      if(!window._syncStarted){window._syncStarted=true;apiGet();setInterval(apiGet,30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
       if(localStorage.getItem('blintrack_v2_visto')) setTimeout(verificarNotificacoesFerias, 8000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
@@ -2035,14 +2035,14 @@ async function salvarConfig(){
 // ── EXPIRAÇÃO DE SESSÃO (8 horas) ────────────────────────────────────────────
 function verificarSessaoExpirada() {
   try {
-    const sess = sessionStorage.getItem('blintrack_user');
+    const sess = localStorage.getItem('blintrack_user');
     if (!sess) return true;
     const u = JSON.parse(sess);
     if (!u.login_ts) return false; // sessão antiga sem timestamp, manter
     const agora = Date.now();
     const oitoHoras = 8 * 60 * 60 * 1000;
     if (agora - u.login_ts > oitoHoras) {
-      sessionStorage.removeItem('blintrack_user');
+      localStorage.removeItem('blintrack_user');
       return true;
     }
     return false;
@@ -3873,7 +3873,7 @@ function fecharContratoModal(){
 }
 
 function fazerLogout(){
-  sessionStorage.removeItem('blintrack_user');
+  localStorage.removeItem('blintrack_user');
   usuarioLogado = null;
   document.getElementById('login-overlay').style.display='flex';
   document.querySelector('header').style.display='none';
@@ -7424,11 +7424,11 @@ async function excluirOS(id){
 
 
 <!-- COLABORADORES -->
-<div id="page-colaboradores" style="display:none;min-height:400px;">
-  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+<div id="page-colaboradores" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px;">
     <div>
-      <h2 style="font-size:18px;font-weight:700;color:var(--text)">Colaboradores</h2>
-      <span class="dash-sync" id="colab-sync"></span>
+      <h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0;">Colaboradores</h2>
+      <span style="font-size:12px;color:var(--text-muted);" id="colab-sync"></span>
     </div>
     <button onclick="abrirNovoColab()" class="btn-new-project">+ Novo Colaborador</button>
   </div>
