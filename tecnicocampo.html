@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BlinTrack Campo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#0e0e0e;--surface:#18191D;--border:#2a2a2a;
+  --text:#F0F0F0;--muted:#888;--gold:#F5B800;
+  --green:#4CAF7D;--blue:#5B9EF5;--red:#e74c3c;
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);min-height:100vh;}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:#111;}
+.login-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.login-logo{text-align:center;margin-bottom:1.5rem;}
+.login-logo .sub{font-size:12px;color:#555;margin-top:4px;}
+.field-input{width:100%;height:42px;background:#111;border:1px solid #333;border-radius:8px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:#fff;outline:none;transition:border-color .15s;box-sizing:border-box;}
+.field-input:focus{border-color:#F5B800;}
+.btn-login{width:100%;height:42px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;}
+.btn-login:disabled{opacity:.4;cursor:not-allowed;}
+.login-err{font-size:12px;color:#e74c3c;text-align:center;margin-top:10px;min-height:18px;}
+
+/* APP */
+#app-screen{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--surface);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:14px;font-weight:700;}
+.topbar-logo span{color:var(--gold);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.user-pill{font-size:11px;color:var(--muted);background:#111;padding:3px 10px;border-radius:20px;border:1px solid var(--border);}
+.btn-sair{font-size:11px;height:26px;padding:0 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab{flex:1;min-width:80px;padding:11px 8px;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.content{flex:1;padding:14px;}
+
+/* CARDS */
+.os-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;}
+.os-card:hover{border-color:#444;}
+.os-card.pool{border-left:3px solid var(--gold);}
+.os-card.minha{border-left:3px solid var(--blue);}
+.os-card.concluida{border-left:3px solid var(--green);opacity:.65;}
+.os-num{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:3px;}
+.os-cliente{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.os-info{font-size:12px;color:var(--muted);line-height:1.7;}
+.os-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.badge-aberta{background:rgba(91,158,245,.15);color:var(--blue);border:1px solid rgba(91,158,245,.3);}
+.badge-andamento{background:rgba(245,184,0,.15);color:var(--gold);border:1px solid rgba(245,184,0,.3);}
+.badge-concluida{background:rgba(76,175,61,.15);color:var(--green);border:1px solid rgba(76,175,61,.3);}
+.badge-pool{background:rgba(245,184,0,.1);color:var(--gold);border:1px solid rgba(245,184,0,.2);}
+.btn-sm{font-size:11px;height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold);}
+.btn-sm.primary{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700;}
+.btn-sm.green{background:var(--green);color:#111;border-color:var(--green);font-weight:700;}
+
+/* DETALHE */
+.detail-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+.detail-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.detail-row{display:flex;gap:8px;margin-bottom:6px;}
+.detail-label{font-size:12px;color:var(--muted);min-width:90px;flex-shrink:0;}
+.detail-value{font-size:12px;color:var(--text);flex:1;}
+.btn-block{width:100%;height:42px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;}
+.btn-aceitar{background:var(--gold);color:#111;}
+.btn-iniciar{background:var(--blue);color:#111;}
+.btn-concluir{background:var(--green);color:#111;}
+.btn-obs{background:none;border:1px solid var(--border);color:var(--muted);}
+
+/* MODAL OBS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:flex-end;justify-content:center;padding:0;}
+.modal-bg.show{display:flex;}
+.modal-sheet{background:var(--surface);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:480px;}
+.modal-title{font-size:14px;font-weight:700;margin-bottom:14px;}
+textarea.obs-input{width:100%;min-height:100px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#111;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;box-sizing:border-box;}
+
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+.sync-info{font-size:11px;color:var(--muted);text-align:center;padding:8px;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="brand">Blin<span>Track</span> <span style="color:#555;font-size:14px;font-weight:400">Campo</span></div>
+      <div class="sub">Acesso restrito à equipe técnica</div>
+    </div>
+    <form onsubmit="event.preventDefault();fazerLoginCampo()" autocomplete="on">
+      <div class="field-label">Usuário</div>
+      <input class="field-input" type="text" id="c-usuario" name="username" placeholder="seu.usuario" autocomplete="username">
+      <div class="field-label">Senha</div>
+      <input class="field-input" type="password" id="c-senha" name="password" placeholder="••••••••" autocomplete="current-password">
+      <button class="btn-login" type="submit" id="c-btn-login">Entrar</button>
+    </form>
+    <div class="login-err" id="c-erro"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-logo">Blin<span>Track</span> <span style="color:#555;font-size:12px;font-weight:400">Campo</span></div>
+    <div class="topbar-right">
+      <span class="user-pill" id="c-user-pill"></span>
+      <button class="btn-sair" onclick="fazerLogoutCampo()">Sair</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-minhas" onclick="switchTab('minhas')">Minhas OS</div>
+    <div class="tab" id="tab-pool" onclick="switchTab('pool')">Disponíveis</div>
+    <div class="tab" id="tab-concluidas" onclick="switchTab('concluidas')">Concluídas</div>
+  </div>
+
+  <!-- TELA LISTA -->
+  <div id="tela-lista">
+    <div class="sync-info" id="c-sync">Sincronizando...</div>
+    <div class="content">
+      <div id="lista-minhas"></div>
+      <div id="lista-pool" style="display:none"></div>
+      <div id="lista-concluidas" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- TELA DETALHE -->
+  <div id="tela-detalhe" style="display:none;">
+    <div class="content">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button class="btn-sm" onclick="voltarLista()">← Voltar</button>
+        <span id="d-num" style="font-size:14px;font-weight:700;color:var(--gold);"></span>
+        <span id="d-badge" class="badge" style="margin-left:auto;"></span>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-title">Cliente</div>
+        <div id="d-cliente" style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;"></div>
+        <div class="detail-row"><span class="detail-label">Endereço</span><span class="detail-value" id="d-endereco"></span></div>
+        <div class="detail-row"><span class="detail-label">Cidade</span><span class="detail-value" id="d-cidade"></span></div>
+        <div class="detail-row"><span class="detail-label">CNPJ</span><span class="detail-value" id="d-cnpj"></span></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-title">Serviço</div>
+        <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value" id="d-tipo"></span></div>
+        <div class="detail-row"><span class="detail-label">Produto</span><span class="detail-value" id="d-produto"></span></div>
+        <div class="detail-row"><span class="detail-label">Previsto</span><span class="detail-value" id="d-previsto"></span></div>
+        <div id="d-descricao" style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;"></div>
+      </div>
+
+      <div class="detail-section" id="d-obs-section" style="display:none;">
+        <div class="detail-title">Observações</div>
+        <div id="d-obs" style="font-size:13px;color:var(--text);line-height:1.6;"></div>
+      </div>
+
+      <div id="d-acoes" style="margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OBSERVAÇÃO -->
+<div class="modal-bg" id="obs-modal">
+  <div class="modal-sheet">
+    <div class="modal-title">Adicionar Observação</div>
+    <textarea class="obs-input" id="obs-texto" placeholder="Descreva o que foi feito, problemas encontrados..."></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      <button class="btn-block btn-obs" onclick="fecharObsModal()" style="height:38px;">Cancelar</button>
+      <button class="btn-block" onclick="salvarObs()" style="height:38px;background:var(--gold);color:#111;border:none;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:8px;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
+const LOGIN_API = API;
+
+let usuarioCampo = null;
+let osList = [];
+let osAtual = null;
+let tabAtual = 'minhas';
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function fazerLoginCampo(){
+  const btn = document.getElementById('c-btn-login');
+  const err = document.getElementById('c-erro');
+  const usuario = document.getElementById('c-usuario').value.trim();
+  const senha = document.getElementById('c-senha').value;
+  if(!usuario||!senha){err.textContent='Preencha usuário e senha.';return;}
+  btn.disabled=true; btn.textContent='Entrando...'; err.textContent='';
+  try{
+    const r = await fetch(LOGIN_API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
+    const d = await r.json();
+    if(d.success){
+      usuarioCampo = d;
+      sessionStorage.setItem('campo_user', JSON.stringify(d));
+      iniciarAppCampo();
+    } else {
+      err.textContent = d.message||'Usuário ou senha inválidos.';
+    }
+  }catch(e){err.textContent='Erro de conexão.';}
+  btn.disabled=false; btn.textContent='Entrar';
+}
+
+function iniciarAppCampo(){
+  const saved = sessionStorage.getItem('campo_user');
+  if(!usuarioCampo && saved){ try{usuarioCampo=JSON.parse(saved);}catch(e){} }
+  if(!usuarioCampo){return;}
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='flex';
+  document.getElementById('c-user-pill').textContent = usuarioCampo.nome||usuarioCampo.usuario;
+  carregarOS();
+}
+
+function fazerLogoutCampo(){
+  sessionStorage.removeItem('campo_user');
+  usuarioCampo=null; osList=[];
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// ── CARREGAR OS ───────────────────────────────────────────────────────────────
+async function carregarOS(){
+  const s = document.getElementById('c-sync');
+  s.textContent='Sincronizando...';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(usuarioCampo.token)+'&action=getOS');
+    const d = await r.json();
+    osList = Array.isArray(d.os)?d.os:[];
+    s.textContent='Atualizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){s.textContent='Erro de conexão';}
+  renderListas();
+}
+
+function renderListas(){
+  const nome = (usuarioCampo.nome||usuarioCampo.usuario||'').toLowerCase();
+
+  // Comparar tanto por nome quanto por usuario para compatibilidade
+  const userLower = (usuarioCampo.usuario||'').toLowerCase();
+  const nomeLower = (usuarioCampo.nome||'').toLowerCase();
+  const isMeu = (tecnico) => {
+    const t = (tecnico||'').toLowerCase().trim();
+    return t === userLower || t === nomeLower;
+  };
+
+  const minhas = osList.filter(o=>
+    isMeu(o.tecnico) &&
+    o.status!=='Concluída' && o.status!=='Cancelada'
+  );
+  const pool = osList.filter(o=>
+    (!o.tecnico||o.tecnico.trim()==='') &&
+    o.status!=='Concluída' && o.status!=='Cancelada'
+  );
+  const concluidas = osList.filter(o=>
+    (o.status==='Concluída'||o.status==='Cancelada') &&
+    isMeu(o.tecnico)
+  );
+
+  // Atualizar badges nas tabs
+  document.getElementById('tab-minhas').textContent = 'Minhas OS'+(minhas.length?` (${minhas.length})`:'');
+  document.getElementById('tab-pool').textContent = 'Disponíveis'+(pool.length?` (${pool.length})`:'');
+  document.getElementById('tab-concluidas').textContent = 'Concluídas';
+
+  renderListaOS('lista-minhas', minhas, 'minha');
+  renderListaOS('lista-pool', pool, 'pool');
+  renderListaOS('lista-concluidas', concluidas, 'concluida');
+}
+
+function renderListaOS(elId, lista, tipo){
+  const el = document.getElementById(elId);
+  if(!lista.length){
+    el.innerHTML=`<div class="empty">${tipo==='pool'?'Nenhuma OS disponível no momento':'Nenhuma OS encontrada'}</div>`;
+    return;
+  }
+  const sc = {'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida'};
+  el.innerHTML = lista.map(o=>`
+    <div class="os-card ${tipo}" onclick="abrirDetalhe('${o.id}')">
+      <div class="os-num">${o.numero||'—'}</div>
+      <div class="os-cliente">${o.cliente||'—'}</div>
+      <div class="os-info">
+        ${o.tipo?o.tipo+' · ':''}${o.produto||''}${o.cidade?' · '+o.cidade:''}
+        ${o.data_prevista?'<br>Previsto: '+o.data_prevista:''}
+      </div>
+      <div class="os-footer">
+        <span class="badge ${sc[o.status]||'badge-aberta'}">${o.status||'Aberta'}</span>
+        ${tipo==='pool'?'<span style="font-size:11px;color:var(--gold);">⚡ Toque para aceitar</span>':''}
+      </div>
+    </div>`).join('');
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  tabAtual=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  ['minhas','pool','concluidas'].forEach(id=>{
+    document.getElementById('lista-'+id).style.display = id===tab?'block':'none';
+  });
+}
+
+// ── DETALHE ───────────────────────────────────────────────────────────────────
+function abrirDetalhe(id){
+  const o = osList.find(x=>String(x.id)===String(id));
+  if(!o) return;
+  osAtual = o;
+
+  document.getElementById('d-num').textContent = o.numero||'—';
+  const sc = {'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida'};
+  const badge = document.getElementById('d-badge');
+  badge.className = 'badge '+(sc[o.status]||'badge-aberta');
+  badge.textContent = o.status||'Aberta';
+
+  document.getElementById('d-cliente').textContent = o.cliente||'—';
+  document.getElementById('d-endereco').textContent = o.endereco||'—';
+  document.getElementById('d-cidade').textContent = o.cidade||'—';
+  document.getElementById('d-cnpj').textContent = o.cnpj||'—';
+  document.getElementById('d-tipo').textContent = o.tipo||'—';
+  document.getElementById('d-produto').textContent = o.produto||'—';
+  document.getElementById('d-previsto').textContent = o.data_prevista||'—';
+  document.getElementById('d-descricao').textContent = o.descricao||'';
+
+  const obsSection = document.getElementById('d-obs-section');
+  if(o.obs){ obsSection.style.display='block'; document.getElementById('d-obs').textContent=o.obs; }
+  else { obsSection.style.display='none'; }
+
+  // Botões de ação
+  const userL = (usuarioCampo.usuario||'').toLowerCase();
+  const nomeL = (usuarioCampo.nome||'').toLowerCase();
+  const isMinha = (t)=>{ const v=(t||'').toLowerCase().trim(); return v===userL||v===nomeL; };
+  const isPool = !o.tecnico||o.tecnico.trim()==='';
+  let acoes = '';
+  if(isPool && o.status==='Aberta'){
+    acoes += `<button class="btn-block btn-aceitar" onclick="aceitarOS('${o.id}')">Aceitar esta OS</button>`;
+  }
+  if(isMinha(o.tecnico) && o.status==='Aberta'){
+    acoes += `<button class="btn-block btn-iniciar" onclick="atualizarStatusOS('${o.id}','Em andamento')">Iniciar atendimento</button>`;
+  }
+  if(isMinha(o.tecnico) && o.status==='Em andamento'){
+    acoes += `<button class="btn-block btn-concluir" onclick="atualizarStatusOS('${o.id}','Concluída')">Concluir OS</button>`;
+  }
+  if((isMinha(o.tecnico)||isPool) && o.status!=='Concluída' && o.status!=='Cancelada'){
+    acoes += `<button class="btn-block btn-obs" onclick="abrirObsModal()">Adicionar observação</button>`;
+  }
+  document.getElementById('d-acoes').innerHTML = acoes;
+
+  document.getElementById('tela-lista').style.display='none';
+  document.getElementById('tela-detalhe').style.display='block';
+}
+
+function voltarLista(){
+  document.getElementById('tela-detalhe').style.display='none';
+  document.getElementById('tela-lista').style.display='block';
+  osAtual=null;
+}
+
+// ── AÇÕES ─────────────────────────────────────────────────────────────────────
+async function aceitarOS(id){
+  if(!confirm('Aceitar esta OS e assumir como responsável?')) return;
+  const nome = usuarioCampo.nome||usuarioCampo.usuario;
+  try{
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({
+      token:usuarioCampo.token, action:'saveOS',
+      id, tecnico:nome, status:'Em andamento'
+    })});
+    await r.json();
+  }catch(e){alert('Erro ao aceitar OS');return;}
+  await carregarOS();
+  voltarLista();
+  switchTab('minhas');
+}
+
+async function atualizarStatusOS(id, novoStatus){
+  const label = novoStatus==='Em andamento'?'Iniciar':'Concluir';
+  if(!confirm(label+' esta OS?')) return;
+  const payload = {token:usuarioCampo.token, action:'saveOS', id, status:novoStatus};
+  if(novoStatus==='Concluída') payload.data_conclusao = new Date().toISOString().split('T')[0];
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+  }catch(e){alert('Erro ao atualizar');return;}
+  await carregarOS();
+  voltarLista();
+}
+
+// ── OBSERVAÇÃO ────────────────────────────────────────────────────────────────
+function abrirObsModal(){ document.getElementById('obs-texto').value=''; document.getElementById('obs-modal').classList.add('show'); }
+function fecharObsModal(){ document.getElementById('obs-modal').classList.remove('show'); }
+
+async function salvarObs(){
+  const obs = document.getElementById('obs-texto').value.trim();
+  if(!obs){alert('Escreva a observação.');return;}
+  const obsAtual = osAtual.obs?osAtual.obs+'\n\n':'';
+  const novaObs = obsAtual+'['+new Date().toLocaleString('pt-BR')+'] '+obs;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:usuarioCampo.token, action:'saveOS',
+      id:osAtual.id, obs:novaObs
+    })});
+  }catch(e){alert('Erro ao salvar');return;}
+  fecharObsModal();
+  await carregarOS();
+  abrirDetalhe(osAtual.id);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', ()=>{
+  const saved = sessionStorage.getItem('campo_user');
+  if(saved){ try{usuarioCampo=JSON.parse(saved); iniciarAppCampo();}catch(e){} }
+  switchTab('minhas');
+});
+</script>
+</body>
+</html>
