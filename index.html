@@ -838,11 +838,6 @@ const PERFIS_OPERACIONAL = ['admin','operacional'];
 let usuarioLogado = null;
 
 function iniciarApp(){
-  localStorage.removeItem('blintrack_user');
-  document.getElementById('login-overlay').style.display='flex';
-  return;
-}
-function _unused_(){
   if(verificarSessaoExpirada()){ document.getElementById('login-overlay').style.display='flex'; return; }
   try{
     const sess = localStorage.getItem('blintrack_user');
@@ -922,7 +917,10 @@ async function esqueceuSenha(){
   }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
 }
 
-document.addEventListener('DOMContentLoaded', iniciarApp);
+document.addEventListener('DOMContentLoaded', function(){
+  localStorage.removeItem('blintrack_user');
+  iniciarApp();
+});
 
 const API='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
