@@ -198,7 +198,10 @@ input[list].field-inp{margin-bottom:4px;}
         </div>
         <div id="form-material">
           <label class="field-lbl">Materiais utilizados</label>
-          <input type="text" list="mat-list" class="field-inp" id="mat-input" placeholder="Digite para buscar..." style="margin-bottom:4px;">
+          <div style="display:flex;gap:8px;margin-bottom:4px;">
+            <input type="text" list="mat-list" class="field-inp" id="mat-input" placeholder="Digite para buscar..." style="flex:1;margin-bottom:0;">
+            <input type="number" id="mat-qtd" class="field-inp" placeholder="Qtd" min="1" value="1" style="width:70px;margin-bottom:0;text-align:center;">
+          </div>
           <datalist id="mat-list"></datalist>
           <button type="button" onclick="adicionarMaterial()" style="font-size:12px;padding:4px 12px;border:1px solid var(--gold);border-radius:5px;background:none;color:var(--gold);cursor:pointer;margin-bottom:8px;font-family:'DM Sans',sans-serif;">+ Adicionar</button>
           <div id="mat-tags" style="margin-bottom:10px;"></div>
@@ -526,16 +529,25 @@ function selecionarMaterial(v){
 
 function adicionarMaterial(){
   const inp=document.getElementById('mat-input');
+  const qtdInp=document.getElementById('mat-qtd');
   const val=inp.value.trim();
+  const qtd=parseInt(qtdInp?.value)||1;
   if(!val)return;
-  if(!materiaisSelecionados.includes(val))materiaisSelecionados.push(val);
+  // Verificar se já existe e atualizar quantidade
+  const idx=materiaisSelecionados.findIndex(m=>m.nome===val);
+  if(idx>=0){
+    materiaisSelecionados[idx].qtd+=qtd;
+  } else {
+    materiaisSelecionados.push({nome:val,qtd});
+  }
   inp.value='';
+  if(qtdInp)qtdInp.value='1';
   renderMatTags();
 }
 
 function renderMatTags(){
   document.getElementById('mat-tags').innerHTML=materiaisSelecionados.map((m,i)=>
-    `<span class="mat-tag" onclick="removerMaterial(${i})">${m} ✕</span>`
+    `<span class="mat-tag" onclick="removerMaterial(${i})">${m.qtd}x ${m.nome} ✕</span>`
   ).join('');
 }
 
@@ -589,7 +601,7 @@ async function concluirOS(){
   const acao=document.getElementById('fin-acao').value.trim();
   const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const hoje=new Date().toLocaleDateString('pt-BR');
-  const materiais=materiaisSelecionados.join(', ');
+  const materiais=materiaisSelecionados.map(m=>m.qtd+'x '+m.nome).join(', ');
   const obsCompleta=`Ação: ${acao}${materiais?'\nMateriais: '+materiais:''}\nResponsável: ${nome} (${tel})`;
 
   try{
