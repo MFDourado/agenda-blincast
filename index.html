@@ -7374,6 +7374,8 @@ function editarOS(id){
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
 async function salvarOS(){
+  const _btn = document.querySelector('#os-modal .modal-btn.primary');
+  if(_btn){ _btn.textContent='Salvando...'; _btn.disabled=true; }
   const g=(id)=>document.getElementById(id)?.value?.trim()||'';
   const os={
     id: osEditId||String(Date.now()),
@@ -7385,12 +7387,16 @@ async function salvarOS(){
     obs: g('os-obs'), materiais: g('os-materiais'),
     criado_em: osEditId?undefined:new Date().toLocaleString('pt-BR'),
   };
-  if(!os.cliente){alert('Informe o cliente.');return;}
+  if(!os.cliente){
+    if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
+    alert('Informe o cliente.');return;
+  }
   try{
     const r=await fetch(API,{method:'POST',body:JSON.stringify({...os,token:getToken(),action:'saveOS'})});
     const d=await r.json();
     if(d.error){alert('Erro: '+d.error);return;}
-  }catch(e){alert('Erro ao salvar OS');return;}
+  }catch(e){if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}alert('Erro ao salvar OS');return;}
+  if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
   fecharModalOS();
   loadOS();
 }
@@ -7634,6 +7640,8 @@ function editarColab(id){
 function fecharColabModal(){document.getElementById('colab-modal').style.display='none';}
 
 async function salvarColab(){
+  const _btn2 = document.querySelector('#colab-modal .modal-btn.primary');
+  if(_btn2){ _btn2.textContent='Salvando...'; _btn2.disabled=true; }
   const g=(id)=>document.getElementById(id)?.value?.trim()||'';
   const c={
     id: colabEditId||String(Date.now()),
@@ -7645,12 +7653,16 @@ async function salvarColab(){
     banco:g('colab-banco'), agencia:g('colab-agencia'), conta:g('colab-conta'),
     tipoConta:g('colab-tipo-conta'), pix:g('colab-pix'),
   };
-  if(!c.nome){alert('Informe o nome do colaborador.');return;}
+  if(!c.nome){
+    if(_btn2){_btn2.textContent='Salvar';_btn2.disabled=false;}
+    alert('Informe o nome do colaborador.');return;
+  }
   try{
     const r=await fetch(API,{method:'POST',body:JSON.stringify({...c,token:getToken(),action:'saveColaborador'})});
     const d=await r.json();
     if(d.error){alert('Erro: '+d.error);return;}
-  }catch(e){alert('Erro ao salvar');return;}
+  }catch(e){if(_btn2){_btn2.textContent='Salvar';_btn2.disabled=false;}alert('Erro ao salvar');return;}
+  if(_btn2){_btn2.textContent='Salvar';_btn2.disabled=false;}
   fecharColabModal();
   loadColaboradores();
 }
