@@ -328,15 +328,17 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     </div>
     <div class="login-title">Blin<span style="color:#F5B800">Track</span> Operacional</div>
     <div class="login-sub">Acesso restrito à equipe Blincast</div>
+    <form id="login-form" onsubmit="event.preventDefault();fazerLogin()" autocomplete="on">
     <div class="login-field">
       <label>Usuário</label>
-      <input type="text" id="login-usuario" placeholder="seu.usuario" autocomplete="username">
+      <input type="text" id="login-usuario" name="username" placeholder="seu.usuario" autocomplete="username">
     </div>
     <div class="login-field">
       <label>Senha</label>
-      <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+      <input type="password" id="login-senha" name="password" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar</button>
+    <button class="login-btn" id="login-btn" type="submit">Entrar</button>
+    </form>
     <div class="login-error" id="login-error"></div>
     <div class="login-forgot"><a onclick="esqueceuSenha()">Esqueci minha senha</a></div>
   </div>
