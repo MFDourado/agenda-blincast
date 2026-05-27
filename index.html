@@ -7331,10 +7331,11 @@ function renderOS(){
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
-  if(!lista.length){document.getElementById('os-lista').innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma OS cadastrada. Clique em "+ Nova OS" para criar.</div>';return;}
+  const _osEl=document.getElementById('os-lista'); if(!_osEl)return;
+  if(!lista.length){_osEl.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma OS cadastrada. Clique em "+ Nova OS" para criar.</div>';return;}
   if(!lista.length){document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:60px 20px;font-size:14px;color:#888;">Nenhuma OS cadastrada.<br><br><button onclick="abrirNovaOS()" style="margin-top:8px;padding:10px 24px;background:#F5B800;color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:DM Sans,sans-serif;">+ Criar primeira OS</button></div>';return;}
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
-  document.getElementById('os-lista').innerHTML=lista.map(o=>`
+  _osEl.innerHTML=lista.map(o=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <div style="flex:1;">
@@ -7595,6 +7596,7 @@ function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
   const el=document.getElementById('colab-lista');
+  if(!el) return;
   if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum colaborador cadastrado. Clique em "+ Novo Colaborador" para cadastrar.</div>';return;}
   const statusColor={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
   el.innerHTML=lista.map(c=>`
