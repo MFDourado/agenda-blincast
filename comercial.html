@@ -451,11 +451,28 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
 
 <!-- MODAL SOLICITAR VISTORIA -->
 <div class="modal-overlay" id="vistoria-modal" style="display:none">
-  <div class="modal" style="max-width:460px">
+  <div class="modal" style="max-width:560px">
     <h3>Solicitar Vistoria Técnica</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">Cliente: <strong id="vst-modal-nome"></strong></p>
+
+    <!-- Dados do prospect em modo leitura -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Dados do prospect</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+        <div><span style="color:var(--text-muted)">Cliente:</span> <strong id="vst-modal-nome"></strong></div>
+        <div><span style="color:var(--text-muted)">Cidade:</span> <span id="vst-modal-cidade"></span></div>
+        <div><span style="color:var(--text-muted)">Contato:</span> <span id="vst-modal-contato"></span></div>
+        <div><span style="color:var(--text-muted)">Telefone:</span> <span id="vst-modal-telefone"></span></div>
+        <div style="grid-column:span 2"><span style="color:var(--text-muted)">CNPJ:</span> <span id="vst-modal-cnpj"></span></div>
+        <div><span style="color:var(--text-muted)">UHs:</span> <span id="vst-modal-uhs"></span></div>
+        <div><span style="color:var(--text-muted)">Vendedor:</span> <span id="vst-modal-vendedor"></span></div>
+        <div><span style="color:var(--text-muted)">Conteúdo online:</span> <span id="vst-modal-conteudo"></span></div>
+        <div><span style="color:var(--text-muted)">Prazo instalação:</span> <span id="vst-modal-prazo"></span></div>
+      </div>
+    </div>
+
+    <!-- Campos editáveis -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div>
+      <div style="grid-column:span 2">
         <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Endereço completo *</label>
         <input type="text" id="vst-endereco" placeholder="Rua, número, cidade, UF" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
       </div>
@@ -468,10 +485,14 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
           <option value="OUTROS">OUTROS</option>
         </select>
       </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Ponto de referência / acesso</label>
+        <input type="text" id="vst-referencia" placeholder="Ex: entrada lateral, falar com João" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
     </div>
-    <div class="modal-field full" style="margin-bottom:12px">
-      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
-      <textarea id="vst-obs" rows="3" placeholder="Descreva detalhes relevantes para a vistoria (acesso, horários, contato no local, etc.)" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:80px;"></textarea>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações para a equipe técnica</label>
+      <textarea id="vst-obs" rows="3" placeholder="Horários de acesso, contato no local, detalhes técnicos..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:80px;"></textarea>
     </div>
     <input type="hidden" id="vst-modal-id">
     <div class="modal-actions">
@@ -776,8 +797,17 @@ function solicitarVistoria(id){
   const p=prospects.find(x=>x.id==id);if(!p)return;
   if(p.status==='vistoria_concluida'){alert('Vistoria ja realizada para este prospect.');return;}
   document.getElementById('vst-modal-id').value=id;
-  document.getElementById('vst-modal-nome').textContent=p.nome;
+  document.getElementById('vst-modal-nome').textContent=p.nome||'—';
+  document.getElementById('vst-modal-cidade').textContent=p.cidade||'—';
+  document.getElementById('vst-modal-contato').textContent=p.contato||'—';
+  document.getElementById('vst-modal-telefone').textContent=p.telefone||'—';
+  document.getElementById('vst-modal-cnpj').textContent=p.cnpj||'—';
+  document.getElementById('vst-modal-uhs').textContent=p.uhs||'—';
+  document.getElementById('vst-modal-vendedor').textContent=p.vendedor||'—';
+  document.getElementById('vst-modal-conteudo').textContent=p.conteudo_online||'Não';
+  document.getElementById('vst-modal-prazo').textContent=p.prazo?formatDateBR(p.prazo):'—';
   document.getElementById('vst-obs').value='';
+  document.getElementById('vst-referencia').value='';
   document.getElementById('vst-endereco').value=p.endereco||'';
   document.getElementById('vst-produto').value=p.produto||'';
   document.getElementById('vistoria-modal').style.display='flex';
@@ -790,26 +820,47 @@ async function confirmarVistoria(){
   const produto=document.getElementById('vst-produto').value;
   if(!endereco||!produto){alert('Endereço e Produto são obrigatórios para solicitar a vistoria.');return;}
   const p=prospects.find(x=>x.id==id);if(!p)return;
+  // Loading no botão
+  const _btn=document.querySelector('#vistoria-modal .modal-btn.primary');
+  if(_btn){_btn.textContent='Solicitando...';_btn.disabled=true;}
   p.endereco=endereco; p.produto=produto;
-  document.getElementById('vistoria-modal').style.display='none';
   setStatus('loading','Solicitando vistoria...');
   try{
+    const referencia=document.getElementById('vst-referencia')?.value.trim()||'';
     await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),
       action:'solicitarVistoria',
       prospectId:p.id,
       vistoriaId:uid(),
       nomeCliente:p.nome,
       cidade:p.cidade||'',
+      cnpj:p.cnpj||'',
       produto:produto||p.produto||'',
       uhs:p.uhs||'',
       contato:p.contato||'',
       telefone:p.telefone||'',
       endereco:endereco||p.endereco||'',
+      vendedor:p.vendedor||'',
+      conteudo_online:p.conteudo_online||'',
+      prazo:p.prazo||'',
+      referencia,
       observacoes:obs
     })});
     await load();
+    // Feedback de sucesso
+    const _btn2=document.querySelector('#vistoria-modal .modal-btn.primary');
+    if(_btn2){_btn2.textContent='✓ OK — Solicitado!';_btn2.style.background='#4CAF7D';_btn2.style.color='#111';}
+    setTimeout(()=>{
+      document.getElementById('vistoria-modal').style.display='none';
+      const _btn3=document.querySelector('#vistoria-modal .modal-btn.primary');
+      if(_btn3){_btn3.textContent='Solicitar e enviar e-mail';_btn3.disabled=false;_btn3.style.background='';_btn3.style.color='';}
+    },1500);
     setStatus('online','Vistoria solicitada! E-mail enviado.');
-  }catch(e){setStatus('error','Erro ao solicitar vistoria');}
+  }catch(e){
+    const _btn4=document.querySelector('#vistoria-modal .modal-btn.primary');
+    if(_btn4){_btn4.textContent='Solicitar e enviar e-mail';_btn4.disabled=false;}
+    setStatus('error','Erro ao solicitar vistoria');
+  }
 }
 
 
