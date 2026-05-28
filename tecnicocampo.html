@@ -23,7 +23,7 @@ input[list].field-inp{margin-bottom:4px;}
 .btn-login:disabled{opacity:.4;cursor:not-allowed;}
 .login-err{font-size:12px;color:#e74c3c;text-align:center;margin-top:10px;min-height:18px;}
 #app-screen{display:none;flex-direction:column;min-height:100vh;}
-.topbar{background:var(--surface);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar{background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
 .topbar-logo{font-size:14px;font-weight:700;}
 .topbar-logo span{color:var(--gold);}
 .topbar-right{display:flex;align-items:center;gap:6px;}
@@ -114,11 +114,13 @@ input[list].field-inp{margin-bottom:4px;}
 <!-- APP -->
 <div id="app-screen">
   <div class="topbar">
-    <div class="topbar-logo">Blin<span>Track</span> <span style="color:#444;font-size:12px;font-weight:400">Campo</span></div>
+    <div>
+      <div class="topbar-logo">Blin<span>Track</span> <span style="color:#555;font-size:11px;font-weight:400">Campo</span></div>
+      <div id="c-user-pill" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
+    </div>
     <div class="topbar-right">
-      <span class="user-pill" id="c-user-pill"></span>
-      <button class="btn-sair" id="btn-sync" onclick="sincronizarCampo()" style="border-color:#F5B800;color:#F5B800;">↻ Sincronizar</button>
-      <button class="btn-sair" onclick="fazerLogoutCampo()">Sair</button>
+      <button id="btn-sync" onclick="sincronizarCampo()" style="height:30px;padding:0 12px;border:1px solid var(--gold);border-radius:6px;background:none;color:var(--gold);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">↻ Sync</button>
+      <button onclick="fazerLogoutCampo()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Sair</button>
     </div>
   </div>
 
@@ -366,6 +368,15 @@ function fazerLogoutCampo(){
   document.getElementById('login-screen').style.display='flex';
 }
 
+
+function formatarData(val){
+  if(!val) return '—';
+  try{
+    const d=new Date(val);
+    if(isNaN(d)) return val;
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){ return val; }
+}
 function preencherDatalist(){
   const dl=document.getElementById('mat-list');
   dl.innerHTML='';
@@ -374,9 +385,9 @@ function preencherDatalist(){
 
 async function sincronizarCampo(){
   const btn=document.getElementById('btn-sync');
-  if(btn){btn.textContent='⟳ Sincronizando...';btn.disabled=true;}
+  if(btn){btn.textContent='⟳...';btn.disabled=true;}
   await carregarOS();
-  if(btn){btn.textContent='↻ Sincronizar';btn.disabled=false;}
+  if(btn){btn.textContent='↻ Sync';btn.disabled=false;}
 }
 
 async function carregarOS(){
@@ -436,7 +447,7 @@ function renderListaOS(elId,lista,tipo){
     <div class="os-card ${tipo}" onclick="abrirDetalhe('${o.id}')">
       <div class="os-num">${o.numero||'—'}</div>
       <div class="os-cliente">${o.cliente||'—'}</div>
-      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+o.data_prevista:''}</div>
+      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+formatarData(o.data_prevista):''}</div>
       <div class="os-footer">
         <span class="badge ${sc[o.status]||'badge-aberta'}">${o.status||'Aberta'}</span>
         ${tipo==='pool'?'<span style="font-size:11px;color:var(--gold);">⚡ Toque para aceitar</span>':''}
@@ -475,7 +486,7 @@ function abrirDetalhe(id){
   document.getElementById('d-cnpj').textContent=o.cnpj||'—';
   document.getElementById('d-tipo').textContent=o.tipo||'—';
   document.getElementById('d-produto').textContent=o.produto||'—';
-  document.getElementById('d-previsto').textContent=o.data_prevista||'—';
+  document.getElementById('d-previsto').textContent=formatarData(o.data_prevista)||'—';
   document.getElementById('d-descricao').textContent=o.descricao||'';
   const obsSection=document.getElementById('d-obs-section');
   if(o.obs){obsSection.style.display='block';document.getElementById('d-obs').textContent=o.obs;}
