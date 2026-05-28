@@ -161,6 +161,8 @@ input[list].field-inp{margin-bottom:4px;}
         <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value" id="d-tipo"></span></div>
         <div class="detail-row"><span class="detail-label">Produto</span><span class="detail-value" id="d-produto"></span></div>
         <div class="detail-row"><span class="detail-label">Previsto</span><span class="detail-value" id="d-previsto"></span></div>
+        <div class="detail-row" id="d-solicitante-row" style="display:none;"><span class="detail-label">Solicitante</span><span class="detail-value" id="d-solicitante"></span></div>
+        <div class="detail-row" id="d-tel-solicitante-row" style="display:none;"><span class="detail-label">Telefone</span><span class="detail-value" id="d-tel-solicitante"></span></div>
         <div id="d-descricao" style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;"></div>
       </div>
       <div id="d-timer" style="display:none;" class="timer-badge">⏱ Iniciado às <span id="d-hora-inicio"></span></div>
@@ -515,6 +517,14 @@ function abrirDetalhe(id){
   document.getElementById('d-produto').textContent=o.produto||'—';
   document.getElementById('d-previsto').textContent=formatarData(o.data_prevista)||'—';
   document.getElementById('d-descricao').textContent=o.descricao||'';
+  if(o.responsavel_nome){
+    document.getElementById('d-solicitante').textContent=o.responsavel_nome;
+    document.getElementById('d-solicitante-row').style.display='flex';
+  } else { document.getElementById('d-solicitante-row').style.display='none'; }
+  if(o.responsavel_tel){
+    document.getElementById('d-tel-solicitante').textContent=o.responsavel_tel;
+    document.getElementById('d-tel-solicitante-row').style.display='flex';
+  } else { document.getElementById('d-tel-solicitante-row').style.display='none'; }
   const obsSection=document.getElementById('d-obs-section');
   if(o.obs){obsSection.style.display='block';document.getElementById('d-obs').textContent=o.obs;}
   else{obsSection.style.display='none';}
