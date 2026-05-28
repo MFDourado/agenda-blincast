@@ -512,7 +512,7 @@ function renderListas(){
 function renderListaOS(elId,lista,tipo){
   const el=document.getElementById(elId);
   if(!lista.length){el.innerHTML='<div class="empty">'+(tipo==='pool'?'Nenhuma OS disponível no momento':'Nenhuma OS encontrada')+'</div>';return;}
-  const sc={'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida'};
+  const sc={'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida','Aguardando confirmação':'badge-andamento','Cancelada':'badge-concluida'};
   el.innerHTML=lista.map(o=>`
     <div class="os-card ${tipo}" onclick="abrirDetalhe('${o.id}')">
       <div class="os-num">${o.numero||'—'}</div>
@@ -546,7 +546,7 @@ function abrirDetalhe(id){
   if(!o)return;
   osAtual=o;
   document.getElementById('d-num').textContent=o.numero||'—';
-  const sc={'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida'};
+  const sc={'Aberta':'badge-aberta','Em andamento':'badge-andamento','Concluída':'badge-concluida','Aguardando confirmação':'badge-andamento','Cancelada':'badge-concluida'};
   const badge=document.getElementById('d-badge');
   badge.className='badge '+(sc[o.status]||'badge-aberta');
   badge.textContent=o.status||'Aberta';
@@ -616,7 +616,7 @@ async function iniciarAtendimento(id){
   horaInicio=agora;
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id,status:'Em andamento',hora_inicio:agora})});
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'atualizarAta',os_id:id,status:'Em andamento pelo técnico'})});
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'atualizarAta',os_id:id,status:'em_andamento_tecnico'})});
   }catch(e){}
   await carregarOS();
   const o=osList.find(x=>String(x.id)===String(id));
@@ -725,14 +725,14 @@ async function concluirOS(){
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(),action:'saveOS',
-      id:osAtual.id,status:'Concluída',
+      id:osAtual.id,status:'Aguardando confirmação',
       data_conclusao:hoje,hora_conclusao:agora,
       obs:obsCompleta,materiais,
       responsavel_nome:nome,responsavel_tel:tel
     })});
     await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(),action:'atualizarAta',
-      os_id:osAtual.id,status:'Concluído pelo técnico'
+      os_id:osAtual.id,status:'concluido_tecnico'
     })});
   }catch(e){}
 
