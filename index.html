@@ -4115,6 +4115,8 @@ function renderAta(){
         <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
           <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
+          <option value="em_andamento_tecnico" ${r.status==='em_andamento_tecnico'?'selected':''}>Em andamento pelo técnico</option>
+          <option value="concluido_tecnico" ${r.status==='concluido_tecnico'?'selected':''}>Concluído pelo técnico</option>
           <option value="pendente" ${r.status==='pendente'?'selected':''}>Pendente</option>
           <option value="retornar" ${r.status==='retornar'?'selected':''}>Retornar</option>
           <option value="acompanhar" ${r.status==='acompanhar'?'selected':''}>Acompanhar</option>
