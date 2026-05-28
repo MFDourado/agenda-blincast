@@ -4114,7 +4114,7 @@ return `<div class="cron-card"><div class="cron-header"><div style="cursor:point
 // ===================== ATA DO DIA =====================
 let ataRegistros=[];
 const ATA_STATUS_LABEL={feito:'Feito',em_andamento:'Em andamento',pendente:'Pendente',retornar:'Retornar',acompanhar:'Acompanhar',planejado:'Planejado',em_atraso:'Em atraso',em_andamento_tecnico:'Em andamento pelo técnico',concluido_tecnico:'Concluído pelo técnico'};
-const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'}};
+const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'},em_andamento_tecnico:{bg:'#E8F4FD',c:'#1A6FB5'},concluido_tecnico:{bg:'#EAF3DE',c:'#3B6D11'}};
 
 async function loadAta(){
   document.getElementById('ata-sync').textContent='Carregando...';
