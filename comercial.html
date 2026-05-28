@@ -509,6 +509,7 @@ const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(sessionStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
 const API='https://script.google.com/macros/s/AKfycbwJiG9bNJUQZvRQpZC18ie29TieqqLabQx3kKaP_9EQxMwz8hof67TCnIbSMv7trAfI/exec';
+const API_OPERACIONAL='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 let prospects=[];
 let filters={status:'todos',prioridade:'todos',vendedor:'todos'};
 
@@ -827,8 +828,8 @@ async function confirmarVistoria(){
   setStatus('loading','Solicitando vistoria...');
   try{
     const referencia=document.getElementById('vst-referencia')?.value.trim()||'';
-    await fetch(API,{method:'POST',body:JSON.stringify({
-      token:getToken(),
+    await fetch(API_OPERACIONAL,{method:'POST',body:JSON.stringify({
+      token:'3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9',
       action:'solicitarVistoria',
       prospectId:p.id,
       vistoriaId:uid(),
