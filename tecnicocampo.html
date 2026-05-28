@@ -266,12 +266,10 @@ input[list].field-inp{margin-bottom:4px;}
       </div>
       <div class="confirm-box" id="confirm-box">
         <div class="confirm-num" id="confirm-num">2</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Mantenha pressionado para confirmar</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Confirmando automaticamente...</div>
       </div>
-      <button class="btn-block btn-green" id="btn-ok-confirmar"
-        onmousedown="iniciarConfirm()" onmouseup="cancelarConfirm()"
-        ontouchstart="iniciarConfirm(event)" ontouchend="cancelarConfirm()">
-        Manter pressionado — OK
+      <button class="btn-block btn-green" id="btn-ok-confirmar" onclick="concluirOS()" disabled>
+        ✓ OK — Confirmar
       </button>
       <button class="btn-block btn-gray" onclick="goPage('responsavel')">Corrigir dados</button>
     </div>
@@ -640,20 +638,29 @@ function avancarParaConfirmar(){
   document.getElementById('conf-resp').textContent=nome;
   document.getElementById('conf-tel').textContent=tel;
   goPage('confirmar');
+  // Iniciar contagem automática de 2 segundos
+  setTimeout(iniciarConfirm, 300);
 }
 
-function iniciarConfirm(e){
-  if(e)e.preventDefault();
+function iniciarConfirm(){
+  clearInterval(confirmCountdown);
   let count=2;
-  document.getElementById('confirm-num').textContent=count;
+  const numEl=document.getElementById('confirm-num');
+  const btnOk=document.getElementById('btn-ok-confirmar');
+  if(numEl)numEl.textContent=count;
+  if(btnOk)btnOk.disabled=true;
   confirmCountdown=setInterval(()=>{
     count--;
-    document.getElementById('confirm-num').textContent=count;
-    if(count<=0){clearInterval(confirmCountdown);concluirOS();}
+    if(numEl)numEl.textContent=count;
+    if(count<=0){
+      clearInterval(confirmCountdown);
+      if(numEl)numEl.textContent='✓';
+      if(btnOk)btnOk.disabled=false;
+    }
   },1000);
 }
 
-function cancelarConfirm(){clearInterval(confirmCountdown);document.getElementById('confirm-num').textContent='2';}
+function cancelarConfirm(){clearInterval(confirmCountdown);}
 
 async function concluirOS(){
   const nome=document.getElementById('resp-nome').value.trim();
