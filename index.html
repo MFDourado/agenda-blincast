@@ -761,6 +761,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <option value="">Pool — qualquer técnico</option>
         </select>
       </div>
+      <div class="modal-field"><label>Solicitante</label><input type="text" id="at-solicitante" placeholder="Nome do solicitante"></div>
+      <div class="modal-field"><label>Telefone do solicitante</label><input type="text" id="at-tel-solicitante" placeholder="(00) 00000-0000"></div>
       <div class="modal-field">
         <label>Ajudante</label>
         <div style="display:flex;gap:6px;align-items:center;">
@@ -4242,7 +4244,10 @@ function renderAta(){
           <option value="em_atraso" ${r.status==='em_atraso'?'selected':''}>Em atraso</option>
         </select>
       </td>
-      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">${r.obs||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">
+        ${r.obs||'—'}
+        ${r.solicitante?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">👤 ${r.solicitante}${r.tel_solicitante?' · '+r.tel_solicitante:''}</div>`:''}
+      </td>
       <td style="padding:2px 3px;vertical-align:top;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
         <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
@@ -4380,6 +4385,8 @@ function openAtaModal(){
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
+  const _as=document.getElementById('at-solicitante');if(_as)_as.value='';
+  const _ats=document.getElementById('at-tel-solicitante');if(_ats)_ats.value='';
   document.getElementById('ata-modal-title').textContent='Novo registro';
   document.getElementById('ata-modal').style.display='flex';
 }
@@ -4444,6 +4451,8 @@ async function salvarAta(){
     ajudante: [document.getElementById('at-ajudante').value.trim(), document.getElementById('at-ajudante2')?.value.trim()].filter(Boolean).join(' / '),
     problema,status,
     obs:document.getElementById('at-obs').value.trim(),
+    solicitante:document.getElementById('at-solicitante').value.trim(),
+    tel_solicitante:document.getElementById('at-tel-solicitante').value.trim(),
     dt_abertura:document.getElementById('at-dt-abertura').value||'',
     dt_prevista:document.getElementById('at-dt-prevista')?.value||'',
     dt_conclusao:document.getElementById('at-dt-conclusao').value||''
@@ -4470,6 +4479,8 @@ async function salvarAta(){
         tipo: payload.problema || '',
         produto: '',
         descricao: payload.obs||'',
+        responsavel_nome: payload.solicitante||'',
+        responsavel_tel: payload.tel_solicitante||'',
         tecnico: payload.tecnico||'',
         data_prevista: payload.dt_prevista||'',
         data_conclusao: '',
@@ -7538,6 +7549,7 @@ function renderOS(){
           <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
             ${o.cidade?`<span>📍 ${o.cidade}</span>`:''}
             ${o.tecnico?`<span>👤 ${o.tecnico}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
+            ${o.responsavel_nome?`<span>📞 ${o.responsavel_nome}${o.responsavel_tel?' · '+o.responsavel_tel:''}</span>`:''}
             ${o.data_prevista?`<span>📅 Previsto: ${formatarData(o.data_prevista)}</span>`:''}
           </div>
           ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
