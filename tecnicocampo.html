@@ -454,12 +454,31 @@ function isMeu(tecnico){
   return false;
 }
 
-function renderListas(){
-  const minhas=osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
-  const pool=osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada');
-  const conc=osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
+function isAdmin(){
+  return (usuarioCampo?.perfil||'').toLowerCase()==='admin';
+}
 
-  document.getElementById('tab-minhas').textContent='Minhas OS'+(minhas.length?` (${minhas.length})`:'');
+function renderListas(){
+  const admin = isAdmin();
+
+  // Admin vê tudo; técnico vê apenas as suas
+  const minhas = admin
+    ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada')
+    : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
+
+  const pool = admin
+    ? [] // admin já vê tudo em "Todas as OS"
+    : osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada');
+
+  const conc = admin
+    ? osList.filter(o=>o.status==='Concluída'||o.status==='Cancelada')
+    : osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
+
+  // Ajustar labels das abas conforme perfil
+  document.getElementById('tab-minhas').textContent=(admin?'Todas as OS':'Minhas OS')+(minhas.length?` (${minhas.length})`:'');
+  // Admin: esconde aba Disponíveis (já vê tudo em Todas)
+  const poolTab = document.getElementById('tab-pool');
+  if(poolTab) poolTab.style.display = admin ? 'none' : '';
   document.getElementById('tab-pool').textContent='Disponíveis'+(pool.length?` (${pool.length})`:'');
   document.getElementById('tab-conc').textContent='Concluídas';
 
@@ -476,7 +495,7 @@ function renderListaOS(elId,lista,tipo){
     <div class="os-card ${tipo}" onclick="abrirDetalhe('${o.id}')">
       <div class="os-num">${o.numero||'—'}</div>
       <div class="os-cliente">${o.cliente||'—'}</div>
-      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+formatarData(o.data_prevista):''}</div>
+      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+formatarData(o.data_prevista):''}${o.tecnico?'<br>👤 '+o.tecnico:'<br><span style="color:var(--gold)">⚡ Pool</span>'}</div>
       <div class="os-footer">
         <span class="badge ${sc[o.status]||'badge-aberta'}">${o.status||'Aberta'}</span>
         ${tipo==='pool'?'<span style="font-size:11px;color:var(--gold);">⚡ Toque para aceitar</span>':''}
