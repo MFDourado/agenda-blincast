@@ -2638,7 +2638,7 @@ function popularFiltroMes(){
   if(!sel) return;
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMes = i => {
-    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
     if(!d) return '';
     if(d.includes('/')) return d; // já MM/yyyy
     try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
@@ -2671,7 +2671,7 @@ function renderImplantacoes(){
   let lista = implDados;
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMesItem = i => {
-    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
     if(!d) return '';
     if(d.includes('/')) return d;
     try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
@@ -2980,7 +2980,7 @@ function buildPreview(){
   let lista = implDados;
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMesItem = i => {
-    const d = tipoMes==='assinatura' ? i.assinatura : i.previsao;
+    const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
     if(!d) return '';
     if(d.includes('/')) return d;
     try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
@@ -6917,6 +6917,7 @@ async function estEnviarEmail(reg){
     <select id="impl-f-tipo-mes" onchange="popularFiltroMes();renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
       <option value="previsao">Previsão</option>
       <option value="assinatura">Assinatura</option>
+      <option value="conclusao">Conclusão</option>
     </select>
     <select id="impl-f-mes" onchange="renderImplantacoes()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;">
       <option value="">Todos os meses</option>
@@ -7555,6 +7556,7 @@ function renderOS(){
           ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
+          <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
           <button onclick="editarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
           <button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
         </div>
@@ -7712,6 +7714,143 @@ function bloquearObsOSSeConcluida(status){
       btn?.parentElement?.appendChild(div);
     }
   }
+}
+
+function exportarOSpdf(id){
+  const o = osLista.find(x=>String(x.id)===String(id));
+  if(!o){alert('OS não encontrada');return;}
+
+  const logo = 'data:image/png;base64,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';
+  const agora = new Date().toLocaleString('pt-BR');
+  const fmtDate = d => { if(!d)return ''; try{return new Date(d+'T12:00').toLocaleDateString('pt-BR');}catch(e){return d;} };
+
+  // Montar materiais
+  let matRows = '';
+  if(o.materiais){
+    o.materiais.split(',').forEach(m=>{
+      m=m.trim(); if(!m)return;
+      const match = m.match(/^(\d+)x\s*(.+)/);
+      if(match) matRows+=`<tr><td style="padding:4px 10px;border-bottom:1px solid #eee">${match[2]}</td><td style="text-align:center;padding:4px 10px;border-bottom:1px solid #eee">${match[1]}</td></tr>`;
+      else matRows+=`<tr><td style="padding:4px 10px;border-bottom:1px solid #eee">${m}</td><td style="text-align:center;padding:4px 10px;border-bottom:1px solid #eee">—</td></tr>`;
+    });
+  }
+  if(!matRows) matRows='<tr><td colspan="2" style="padding:6px 10px;color:#aaa;font-style:italic">Nenhum material registrado</td></tr>';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:15mm 15mm 20mm;}
+  table{width:100%;border-collapse:collapse;}
+  .sec-title{background:#f0f0f0;text-align:center;font-weight:700;padding:5px 10px;border-bottom:1px solid #ccc;}
+  strong{font-weight:700;}
+  @media print{body{padding:10mm;}}
+</style></head><body>
+
+<table style="border:1px solid #222;margin-bottom:12px">
+  <tr>
+    <td style="padding:8px 12px;border-right:1px solid #222;width:150px">
+      <img src="${logo}" alt="Blincast" style="height:34px;display:block;">
+    </td>
+    <td style="padding:8px 12px;font-size:13px;font-weight:700">
+      Ordem de Serviço nº: ${o.numero||o.id}
+    </td>
+    <td style="padding:8px 12px;font-size:11px;text-align:right;white-space:nowrap">
+      Abertura: ${fmtDate(o.data)||agora}
+    </td>
+  </tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr>
+    <td style="padding:6px 10px;border-right:1px solid #ccc;vertical-align:top;width:50%">
+      <strong>Cliente:</strong><br>${o.cliente||'—'}<br><br>
+      <strong>Endereço:</strong><br>${o.endereco||'—'}<br>
+      <strong>Cidade:</strong> ${o.cidade||'—'}<br>
+      ${o.cnpj?'<strong>CNPJ:</strong> '+o.cnpj+'<br>':''}
+      ${o.responsavel_tel?'<strong>Fone:</strong> '+o.responsavel_tel:''}</td>
+    <td style="padding:6px 10px;vertical-align:top">
+      ${o.tipo?'<strong>Tipo de Serviço:</strong> '+o.tipo+'<br>':''}
+      ${o.produto?'<strong>Produto:</strong> '+o.produto+'<br>':''}
+      ${o.horas?'<strong>UHs/Horas:</strong> '+o.horas+'<br>':''}
+      <br>
+      ${o.tecnico?'<strong>Técnico:</strong> '+o.tecnico+'<br>':''}
+      ${o.responsavel_nome?'<strong>Solicitante:</strong> '+o.responsavel_nome+'<br>':''}
+      ${o.responsavel_tel?'<strong>Tel. Solicitante:</strong> '+o.responsavel_tel:''}</td>
+  </tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr><td class="sec-title">Observações da Abertura da OS</td></tr>
+  <tr><td style="padding:8px 10px;min-height:50px">${o.descricao||'—'}</td></tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr><td colspan="2" class="sec-title">Materiais Utilizados</td></tr>
+  <tr>
+    <td style="padding:4px 10px;font-weight:700;width:80%;border-bottom:1px solid #ccc">Descrição</td>
+    <td style="padding:4px 10px;font-weight:700;text-align:center;border-bottom:1px solid #ccc">Qtde</td>
+  </tr>
+  ${matRows}
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr><td class="sec-title">Descritivo das atividades realizadas</td></tr>
+  <tr><td style="padding:6px 10px"><strong>Descrição do técnico (detalhada):</strong>
+    ${o.obs?'<br><br>'+o.obs:'<br><br><br><br>'}</td></tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr><td class="sec-title">Faltou executar (pendências)</td></tr>
+  <tr><td style="padding:6px 10px"><strong>Descrição do técnico (detalhada):</strong><br><br><br><br></td></tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:8px">
+  <tr><td style="padding:6px 10px"><strong>Observações:</strong><br><br><br></td></tr>
+</table>
+
+<table style="border:1px solid #ccc;margin-bottom:10px">
+  <tr>
+    <td style="width:55%;border-right:1px solid #ccc">
+      <table>
+        <tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #ccc;border-right:1px solid #ccc;width:50%">Assinatura do TÉCNICO</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #ccc">Nome Legível Técnico</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;border-right:1px solid #ccc">Assinatura do CLIENTE</td>
+          <td style="padding:6px 10px">Nome Legível do Cliente</td>
+        </tr>
+      </table>
+    </td>
+    <td>
+      <table>
+        <tr><td colspan="2" class="sec-title">Data da Manutenção</td></tr>
+        <tr>
+          <td style="padding:5px 10px;border-bottom:1px solid #ccc;border-right:1px solid #ccc">
+            Data da Chegada<br>${o.hora_inicio?fmtDate(o.data_conclusao||o.data)||'':''}<div style="min-height:16px"></div>
+          </td>
+          <td style="padding:5px 10px;border-bottom:1px solid #ccc">
+            Serviço Finalizado<br>( ) sim &nbsp; ( ) não
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px;border-right:1px solid #ccc">
+            Hora da Chegada<br>${o.hora_inicio||''}<div style="min-height:12px"></div>
+          </td>
+          <td style="padding:5px 10px">
+            Hora da Saída<br>${o.hora_conclusao||''}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<strong>ATENÇÃO SR TÉCNICO, DEVOLVER A OS ASSINADA ATÉ O DIA ${fmtDate(o.data_prevista)||'—'}</strong>
+
+</body></html>`;
+
+  const w = window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
