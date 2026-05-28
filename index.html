@@ -4072,6 +4072,12 @@ function renderAta(){
   // Ordenar por data crescente (mais antigas primeiro)
   // Ordenar por campo 'ordem' se existir, senão por data
   let lista=[...ataRegistros].sort((a,b)=>{
+    // RJ sempre primeiro, depois ordenar por UF, depois por ordem/data
+    const ufA=(a.estado||'').toUpperCase().trim();
+    const ufB=(b.estado||'').toUpperCase().trim();
+    if(ufA==='RJ' && ufB!=='RJ') return -1;
+    if(ufA!=='RJ' && ufB==='RJ') return 1;
+    if(ufA!==ufB) return ufA.localeCompare(ufB);
     if(a.ordem && b.ordem) return parseInt(a.ordem)-parseInt(b.ordem);
     const da=String(a.data||'').trim();
     const db=String(b.data||'').trim();
