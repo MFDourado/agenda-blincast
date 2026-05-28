@@ -1609,10 +1609,23 @@ function toggleVistoriaBox(f){
   renderVistoria();
 }
 
-function renderVistoria(){const list=document.getElementById('vistoria-list');if(!vistorias.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria.</div>';return;}
+let vistoriaFiltroTipo = 'instalacao'; // padrão: instalação
+
+function filtrarVistoriaTipo(tipo){
+  vistoriaFiltroTipo = tipo;
+  renderVistoria();
+}
+
+function renderVistoria(){
+  const list=document.getElementById('vistoria-list');
+  // Filtrar por tipo se definido
+  const vistoriasFiltradas = vistoriaFiltroTipo
+    ? vistorias.filter(v=>(v.tipo||'instalacao')===vistoriaFiltroTipo)
+    : vistorias;
+  if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.</div>';return;}
   // Atualizar contagem dos boxes
-  const numConc = vistorias.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done)).length;
-  const numPend = vistorias.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done)).length;
+  const numConc = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done)).length;
+  const numPend = vistoriasFiltradas.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done)).length;
   const elC = document.getElementById('vbox-num-concluidas');
   const elP = document.getElementById('vbox-num-pendentes');
   if(elC) elC.textContent = numConc;
@@ -4314,6 +4327,8 @@ async function salvarAta(){
   const problema=document.getElementById('at-problema').value.trim();
   const status=document.getElementById('at-status').value;
   if(!cliente||!problema)return alert('Preencha Cliente e Problema.');
+  const _btn=document.querySelector('#ata-modal .modal-btn.primary');
+  if(_btn){_btn.textContent='Registrando...';_btn.disabled=true;}
   const editId=document.getElementById('at-edit-id').value;
   const payload={
     no:document.getElementById('at-no').value.trim(),
@@ -4328,7 +4343,6 @@ async function salvarAta(){
     dt_prevista:document.getElementById('at-dt-prevista')?.value||'',
     dt_conclusao:document.getElementById('at-dt-conclusao').value||''
   };
-  closeAtaModal();
   try{
     const ataId = editId || uid();
     if(editId){
@@ -4368,8 +4382,13 @@ async function salvarAta(){
       // Notificar técnico via WhatsApp se definido
       setTimeout(()=>notificarTecnicoOS({...osPayload, numero:osNum}), 800);
     }
+    if(_btn){_btn.textContent='Concluído!';_btn.disabled=true;}
+    setTimeout(()=>{ closeAtaModal(); if(_btn){_btn.textContent='Salvar';_btn.disabled=false;} },800);
     await loadAta();
-  }catch(e){setStatus('error','Erro ao salvar ata');}
+  }catch(e){
+    if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
+    setStatus('error','Erro ao salvar ata');
+  }
 }
 
 async function alterarAtaData(id, campo, valor){
@@ -4723,6 +4742,7 @@ async function salvarNovaVistoria(){
     telefone:document.getElementById('nv-telefone')?.value||cliente.telefone||'',
     endereco:document.getElementById('nv-endereco')?.value||cliente.endereco||'',
     status:'solicitada',
+    tipo:document.getElementById('nv-tipo')?.value||'instalacao',
     steps:[]
   };
   fecharNovaVistoriaModal();
