@@ -694,6 +694,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
         <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
         <div style="padding:4px 12px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Mostrar apenas:</div>
         <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="em_andamento" onchange="renderAta()"> Em andamento</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="em_andamento_tecnico" onchange="renderAta()"> Em andamento pelo técnico</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="concluido_tecnico" onchange="renderAta()"> Concluído pelo técnico</label>
         <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="pendente" onchange="renderAta()"> Pendente</label>
         <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="retornar" onchange="renderAta()"> Retornar</label>
         <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;" onclick="event.stopPropagation()"><input type="checkbox" class="ata-status-chk" value="acompanhar" onchange="renderAta()"> Acompanhar</label>
@@ -739,8 +741,12 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <div class="modal-field"><label>No OS / Código</label><input type="text" id="at-no" placeholder="Ex: 4521"></div>
       <div class="modal-field"><label>Data *</label><input type="date" id="at-data"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" placeholder="Nome do cliente"></div>
-      <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase"></div>
-      <div class="modal-field"><label>Técnico</label><input type="text" id="at-tecnico" placeholder="Nome do técnico"></div>
+      <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase" oninput="filtrarTecnicosPorUF(this.value,'at-tecnico')"></div>
+      <div class="modal-field"><label>Técnico</label>
+        <select id="at-tecnico" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Pool — qualquer técnico</option>
+        </select>
+      </div>
       <div class="modal-field">
         <label>Ajudante</label>
         <div style="display:flex;gap:6px;align-items:center;">
@@ -7262,7 +7268,7 @@ async function estEnviarEmail(reg){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="os-cliente" placeholder="Nome do cliente"></div>
       <div class="modal-field"><label>CNPJ</label><input type="text" id="os-cnpj" placeholder="00.000.000/0000-00"></div>
-      <div class="modal-field"><label>Cidade / UF</label><input type="text" id="os-cidade" placeholder="Ex: São Paulo, SP"></div>
+      <div class="modal-field"><label>Cidade / UF</label><input type="text" id="os-cidade" placeholder="Ex: São Paulo, SP" oninput="filtrarTecnicosPorUFdaOS(this.value)"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="os-endereco" placeholder="Rua, número, bairro"></div>
     </div>
 
@@ -7305,13 +7311,26 @@ async function estEnviarEmail(reg){
       <div class="modal-field"><label>Horas trabalhadas</label><input type="number" id="os-horas" placeholder="Ex: 4" min="0" step="0.5"></div>
     </div>
 
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Observações</div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Observações e Anexos</div>
     <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px">
-      <div class="modal-field"><label>Observações gerais</label>
-        <textarea id="os-obs" rows="2" placeholder="Observações adicionais..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
-      </div>
       <div class="modal-field"><label>Materiais utilizados</label>
         <textarea id="os-materiais" rows="2" placeholder="Liste os materiais usados..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div class="modal-field">
+        <label>Observações <span style="font-size:11px;color:var(--text-muted)">(histórico de atualizações)</span></label>
+        <div id="os-obs-historico" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;min-height:60px;font-size:12px;color:var(--text-muted);margin-bottom:6px;white-space:pre-wrap;line-height:1.6;max-height:160px;overflow-y:auto;">Nenhuma observação ainda.</div>
+        <div style="display:flex;gap:8px;">
+          <textarea id="os-obs-nova" rows="2" placeholder="Digite uma nova observação..." style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:none;box-sizing:border-box;"></textarea>
+          <button type="button" onclick="inserirObsOS()" style="padding:6px 12px;background:var(--gold);color:#111;border:none;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap;align-self:flex-end;">+ Inserir</button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Anexar documentos / fotos</label>
+        <div id="os-anexos-lista" style="font-size:12px;color:var(--text-muted);margin-bottom:6px;"></div>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text-muted);">
+          📎 Clique para anexar arquivo
+          <input type="file" id="os-anexos" multiple style="display:none" onchange="listarAnexosOS(this)">
+        </label>
       </div>
     </div>
 
@@ -7392,7 +7411,10 @@ function abrirNovaOS(){
   document.getElementById('os-modal-title').textContent='Nova Ordem de Serviço';
   document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');
   document.getElementById('os-data').value=new Date().toISOString().split('T')[0];
-  ['os-cliente','os-cnpj','os-cidade','os-endereco','os-descricao','os-obs','os-materiais','os-horas','os-data-prevista','os-data-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['os-cliente','os-cnpj','os-cidade','os-endereco','os-descricao','os-obs-nova','os-materiais','os-horas','os-data-prevista','os-data-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';})
+  osObsBuffer=[];
+  renderObsOS();
+  bloquearObsOSSeConcluida('');;
   document.getElementById('os-status').value='Aberta';
   document.getElementById('os-tipo').value='';
   document.getElementById('os-produto').value='';
@@ -7417,11 +7439,54 @@ function editarOS(id){
   document.getElementById('os-edit-id').value=id;
   popularSelectTecnicosOS();
   document.getElementById('os-tecnico').value=o.tecnico||'';
+  // Carregar obs e bloquear se concluída
+  osObsBuffer=[];
+  if(o.obs){osObsBuffer=o.obs.split('\n\n---\n\n');}
+  renderObsOS();
+  bloquearObsOSSeConcluida(o.status||'');
   document.getElementById('os-modal').style.display='flex';
 }
 
 
 
+
+const TECNICOS_POR_UF = {
+  'RJ': ['Marco Antonio','Isaque Lucas','Gustavo Freire','Daniel Sampaio','Rogério Silva','Mozart Soares','Gabriel Santos']
+};
+
+
+function filtrarTecnicosPorUFdaOS(cidade){
+  // Extrair UF do campo cidade (ex: "Rio de Janeiro, RJ" → "RJ")
+  const uf = (cidade.match(/,?\s*([A-Z]{2})\s*$/) || [])[1] || '';
+  const dl = document.getElementById('os-tecnico-list');
+  if(!dl) return;
+  dl.innerHTML = '';
+  const tecnicosUF = TECNICOS_POR_UF[uf];
+  const lista = tecnicosUF || (typeof colabLista !== 'undefined' ? colabLista.filter(c=>c.status==='Ativo').map(c=>c.usuario||c.nome) : []);
+  lista.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; dl.appendChild(o);
+  });
+}
+function filtrarTecnicosPorUF(uf, selectId) {
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const val = sel.value;
+  const tecnicosUF = TECNICOS_POR_UF[uf?.toUpperCase()];
+  sel.innerHTML = '<option value="">Selecione o técnico...</option>';
+  // Se UF tem segmentação, mostrar só os dela; se não, mostrar todos os operacionais
+  const lista = tecnicosUF || [];
+  lista.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+  // Opção "Pool" sempre disponível
+  const pool = document.createElement('option');
+  pool.value = ''; pool.textContent = 'Pool — qualquer técnico';
+  sel.insertBefore(pool, sel.firstChild);
+  if(val) sel.value = val;
+}
 function formatarData(val){
   if(!val) return '—';
   try{
@@ -7439,6 +7504,59 @@ function filtrarOSporAta(osId){
   const el=document.getElementById('os-busca');
   if(el){ el.value=osId; renderOS(); }
 }
+
+// ── OBSERVAÇÕES OS ────────────────────────────────────────────────────────────
+let osObsBuffer = []; // buffer de observações antes de salvar
+
+function inserirObsOS(){
+  const inp = document.getElementById('os-obs-nova');
+  const txt = inp?.value.trim();
+  if(!txt) return;
+  const agora = new Date().toLocaleString('pt-BR');
+  const usuario = typeof usuarioLogado !== 'undefined' ? (usuarioLogado?.nome||usuarioLogado?.usuario||'') : '';
+  const entrada = `[${agora}${usuario?' — '+usuario:''}]\n${txt}`;
+  osObsBuffer.push(entrada);
+  inp.value = '';
+  renderObsOS();
+}
+
+function renderObsOS(){
+  const el = document.getElementById('os-obs-historico');
+  if(!el) return;
+  if(!osObsBuffer.length){ el.textContent='Nenhuma observação ainda.'; return; }
+  el.textContent = osObsBuffer.join('\n\n');
+  el.scrollTop = el.scrollHeight;
+}
+
+function carregarObsOS(obsStr){
+  osObsBuffer = obsStr ? obsStr.split('\n\n---\n\n') : [];
+  renderObsOS();
+}
+
+function listarAnexosOS(inp){
+  const el = document.getElementById('os-anexos-lista');
+  if(!el) return;
+  const nomes = [...inp.files].map(f=>f.name);
+  el.innerHTML = nomes.map(n=>`<span style="display:inline-block;background:rgba(245,184,0,.1);color:var(--gold);border:1px solid rgba(245,184,0,.2);border-radius:20px;padding:2px 10px;font-size:11px;margin:2px;">📎 ${n}</span>`).join('');
+}
+
+function bloquearObsOSSeConcluida(status){
+  const area = document.getElementById('os-obs-nova');
+  const btn = document.querySelector('button[onclick="inserirObsOS()"]');
+  const bloqueado = status === 'Concluída' || status === 'Cancelada';
+  if(area) area.disabled = bloqueado;
+  if(btn){ btn.disabled = bloqueado; btn.style.opacity = bloqueado ? '.4' : '1'; }
+  if(bloqueado){
+    const aviso = document.getElementById('os-obs-aviso');
+    if(!aviso){
+      const div = document.createElement('div');
+      div.id = 'os-obs-aviso';
+      div.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:4px;';
+      div.textContent = 'OS concluída — clique em Editar para fazer alterações.';
+      btn?.parentElement?.appendChild(div);
+    }
+  }
+}
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
 async function salvarOS(){
@@ -7452,7 +7570,7 @@ async function salvarOS(){
     tipo: g('os-tipo'), produto: g('os-produto'), descricao: g('os-descricao'),
     tecnico: g('os-tecnico'), data_prevista: g('os-data-prevista'),
     data_conclusao: g('os-data-conclusao'), horas: g('os-horas'),
-    obs: g('os-obs'), materiais: g('os-materiais'),
+    obs: osObsBuffer.length ? osObsBuffer.join('\n\n---\n\n') : '', materiais: g('os-materiais'),
     criado_em: osEditId?undefined:new Date().toLocaleString('pt-BR'),
   };
   if(!os.cliente){
