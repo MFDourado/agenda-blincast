@@ -4464,7 +4464,7 @@ async function salvarAta(){
     } else {
       await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:ataId,...payload})});
       // Criar OS automaticamente vinculada à ATA
-      const osNum = 'OS-ATA-'+ataId.slice(-6).toUpperCase();
+      const osNum = payload.no ? 'OS-'+payload.no : 'OS-ATA-'+ataId.slice(-6).toUpperCase();
       const osPayload = {
         token: getToken(),
         action: 'saveOS',
@@ -7730,17 +7730,17 @@ function exportarOSpdf(id){
     o.materiais.split(',').forEach(m=>{
       m=m.trim(); if(!m)return;
       const match = m.match(/^(\d+)x\s*(.+)/);
-      if(match) matRows+=`<tr><td style="padding:4px 10px;border-bottom:1px solid #eee">${match[2]}</td><td style="text-align:center;padding:4px 10px;border-bottom:1px solid #eee">${match[1]}</td></tr>`;
-      else matRows+=`<tr><td style="padding:4px 10px;border-bottom:1px solid #eee">${m}</td><td style="text-align:center;padding:4px 10px;border-bottom:1px solid #eee">—</td></tr>`;
+      if(match) matRows+=`<tr><td style="padding:7px 12px;border-bottom:1px solid #eee">${match[2]}</td><td style="text-align:center;padding:7px 12px;border-bottom:1px solid #eee">${match[1]}</td></tr>`;
+      else matRows+=`<tr><td style="padding:7px 12px;border-bottom:1px solid #eee">${m}</td><td style="text-align:center;padding:7px 12px;border-bottom:1px solid #eee">—</td></tr>`;
     });
   }
-  if(!matRows) matRows='<tr><td colspan="2" style="padding:6px 10px;color:#aaa;font-style:italic">Nenhum material registrado</td></tr>';
+  if(!matRows) matRows='<tr><td colspan="2" style="padding:10px 12px;color:#aaa;font-style:italic">Nenhum material registrado</td></tr>';
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>
   body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:15mm 15mm 20mm;}
   table{width:100%;border-collapse:collapse;}
-  .sec-title{background:#f0f0f0;text-align:center;font-weight:700;padding:5px 10px;border-bottom:1px solid #ccc;}
+  .sec-title{background:#f0f0f0;text-align:center;font-weight:700;padding:8px 12px;border-bottom:1px solid #ccc;}
   strong{font-weight:700;}
   @media print{body{padding:10mm;}}
 </style></head><body>
@@ -7761,13 +7761,13 @@ function exportarOSpdf(id){
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr>
-    <td style="padding:6px 10px;border-right:1px solid #ccc;vertical-align:top;width:50%">
+    <td style="padding:10px 12px;border-right:1px solid #ccc;vertical-align:top;width:50%">
       <strong>Cliente:</strong><br>${o.cliente||'—'}<br><br>
       <strong>Endereço:</strong><br>${o.endereco||'—'}<br>
       <strong>Cidade:</strong> ${o.cidade||'—'}<br>
       ${o.cnpj?'<strong>CNPJ:</strong> '+o.cnpj+'<br>':''}
       ${o.responsavel_tel?'<strong>Fone:</strong> '+o.responsavel_tel:''}</td>
-    <td style="padding:6px 10px;vertical-align:top">
+    <td style="padding:10px 12px;vertical-align:top">
       ${o.tipo?'<strong>Tipo de Serviço:</strong> '+o.tipo+'<br>':''}
       ${o.produto?'<strong>Produto:</strong> '+o.produto+'<br>':''}
       ${o.horas?'<strong>UHs/Horas:</strong> '+o.horas+'<br>':''}
@@ -7780,31 +7780,31 @@ function exportarOSpdf(id){
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td class="sec-title">Observações da Abertura da OS</td></tr>
-  <tr><td style="padding:8px 10px;min-height:50px">${o.descricao||'—'}</td></tr>
+  <tr><td style="padding:10px 12px;min-height:50px">${o.descricao||'—'}</td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td colspan="2" class="sec-title">Materiais Utilizados</td></tr>
   <tr>
-    <td style="padding:4px 10px;font-weight:700;width:80%;border-bottom:1px solid #ccc">Descrição</td>
-    <td style="padding:4px 10px;font-weight:700;text-align:center;border-bottom:1px solid #ccc">Qtde</td>
+    <td style="padding:7px 12px;font-weight:700;width:80%;border-bottom:1px solid #ccc">Descrição</td>
+    <td style="padding:7px 12px;font-weight:700;text-align:center;border-bottom:1px solid #ccc">Qtde</td>
   </tr>
   ${matRows}
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td class="sec-title">Descritivo das atividades realizadas</td></tr>
-  <tr><td style="padding:6px 10px"><strong>Descrição do técnico (detalhada):</strong>
-    ${o.obs?'<br><br>'+o.obs:'<br><br><br><br>'}</td></tr>
+  <tr><td style="padding:10px 12px"><strong>Descrição do técnico (detalhada):</strong>
+    ${o.obs?'<br><br>'+o.obs:'<br><br><br><br><br><br>'}</td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td class="sec-title">Faltou executar (pendências)</td></tr>
-  <tr><td style="padding:6px 10px"><strong>Descrição do técnico (detalhada):</strong><br><br><br><br></td></tr>
+  <tr><td style="padding:10px 12px"><strong>Descrição do técnico (detalhada):</strong><br><br><br><br><br><br></td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
-  <tr><td style="padding:6px 10px"><strong>Observações:</strong><br><br><br></td></tr>
+  <tr><td style="padding:10px 12px"><strong>Observações:</strong><br><br><br><br></td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:10px">
@@ -7812,12 +7812,12 @@ function exportarOSpdf(id){
     <td style="width:55%;border-right:1px solid #ccc">
       <table>
         <tr>
-          <td style="padding:6px 10px;border-bottom:1px solid #ccc;border-right:1px solid #ccc;width:50%">Assinatura do TÉCNICO</td>
-          <td style="padding:6px 10px;border-bottom:1px solid #ccc">Nome Legível Técnico</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #ccc;border-right:1px solid #ccc;width:50%">Assinatura do TÉCNICO</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #ccc">Nome Legível Técnico</td>
         </tr>
         <tr>
-          <td style="padding:6px 10px;border-right:1px solid #ccc">Assinatura do CLIENTE</td>
-          <td style="padding:6px 10px">Nome Legível do Cliente</td>
+          <td style="padding:10px 12px;border-right:1px solid #ccc">Assinatura do CLIENTE</td>
+          <td style="padding:10px 12px">Nome Legível do Cliente</td>
         </tr>
       </table>
     </td>
@@ -7825,18 +7825,18 @@ function exportarOSpdf(id){
       <table>
         <tr><td colspan="2" class="sec-title">Data da Manutenção</td></tr>
         <tr>
-          <td style="padding:5px 10px;border-bottom:1px solid #ccc;border-right:1px solid #ccc">
-            Data da Chegada<br>${o.hora_inicio?fmtDate(o.data_conclusao||o.data)||'':''}<div style="min-height:16px"></div>
+          <td style="padding:8px 12px;border-bottom:1px solid #ccc;border-right:1px solid #ccc">
+            Data da Chegada<br>${o.hora_inicio?fmtDate(o.data_conclusao||o.data)||'':''}<div style="min-height:24px"></div>
           </td>
-          <td style="padding:5px 10px;border-bottom:1px solid #ccc">
+          <td style="padding:8px 12px;border-bottom:1px solid #ccc">
             Serviço Finalizado<br>( ) sim &nbsp; ( ) não
           </td>
         </tr>
         <tr>
-          <td style="padding:5px 10px;border-right:1px solid #ccc">
-            Hora da Chegada<br>${o.hora_inicio||''}<div style="min-height:12px"></div>
+          <td style="padding:8px 12px;border-right:1px solid #ccc">
+            Hora da Chegada<br>${o.hora_inicio||''}<div style="min-height:20px"></div>
           </td>
-          <td style="padding:5px 10px">
+          <td style="padding:8px 12px">
             Hora da Saída<br>${o.hora_conclusao||''}
           </td>
         </tr>
