@@ -460,7 +460,18 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <h2 id="vistoria-titulo">Vistorias — Instalação</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vistoria-sync"></div>
     </div>
-    <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
+      <button onclick="exportarVistoriasPDF()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ Exportar PDF</button>
+    </div>
+  </div>
+  <!-- Filtro de período -->
+  <div style="padding:10px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;border-bottom:1px solid var(--border);">
+    <span style="font-size:12px;color:var(--text-muted);">Período:</span>
+    <input type="date" id="vistoria-dt-ini" onchange="renderVistoria()" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <span style="font-size:12px;color:var(--text-muted);">até</span>
+    <input type="date" id="vistoria-dt-fim" onchange="renderVistoria()" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <button onclick="document.getElementById('vistoria-dt-ini').value='';document.getElementById('vistoria-dt-fim').value='';renderVistoria();" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar</button>
   </div>
   <!-- BOXES vistorias -->
   <div class="pipeline-boxes" style="margin-bottom:1.5rem;">
@@ -1614,6 +1625,67 @@ function toggleVistoriaBox(f){
 
 let vistoriaFiltroTipo = 'instalacao'; // padrão: instalação
 
+
+function exportarVistoriasPDF(){
+  const titulo = vistoriaFiltroTipo==='preventiva' ? 'Vistorias Preventivas' : 'Vistorias de Instalação';
+  const dtIni = document.getElementById('vistoria-dt-ini')?.value||'';
+  const dtFim = document.getElementById('vistoria-dt-fim')?.value||'';
+  const periodo = dtIni||dtFim ? `Período: ${dtIni?new Date(dtIni+'T12:00').toLocaleDateString('pt-BR'):''} ${dtFim?'até '+new Date(dtFim+'T12:00').toLocaleDateString('pt-BR'):''}` : 'Todos os registros';
+
+  const lista = vistorias.filter(v=>{
+    if((v.tipo||'instalacao')!==vistoriaFiltroTipo) return false;
+    if(dtIni||dtFim){
+      const d=(v.data_prevista||v.criado_em||'').slice(0,10);
+      if(dtIni&&d&&d<dtIni) return false;
+      if(dtFim&&d&&d>dtFim) return false;
+    }
+    return true;
+  });
+
+  if(!lista.length){alert('Nenhuma vistoria para exportar.');return;}
+
+  const rows = lista.map(v=>{
+    const done = v.steps.filter(s=>s.done).length;
+    const status = v.status==='concluida'||done===5?'Concluída':'Em andamento';
+    return `<tr>
+      <td>${v.nomeCliente||'—'}</td>
+      <td>${v.cidade||v.endereco||'—'}</td>
+      <td>${v.produto||'—'}</td>
+      <td>${v.contato||'—'}</td>
+      <td>${v.telefone||'—'}</td>
+      <td>${v.data_prevista||'—'}</td>
+      <td>${done}/5</td>
+      <td style="color:${status==='Concluída'?'#3B6D11':'#B86A00'};font-weight:600">${status}</td>
+    </tr>`;
+  }).join('');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11px;padding:20mm;}
+    h1{font-size:16px;font-weight:bold;margin-bottom:4px;}
+    h2{font-size:12px;color:#888;font-weight:normal;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#111;color:#F5B800;padding:7px 10px;font-size:10px;text-align:left;border:1px solid #333;}
+    td{padding:6px 10px;border:1px solid #ddd;font-size:11px;}
+    tr:nth-child(even){background:#f9f9f9;}
+    .footer{margin-top:20px;font-size:10px;color:#888;text-align:center;}
+  </style></head><body>
+  <h1>BlinTrack — ${titulo}</h1>
+  <h2>${periodo} · Gerado em ${new Date().toLocaleString('pt-BR')}</h2>
+  <table>
+    <thead><tr>
+      <th>Cliente</th><th>Cidade/Endereço</th><th>Produto</th>
+      <th>Contato</th><th>Telefone</th><th>Data prevista</th>
+      <th>Etapas</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">Blincast Media S/A · BlinTrack Operacional</div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
 function filtrarVistoriaTipo(tipo){
   vistoriaFiltroTipo = tipo;
   const titulo = document.getElementById('vistoria-titulo');
@@ -1624,9 +1696,22 @@ function filtrarVistoriaTipo(tipo){
 function renderVistoria(){
   const list=document.getElementById('vistoria-list');
   // Filtrar por tipo se definido
-  const vistoriasFiltradas = vistoriaFiltroTipo
-    ? vistorias.filter(v=>(v.tipo||'instalacao')===vistoriaFiltroTipo)
-    : vistorias;
+  const dtIni = document.getElementById('vistoria-dt-ini')?.value||'';
+  const dtFim = document.getElementById('vistoria-dt-fim')?.value||'';
+
+  const vistoriasFiltradas = vistorias.filter(v=>{
+    // Filtro por tipo — preventiva NUNCA mostra instalação e vice-versa
+    const tipo = v.tipo||'instalacao';
+    if(tipo !== vistoriaFiltroTipo) return false;
+    // Filtro por período
+    if(dtIni || dtFim){
+      const dataV = v.data_prevista || v.criado_em || '';
+      const d = dataV.slice(0,10);
+      if(dtIni && d && d < dtIni) return false;
+      if(dtFim && d && d > dtFim) return false;
+    }
+    return true;
+  });
   if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.</div>';return;}
   // Atualizar contagem dos boxes
   const numConc = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done)).length;
@@ -4763,6 +4848,8 @@ async function salvarNovaVistoria(){
     endereco:document.getElementById('nv-endereco')?.value||cliente.endereco||'',
     status:'solicitada',
     tipo:document.getElementById('nv-tipo')?.value||'instalacao',
+    data_prevista:document.getElementById('nv-data-prevista')?.value||'',
+    obs:document.getElementById('nv-obs')?.value||'',
     steps:[]
   };
   fecharNovaVistoriaModal();
@@ -4783,12 +4870,16 @@ function openNovaVistoriaModal(){
   nvClienteSelecionado = null;
   nvModo = 'vincular';
   // Resetar campos
-  ['nv-busca','nv-nome-manual','nv-contato','nv-telefone','nv-obs'].forEach(id=>{
+  ['nv-busca','nv-nome-manual','nv-contato','nv-telefone','nv-obs','nv-data-prevista'].forEach(id=>{
+
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('nv-lista').style.display='none';
   document.getElementById('nv-cliente-selecionado').style.display='none';
   nvSetModo('vincular');
+  // Pré-selecionar tipo conforme aba ativa
+  const tipoSel=document.getElementById('nv-tipo');
+  if(tipoSel)tipoSel.value=vistoriaFiltroTipo||'instalacao';
   document.getElementById('nova-vistoria-modal').style.display='flex';
 }
 
@@ -6089,6 +6180,17 @@ async function estEnviarEmail(reg){
           style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box"></div>
     </div>
 
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Tipo de vistoria</label>
+        <select id="nv-tipo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="instalacao">Instalação</option>
+          <option value="preventiva">Preventiva</option>
+        </select>
+      </div>
+      <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Data prevista</label>
+        <input type="date" id="nv-data-prevista" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      </div>
+    </div>
     <div class="modal-field" style="margin-bottom:16px">
       <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
       <textarea id="nv-obs" placeholder="Informações adicionais..." rows="2"
