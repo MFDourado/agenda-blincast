@@ -4098,6 +4098,7 @@ function renderAta(){
       <td style="padding:3px 4px;white-space:nowrap;vertical-align:middle;">
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
         <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
+        \${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:2px 5px;border:1px solid #F5B800;border-radius:3px;font-size:10px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;">OS</button>`:``}
       </td>
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
@@ -7374,7 +7375,7 @@ function renderOS(){
           <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
             ${o.cidade?`<span>📍 ${o.cidade}</span>`:''}
             ${o.tecnico?`<span>👤 ${o.tecnico}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
-            ${o.data_prevista?`<span>📅 Previsto: ${o.data_prevista}</span>`:''}
+            ${o.data_prevista?`<span>📅 Previsto: ${formatarData(o.data_prevista)}</span>`:''}
           </div>
           ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
         </div>
@@ -7419,6 +7420,25 @@ function editarOS(id){
   document.getElementById('os-modal').style.display='flex';
 }
 
+
+
+function formatarData(val){
+  if(!val) return '—';
+  try{
+    const d = new Date(val);
+    if(isNaN(d)) return val;
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){ return val; }
+}
+function ataTemOS(ataId){
+  if(typeof osLista === 'undefined') return false;
+  return osLista.some(o=>o.id==='os-'+ataId || o.os_id_ata===ataId);
+}
+
+function filtrarOSporAta(osId){
+  const el=document.getElementById('os-busca');
+  if(el){ el.value=osId; renderOS(); }
+}
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
 async function salvarOS(){
