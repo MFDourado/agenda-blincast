@@ -392,15 +392,31 @@ async function carregarOS(){
 }
 
 function isMeu(tecnico){
-  const u=(usuarioCampo?.usuario||'').toLowerCase();
-  const n=(usuarioCampo?.nome||'').toLowerCase();
+  const u=(usuarioCampo?.usuario||'').toLowerCase().trim();
+  const n=(usuarioCampo?.nome||'').toLowerCase().trim();
   const t=(tecnico||'').toLowerCase().trim();
-  return t===u||t===n;
+  if(!t) return false;
+  // Comparação exata
+  if(t===u||t===n) return true;
+  // Comparação parcial: usuario contém tecnico ou vice-versa
+  if(u && (t.includes(u)||u.includes(t))) return true;
+  // Comparação por primeiro nome + sobrenome
+  const partsT=t.split(/[.\x20]+/);
+  const partsU=u.split(/[.\x20]+/);
+  const partsN=n.split(/[.\x20]+/);
+  // Se primeiro e último token batem
+  if(partsT.length>=2 && partsU.length>=2){
+    if(partsT[0]===partsU[0] && partsT[partsT.length-1]===partsU[partsU.length-1]) return true;
+  }
+  if(partsT.length>=2 && partsN.length>=2){
+    if(partsT[0]===partsN[0] && partsT[partsT.length-1]===partsN[partsN.length-1]) return true;
+  }
+  return false;
 }
 
 function renderListas(){
   const minhas=osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
-  const pool=osList.filter(o=>(!o.tecnico||!o.tecnico.trim())&&o.status!=='Concluída'&&o.status!=='Cancelada');
+  const pool=osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada');
   const conc=osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
 
   document.getElementById('tab-minhas').textContent='Minhas OS'+(minhas.length?` (${minhas.length})`:'');
