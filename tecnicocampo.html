@@ -132,6 +132,11 @@ input[list].field-inp{margin-bottom:4px;}
       <div class="tab" id="tab-conc" onclick="switchTab('conc')">Concluídas</div>
     </div>
     <div class="sync-bar" id="c-sync">Sincronizando...</div>
+  <div id="admin-filtros" style="display:none;padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap;">
+    <button onclick="setFiltroAdmin('')" id="fadm-todos" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--gold);background:rgba(245,184,0,.15);color:var(--gold);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">Todos</button>
+    <button onclick="setFiltroAdmin('Aberta')" id="fadm-aberta" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Aberta</button>
+    <button onclick="setFiltroAdmin('Em andamento')" id="fadm-andamento" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Em andamento</button>
+  </div>
     <div class="content">
       <div id="lista-minhas"></div>
       <div id="lista-pool" style="display:none"></div>
@@ -323,6 +328,7 @@ const NUM_WPP_OPERACIONAL='5521971471125';
 const MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MASTRO ANTENA UHF","LNBF KU UNIVERSAL SIMPLES","LNBF KU UNIVERSAL DUPLO","LNBF KU UNIVERSAL QUADRUPLO","LNBF DUPLO KU SKY","LNBF KU NORTH","LNBF KU MULTIPONTO","AMPLIFICADOR 20DB KU","AMPLIFICADOR 23DB KU","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB KU","AMPLIFICADOR 20DB UHF","AMPLIFICADOR 25DB UHF","AMPLIFICADOR 30DB UHF","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB UHF","MINI BOOSTER 26DB","CABO COAXIAL RG11","CABO COAXIAL RG6","DIPLEXER SAT-UHF","CONECTOR RG11","EMENDA CONECTOR COAXIAL","CONECTOR RG06","DIVISOR 1:2 ALTA","DIVISOR 1:4 ALTA","DIVISOR 1:3 ALTA","DIVISOR 1:8 ALTA","DIVISOR 1:2 BAIXA","DIVISOR 1:3 BAIXA","DIVISOR 1:4 BAIXA","DIVISOR 1:8 BAIXA","1S - TAP 06DB","1S - TAP 09DB","1S - TAP 12DB","1S - TAP 16DB","1S - TAP 20DB","1S - TAP 24DB","2S - 06DB TAP","2S - 09DB TAP","2S - 12DB TAP","2S - 16DB TAP","2S - 20DB TAP","2S - 24DB TAP","FITA ISOLANTE","BUCHA S6 PLASTICO","BUCHA S8 PLASTICO","BUCHA S10 PLASTICO","BUCHA S12 PLASTICO","FITA DE AUTO FUSÃO","FIXA FIO RG06","FIXA FIO RG11","PARAFUSO 6MM","PARAFUSO 8MM","PARAFUSO 12MM","CANALETA DE PVC","MODULADOR HD CANAL ZINWELL","MODULADOR SD ELETROSTAMP","RACK 10 CANAIS SD","RACK 10 CANAIS HD","RACK 15 CANAIS SD","RACK 15 CANAIS HD","RACK 20 CANAIS SD","RACK 20 CANAIS HD","RACK 25 CANAIS SD","RACK 25 CANAIS HD","RACK 30 CANAIS SD","RACK 30 CANAIS HD","FONTE 12V X 2A 24W","CABO RCA","CABO HDMI","RECEPTOR SKY HD","FONTE 24V 2A","CONECTOR RG59","MODULADORES HDMI ELETROSTAMP","FILTRO DIGITAL ZINWELL","BISNAGA DE SILICONE","COLA BRANCA","ABRAÇADEIRA 6MM","ABRAÇADEIRA COPO 1 POLEGADA","VELCRO 3MT","FITA ADESIVA TRANSPARENTE","FITA ADESIVA MARROM","PISTOLA DE SILICONE","PARAFUSO AUTO BROCANTE","BROCA SDS 10MM","BROCA SDS PLUS 6MM","BUCHA C/ PARAFUSO 10MM","CABO DROP ÓPTICO ROLO 1.000","CABO OPTICO","CORDÃO OPTICO","PATCH CORD 30CM","SWITCH 8 PORTAS GIGA","CONECTOR RJ45","CONECTOR BNC"];
 
 let usuarioCampo=null;
+let filtroAdminStatus='';
 let osList=[];
 let osAtual=null;
 let horaInicio=null;
@@ -357,6 +363,9 @@ function iniciarAppCampo(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
   document.getElementById('c-user-pill').textContent='👤 '+(usuarioCampo.nome||usuarioCampo.usuario);
+  // Mostrar filtros de status apenas para admin
+  const fadm=document.getElementById('admin-filtros');
+  if(fadm) fadm.style.display=isAdmin()?'flex':'none';
   preencherDatalist();
   carregarOS();
 }
@@ -454,6 +463,19 @@ function isMeu(tecnico){
   return false;
 }
 
+
+function setFiltroAdmin(status){
+  filtroAdminStatus = status;
+  document.querySelectorAll('.fadm-btn').forEach(b=>{
+    b.style.background='none';
+    b.style.borderColor='var(--border)';
+    b.style.color='var(--muted)';
+  });
+  const id = status===''?'fadm-todos':status==='Aberta'?'fadm-aberta':'fadm-andamento';
+  const btn=document.getElementById(id);
+  if(btn){btn.style.background='rgba(245,184,0,.15)';btn.style.borderColor='var(--gold)';btn.style.color='var(--gold)';}
+  renderListas();
+}
 function isAdmin(){
   return (usuarioCampo?.perfil||'').toLowerCase()==='admin';
 }
@@ -463,7 +485,7 @@ function renderListas(){
 
   // Admin vê tudo; técnico vê apenas as suas
   const minhas = admin
-    ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada')
+    ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada'&&(filtroAdminStatus===''||o.status===filtroAdminStatus))
     : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
 
   const pool = admin
