@@ -377,6 +377,15 @@ function formatarData(val){
     return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
   }catch(e){ return val; }
 }
+
+function setBtnLoading(selector, text){
+  const btn = typeof selector === 'string' ? document.querySelector(selector) : selector;
+  if(btn){ btn.disabled=true; btn._orig=btn.textContent; btn.textContent=text; btn.style.opacity='.7'; }
+  return btn;
+}
+function resetBtn(btn){
+  if(btn){ btn.disabled=false; btn.textContent=btn._orig||btn.textContent; btn.style.opacity='1'; }
+}
 function preencherDatalist(){
   const dl=document.getElementById('mat-list');
   dl.innerHTML='';
@@ -402,26 +411,46 @@ async function carregarOS(){
   renderListas();
 }
 
+function normalizar(s){
+  // Remove acentos, converte para minúsculo e remove espaços extras
+  return (s||'').toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9\s.]/g,'');
+}
+
 function isMeu(tecnico){
-  const u=(usuarioCampo?.usuario||'').toLowerCase().trim();
-  const n=(usuarioCampo?.nome||'').toLowerCase().trim();
-  const t=(tecnico||'').toLowerCase().trim();
+  const u=normalizar(usuarioCampo?.usuario||'');
+  const n=normalizar(usuarioCampo?.nome||'');
+  const t=normalizar(tecnico);
   if(!t) return false;
-  // Comparação exata
+
+  // 1. Comparação exata normalizada
   if(t===u||t===n) return true;
-  // Comparação parcial: usuario contém tecnico ou vice-versa
+
+  // 2. Comparação parcial (um contém o outro)
   if(u && (t.includes(u)||u.includes(t))) return true;
-  // Comparação por primeiro nome + sobrenome
-  const partsT=t.split(/[.\x20]+/);
-  const partsU=u.split(/[.\x20]+/);
-  const partsN=n.split(/[.\x20]+/);
-  // Se primeiro e último token batem
-  if(partsT.length>=2 && partsU.length>=2){
-    if(partsT[0]===partsU[0] && partsT[partsT.length-1]===partsU[partsU.length-1]) return true;
-  }
-  if(partsT.length>=2 && partsN.length>=2){
-    if(partsT[0]===partsN[0] && partsT[partsT.length-1]===partsN[partsN.length-1]) return true;
-  }
+  if(n && (t.includes(n)||n.includes(t))) return true;
+
+  // 3. Comparar apenas primeiro nome
+  const primeiroT=t.split(/[.\s]+/)[0];
+  const primeiroU=u.split(/[.\s]+/)[0];
+  const primeiroN=n.split(/[.\s]+/)[0];
+
+  // Primeiro nome + qualquer parte do sobrenome
+  if(primeiroT && primeiroT===primeiroU && primeiroT.length>3) return true;
+  if(primeiroT && primeiroT===primeiroN && primeiroT.length>3) return true;
+
+  // 4. Comparar tokens individualmente — se 2+ tokens batem
+  const tokensT=t.split(/[.\s]+/).filter(x=>x.length>2);
+  const tokensU=u.split(/[.\s]+/).filter(x=>x.length>2);
+  const tokensN=n.split(/[.\s]+/).filter(x=>x.length>2);
+  const matchU=tokensT.filter(tk=>tokensU.includes(tk)).length;
+  const matchN=tokensT.filter(tk=>tokensN.includes(tk)).length;
+  if(matchU>=2||matchN>=2) return true;
+
+  // 5. Fallback: primeiro token da ATA bate com primeiro token do usuário
+  if(primeiroT===primeiroU||primeiroT===primeiroN) return true;
+
   return false;
 }
 
@@ -522,16 +551,18 @@ function renderAcoes(o){
 
 async function aceitarOS(id){
   if(!confirm('Aceitar esta OS e assumir como responsável?'))return;
+  const btn=setBtnLoading(`button[onclick="aceitarOS('${id}')"]`,'Aceitando...');
   const nome=usuarioCampo.usuario||usuarioCampo.nome;
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id,tecnico:nome,status:'Em andamento',hora_inicio:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})})});
-  }catch(e){alert('Erro ao aceitar OS');return;}
+  }catch(e){resetBtn(btn);alert('Erro ao aceitar OS');return;}
   await carregarOS();
   voltarLista();
   switchTab('minhas');
 }
 
 async function iniciarAtendimento(id){
+  const btn=setBtnLoading(`button[onclick="iniciarAtendimento('${id}')"]`,'Iniciando...');
   const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   horaInicio=agora;
   try{
@@ -591,13 +622,15 @@ function contarFotosObs(inp){
 function avancarParaResponsavel(){
   const acao=document.getElementById('fin-acao').value.trim();
   if(!acao){alert('Informe a ação tomada.');return;}
-  goPage('responsavel');
+  const btn=setBtnLoading('button[onclick="avancarParaResponsavel()"]','Avançando...');
+  setTimeout(()=>{resetBtn(btn);goPage('responsavel');},300);
 }
 
 function avancarParaConfirmar(){
   const nome=document.getElementById('resp-nome').value.trim();
   const tel=document.getElementById('resp-tel').value.trim();
   if(!nome||!tel){alert('Informe nome e telefone do responsável.');return;}
+  setBtnLoading('button[onclick="avancarParaConfirmar()"]','Avançando...');
   const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const hoje=new Date().toLocaleDateString('pt-BR');
   document.getElementById('conf-os').textContent=osAtual?.numero||'—';
@@ -682,11 +715,13 @@ function fecharObsModal(){document.getElementById('obs-modal').classList.remove(
 async function salvarObs(){
   const obs=document.getElementById('obs-texto').value.trim();
   if(!obs){alert('Escreva a observação.');return;}
+  const btn=setBtnLoading('button[onclick="salvarObs()"]','Salvando...');
   const atual=osAtual?.obs?osAtual.obs+'\n\n':'';
   const nova=atual+'['+new Date().toLocaleString('pt-BR')+'] '+obs;
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id:osAtual.id,obs:nova})});
-  }catch(e){alert('Erro ao salvar');return;}
+  }catch(e){resetBtn(btn);alert('Erro ao salvar');return;}
+  resetBtn(btn);
   fecharObsModal();
   await carregarOS();
   abrirDetalhe(osAtual.id);
