@@ -7895,23 +7895,24 @@ function toggleProblema(id){
 
 // ── RELATÓRIO OS ──────────────────────────────────────────────────────────────
 function loadOsRelatorio(){
-  if(typeof osLista==='undefined'||!osLista.length){
-    // Carregar se ainda não tiver
-    apiGet('getOS').then(d=>{
-      if(d?.os) osLista=d.os;
-      renderOsRelatorio();
-    }).catch(()=>renderOsRelatorio());
-  } else {
+  const sync=document.getElementById('osrel-sync');
+  if(sync)sync.textContent='Carregando...';
+  // Sempre buscar do servidor para garantir dados atualizados
+  apiGet('getOS').then(d=>{
+    if(d?.os) osLista=d.os;
+    // Popular select de técnicos após carregar
+    const sel=document.getElementById('osrel-tecnico');
+    if(sel){
+      const tecs=[...new Set((osLista||[]).map(o=>o.tecnico).filter(Boolean))].sort();
+      const valAtual=sel.value;
+      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
+      if(valAtual)sel.value=valAtual;
+    }
     renderOsRelatorio();
-  }
-  // Popular select de técnicos
-  const sel=document.getElementById('osrel-tecnico');
-  if(sel&&typeof osLista!=='undefined'){
-    const tecs=[...new Set(osLista.map(o=>o.tecnico).filter(Boolean))].sort();
-    const valAtual=sel.value;
-    sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
-    if(valAtual)sel.value=valAtual;
-  }
+  }).catch(()=>{
+    if(sync)sync.textContent='Erro ao carregar';
+    renderOsRelatorio();
+  });
 }
 
 function limparFiltroRelatorio(){
