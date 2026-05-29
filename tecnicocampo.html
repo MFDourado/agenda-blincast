@@ -424,8 +424,23 @@ async function carregarOS(){
   renderListas();
 }
 
+const TECNICOS_NOMES_CAMPO = {
+  'marco.antonio': 'Marco Antonio',
+  'isaque.lucas': 'Isaque Lucas',
+  'gustavo.freire': 'Gustavo Freire',
+  'daniel.sampaio': 'Daniel Sampaio',
+  'rogerio.silva': 'Rogério Silva',
+  'mozart.soares': 'Mozart Soares',
+  'gabriel.santos': 'Gabriel Santos',
+};
+
+function normalizarNomeTecnicoCampo(t){
+  if(!t) return '';
+  const key = normalizar(t).replace(/\s+/g,'.');
+  return TECNICOS_NOMES_CAMPO[key] || t.trim();
+}
+
 function normalizar(s){
-  // Remove acentos, converte para minúsculo e remove espaços extras
   return (s||'').toLowerCase().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9\s.]/g,'');
@@ -514,7 +529,7 @@ function renderListas(){
     if(sel){
       const tecs=[...new Set(osList.map(o=>o.tecnico).filter(Boolean))].sort();
       const valAtual=sel.value;
-      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${t}</option>`).join('');
+      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${normalizarNomeTecnicoCampo(t)}</option>`).join('');
     }
   }
   // Ajustar labels das abas conforme perfil
@@ -538,7 +553,7 @@ function renderListaOS(elId,lista,tipo){
     <div class="os-card ${tipo}" onclick="abrirDetalhe('${o.id}')">
       <div class="os-num">${o.numero||'—'}</div>
       <div class="os-cliente">${o.cliente||'—'}</div>
-      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+formatarData(o.data_prevista):''}${o.tecnico?'<br>👤 '+o.tecnico:'<br><span style="color:var(--gold)">⚡ Pool</span>'}</div>
+      <div class="os-info">${[o.tipo,o.produto,o.cidade].filter(Boolean).join(' · ')}${o.data_prevista?'<br>Previsto: '+formatarData(o.data_prevista):''}${o.tecnico?'<br>👤 '+normalizarNomeTecnicoCampo(o.tecnico):'<br><span style="color:var(--gold)">⚡ Pool</span>'}</div>
       <div class="os-footer">
         <span class="badge ${sc[o.status]||'badge-aberta'}">${o.status||'Aberta'}</span>
         ${tipo==='pool'?'<span style="font-size:11px;color:var(--gold);">⚡ Toque para aceitar</span>':''}
