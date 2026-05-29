@@ -3333,7 +3333,7 @@ function renderFeriasCard(f, isAdmin){
     +'<span style="font-size:11px;font-weight:700;color:'+statusColor+';padding:2px 8px;border:1px solid '+statusColor+';border-radius:10px;">'+statusLabel+'</span>'
     +(isAdmin&&f.status==='solicitado'?
       '<div style="display:flex;gap:6px;">'
-      +'<button onclick="responderFerias(\''+f.id+'\',\'aprovado\')" style="padding:4px 10px;background:var(--c-concluido-bg);border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--c-concluido);font-weight:600">✅ Aprovar</button>'
+      +'<button onclick="responderFerias(\''+f.id+'\',\'aprovado\',this)" style="padding:4px 10px;background:var(--c-concluido-bg);border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--c-concluido);font-weight:600">✅ Aprovar</button>'
       +'<button onclick="abrirReprovacao(\''+f.id+'\')" style="padding:4px 10px;background:#fff0f0;border:1px solid #e00;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:#e00;font-weight:600">❌ Reprovar</button>'
       +'</div>':'')
     +(!isAdmin&&f.status==='reprovado'?
@@ -3423,12 +3423,14 @@ async function enviarSolicitacaoFerias(){
   finally{ reset(); }
 }
 
-async function responderFerias(id, status){
+async function responderFerias(id, status, btnEl){
   let obs = '';
   if(status==='reprovado'){
     obs = prompt('Motivo da reprovação (opcional):','') || '';
   }
   const f = feriasDados.find(x=>x.id===id)||{};
+  const _orig = btnEl ? btnEl.innerHTML : null;
+  if(btnEl){ btnEl.disabled=true; btnEl.style.opacity='.7'; btnEl.innerHTML = status==='aprovado'?'Aceitando...':'Recusando...'; }
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarFerias',id,status,obs_gestor:obs,dt_resposta:new Date().toISOString().slice(0,10),usuario:f.usuario,nome:f.nome,saldo_dias:f.saldo_dias,dt_inicio:f.dt_inicio,dt_fim:f.dt_fim,dias_solicitados:f.dias_solicitados,abono_pecuniario:f.abono_pecuniario})});
     // E-mail
@@ -3442,7 +3444,7 @@ async function responderFerias(id, status){
     })});
     await carregarFeriasAdmin();
     showToast(status==='aprovado'?'✅ Férias aprovadas!':'❌ Férias reprovadas.');
-  }catch(e){ alert('Erro.'); }
+  }catch(e){ if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.innerHTML=_orig; } alert('Erro.'); }
 }
 
 function abrirReprovacao(id){ responderFerias(id,'reprovado'); }
