@@ -671,15 +671,20 @@ function contarFotosObs(inp){
 function avancarParaResponsavel(){
   const acao=document.getElementById('fin-acao').value.trim();
   if(!acao){alert('Informe a ação tomada.');return;}
-  const btn=setBtnLoading('button[onclick="avancarParaResponsavel()"]','Avançando...');
-  setTimeout(()=>{resetBtn(btn);goPage('responsavel');},300);
+  const _btn2=document.querySelector('button[onclick="avancarParaResponsavel()"]');
+  if(_btn2){_btn2.textContent='Avançando...';_btn2.disabled=true;}
+  setTimeout(()=>{
+    if(_btn2){_btn2.textContent='Próximo →';_btn2.disabled=false;}
+    goPage('responsavel');
+  },300);
 }
 
 function avancarParaConfirmar(){
   const nome=document.getElementById('resp-nome').value.trim();
   const tel=document.getElementById('resp-tel').value.trim();
   if(!nome||!tel){alert('Informe nome e telefone do responsável.');return;}
-  setBtnLoading('button[onclick="avancarParaConfirmar()"]','Avançando...');
+  const _btn=document.querySelector('button[onclick="avancarParaConfirmar()"]');
+  if(_btn){_btn.textContent='Avançando...';_btn.disabled=true;}
   const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const hoje=new Date().toLocaleDateString('pt-BR');
   document.getElementById('conf-os').textContent=osAtual?.numero||'—';
@@ -688,8 +693,9 @@ function avancarParaConfirmar(){
   document.getElementById('conf-fim').textContent=agora;
   document.getElementById('conf-resp').textContent=nome;
   document.getElementById('conf-tel').textContent=tel;
+  // Resetar botão antes de mudar de página
+  if(_btn){_btn.textContent='Revisar e confirmar →';_btn.disabled=false;}
   goPage('confirmar');
-  // Iniciar contagem automática de 2 segundos
   setTimeout(iniciarConfirm, 300);
 }
 
