@@ -377,6 +377,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-os-group" onclick="toggleSubMenu('os-sub')">Ordens de Serviço <span id="arrow-os-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="os-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-os" onclick="switchMainTab('os');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Ordens</button>
+      <button class="snav-btn" id="mt-checklist-impl" onclick="switchMainTab('checklist-impl');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Checklist de implantação</button>
       <button class="snav-btn" id="mt-os-relatorio" onclick="switchMainTab('os-relatorio');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Relatórios</button>
     </div>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
@@ -1011,7 +1012,7 @@ function closeSidebar(){
 function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','os-relatorio','colaboradores'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -1036,6 +1037,7 @@ function switchMainTab(t){
   if(t==='estoque')iniciarEstoque();
   if(t==='os-relatorio')loadOsRelatorio();
   if(t==='os')loadOS();
+  if(t==='checklist-impl')loadChecklistImpl();
   if(t==='colaboradores')loadColaboradores();
 }
 
@@ -4497,8 +4499,6 @@ async function salvarAta(){
         horas: '',
         obs: '',
         materiais: '',
-        responsavel_nome: '',
-        responsavel_tel: '',
         os_id_ata: ataId,
         criado_em: new Date().toLocaleString('pt-BR'),
       };
@@ -7641,8 +7641,8 @@ function filtrarTecnicosPorUF(uf, selectId) {
   const val = sel.value;
   const tecnicosUF = TECNICOS_POR_UF[uf?.toUpperCase()];
   sel.innerHTML = '<option value="">Selecione o técnico...</option>';
-  // Se UF tem segmentação, mostrar só os dela; se não, mostrar todos os operacionais
-  const lista = tecnicosUF || [];
+  // Se UF tem segmentação, mostrar só os dela; se não, mostrar TODOS os operacionais
+  const lista = tecnicosUF || Object.values(TECNICOS_NOMES);
   lista.forEach(t => {
     const o = document.createElement('option');
     o.value = t; o.textContent = t;
@@ -8581,5 +8581,386 @@ async function excluirColab(id){
 
 
 <script>window.addEventListener('beforeunload',function(){localStorage.removeItem('blintrack_user');});</script>
+
+<!-- ============================================================ -->
+<!-- ===== CHECKLIST DE IMPLANTAÇÃO (sob Ordens de Serviço) ===== -->
+<!-- ============================================================ -->
+<style>
+.ci-sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 8px;font-weight:600;display:flex;align-items:center;gap:7px}
+.ci-sec-title .gold-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block}
+.ci-search-wrap{position:relative}
+.ci-suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:240px;overflow-y:auto;z-index:20;box-shadow:0 12px 30px rgba(0,0,0,.12);display:none}
+.ci-suggest.on{display:block}
+.ci-suggest .row{padding:8px 11px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;align-items:center}
+.ci-suggest .row:last-child{border-bottom:none}
+.ci-suggest .row:hover,.ci-suggest .row.hl{background:var(--bg)}
+.ci-suggest .row .d{font-size:12.5px;color:var(--text)}
+.ci-suggest .row .c{font-size:9.5px;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+.ci-suggest .row .m{font-size:10.5px;color:var(--text-light);white-space:nowrap;font-family:'DM Mono',monospace}
+.ci-suggest .empty{padding:14px;text-align:center;color:var(--text-light);font-size:12px}
+.ci-kit{margin-top:12px}
+.ci-grp{margin-bottom:12px}
+.ci-grp-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text);margin-bottom:6px}
+.ci-grp-h .dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.ci-grp-h .ct{color:var(--text-light);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px}
+.ci-item{display:grid;grid-template-columns:1fr 60px auto auto 26px;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:5px}
+.ci-item .desc{font-size:12.5px;line-height:1.3}
+.ci-item .desc .un{font-size:10px;color:var(--text-light);margin-left:5px}
+.ci-item .qty{height:30px;width:60px;text-align:center;padding:0 4px;font-size:13px}
+.ci-chk{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;user-select:none}
+.ci-chk .box{width:19px;height:19px;border:1.5px solid #cfcdc4;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:.12s}
+.ci-chk.on .box{background:#3B6D11;border-color:#3B6D11;color:#fff}
+.ci-chk small{font-size:8px;color:var(--text-light);letter-spacing:.2px}
+.ci-chk.on small{color:var(--text-muted)}
+.ci-item .rm{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:15px;line-height:1}
+.ci-item .rm:hover{color:#A32D2D}
+.ci-empty-kit{text-align:center;color:var(--text-light);font-size:12.5px;padding:16px;border:1px dashed var(--border);border-radius:var(--radius-sm)}
+.ci-seg{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;gap:3px}
+.ci-seg button{border:none;background:none;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:4px;cursor:pointer}
+.ci-seg button.on{background:var(--black);color:var(--gold)}
+.ci-scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 11px;display:grid;grid-template-columns:150px 1fr 130px auto;gap:10px;align-items:center;margin-bottom:8px}
+.ci-scard .et{font-size:12px;font-weight:600;color:var(--text)}
+.ci-scard .et b{display:block;font-size:10px;color:var(--text-muted);font-weight:500;margin-top:1px}
+.ci-list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ci-list-card .info h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+.ci-list-card .info .sub{font-size:12px;color:var(--text-muted);line-height:1.6}
+.ci-list-card .info .sub b{color:var(--text);font-weight:600}
+.ci-list-card .acts{display:flex;gap:7px;flex-shrink:0}
+.ci-btn-sm{height:32px;padding:0 12px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.ci-btn-sm:hover{border-color:var(--gold)}
+.ci-btn-sm.danger:hover{border-color:#A32D2D;color:#A32D2D}
+.ci-btn-pdf{height:36px;padding:0 18px;background:var(--gold);color:var(--black);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
+@media(max-width:680px){.ci-scard{grid-template-columns:1fr;gap:6px}.ci-item{grid-template-columns:1fr 52px auto auto 22px}}
+</style>
+
+<div id="page-checklist-impl" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Checklist de Implantação</h2><span class="dash-sync" id="ci-sync"></span></div>
+    <button onclick="abrirNovoChecklistImpl()" class="btn-new-project">+ Novo checklist</button>
+  </div>
+  <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
+    <input id="ci-busca-lista" type="text" placeholder="Buscar por OS, cliente ou técnico..." oninput="renderCiLista()" style="width:100%;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
+  </div>
+  <div id="ci-lista" style="padding:16px 20px;"></div>
+</div>
+
+<!-- MODAL CHECKLIST DE IMPLANTAÇÃO -->
+<div class="modal-overlay" id="ci-modal" style="display:none" onclick="if(event.target===this)fecharChecklistImpl()">
+  <div class="modal" style="max-width:680px;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h3 id="ci-modal-title" style="margin-bottom:0">Novo Checklist de Implantação</h3>
+      <button onclick="fecharChecklistImpl()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted)">✕</button>
+    </div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>Identificação</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="modal-field"><label>Nº da OS</label><input type="text" id="ci-os" placeholder="OS-2026-0142"></div>
+      <div class="modal-field"><label>Data prevista</label><input type="date" id="ci-data"></div>
+      <div class="modal-field"><label>Cidade</label><input type="text" id="ci-cidade" placeholder="Cidade / UF"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Cliente</label><input type="text" id="ci-cliente" placeholder="Nome do cliente / rede"></div>
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="ci-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field" style="grid-column:span 3"><label>Local da instalação</label><input type="text" id="ci-local" placeholder="Endereço / hotel / ponto"></div>
+    </div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>O que será montado</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="modal-field"><label>Equipamento principal</label>
+        <select class="field-sel" id="ci-equip">
+          <option value="">Selecione...</option>
+          <option>Rack HD</option><option>Rack SD</option>
+          <option>Set-top box ZTE</option><option>Set-top box Prime</option>
+          <option>STR</option><option>Decoder</option>
+        </select></div>
+      <div class="modal-field"><label>Quantidade</label><input type="number" min="0" id="ci-qtdequip" placeholder="0"></div>
+      <div class="modal-field"><label>Nº de telas / pontos</label><input type="number" min="0" id="ci-telas" placeholder="0"></div>
+    </div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>Técnico</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="modal-field"><label>Técnico responsável</label><input type="text" id="ci-tecnico" placeholder="Nome do técnico"></div>
+      <div class="modal-field"><label>Equipe de apoio</label><input type="text" id="ci-apoio" placeholder="Opcional"></div>
+    </div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>Vistoria prévia</div>
+    <div class="ci-seg">
+      <button id="ci-v-nao" class="on" type="button" onclick="ciSetVist(false)">Não houve</button>
+      <button id="ci-v-sim" type="button" onclick="ciSetVist(true)">Houve vistoria</button>
+    </div>
+    <div id="ci-vist-detail" style="display:none;margin-top:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="modal-field"><label>Data da vistoria</label><input type="date" id="ci-vdata"></div>
+        <div class="modal-field"><label>Técnico que vistoriou</label><input type="text" id="ci-vtec" placeholder="Nome"></div>
+        <div class="modal-field" style="grid-column:span 2"><label>Pendências apontadas</label><textarea id="ci-vpend" placeholder="Pendências / observações da vistoria" style="width:100%;min-height:54px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);resize:vertical;outline:none"></textarea></div>
+      </div>
+    </div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>Checklist de envio — materiais</div>
+    <div class="ci-search-wrap">
+      <input type="text" id="ci-busca-mat" autocomplete="off" placeholder="🔍  Buscar material no estoque (438 itens)..."
+             oninput="ciSearch()" onkeydown="ciNavSuggest(event)" onfocus="ciSearch()">
+      <div class="ci-suggest" id="ci-suggest"></div>
+    </div>
+    <div class="ci-kit" id="ci-kit"><div class="ci-empty-kit">Nenhum material adicionado. Use a busca acima para montar o kit de envio.</div></div>
+
+    <div class="ci-sec-title"><span class="gold-dot"></span>Conferência e assinaturas</div>
+    <div class="ci-scard"><div class="et">Adm Operacional<b>solicitou</b></div>
+      <input type="text" data-cisig="adm_nome" placeholder="Nome e sobrenome"><input type="date" data-cisig="adm_data"><span class="ci-chk" data-cisig="adm" onclick="ciToggleSig(this)"><span class="box">✓</span></span></div>
+    <div class="ci-scard"><div class="et">Almoxarifado<b>separou</b></div>
+      <input type="text" data-cisig="alm_nome" placeholder="Nome e sobrenome"><input type="date" data-cisig="alm_data"><span class="ci-chk" data-cisig="alm" onclick="ciToggleSig(this)"><span class="box">✓</span></span></div>
+    <div class="ci-scard"><div class="et">Técnico<b>validou / recebeu</b></div>
+      <input type="text" data-cisig="tec_nome" placeholder="Nome e sobrenome"><input type="date" data-cisig="tec_data"><span class="ci-chk" data-cisig="tec" onclick="ciToggleSig(this)"><span class="box">✓</span></span></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button onclick="fecharChecklistImpl()" style="flex:1;height:40px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;cursor:pointer">Cancelar</button>
+      <button onclick="ciSalvar()" style="flex:1;height:40px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;cursor:pointer">Salvar</button>
+      <button onclick="ciGerarPDF(ciColetar())" class="ci-btn-pdf" style="flex:1;height:40px">⬇ Exportar PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Checklist de Implantação ===== */
+const CI_ESTOQUE = [{"cod": "1001201", "desc": "ANTENA 60CM KU", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001202", "desc": "ANTENA 90CM KU", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001203", "desc": "ANTENA UHF 38 ELEMENTOS", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001204", "desc": "MASTRO ANTENA UHF", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001301", "desc": "LNBF KU UNIVERSAL SIMPLES", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001302", "desc": "LNBF KU UNIVERSAL DUPLO", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001303", "desc": "LNBF KU UNIVERSAL QUADRUPLO", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001304", "desc": "LNBF DUPLO KU SKY", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1001305", "desc": "LNBF KU NORTH", "un": "PC", "cat": "Captação (antena/LNBF)"}, {"cod": "1001306", "desc": "LNBF KU MULTIPONTO", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1002100", "desc": "AMPLIFICADOR 20DB KU", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002102", "desc": "AMPLIFICADOR 23DB KU", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002103", "desc": "AMPLIFICADOR 35DB UHF PROELETRONIC", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002104", "desc": "AMPLIFICADOR 50DB KU", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002105", "desc": "AMPLIFICADOR 20DB UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002106", "desc": "AMPLIFICADOR 25DB UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002107", "desc": "AMPLIFICADOR 30DB UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002108", "desc": "AMPLIFICADOR 35DB UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002109", "desc": "AMPLIFICADOR 50DB UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002110", "desc": "MINI BOOSTER 26DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002203", "desc": "CABO COAXIAL RG11 305M", "un": "M", "cat": "Cabos e conectores"}, {"cod": "1002205", "desc": "CABO COAXIAL RG6", "un": "M", "cat": "Cabos e conectores"}, {"cod": "1002207", "desc": "DIPLEXER SAT-UHF", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002300", "desc": "CONECTOR RG11", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1002301", "desc": "EMENDA CONECTOR COAXIAL", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1002302", "desc": "CONECTOR RG06", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1002400", "desc": "DIVISOR 1:2 ALTA", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002401", "desc": "DIVISOR 1:4 ALTA", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002402", "desc": "DIVISOR 1:3 ALTA", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002403", "desc": "DIVISOR 1:8 ALTA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002405", "desc": "DIVISOR 1:2 BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002406", "desc": "DIVISOR 1:3 BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002407", "desc": "DIVISOR 1:4 BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002408", "desc": "DIVISOR 1:8 BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002410", "desc": "1S - TAP 06DB", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002411", "desc": "1S - TAP 09DB", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002412", "desc": "1S - TAP 12DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002413", "desc": "1S - TAP 16DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002414", "desc": "1S - TAP 20DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002415", "desc": "1S - TAP 24DB", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002416", "desc": "2S - 06DB TAP", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002417", "desc": "2S - 09DB TAP", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002418", "desc": "2S - 12DB TAP", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002419", "desc": "2S - 16DB TAP", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1002420", "desc": "2S - 20DB TAP", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1002421", "desc": "2S - 24DB TAP", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1003101", "desc": "ALICATE CRIMPADOR RG6", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003102", "desc": "ALICATE DE BICO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003103", "desc": "ALICATE DE CORTE", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003104", "desc": "ALICATE DECAPADOR", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003105", "desc": "ALICATE UNIVERSAL", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003106", "desc": "ALICATE CRIMPADOR RG11", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003201", "desc": "BROCA SDS 10MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003202", "desc": "BROCA SDS PLUS 6MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003301", "desc": "CAIXA DE FERRAMENTA", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1003401", "desc": "CHAVE PHILIPS 1/8X4", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003402", "desc": "CHAVE DE BOCA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003403", "desc": "CHAVE DE FENDA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003404", "desc": "CHAVE DE FENDA 5/16/12", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003405", "desc": "CHAVE INGLESA 13 L", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003501", "desc": "BOTINA COM CADARÇO TAM 39", "un": "PA", "cat": "EPI"}, {"cod": "1003503", "desc": "CAPACETE", "un": "UN", "cat": "EPI"}, {"cod": "1003504", "desc": "CINTO Y PONTO DE ANCORAGEM", "un": "UN", "cat": "EPI"}, {"cod": "1003505", "desc": "LUVA DE ALGODÃO", "un": "UN", "cat": "EPI"}, {"cod": "1003506", "desc": "OCULOS DE PROTEÇÃO", "un": "UN", "cat": "EPI"}, {"cod": "1003601", "desc": "FURADEIRA 820W 127V", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003602", "desc": "FURADEIRA BOSCH 850W", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003701", "desc": "MEDIDOR DE INTENSIDADE DE CAMPO DIGITAL", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003702", "desc": "MEDIDOR DE INTENSIDADE DE CAMPO ANALÓGICO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003703", "desc": "MULTIMETRO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003803", "desc": "MARTELO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1003805", "desc": "PISTOLA DE SILICONE", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004101", "desc": "TOMADAS - FILTRO DE LINHA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1004102", "desc": "FITA ISOLANTE", "un": "RL", "cat": "Fixação / Acabamento"}, {"cod": "1004201", "desc": "BUCHA S6 PLASTICO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004202", "desc": "BUCHA S8 PLASTICO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004203", "desc": "BUCHA S10 PLASTICO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004204", "desc": "BUCHA S12 PLASTICO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004206", "desc": "FITA DE AUTO FUSÃO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004207", "desc": "FIXA FIO RG06", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004208", "desc": "FIXA FIO RG11", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004209", "desc": "PARAFUSO 6MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004210", "desc": "PARAFUSO 8MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004212", "desc": "PARAFUSO 12MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1004215", "desc": "CANALETA DE PVC", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1005201", "desc": "ESTRUTURA METALICA RACK", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005402", "desc": "MODULADOR HD CANAL ZINWELL", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1005403", "desc": "MODULADOR SD ELETROSTAMP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1005601", "desc": "RACK 10 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005602", "desc": "RACK 10 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005603", "desc": "RACK 12 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005604", "desc": "RACK 15 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005605", "desc": "RACK 15 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005606", "desc": "RACK 20 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005607", "desc": "RACK 20 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005608", "desc": "RACK 25 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005609", "desc": "RACK 25 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005610", "desc": "RACK 30 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005611", "desc": "RACK 30 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005612", "desc": "RACK 35 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005613", "desc": "RACK 35 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005614", "desc": "RACK 40 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005615", "desc": "RACK 40 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005616", "desc": "RACK CANAIS DIGITAIS (OUTRO )", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1005617", "desc": "RACK CANAIS HD (OUTRO )", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006101", "desc": "CONTROLE REMOTO OITV", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006102", "desc": "CONTROLE REMOTO SKY", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006106", "desc": "CONVERSOR UHF TV DIGITAL", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006107", "desc": "FONTE 12V X 2A 24W", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006111", "desc": "CABO RCA", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1006112", "desc": "CABO HDMI", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1006114", "desc": "TV BOX MULTILASER", "un": "PE", "cat": "Set-top box / Receptores"}, {"cod": "1006115", "desc": "RACK 07 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006116", "desc": "ROLO DE PAPELÃO ONDULADO", "un": "BB", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006127", "desc": "PILHA ALCALINA AA", "un": "PC", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006136", "desc": "MINI BOOSTER 40DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006137", "desc": "RACK 05 CANAIS SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006138", "desc": "LEITOR CÓDIGO DE BARRAS SEM FIO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006139", "desc": "LEITOR CODIGO DE BARRAS COM FIO", "un": "CX", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006140", "desc": "SAT LINK", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006141", "desc": "BUCHA C/ PARAFUSO 10MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006142", "desc": "ABRACADEIRA COPO 1 POLEGADA", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006143", "desc": "RECEPTOR SKY HD", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006149", "desc": "FONTE 24V 2A", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006150", "desc": "FITA ADESIVA TRANSPARENTE", "un": "PT", "cat": "Fixação / Acabamento"}, {"cod": "1006153", "desc": "CONECTOR RG59", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1006154", "desc": "TRENA 5 M", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006156", "desc": "ESTILETE", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006171", "desc": "MODULADORES HDMI - ELETROSTAMP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006173", "desc": "RACK MODULAR 24U X 570 MM", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006174", "desc": "KIT RODIZIO GIRATORIO", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006175", "desc": "KIT PORCA GAIOLA + PARAFUSO NIQUELADO", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006177", "desc": "FILTRO DIGITAL ZINWELL", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006178", "desc": "MODULADOR COMPACTO 16 CANAIS", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006179", "desc": "RACK ESTRUTURAL 19\" 24U X 570MM PT MODULAR", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006180", "desc": "BANDEJA SIMPLES 1U X 290MM PRETO", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006181", "desc": "REGUA DE TOMADAS 12 TOMADAS PRETO", "un": "PC", "cat": "Rack / Infra ativa"}, {"cod": "1006182", "desc": "ROTEADOR ELSYS 4G AMPLIMAX LINK C/ VOZ - EPRL12", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006203", "desc": "RACK 5 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006204", "desc": "MICROVENTILADOR 120X120X38MM 110/220 CHIP SCE - 075-0115", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006205", "desc": "PERFURADOR DE PAPEL (20 FOLHAS)", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006208", "desc": "RECEPTOR ELSYS/ OI RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006209", "desc": "RECEPTOR SAGECOM", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006212", "desc": "RACK ESTRUTURAL 19\" 12U X 570MM PT MODULAR", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006213", "desc": "RABICHO PLUG P4", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006214", "desc": "INTERRUPTOR C. DE CARGAS WIFI 1/1 EWS211", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006215", "desc": "INTERRUPTOR INTELIGENTE WIFI EWS 201 (ONOFFRE)", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006216", "desc": "MINI RACK 3U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006224", "desc": "BOBINA PLASTICO BOLHA 1,30X100 24 MICRAS", "un": "PT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006225", "desc": "MODULADOR HDMI STREAMER JOHANSSON 8210", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006227", "desc": "ANTENA UHF 28 ELEMENTOS", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006228", "desc": "MODULADOR CANAIS HD ELETROSTAMP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006234", "desc": "AMPLIFICADOR DE LINHA ( BANANINHA)", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006241", "desc": "LNBF OI 12 SUL", "un": "PC", "cat": "Captação (antena/LNBF)"}, {"cod": "1006242", "desc": "ETIQUETA ADESIVA ¨BLINCAST¨, EM ADESIVO VINIL BRILHO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006254", "desc": "MODEM CELULAR 4G/WI-FI (ONOFFRE)", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006255", "desc": "FONTE 12V 30A", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006257", "desc": "ALICATE AMPERÍMETRO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006258", "desc": "CHAVE COMBINADA 13MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006259", "desc": "CHAVE COMB. INVERTIDA 10MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006260", "desc": "CHAVE COMB INVERTIDA 11MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006261", "desc": "CHAVE COMB 12MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006262", "desc": "CHAVE FENDA 3/16 X 3 1/8", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006263", "desc": "CHAVE FENDA 1/4 X 4", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006264", "desc": "CHAVE PHILLIPS 1/4 X 5", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006265", "desc": "CHAVE PHILLIPS 3/16X5 N1", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006266", "desc": "ADAPTADOR SDS P/ MANDRIL ROSCA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006267", "desc": "MANDRIL APERTO RAP 2-13MM ROSCA 1/2 POLEG", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006268", "desc": "BROCA CONCRET 13MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006269", "desc": "BROCA P/ CONCRETO 6MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006270", "desc": "BROCA CONCERTO 8MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006271", "desc": "BROCA CONCRETO 10MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006272", "desc": "BROCA ACO 6MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006273", "desc": "BROCA ACO 8MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006274", "desc": "BROCA ACO 10MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006275", "desc": "BOLSA FERRAMENTA EMBORR. 16", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006276", "desc": "BOLSA FERRAMENTA STANDARD 12", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006278", "desc": "TERMOMETRO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006299", "desc": "SUPORTE PARA NOTEBOOK", "un": "CX", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006301", "desc": "TAP DE 8S", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006302", "desc": "CARREGADOR USB (ONOFFRE)", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006339", "desc": "FURADEIRA E PARAFUSADEIRA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006340", "desc": "SOLDA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006342", "desc": "JOGO DE CHAVE CANHÃO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006343", "desc": "JOGO DE CHAVE DE BOCA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006344", "desc": "FERRO DE SOLDA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006345", "desc": "SUPORTE DE FERRO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006346", "desc": "PISTOLA COLA QUENTE", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006350", "desc": "CABO OPTICO", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006352", "desc": "CHAVE DE PRECISÃO", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006376", "desc": "KIT TECLADO E MOUSE", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006377", "desc": "CABO DE FORÇA P CPU", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006378", "desc": "RECEPTOR SATELITE OITV", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006379", "desc": "PARAFUSO COM BUCHA 4,8MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006383", "desc": "CONTROLE REMOTO UNIVERSAL", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006388", "desc": "FITA PARA ROTULADOR", "un": "BT", "cat": "Fixação / Acabamento"}, {"cod": "1006395", "desc": "ALCOOL ISOPROPILICO 1000ML", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006406", "desc": "GUIA DE CABOS 1U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006407", "desc": "GUIA DE CABO 2U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006408", "desc": "ATENUADOR 9DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006409", "desc": "ATENUADOR 12DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006410", "desc": "ATENUADOR 15DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006411", "desc": "ATENUADOR 18DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006412", "desc": "ATENUADOR 18DB BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006413", "desc": "ATENUADOR 20DB", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006417", "desc": "FONTE DE 5V 10A", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006418", "desc": "BROCA 3MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006420", "desc": "RABICHO PLUG 2P", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006423", "desc": "CABO DROP ÓPTICO ROLO 1.000", "un": "MT", "cat": "Rede / Internet"}, {"cod": "1006429", "desc": "TERMINAL PRE ISOLADO GARFO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006434", "desc": "TINTA P IMPRESSORA HP GT53 PRETO", "un": "CX", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006438", "desc": "ESPELHO FRENTE RACK BLINCAST", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006444", "desc": "VELCRO RL 25M", "un": "M", "cat": "Fixação / Acabamento"}, {"cod": "1006463", "desc": "VELCRO 3MT", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006464", "desc": "FRENTE FALSA 19U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006465", "desc": "MOLDEM CISCO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006468", "desc": "ARCO DE SERRA", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006469", "desc": "ADESIVO INSTANTANEO", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006471", "desc": "CABLE MODEM 3.0", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006472", "desc": "CABLE MODEM TC 7337", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006473", "desc": "AMPLIFICADOR INDOOR 42/54 CISCO", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006478", "desc": "PEN DRIVE 32GB", "un": "BT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006479", "desc": "ALICATE DESENCAPADOR 2X1", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006480", "desc": "HEADSET", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006481", "desc": "CONECTOR RJ45", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1006487", "desc": "CABEÇA DE RACK 25 SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006490", "desc": "ALICATE RJ45", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006493", "desc": "TESTADOR CABO RJ45 E RJ11", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006497", "desc": "ETIQUETA INK JET", "un": "PT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006498", "desc": "DVR 16CN GRAVADOR DIG.DE VIDEO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006499", "desc": "SWITCH 8 PORTAS GIGA", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006508", "desc": "CONECTOR BNC", "un": "PT", "cat": "Cabos e conectores"}, {"cod": "1006514", "desc": "BLOCO DE MODULADORES 25 CANAIS SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006515", "desc": "BLOCO DE MODULADORES 15 CANAIS SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006523", "desc": "CONECTOR SINDAL 16MM UINIDADE", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006526", "desc": "DISJUNTOR MONOPOLAR DIN CURVA", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006527", "desc": "DISJUNTOR BIPOLAR DIN CURVA", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006528", "desc": "CMTS (CABLE MODEM TERMINAL SYSTEM)", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006532", "desc": "CONVERSOR DE MIDIA GIGA LB 10KM", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006534", "desc": "CONECTOR TERMINAL CARGA CASADA", "un": "PC", "cat": "Fixação / Acabamento"}, {"cod": "1006536", "desc": "CONVERSOR DE MIDIA", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006539", "desc": "PINO 3 SAÍDAS 10A 250V BENJAMIM", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006540", "desc": "CORDÃO OPTICO", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006541", "desc": "MODULO MINI GBIC GIGASM 10KM", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006544", "desc": "MONITOR PHILIPS 23,8 IPS FHD 242V8A", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006548", "desc": "ADAPTADOR DE REDE USB", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006549", "desc": "BLOCO MODULADOR 30 CANAIS SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006550", "desc": "BLOCO DE MODULADORES 20 CANAIS SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006551", "desc": "DIVISOR DE 1:6 ALTA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006554", "desc": "ABRAÇADEIRA 6 MM", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006556", "desc": "DIVISOR 1:6 BAIXA", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1006561", "desc": "RECEPTOR SKY SD", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006563", "desc": "CONTROLE REMOTO UNIVERSAL RETORNO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006564", "desc": "CABLE MODEM", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1006565", "desc": "MODULO MINI GBI WDM KGSD 2110B", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006568", "desc": "LNBF TURNER 3LO OI TSOT 13 N", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006576", "desc": "LNBF QUADRUPLO", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006578", "desc": "ABRAÇADEIRA COPO 3/4", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006580", "desc": "CABEÇA RACK 20 CANAIS SD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006581", "desc": "BLOCO DE MODULADORES 20 HD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006583", "desc": "BLOCO MODULADORES 30 CANAIS HD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006592", "desc": "BISNAGA DE SILICONE", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006601", "desc": "CHAVE COMUTADORA TELESYSTEM", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006602", "desc": "NOBREAK 1440VA SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006603", "desc": "COMPUTADOR", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006604", "desc": "MODULADOR ÁGIL VHF PROELETRONIC- PQMO-2600G2", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006606", "desc": "LNBF DUPLO TELESYTEM/SKY", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006611", "desc": "TRANSMISSOR OPTICO", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006614", "desc": "CHAVE COMUTADORA SKY", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006615", "desc": "AMPLIFICADOR TRONCO", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006616", "desc": "CHAVE COMUTADORA FAIXA LARGA", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006617", "desc": "CHROMECAST", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006618", "desc": "CABEÇA DE RACK 15 CANAIS SD", "un": "PC", "cat": "Headend / Modulação"}, {"cod": "1006619", "desc": "NOBREAK XNB 1440VA-BI", "un": "PC", "cat": "Rack / Infra ativa"}, {"cod": "1006620", "desc": "CONVERSOR ELSYS RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006624", "desc": "CONTROLE REMOTO AUTOMATICO SKY", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006631", "desc": "LNBF FOCAL POINT 40 MM PESCOÇO GROSSO", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006640", "desc": "CABEÇA DE RACK 25 CAINAIS + 7 CANAIS VHF", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006647", "desc": "ETIQUETADORA BROTHER INK-JET", "un": "PT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006649", "desc": "CABO MODEM REDE IP X REDE COAXIAL", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006653", "desc": "SUPORTE DE MONITOR", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006659", "desc": "RECEPTOR SKY RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006660", "desc": "RECEPTOR MULTILASER RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006662", "desc": "GESSO PCT", "un": "PC", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006663", "desc": "GALÃO DE MASSA CORRIDA 5K", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006672", "desc": "ANTENA BOCA DE JACARÉ", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006673", "desc": "KIT DELL MOUSE E TECLADO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006674", "desc": "RECEPTOR BEDIM", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006677", "desc": "COLA BRANCA", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006682", "desc": "TV BOX MIRAGE", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006688", "desc": "CABO MICRO USB", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006703", "desc": "CABLE MODEM DPC3010", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006707", "desc": "TV BOX AQUARIO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006710", "desc": "CONVERSOR OPTICO INTELBRAS", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006711", "desc": "CONVERSOR OPTICO TP LINK", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006732", "desc": "RECEPTOR OI MULTILASER RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006743", "desc": "ROTEADOR BRIDGE MIKROTIK RB3011", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006747", "desc": "BLOCO MODULADOR 10 CN HD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006749", "desc": "BLOCO MODULADOR 30CN HD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006771", "desc": "MEMORIA RAM", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006772", "desc": "LNBF TURNER", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006789", "desc": "BROCA 5/32", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006790", "desc": "BROCA DE AÇO 7/64", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006791", "desc": "BROCA DE CONCRETO 3MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006792", "desc": "CHAVE PHILIPS 1/8X3", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006793", "desc": "CHAVE PHILIPS 3/16", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006794", "desc": "CHAVE BIELA 11MM", "un": "UN", "cat": "Ferramentas"}, {"cod": "1006798", "desc": "ADAPTADOR ARTICULADO BENJAMIM", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006803", "desc": "ADAPTADOR MICRO USB RJ45", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006807", "desc": "CONTROLE REMOTO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006829", "desc": "MODULADOR IP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006830", "desc": "ENCODER 08CH NDS3228S", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006831", "desc": "ENCODER HDMI 08CH DMB-8908A-EC", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006834", "desc": "CONVERSOR MULTILASER RETORNO", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006836", "desc": "FITA ADESIVA MARROM", "un": "PT", "cat": "Fixação / Acabamento"}, {"cod": "1006842", "desc": "ANTENA 75CM BANDA KU", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1006845", "desc": "KIT WIRELESS", "un": "CX", "cat": "Rede / Internet"}, {"cod": "1006871", "desc": "RACK 30 HD (TESTE)", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006873", "desc": "RACK 12 CANAIS HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006877", "desc": "PARAFUSO AUTO BROCANTE", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1006883", "desc": "FONTE (OI) 12,24,2", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006890", "desc": "RECEPTOR CLARO TV LIVRE", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006891", "desc": "TONER BROTHER 1060", "un": "CX", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006892", "desc": "CONTROLE UNIVERSAL BLUETOOTH", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006895", "desc": "TV BOX ANDROID INTELBRAS", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006909", "desc": "FUSÍVEL DE VIDRO 3A", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006913", "desc": "4K HYBRID BOX", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006924", "desc": "AMPLIFICADOR TRONCO FAIXA LARGA", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1006930", "desc": "ANTENA STARLINK", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006940", "desc": "SMART CONTROLE INTELIGENTE", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006942", "desc": "KIT STARLINK", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006943", "desc": "MIKROTIK 750", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006947", "desc": "DONGLE ISDB-T", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1006964", "desc": "SWITCH HDMI 8X1", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006965", "desc": "SWITCH CISCO SG220 24P (SG220-26-K9-BR)", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006967", "desc": "ADAPTADOR 90 GRAUS HDMI", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1006973", "desc": "NOBREAK 1500VA SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006979", "desc": "PATCH CORD 30CM", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1006981", "desc": "PILHA PALITO AAA", "un": "BT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1006986", "desc": "NOBREAK 3000 VA HD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1006988", "desc": "CONVERSOR TELESYTEM", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007000", "desc": "PLACA DE CAPTURA DE ÁUDIO E VÍDEO HDMI USB 3.0 1080P-- 60FPS", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007003", "desc": "CAMERA WIFI", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007004", "desc": "HD SSA 480GB", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007017", "desc": "DONGLE ISDB - T ARIB", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007022", "desc": "SWITCH HPE 1420-24G - 24 PORTAS GIGABIT", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007037", "desc": "RECEPTOR VIVENCE", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007041", "desc": "ABRACADEIRA 200X4.8 PRETA 100 PCS AP2045/12116 FOXLUX / MB / RAYCO EHC 11545&#42; . .", "un": "SC", "cat": "Fixação / Acabamento"}, {"cod": "1007042", "desc": "TAP DE 12 DB 4 SAÍDAS", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1007043", "desc": "TAP DE 16DB 04 SAÍDAS", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1007044", "desc": "TAP DE 20 DB 04 SAÍDAS", "un": "UN", "cat": "Distribuição RF"}, {"cod": "1007052", "desc": "ENCODER 16CH 8HDMI SPTSMULTI.IP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007053", "desc": "ENCODER ISDB-T TERRESTRE 16CN IP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007054", "desc": "CMTS CASA SYSTEM C3200", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007056", "desc": "RECEPTOR ÓPTICO CATV - 1310 / 1550NM - 1 RF", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007058", "desc": "SACO ZIP LOCK", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007059", "desc": "CONTROLE REMOTO INTELBRAS", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007062", "desc": "LAMINA P ESTILETE 10 UNID", "un": "BT", "cat": "Ferramentas"}, {"cod": "1007065", "desc": "TONER PB M3550", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007067", "desc": "ROUTERBOARD RB 750GR3 HEX L4 - 5P 10/100/1000 - MIKROTIK", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007071", "desc": "VELCRO AZUL ROLO 3 MT", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1007076", "desc": "TONER ECOTONER P/BROTHER TN1060 DCP1602 DCP1512 DCP1617", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007086", "desc": "TV BOX 4K ZTE", "un": "PE", "cat": "Set-top box / Receptores"}, {"cod": "1007089", "desc": "AMPLIFICADOR TRONCO FAIXA LARGA SKY ZINWELL SMU", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007090", "desc": "APARELHO MODULADOR ZINWELL MODELO ZMB-9303", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007099", "desc": "APARELHO MODULADOR ZINWELL MODELO ZMB-9303", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007104", "desc": "ENCODER 8CH 8HDMI SPTS MPTS MULTICANAL-IP", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007105", "desc": "ENCODER TBS2603 HDMI HD", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007127", "desc": "SPLITTER HDMI 1X2 3D 1080P DUPLICADOR TV", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1007129", "desc": "HDMI SPLITTER 1X2 DIVISOR DE SINAL 3D", "un": "PC", "cat": "Distribuição RF"}, {"cod": "1007132", "desc": "CABO HDMI DE 3M", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1007141", "desc": "MINI CPU NTC 1202 ITX", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007151", "desc": "SWITCH 08 PORTAS + 2P MINI GBIC + SG 1002 MR L2", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007152", "desc": "CPU NTC CELERONI ITX 1101 IPX4020 8GB 120GB", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007153", "desc": "MODULADOR 3306I 08 CH ISDB-T", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007156", "desc": "SWITCH GERENCIAVEL 24P+4P SFP", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007157", "desc": "SWITCH GERENCIAVEL 48P+4P SFP", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007158", "desc": "SWITCH GERENCIAVEL 48P G+4PGBIC", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007159", "desc": "ADAPTADOR DE REDE USB 3.0 ETHERNET GIGABIT UE300 TP LINK", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007160", "desc": "SWITCH 16S8C SW24P10", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007161", "desc": "MGBIC MGB-SX 1P 1000BSX", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007164", "desc": "SINALIZADOR PUXE EMPURRE", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007172", "desc": "MODULADOR 3306I 08 CH ISDB-T", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007175", "desc": "ADAPTADOR DE REDE USB 30 TPLINK UE300", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007176", "desc": "EXTENSÃO ELETRICA 25CM", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007177", "desc": "CHAVE COMUTADORA SMU FAIXA LARGA SKY 10DB SISTEMA COLETIVO", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007178", "desc": "CHAVE COMUTADORA SMU FAIXA LARGA 10DB", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007179", "desc": "CHAVE COMUTADORA SMU FAIXA LARGA 00DB", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007182", "desc": "PATCH CORD U/UTP GIGALAN GREEN CAT.6 2,5M", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007183", "desc": "PATCH CORD U/UTP GIGALAN GREEN CAT.6 1,5M", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007184", "desc": "CORDÃO DPX CONECT OM3 LC/LC 2,5M", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007199", "desc": "RACK 19 10U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007201", "desc": "NOBREAK ATTIV 1500VA 220V", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007203", "desc": "RACK 19 10US X 370MM PAREDE", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007208", "desc": "ABRACADEIRA DE NYLON 500MM X 7.2MM 100 UNIDADES", "un": "UN", "cat": "Fixação / Acabamento"}, {"cod": "1007211", "desc": "RACK PISO GAB. FECH. 19\" 24UX570MM PRETO - SOLDADO", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007212", "desc": "PATCH CORD U/UTP GIGALAN GREEN CAT.6 – LSZH – T568A/B – 8M", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007213", "desc": "PATCH CORD OPTICO DUPLEX CONECTORIZADO OM3 LC-UPC/LC-UPC - MULTIMODO - 10M", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007215", "desc": "SWITCH UBIQUITI UNIFI PRO G2 48P POE+4SFP+ USW-PRO-48-POE I", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007216", "desc": "RACK 19 12US X 470MM", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007236", "desc": "PAPEL KRAFT PARDO ROLO", "un": "BB", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007237", "desc": "NOBREAK 1800VA MONO ENT/SAIDA 220V", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007239", "desc": "KIT WIRELESS (TECLADOMOUSE) MK235 920-007903 CX 1 UN", "un": "CX", "cat": "Rede / Internet"}, {"cod": "1007249", "desc": "VIVENSIS TV SAT VX SMART", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007254", "desc": "CABLE MODEM SMC D3GN", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007269", "desc": "PLACA DE PATRIMONIO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007278", "desc": "CISCO ISR 4431 AX BUNDLE WITH APP AND SE", "un": "EA", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007279", "desc": "AC POWER SUPPLY SECONDARY PS FOR ISR 443", "un": "EA", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007280", "desc": "CISCO 4-PORT LAYER 2 GE SWITCH NETWORK I", "un": "EA", "cat": "Rede / Internet"}, {"cod": "1007281", "desc": "20KM SINGLE FIBER SFP 1310NM TX SMF LC -", "un": "EA", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007282", "desc": "OPTICAL PATCHCORD LC/UPC-LC/UPC 1MT DX", "un": "EA", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007283", "desc": "OPTICAL PATCHCORD SC/UPC-LC/UPC 2MT DX", "un": "EA", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007284", "desc": "PAPEL SULFITE A4 75G 210MMX297MM PT 500 FL", "un": "PT", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007285", "desc": "IPTV ENCODER 08CH DMB - 8908A-EC HDMI H.265 1080P - STREAMING", "un": "UN", "cat": "Headend / Modulação"}, {"cod": "1007286", "desc": "CABO V3 USB PARA CARREGAMENTO E CABO DE DADOS GPS MP4 MP3", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007301", "desc": "ALICATE CRIMPADOR 3 EM 1 CRIMPADOR E DECAPADOR", "un": "UN", "cat": "Ferramentas"}, {"cod": "1007309", "desc": "CORDÃO OPTICO OM3 LC/UPC 2,5M", "un": "PC", "cat": "Rede / Internet"}, {"cod": "1007315", "desc": "SWITCH GERENCIAVEL 48P+4P SFP 10000 BASE X S2352 B", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007320", "desc": "MONITOR PHILIPS GAMER EVNIA 24 LED 24M2N3200L", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007324", "desc": "BOX PRIME", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007329", "desc": "FRENTE FALSA 1U METAL", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007330", "desc": "GUIA DE CABO 1U HD GERENCIAVEL PROF. 65/80/100 - ABS", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007331", "desc": "BANDEJA FIXA 1 UR X 400 MM", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007332", "desc": "ACCESS POINT UBIQUITI U6+", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007333", "desc": "SWITCH SG 5204 MR L2+", "un": "CX", "cat": "Rede / Internet"}, {"cod": "1007334", "desc": "HDMI 5 METROS", "un": "UN", "cat": "Cabos e conectores"}, {"cod": "1007346", "desc": "NOBREAK 1800VA SD", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007347", "desc": "RACK FECHADO DE PISO 19\" X 670MM X 44U", "un": "UN", "cat": "Rack / Infra ativa"}, {"cod": "1007349", "desc": "RECEPTOR DE SINAL DIGITAL OI [MILETO]", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007350", "desc": "LNBF OITV OTIMIZ NO SIMPLES [MILETO]", "un": "UN", "cat": "Captação (antena/LNBF)"}, {"cod": "1007360", "desc": "CABO DE REDE CAT 5E 100M", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007368", "desc": "ROTEADOR WIRELESS W6 1500", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007371", "desc": "MIKROTIK 4011", "un": "UN", "cat": "Rede / Internet"}, {"cod": "1007372", "desc": "CABO CORDÃO PROLONGADOR MINI 25CM 20A/20A 2P+T/2P+T PRETO", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007373", "desc": "MEMÓRIA RAM DDR4 16GB", "un": "UN", "cat": "Outros / Consumíveis / TI"}, {"cod": "1007379", "desc": "BOX PRIME - BLINCAST", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007393", "desc": "TV BOX INTELBRAS IZY", "un": "UN", "cat": "Set-top box / Receptores"}, {"cod": "1007394", "desc": "TV BOX CHINESA NÃO HOMOLOGADA", "un": "UN", "cat": "Set-top box / Receptores"}];
+const CI_CAT_ORDER = ["Captação (antena/LNBF)","Distribuição RF","Cabos e conectores","Fixação / Acabamento","Rack / Infra ativa","Headend / Modulação","Set-top box / Receptores","Rede / Internet","Ferramentas","EPI","Outros / Consumíveis / TI"];
+let ciKit = [];
+let ciLista = [];
+let ciHl = -1;
+
+async function carregarChecklistImpl(){
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getChecklistImpl');
+    const d=await r.json();
+    ciLista = Array.isArray(d) ? d.map(o=>{
+      let vist={}, sig={}, mats=[];
+      try{vist=o.vistoria?JSON.parse(o.vistoria):{};}catch(e){}
+      try{sig=o.sig?JSON.parse(o.sig):{};}catch(e){}
+      try{mats=o.materiais?JSON.parse(o.materiais):[];}catch(e){}
+      return {
+        id:o.id, os:o.os||'', cliente:o.cliente||'', cnpj:o.cnpj||'', local:o.local||'', cidade:o.cidade||'',
+        data:o.data_prevista||'', equip:o.equip||'', qtdequip:o.qtdequip||'', telas:o.telas||'',
+        tecnico:o.tecnico||'', apoio:o.apoio||'',
+        vist:{houve:vist.houve===true||vist.houve==='true', data:vist.data||'', tec:vist.tec||'', pend:vist.pend||''},
+        materiais:Array.isArray(mats)?mats:[],
+        sig:{adm:sig.adm||{}, alm:sig.alm||{}, tec:sig.tec||{}},
+        criado:o.criado||''
+      };
+    }) : [];
+  }catch(e){ ciLista=[]; }
+}
+async function loadChecklistImpl(){
+  const sync=document.getElementById('ci-sync'); if(sync)sync.textContent='Carregando...';
+  await carregarChecklistImpl();
+  if(sync)sync.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  renderCiLista();
+}
+
+function ciNorm(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function ciEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function ciFmtDate(d){if(!d)return'—';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
+
+function abrirNovoChecklistImpl(){
+  ciKit=[];
+  ['ci-os','ci-data','ci-cidade','ci-cliente','ci-cnpj','ci-local','ci-qtdequip','ci-telas','ci-tecnico','ci-apoio','ci-vdata','ci-vtec','ci-vpend','ci-busca-mat'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('ci-equip').value='';
+  ciSetVist(false);
+  document.querySelectorAll('[data-cisig]').forEach(el=>{if(el.tagName==='INPUT')el.value='';else el.classList.remove('on');});
+  renderCiKit();
+  document.getElementById('ci-suggest').classList.remove('on');
+  document.getElementById('ci-modal').style.display='flex';
+}
+function fecharChecklistImpl(){document.getElementById('ci-modal').style.display='none';}
+function ciSetVist(on){
+  document.getElementById('ci-v-sim').classList.toggle('on',on);
+  document.getElementById('ci-v-nao').classList.toggle('on',!on);
+  document.getElementById('ci-vist-detail').style.display=on?'block':'none';
+}
+function ciToggleSig(el){el.classList.toggle('on');}
+
+/* ---- material search ---- */
+function ciSearch(){
+  const q=ciNorm(document.getElementById('ci-busca-mat').value.trim());
+  const box=document.getElementById('ci-suggest');ciHl=-1;
+  if(!q){box.classList.remove('on');box.innerHTML='';return;}
+  const res=CI_ESTOQUE.filter(it=>ciNorm(it.desc).includes(q)||String(it.cod).includes(q)).slice(0,40);
+  box.innerHTML=res.length?res.map((it,i)=>`<div class="row" data-i="${i}" onclick="ciAddItem('${it.cod}')">
+      <span class="d">${ciEsc(it.desc)}<div class="c">${ciEsc(it.cat)}</div></span>
+      <span class="m">${it.cod} · ${it.un}</span></div>`).join('')
+    :'<div class="empty">Nenhum item encontrado</div>';
+  box.classList.add('on');
+}
+function ciNavSuggest(e){
+  const rows=[...document.querySelectorAll('#ci-suggest .row')];if(!rows.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();ciHl=Math.min(ciHl+1,rows.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();ciHl=Math.max(ciHl-1,0);}
+  else if(e.key==='Enter'){e.preventDefault();(ciHl>=0?rows[ciHl]:rows[0]).click();return;}
+  else return;
+  rows.forEach((r,i)=>r.classList.toggle('hl',i===ciHl));
+  if(ciHl>=0)rows[ciHl].scrollIntoView({block:'nearest'});
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.ci-search-wrap')){const b=document.getElementById('ci-suggest');if(b)b.classList.remove('on');}});
+
+function ciAddItem(cod){
+  cod=String(cod);
+  if(ciKit.find(k=>String(k.cod)===cod))return;
+  const it=CI_ESTOQUE.find(e=>String(e.cod)===cod);if(!it)return;
+  ciKit.push({cod:it.cod,desc:it.desc,un:it.un,cat:it.cat,qtd:1,sep:false,conf:false});
+  document.getElementById('ci-busca-mat').value='';
+  document.getElementById('ci-suggest').classList.remove('on');
+  renderCiKit();
+}
+function ciRemoveItem(cod){ciKit=ciKit.filter(k=>String(k.cod)!==String(cod));renderCiKit();}
+function ciSetQty(cod,v){const k=ciKit.find(x=>String(x.cod)===String(cod));if(k)k.qtd=Math.max(0,parseInt(v||0));}
+function ciToggleChk(cod,f){const k=ciKit.find(x=>String(x.cod)===String(cod));if(k){k[f]=!k[f];renderCiKit();}}
+function renderCiKit(){
+  const wrap=document.getElementById('ci-kit');
+  if(!ciKit.length){wrap.innerHTML='<div class="ci-empty-kit">Nenhum material adicionado. Use a busca acima para montar o kit de envio.</div>';return;}
+  let html='';
+  CI_CAT_ORDER.forEach(cat=>{
+    const items=ciKit.filter(k=>k.cat===cat);if(!items.length)return;
+    html+=`<div class="ci-grp"><div class="ci-grp-h"><span class="dot"></span>${ciEsc(cat)}<span class="ct">· ${items.length}</span></div>`;
+    items.forEach(k=>{
+      html+=`<div class="ci-item">
+        <div class="desc">${ciEsc(k.desc)}<span class="un">${k.un}</span></div>
+        <input class="qty" type="number" min="0" value="${k.qtd}" onchange="ciSetQty('${k.cod}',this.value)">
+        <span class="ci-chk ${k.sep?'on':''}" onclick="ciToggleChk('${k.cod}','sep')"><span class="box">✓</span><small>Separado</small></span>
+        <span class="ci-chk ${k.conf?'on':''}" onclick="ciToggleChk('${k.cod}','conf')"><span class="box">✓</span><small>Conferido</small></span>
+        <button class="rm" onclick="ciRemoveItem('${k.cod}')">✕</button>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  wrap.innerHTML=html;
+}
+
+/* ---- collect / save ---- */
+function ciVal(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function ciSigVal(key){const e=document.querySelector(`input[data-cisig="${key}"]`);return e?e.value.trim():'';}
+function ciSigOk(key){const e=document.querySelector(`span[data-cisig="${key}"]`);return e?e.classList.contains('on'):false;}
+function ciColetar(){
+  return {
+    os:ciVal('ci-os'), data:ciVal('ci-data'), cidade:ciVal('ci-cidade'),
+    cliente:ciVal('ci-cliente'), cnpj:ciVal('ci-cnpj'), local:ciVal('ci-local'),
+    equip:ciVal('ci-equip'), qtdequip:ciVal('ci-qtdequip'), telas:ciVal('ci-telas'),
+    tecnico:ciVal('ci-tecnico'), apoio:ciVal('ci-apoio'),
+    vist:{houve:document.getElementById('ci-v-sim').classList.contains('on'),data:ciVal('ci-vdata'),tec:ciVal('ci-vtec'),pend:ciVal('ci-vpend')},
+    materiais:ciKit.map(k=>({...k})),
+    sig:{adm:{nome:ciSigVal('adm_nome'),data:ciSigVal('adm_data'),ok:ciSigOk('adm')},
+         alm:{nome:ciSigVal('alm_nome'),data:ciSigVal('alm_data'),ok:ciSigOk('alm')},
+         tec:{nome:ciSigVal('tec_nome'),data:ciSigVal('tec_data'),ok:ciSigOk('tec')}},
+    criado:new Date().toISOString()
+  };
+}
+async function ciSalvar(){
+  const d=ciColetar();
+  if(!d.os){alert('Informe o Nº da OS.');return;}
+  d.id = 'CI-'+Date.now();
+  const sync=document.getElementById('ci-sync'); if(sync)sync.textContent='Salvando...';
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(), action:'saveChecklistImpl',
+      id:d.id, os:d.os, cliente:d.cliente, cnpj:d.cnpj, local:d.local, cidade:d.cidade,
+      data_prevista:d.data, equip:d.equip, qtdequip:d.qtdequip, telas:d.telas,
+      tecnico:d.tecnico, apoio:d.apoio,
+      vistoria:JSON.stringify(d.vist), materiais:JSON.stringify(d.materiais), sig:JSON.stringify(d.sig),
+      criado:d.criado
+    })});
+  }catch(e){}
+  fecharChecklistImpl();
+  await loadChecklistImpl();
+}
+async function ciExcluir(i){
+  const d=ciLista[i]; if(!d)return;
+  if(!confirm('Excluir este checklist?'))return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerChecklistImpl',id:d.id})}); }catch(e){}
+  await loadChecklistImpl();
+}
+
+function renderCiLista(){
+  const wrap=document.getElementById('ci-lista');if(!wrap)return;
+  const q=ciNorm((document.getElementById('ci-busca-lista')||{}).value||'');
+  const list=ciLista.filter(d=>!q||ciNorm(d.os+' '+d.cliente+' '+d.tecnico).includes(q));
+  if(!ciLista.length){
+    wrap.innerHTML='<div class="ci-empty-kit" style="padding:28px">Nenhum checklist de implantação criado ainda.<br><span style="font-size:11px;color:var(--text-light)">Clique em “+ Novo checklist” para começar. A persistência no Sheets (abas Implantacao) entra na próxima etapa de integração.</span></div>';return;
+  }
+  if(!list.length){wrap.innerHTML='<div class="ci-empty-kit" style="padding:24px">Nenhum resultado para a busca.</div>';return;}
+  wrap.innerHTML=list.map((d)=>{
+    const idx=ciLista.indexOf(d);
+    const sep=d.materiais.filter(m=>m.sep).length, conf=d.materiais.filter(m=>m.conf).length;
+    return `<div class="ci-list-card">
+      <div class="info">
+        <h4>${ciEsc(d.os||'(sem OS)')} — ${ciEsc(d.cliente||'cliente não informado')}</h4>
+        <div class="sub"><b>${ciEsc(d.equip||'—')}</b>${d.qtdequip?(' · '+d.qtdequip+' un'):''}${d.telas?(' · '+d.telas+' telas'):''} · ${d.local?ciEsc(d.local)+' ':''}${d.cidade?'('+ciEsc(d.cidade)+')':''}<br>
+        Técnico: <b>${ciEsc(d.tecnico||'—')}</b> · Prevista: ${ciFmtDate(d.data)} · Materiais: <b>${d.materiais.length}</b> (${sep} sep / ${conf} conf)${d.vist.houve?' · Vistoria ✓':''}</div>
+      </div>
+      <div class="acts">
+        <button class="ci-btn-sm" onclick="ciGerarPDF(ciLista[${idx}])">⬇ PDF</button>
+        <button class="ci-btn-sm danger" onclick="ciExcluir(${idx})">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- PDF (janela de impressão, padrão BlinTrack) ---- */
+function ciGerarPDF(d){
+  if(!d)d=ciColetar();
+  const matRows = CI_CAT_ORDER.map(cat=>{
+    const its=d.materiais.filter(m=>m.cat===cat);if(!its.length)return '';
+    return '<tr class="cat"><td colspan="5">'+ciEsc(cat)+'</td></tr>'+
+      its.map(m=>'<tr><td class="mono">'+m.cod+'</td><td>'+ciEsc(m.desc)+'</td><td class="c">'+m.qtd+'</td><td class="c">'+m.un+'</td><td class="c">'+(m.sep?'☑':'☐')+' Sep&nbsp;&nbsp;'+(m.conf?'☑':'☐')+' Conf</td></tr>').join('');
+  }).join('');
+  const sig = (et,sub,s)=>'<div class="sig-box"><span class="nome">'+ciEsc(s.nome||'')+'</span><span class="cargo">'+et+' — '+sub+'</span><span class="cargo">'+(s.ok?'☑ OK':'☐ pendente')+' · '+ciFmtDate(s.data)+'</span></div>';
+
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>Checklist de Implantação '+ciEsc(d.os||'')+'</title><style>'
+    +'body{font-family:Arial,sans-serif;font-size:9.5px;color:#111;padding:8mm 12mm;max-width:210mm;margin:0 auto}'
+    +'.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #F5B800;padding-bottom:3mm;margin-bottom:4mm}'
+    +'.logo{font-size:19px;font-weight:900;line-height:1}.logo span{color:#F5B800}'
+    +'.logo small{display:block;font-size:8px;font-weight:400;color:#555;letter-spacing:.3px;margin-top:1mm}'
+    +'.os{text-align:right}.os .n{font-size:13px;font-weight:800;color:#111}.os .dt{font-size:7.5px;color:#888;margin-top:.5mm}'
+    +'.sec{background:#111;color:#F5B800;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:1.5mm 2.5mm;margin:3.5mm 0 2mm;border-left:3px solid #F5B800}'
+    +'.grid{display:grid;gap:1.5mm;margin-bottom:1.5mm}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}'
+    +'.field{border:.4px solid #ddd;border-radius:2px;padding:1.2mm 2mm}'
+    +'.field label{font-size:6px;text-transform:uppercase;letter-spacing:.4px;color:#999;display:block;margin-bottom:.5mm}'
+    +'.field span{font-size:8.5px;font-weight:700}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:2mm}'
+    +'th{background:#111;color:#F5B800;font-size:7px;text-transform:uppercase;letter-spacing:.4px;padding:1.5mm 2mm;text-align:left}'
+    +'td{font-size:8px;padding:1.2mm 2mm;border-bottom:.4px solid #eee}td.c{text-align:center}td.mono{font-family:monospace;font-size:7.5px;color:#666}'
+    +'tr.cat td{background:#f3f1ea;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.4px;color:#555}'
+    +'.pend{font-size:8px;color:#444;border:.4px solid #eee;border-left:3px solid #F5B800;padding:1.5mm 2.5mm;margin-bottom:2mm}'
+    +'.sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6mm;margin-top:8mm}'
+    +'.sig-box{border-top:.8px solid #111;padding-top:2.5mm;text-align:center}'
+    +'.sig-box .nome{font-size:8px;font-weight:700;display:block;min-height:9px}'
+    +'.sig-box .cargo{font-size:6.5px;color:#666;display:block;margin-top:.5mm}'
+    +'.footer{margin-top:6mm;border-top:.4px solid #ddd;padding-top:2mm;font-size:6.5px;color:#999;text-align:center}'
+    +'@media print{body{padding:5mm 10mm}@page{margin:5mm;size:A4}}'
+    +'</style></head><body>'
+    +'<div class="head"><div class="logo">Blin<span>cast</span><small>BlinTrack · Checklist de Implantação</small></div>'
+    +'<div class="os"><div class="n">OS '+ciEsc(d.os||'—')+'</div><div class="dt">Emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div></div>'
+    +'<div class="sec">Identificação</div>'
+    +'<div class="grid g3"><div class="field"><label>Cliente</label><span>'+ciEsc(d.cliente||'—')+'</span></div>'
+      +'<div class="field"><label>CNPJ</label><span>'+ciEsc(d.cnpj||'—')+'</span></div>'
+      +'<div class="field"><label>Data prevista</label><span>'+ciFmtDate(d.data)+'</span></div></div>'
+    +'<div class="grid g2"><div class="field"><label>Local</label><span>'+ciEsc(d.local||'—')+'</span></div>'
+      +'<div class="field"><label>Cidade</label><span>'+ciEsc(d.cidade||'—')+'</span></div></div>'
+    +'<div class="sec">O que será montado</div>'
+    +'<div class="grid g3"><div class="field"><label>Equipamento</label><span>'+ciEsc(d.equip||'—')+'</span></div>'
+      +'<div class="field"><label>Quantidade</label><span>'+ciEsc(d.qtdequip||'0')+'</span></div>'
+      +'<div class="field"><label>Telas / pontos</label><span>'+ciEsc(d.telas||'0')+'</span></div></div>'
+    +'<div class="grid g2"><div class="field"><label>Técnico responsável</label><span>'+ciEsc(d.tecnico||'—')+'</span></div>'
+      +'<div class="field"><label>Equipe de apoio</label><span>'+ciEsc(d.apoio||'—')+'</span></div></div>'
+    +'<div class="sec">Vistoria prévia</div>'
+    +'<div class="field" style="margin-bottom:2mm"><label>Status</label><span>'+(d.vist.houve?('Sim — '+ciFmtDate(d.vist.data)+(d.vist.tec?' · '+ciEsc(d.vist.tec):'')):'Não houve vistoria prévia')+'</span></div>'
+    +(d.vist.houve&&d.vist.pend?'<div class="pend"><b>Pendências:</b> '+ciEsc(d.vist.pend)+'</div>':'')
+    +'<div class="sec">Checklist de envio — materiais</div>'
+    +'<table><thead><tr><th style="width:16mm">Código</th><th>Descrição</th><th style="width:10mm" class="c">Qtd</th><th style="width:9mm" class="c">Un</th><th style="width:34mm" class="c">Conferência</th></tr></thead><tbody>'
+    +(matRows||'<tr><td colspan="5" style="text-align:center;color:#999;padding:4mm">Nenhum material adicionado</td></tr>')+'</tbody></table>'
+    +'<div class="sec">Conferência e assinaturas</div>'
+    +'<div class="sig-row">'+sig('Adm Operacional','solicitou',d.sig.adm)+sig('Almoxarifado','separou',d.sig.alm)+sig('Técnico','validou/recebeu',d.sig.tec)+'</div>'
+    +'<div class="footer">BlinTrack — Blincast Media S/A — gerado em '+new Date().toLocaleString('pt-BR')+'</div>'
+    +'<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>';
+  const w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();}
+}
+</script>
+
 </body>
 </html>
