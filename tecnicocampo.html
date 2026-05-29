@@ -136,6 +136,9 @@ input[list].field-inp{margin-bottom:4px;}
     <button onclick="setFiltroAdmin('')" id="fadm-todos" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--gold);background:rgba(245,184,0,.15);color:var(--gold);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">Todos</button>
     <button onclick="setFiltroAdmin('Aberta')" id="fadm-aberta" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Aberta</button>
     <button onclick="setFiltroAdmin('Em andamento')" id="fadm-andamento" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Em andamento</button>
+    <select id="fadm-tecnico" onchange="setFiltroAdminTecnico(this.value)" style="height:26px;padding:0 8px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;">
+      <option value="">Todos os técnicos</option>
+    </select>
   </div>
     <div class="content">
       <div id="lista-minhas"></div>
@@ -329,6 +332,7 @@ const MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MA
 
 let usuarioCampo=null;
 let filtroAdminStatus='';
+let filtroAdminTecnico='';
 let osList=[];
 let osAtual=null;
 let horaInicio=null;
@@ -464,6 +468,11 @@ function isMeu(tecnico){
 }
 
 
+function setFiltroAdminTecnico(tec){
+  filtroAdminTecnico = tec;
+  renderListas();
+}
+
 function setFiltroAdmin(status){
   filtroAdminStatus = status;
   document.querySelectorAll('.fadm-btn').forEach(b=>{
@@ -485,7 +494,9 @@ function renderListas(){
 
   // Admin vê tudo; técnico vê apenas as suas
   const minhas = admin
-    ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada'&&(filtroAdminStatus===''||o.status===filtroAdminStatus))
+    ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada'
+        &&(filtroAdminStatus===''||o.status===filtroAdminStatus)
+        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico)))
     : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
 
   const pool = admin
@@ -493,9 +504,19 @@ function renderListas(){
     : osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada');
 
   const conc = admin
-    ? osList.filter(o=>o.status==='Concluída'||o.status==='Cancelada')
+    ? osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')
+        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico)))
     : osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
 
+  // Popular select de técnicos
+  if(admin){
+    const sel=document.getElementById('fadm-tecnico');
+    if(sel){
+      const tecs=[...new Set(osList.map(o=>o.tecnico).filter(Boolean))].sort();
+      const valAtual=sel.value;
+      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${t}</option>`).join('');
+    }
+  }
   // Ajustar labels das abas conforme perfil
   document.getElementById('tab-minhas').textContent=(admin?'Todas as OS':'Minhas OS')+(minhas.length?` (${minhas.length})`:'');
   // Admin: esconde aba Disponíveis (já vê tudo em Todas)
