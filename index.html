@@ -7924,15 +7924,50 @@ function limparFiltroRelatorio(){
 function parseDateBR(d){
   if(!d)return null;
   try{
-    if(d.includes('/')){const p=d.split('/');return new Date(p[2],p[1]-1,p[0]);}
-    return new Date(d+'T12:00');
+    const s=String(d).trim();
+    // dd/mm/yyyy ou dd/mm/yyyy HH:MM
+    if(s.includes('/')){
+      const parts=s.split(' ');
+      const dp=parts[0].split('/');
+      if(dp.length<3)return null;
+      const dt=new Date(parseInt(dp[2]),parseInt(dp[1])-1,parseInt(dp[0]));
+      if(isNaN(dt))return null;
+      return dt;
+    }
+    // yyyy-mm-dd
+    if(s.match(/^\d{4}-\d{2}-\d{2}/)){
+      const dt=new Date(s.slice(0,10)+'T12:00');
+      return isNaN(dt)?null:dt;
+    }
+    return null;
   }catch(e){return null;}
 }
 
 function diasEntre(d1,d2){
   const a=parseDateBR(d1),b=parseDateBR(d2);
   if(!a||!b)return null;
-  return Math.round(Math.abs(b-a)/(1000*60*60*24));
+  const diff=Math.abs(b-a);
+  return Math.round(diff/(1000*60*60*24));
+}
+
+function tempoDecorrido(d1,h1,d2,h2){
+  // d1/d2 = datas, h1/h2 = horas no formato HH:MM
+  if(!d1)return null;
+  try{
+    const base1=parseDateBR(d1);
+    if(!base1)return null;
+    if(h1){const [hh,mm]=(h1||'00:00').split(':');base1.setHours(parseInt(hh)||0,parseInt(mm)||0);}
+    const base2=d2?parseDateBR(d2):new Date();
+    if(!base2)return null;
+    if(h2){const [hh,mm]=(h2||'00:00').split(':');base2.setHours(parseInt(hh)||0,parseInt(mm)||0);}
+    const diff=Math.abs(base2-base1);
+    const dias=Math.floor(diff/(1000*60*60*24));
+    const horas=Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+    const mins=Math.floor((diff%(1000*60*60))/(1000*60));
+    if(dias>0)return dias+'d '+horas+'h';
+    if(horas>0)return horas+'h '+mins+'min';
+    return mins+'min';
+  }catch(e){return null;}
 }
 
 function renderOsRelatorio(){
@@ -7960,7 +7995,7 @@ function renderOsRelatorio(){
 
   // Tempo médio
   const tempos=lista.filter(o=>o.status==='Concluída'&&o.data&&o.data_conclusao)
-    .map(o=>diasEntre(o.data,o.data_conclusao)).filter(d=>d!==null&&d>=0);
+    .map(o=>diasEntre(o.data,o.data_conclusao)).filter(d=>d!==null&&!isNaN(d)&&d>=0);
   const tempoMedio=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):null;
 
   document.getElementById('kpi-total').textContent=total;
@@ -8024,7 +8059,7 @@ function renderOsRelatorio(){
       <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${o.tecnico||'Pool'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data)||'—'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data_conclusao)||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600">${dias!==null?dias+'d':'—'}</td>
+      <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600;white-space:nowrap">${tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)!==null?tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)+'d':'—'}</td>
       <td style="padding:8px 12px;font-size:11px;font-weight:600;${sc[o.status]||''}">${o.status||'—'}</td>
     </tr>`;
   }).join('')||`<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma OS no período</td></tr>`;
@@ -8051,7 +8086,7 @@ function exportarRelatorioOSpdf(){
       <td>${o.tecnico||'Pool'}</td>
       <td>${formatarData(o.data)||'—'}</td>
       <td>${formatarData(o.data_conclusao)||'—'}</td>
-      <td style="text-align:center">${dias!==null?dias+'d':'—'}</td>
+      <td style="text-align:center">${tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)!==null?tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||(diasEntre(o.data,o.data_conclusao)+'d'):'—'}</td>
       <td>${o.status||'—'}</td>
     </tr>`;
   }).join('');
