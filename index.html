@@ -4229,7 +4229,10 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
       <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
-      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.problema||''}">${r.problema||'—'}</td>
+      <td class="prob-cell" style="padding:3px 5px;">
+        <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${r.id}')">${r.problema||'—'}</div>
+        <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${r.id}')">▼ ver mais</div>
+      </td>
       <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
       <td style="padding:3px 4px;">
         <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
@@ -4377,7 +4380,7 @@ function limparFiltrosAta(){
 }
 
 function openAtaModal(){
-  ['at-no','at-cliente','at-estado','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['at-no','at-cliente','at-estado','at-no','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao','at-solicitante','at-tel-solicitante'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const aj2El = document.getElementById('at-ajudante2');
   if(aj2El){ aj2El.style.display='none'; }
   const btn2 = document.getElementById('btn-ajudante2');
@@ -4385,8 +4388,8 @@ function openAtaModal(){
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
-  const _as=document.getElementById('at-solicitante');if(_as)_as.value='';
-  const _ats=document.getElementById('at-tel-solicitante');if(_ats)_ats.value='';
+  // Reset select técnico para Pool
+  const _sel=document.getElementById('at-tecnico');if(_sel){_sel.innerHTML='<option value="">Pool — qualquer técnico</option>';filtrarTecnicosPorUF('',"at-tecnico");}
   document.getElementById('ata-modal-title').textContent='Novo registro';
   document.getElementById('ata-modal').style.display='flex';
 }
@@ -7743,6 +7746,12 @@ function exportarOSpdf(id){
   .sec-title{background:#f0f0f0;text-align:center;font-weight:700;padding:8px 12px;border-bottom:1px solid #ccc;}
   strong{font-weight:700;}
   @media print{body{padding:10mm;}}
+
+.prob-cell{max-width:260px;}
+.prob-texto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5;cursor:pointer;transition:all .2s;font-size:11px;color:var(--text-muted);}
+.prob-texto.expanded{-webkit-line-clamp:unset;overflow:visible;background:var(--surface);border-radius:4px;padding:4px 6px;margin:-2px -4px;white-space:normal!important;}
+.prob-hint{font-size:10px;color:var(--gold);margin-top:2px;cursor:pointer;display:none;}
+.prob-cell:hover .prob-hint{display:block;}
 </style></head><body>
 
 <table style="border:1px solid #222;margin-bottom:12px">
@@ -7865,6 +7874,14 @@ function exportarOSpdf(id){
 
   const w = window.open('','_blank');
   if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
+}
+
+function toggleProblema(id){
+  const el=document.getElementById('prob-'+id);
+  const hint=document.getElementById('prob-hint-'+id);
+  if(!el)return;
+  const exp=el.classList.toggle('expanded');
+  if(hint)hint.textContent=exp?'▲ fechar':'▼ ver mais';
 }
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
