@@ -7897,22 +7897,25 @@ function toggleProblema(id){
 function loadOsRelatorio(){
   const sync=document.getElementById('osrel-sync');
   if(sync)sync.textContent='Carregando...';
-  // Sempre buscar do servidor para garantir dados atualizados
-  apiGet('getOS').then(d=>{
-    if(d?.os) osLista=d.os;
-    // Popular select de técnicos após carregar
-    const sel=document.getElementById('osrel-tecnico');
-    if(sel){
-      const tecs=[...new Set((osLista||[]).map(o=>o.tecnico).filter(Boolean))].sort();
-      const valAtual=sel.value;
-      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
-      if(valAtual)sel.value=valAtual;
-    }
-    renderOsRelatorio();
-  }).catch(()=>{
-    if(sync)sync.textContent='Erro ao carregar';
-    renderOsRelatorio();
-  });
+  // Buscar OS diretamente do AppScript
+  fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS')
+    .then(r=>r.json())
+    .then(d=>{
+      if(d?.os) osLista=d.os;
+      // Popular select de técnicos após carregar
+      const sel=document.getElementById('osrel-tecnico');
+      if(sel){
+        const tecs=[...new Set((osLista||[]).map(o=>o.tecnico).filter(Boolean))].sort();
+        const valAtual=sel.value;
+        sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
+        if(valAtual)sel.value=valAtual;
+      }
+      if(sync)sync.textContent='Atualizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      renderOsRelatorio();
+    }).catch(()=>{
+      if(sync)sync.textContent='Erro ao carregar';
+      renderOsRelatorio();
+    });
 }
 
 function limparFiltroRelatorio(){
@@ -7951,6 +7954,16 @@ function diasEntre(d1,d2){
   return Math.round(diff/(1000*60*60*24));
 }
 
+
+function fmtTempo(o){
+  try{
+    const t=tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao);
+    if(t)return t;
+    const d=diasEntre(o.data,o.data_conclusao);
+    if(d!==null&&!isNaN(d))return d+'d';
+  }catch(e){}
+  return '—';
+}
 function tempoDecorrido(d1,h1,d2,h2){
   // d1/d2 = datas, h1/h2 = horas no formato HH:MM
   if(!d1)return null;
@@ -8060,7 +8073,7 @@ function renderOsRelatorio(){
       <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${o.tecnico||'Pool'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data)||'—'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data_conclusao)||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600;white-space:nowrap">${tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)!==null?tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)+'d':'—'}</td>
+      <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600;white-space:nowrap">${fmtTempo(o)}</td>
       <td style="padding:8px 12px;font-size:11px;font-weight:600;${sc[o.status]||''}">${o.status||'—'}</td>
     </tr>`;
   }).join('')||`<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma OS no período</td></tr>`;
@@ -8087,7 +8100,7 @@ function exportarRelatorioOSpdf(){
       <td>${o.tecnico||'Pool'}</td>
       <td>${formatarData(o.data)||'—'}</td>
       <td>${formatarData(o.data_conclusao)||'—'}</td>
-      <td style="text-align:center">${tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||diasEntre(o.data,o.data_conclusao)!==null?tempoDecorrido(o.data,o.hora_inicio,o.data_conclusao,o.hora_conclusao)||(diasEntre(o.data,o.data_conclusao)+'d'):'—'}</td>
+      <td style="text-align:center">${fmtTempo(o)}</td>
       <td>${o.status||'—'}</td>
     </tr>`;
   }).join('');
