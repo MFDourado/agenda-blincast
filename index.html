@@ -4558,9 +4558,16 @@ async function alterarAtaStatus(id, novoStatus, selEl){
   if(reg) reg.status=novoStatus;
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaStatus',id,status:novoStatus})});
-    // Item 5 do fluxo: ATA "Feito" → OS concluída automaticamente
+    // Item 5 do fluxo: ATA "Feito" → OS vinculada concluída automaticamente
     if(novoStatus==='feito'){
-      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id:'os-'+id,status:'Concluída',data_conclusao:new Date().toISOString().split('T')[0]})});
+      // Garante lista de OS atualizada (independe de a aba de OS ter sido aberta)
+      let _osArr=[];
+      try{ const _r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS'); const _d=await _r.json(); _osArr=Array.isArray(_d.os)?_d.os:[]; }catch(e){ _osArr=(typeof osLista!=='undefined'?osLista:[]); }
+      // Localiza a OS REAL vinculada a esta ata (por id 'os-'+ataId ou pelo campo os_id_ata)
+      const osVinc = _osArr.find(o=>o.id==='os-'+id || String(o.os_id_ata)===String(id));
+      if(osVinc){
+        await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',id:osVinc.id,status:'Concluída',data_conclusao:new Date().toISOString().split('T')[0]})});
+      }
       // Atualizar tela de OS se estiver visível
       if(typeof loadOS==='function') loadOS();
     }
