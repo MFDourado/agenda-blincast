@@ -4238,7 +4238,7 @@ function renderAta(){
         <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${r.id}')">${r.problema||'—'}</div>
         <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${r.id}')">▼ ver mais</div>
       </td>
-      <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.tecnico||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
+      <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${normalizarNomeTecnico(r.tecnico)||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
       <td style="padding:3px 4px;">
         <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
@@ -7466,9 +7466,9 @@ async function estEnviarEmail(reg){
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Execução</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="modal-field"><label>Técnico responsável <span style="font-size:11px;color:var(--text-muted)">(deixe vazio = pool)</span></label>
-        <input type="text" id="os-tecnico" list="os-tecnico-list" placeholder="Digite ou selecione..." autocomplete="off"
-          style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
-        <datalist id="os-tecnico-list"></datalist>
+        <select id="os-tecnico" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="atualizarTecnicoOS()">
+          <option value="">Pool — sem técnico definido</option>
+        </select>
       </div>
       <div class="modal-field"><label>Data prevista</label><input type="date" id="os-data-prevista"></div>
       <div class="modal-field"><label>Data de conclusão</label><input type="date" id="os-data-conclusao"></div>
@@ -7557,7 +7557,7 @@ function renderOS(){
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${o.cliente||'—'}</div>
           <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
             ${o.cidade?`<span>📍 ${o.cidade}</span>`:''}
-            ${o.tecnico?`<span>👤 ${o.tecnico}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
+            ${o.tecnico?`<span>👤 ${normalizarNomeTecnico(o.tecnico)}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
             ${o.responsavel_nome?`<span>📞 ${o.responsavel_nome}${o.responsavel_tel?' · '+o.responsavel_tel:''}</span>`:''}
             ${o.data_prevista?`<span>📅 Previsto: ${formatarData(o.data_prevista)}</span>`:''}
           </div>
@@ -7604,7 +7604,10 @@ function editarOS(id){
   document.getElementById('os-produto').value=o.produto||'';
   document.getElementById('os-edit-id').value=id;
   popularSelectTecnicosOS();
-  document.getElementById('os-tecnico').value=o.tecnico||'';
+  const cidadeAtual=document.getElementById('os-cidade')?.value||'';
+  filtrarTecnicosPorUFdaOS(cidadeAtual);
+  const tecNorm=normalizarNomeTecnico(o.tecnico||'');
+  document.getElementById('os-tecnico').value=tecNorm;
   // Carregar obs e bloquear se concluída
   osObsBuffer=[];
   if(o.obs){osObsBuffer=o.obs.split('\n\n---\n\n');}
@@ -7623,16 +7626,14 @@ const TECNICOS_POR_UF = {
 
 function filtrarTecnicosPorUFdaOS(cidade){
   // Extrair UF do campo cidade (ex: "Rio de Janeiro, RJ" → "RJ")
-  const uf = (cidade.match(/,?\s*([A-Z]{2})\s*$/) || [])[1] || '';
-  const dl = document.getElementById('os-tecnico-list');
-  if(!dl) return;
-  dl.innerHTML = '';
-  const tecnicosUF = TECNICOS_POR_UF[uf];
-  const lista = tecnicosUF || (typeof colabLista !== 'undefined' ? colabLista.filter(c=>c.status==='Ativo').map(c=>c.usuario||c.nome) : []);
-  lista.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t; dl.appendChild(o);
-  });
+  const uf = (cidade.match(/,?\s*([A-Z]{2})\s*$/) || [])[1] || cidade.toUpperCase().trim();
+  const sel = document.getElementById('os-tecnico');
+  if(!sel) return;
+  const valAtual = sel.value;
+  // Usar lista segmentada por UF com nomes normalizados
+  const lista = TECNICOS_POR_UF_NOMES[uf] || Object.values(TECNICOS_NOMES);
+  sel.innerHTML = '<option value="">Pool — sem técnico definido</option>' +
+    lista.map(t => `<option value="${t}"${t===valAtual?' selected':''}>${t}</option>`).join('');
 }
 function filtrarTecnicosPorUF(uf, selectId) {
   const sel = document.getElementById(selectId);
@@ -7905,7 +7906,7 @@ function loadOsRelatorio(){
       // Popular select de técnicos após carregar
       const sel=document.getElementById('osrel-tecnico');
       if(sel){
-        const tecs=[...new Set((osLista||[]).map(o=>o.tecnico).filter(Boolean))].sort();
+        const tecs=[...new Set((osLista||[]).map(o=>normalizarNomeTecnico(o.tecnico)).filter(Boolean))].sort();
         const valAtual=sel.value;
         sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
         if(valAtual)sel.value=valAtual;
@@ -8024,7 +8025,7 @@ function renderOsRelatorio(){
   const rankEl=document.getElementById('osrel-ranking');
   const rankMap={};
   lista.forEach(o=>{
-    const t=o.tecnico||'Pool';
+    const t=normalizarNomeTecnico(o.tecnico)||'Pool';
     if(!rankMap[t])rankMap[t]={total:0,conc:0};
     rankMap[t].total++;
     if(o.status==='Concluída')rankMap[t].conc++;
@@ -8070,7 +8071,7 @@ function renderOsRelatorio(){
     return `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:8px 12px;color:var(--gold);font-size:11px;font-weight:600;white-space:nowrap">${o.numero||'—'}</td>
       <td style="padding:8px 12px;font-size:12px">${o.cliente||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${o.tecnico||'Pool'}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${normalizarNomeTecnico(o.tecnico)||'Pool'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data)||'—'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data_conclusao)||'—'}</td>
       <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600;white-space:nowrap">${fmtTempo(o)}</td>
@@ -8120,6 +8121,44 @@ function exportarRelatorioOSpdf(){
   <tbody>${rows}</tbody></table>
   </body></html>`);
   w.document.close();setTimeout(()=>w.print(),500);
+}
+
+// Mapa de normalização de nomes de técnicos
+const TECNICOS_NOMES = {
+  'marco.antonio': 'Marco Antonio',
+  'isaque.lucas': 'Isaque Lucas',
+  'gustavo.freire': 'Gustavo Freire',
+  'daniel.sampaio': 'Daniel Sampaio',
+  'rogerio.silva': 'Rogério Silva',
+  'mozart.soares': 'Mozart Soares',
+  'gabriel.santos': 'Gabriel Santos',
+};
+
+
+function popularSelectTecnicosOS(ufAtual){
+  const sel = document.getElementById('os-tecnico');
+  if(!sel) return;
+  const valAtual = sel.value;
+  const uf = ufAtual || document.getElementById('os-cidade')?.value || '';
+  const ufUpper = uf.toUpperCase().replace(/.*,\s*/,'').trim();
+  // Lista base de todos os técnicos (nomes normalizados)
+  const todos = Object.values(TECNICOS_NOMES);
+  const lista = TECNICOS_POR_UF_NOMES[ufUpper] || todos;
+  sel.innerHTML = '<option value="">Pool — sem técnico definido</option>' +
+    lista.map(t => `<option value="${t}"${t===valAtual||normalizarNomeTecnico(valAtual)===t?' selected':''}>${t}</option>`).join('');
+}
+
+function atualizarTecnicoOS(){
+  // Nada extra necessário — o select já tem o valor correto
+}
+
+const TECNICOS_POR_UF_NOMES = {
+  'RJ': ['Marco Antonio','Isaque Lucas','Gustavo Freire','Daniel Sampaio','Rogério Silva','Mozart Soares','Gabriel Santos']
+};
+function normalizarNomeTecnico(t){
+  if(!t) return '';
+  const key = t.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.');
+  return TECNICOS_NOMES[key] || TECNICOS_NOMES[t.trim().toLowerCase()] || t.trim();
 }
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
 
