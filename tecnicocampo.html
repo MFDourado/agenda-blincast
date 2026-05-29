@@ -756,6 +756,9 @@ function iniciarConfirm(){
 function cancelarConfirm(){clearInterval(confirmCountdown);}
 
 async function concluirOS(){
+  const _btnOk=document.getElementById('btn-ok-confirmar');
+  const _origOk=_btnOk?_btnOk.textContent:null;
+  if(_btnOk){ _btnOk.disabled=true; _btnOk.style.opacity='.7'; _btnOk.textContent='Confirmando...'; }
   const nome=document.getElementById('resp-nome').value.trim();
   const tel=document.getElementById('resp-tel').value.trim();
   const acao=document.getElementById('fin-acao').value.trim();
@@ -790,6 +793,7 @@ async function concluirOS(){
 
   materiaisSelecionados=[];
   await carregarOS();
+  if(_btnOk){ _btnOk.disabled=false; _btnOk.style.opacity='1'; _btnOk.textContent=_origOk; }
   goPage('concluido');
 }
 
