@@ -492,25 +492,20 @@ function setFiltroAdminTecnico(tec){
   renderListas();
 }
 
-// Técnicos do RJ — mesma lista do sistema principal (TECNICOS_POR_UF.RJ)
-const TECNICOS_RJ_CAMPO = ['Marco Antonio','Isaque Lucas','Gustavo Freire','Daniel Sampaio','Rogério Silva','Mozart Soares','Gabriel Santos'];
-const _RJ_SET = TECNICOS_RJ_CAMPO.map(n=>normalizar(n));
-
-function ehTecnicoRJ(tecnico){
-  const t = normalizar(normalizarNomeTecnicoCampo(tecnico||''));
-  if(!t) return false;
-  return _RJ_SET.some(rj => rj===t || t.includes(rj) || rj.includes(t));
+// Extrai a UF do campo cidade da OS (ex.: "Maringá, PR" → "PR"; "RJ" → "RJ")
+function ufDaOS(o){
+  const c = String((o&&o.cidade)||'').trim();
+  if(!c) return '';
+  const m = c.match(/,?\s*([A-Za-z]{2})\s*$/);
+  return (m ? m[1] : c).toUpperCase().trim();
 }
 
-function temTecnicoDefinido(o){
-  return o.tecnico && o.tecnico.trim() && o.tecnico.trim()!=='Disponível para qualquer técnico';
-}
-
+// Filtro por localização do atendimento: RJ = OS no RJ; EXT = OS em outros estados (viagem/externo)
 function passaFiltroUF(o){
   if(filtroAdminUF==='') return true;
-  if(!temTecnicoDefinido(o)) return false;
-  if(filtroAdminUF==='RJ')  return ehTecnicoRJ(o.tecnico);
-  if(filtroAdminUF==='EXT') return !ehTecnicoRJ(o.tecnico);
+  const uf = ufDaOS(o);
+  if(filtroAdminUF==='RJ')  return uf==='RJ';
+  if(filtroAdminUF==='EXT') return uf!=='' && uf!=='RJ';
   return true;
 }
 
@@ -574,10 +569,9 @@ function renderListas(){
   if(admin){
     const sel=document.getElementById('fadm-tecnico');
     if(sel){
-      let tecs=[...new Set(osList.map(o=>o.tecnico).filter(Boolean))];
-      if(filtroAdminUF==='RJ')      tecs=tecs.filter(ehTecnicoRJ);
-      else if(filtroAdminUF==='EXT') tecs=tecs.filter(t=>!ehTecnicoRJ(t));
-      tecs.sort();
+      // Técnicos que têm OS na região selecionada
+      let tecs = osList.filter(passaFiltroUF).map(o=>o.tecnico).filter(Boolean);
+      tecs=[...new Set(tecs)].sort();
       const valAtual=sel.value;
       const rotuloTodos = filtroAdminUF==='RJ'?'Todos do RJ':filtroAdminUF==='EXT'?'Todos externos':'Todos os técnicos';
       sel.innerHTML='<option value="">'+rotuloTodos+'</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${normalizarNomeTecnicoCampo(t)}</option>`).join('');
