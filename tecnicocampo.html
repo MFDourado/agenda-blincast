@@ -136,6 +136,9 @@ input[list].field-inp{margin-bottom:4px;}
     <button onclick="setFiltroAdmin('')" id="fadm-todos" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--gold);background:rgba(245,184,0,.15);color:var(--gold);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">Todos</button>
     <button onclick="setFiltroAdmin('Aberta')" id="fadm-aberta" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Aberta</button>
     <button onclick="setFiltroAdmin('Em andamento')" id="fadm-andamento" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Em andamento</button>
+    <span style="width:1px;align-self:stretch;background:var(--border);margin:2px 2px;"></span>
+    <button onclick="setFiltroUF('RJ')" id="fadm-rj" class="fadm-uf-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Técnicos RJ</button>
+    <button onclick="setFiltroUF('EXT')" id="fadm-ext" class="fadm-uf-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Técnicos externos</button>
     <select id="fadm-tecnico" onchange="setFiltroAdminTecnico(this.value)" style="height:26px;padding:0 8px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;">
       <option value="">Todos os técnicos</option>
     </select>
@@ -333,6 +336,7 @@ const MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MA
 let usuarioCampo=null;
 let filtroAdminStatus='';
 let filtroAdminTecnico='';
+let filtroAdminUF='';
 let osList=[];
 let osAtual=null;
 let horaInicio=null;
@@ -488,6 +492,47 @@ function setFiltroAdminTecnico(tec){
   renderListas();
 }
 
+// Técnicos do RJ — mesma lista do sistema principal (TECNICOS_POR_UF.RJ)
+const TECNICOS_RJ_CAMPO = ['Marco Antonio','Isaque Lucas','Gustavo Freire','Daniel Sampaio','Rogério Silva','Mozart Soares','Gabriel Santos'];
+const _RJ_SET = TECNICOS_RJ_CAMPO.map(n=>normalizar(n));
+
+function ehTecnicoRJ(tecnico){
+  const t = normalizar(normalizarNomeTecnicoCampo(tecnico||''));
+  if(!t) return false;
+  return _RJ_SET.some(rj => rj===t || t.includes(rj) || rj.includes(t));
+}
+
+function temTecnicoDefinido(o){
+  return o.tecnico && o.tecnico.trim() && o.tecnico.trim()!=='Disponível para qualquer técnico';
+}
+
+function passaFiltroUF(o){
+  if(filtroAdminUF==='') return true;
+  if(!temTecnicoDefinido(o)) return false;
+  if(filtroAdminUF==='RJ')  return ehTecnicoRJ(o.tecnico);
+  if(filtroAdminUF==='EXT') return !ehTecnicoRJ(o.tecnico);
+  return true;
+}
+
+function setFiltroUF(uf){
+  // Toggle: clicar no segmento ativo desliga o filtro
+  filtroAdminUF = (filtroAdminUF===uf) ? '' : uf;
+  document.querySelectorAll('.fadm-uf-btn').forEach(b=>{
+    b.style.background='none';
+    b.style.borderColor='var(--border)';
+    b.style.color='var(--muted)';
+    b.style.fontWeight='400';
+  });
+  if(filtroAdminUF){
+    const btn=document.getElementById(filtroAdminUF==='RJ'?'fadm-rj':'fadm-ext');
+    if(btn){btn.style.background='rgba(245,184,0,.15)';btn.style.borderColor='var(--gold)';btn.style.color='var(--gold)';btn.style.fontWeight='600';}
+  }
+  // Ao trocar de segmento, zera o técnico escolhido pra não gerar lista vazia
+  filtroAdminTecnico='';
+  const sel=document.getElementById('fadm-tecnico'); if(sel) sel.value='';
+  renderListas();
+}
+
 function setFiltroAdmin(status){
   filtroAdminStatus = status;
   document.querySelectorAll('.fadm-btn').forEach(b=>{
@@ -511,7 +556,8 @@ function renderListas(){
   const minhas = admin
     ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada'
         &&(filtroAdminStatus===''||o.status===filtroAdminStatus)
-        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico)))
+        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico))
+        &&passaFiltroUF(o))
     : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
 
   const pool = admin
@@ -520,16 +566,21 @@ function renderListas(){
 
   const conc = admin
     ? osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')
-        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico)))
+        &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico))
+        &&passaFiltroUF(o))
     : osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
 
   // Popular select de técnicos
   if(admin){
     const sel=document.getElementById('fadm-tecnico');
     if(sel){
-      const tecs=[...new Set(osList.map(o=>o.tecnico).filter(Boolean))].sort();
+      let tecs=[...new Set(osList.map(o=>o.tecnico).filter(Boolean))];
+      if(filtroAdminUF==='RJ')      tecs=tecs.filter(ehTecnicoRJ);
+      else if(filtroAdminUF==='EXT') tecs=tecs.filter(t=>!ehTecnicoRJ(t));
+      tecs.sort();
       const valAtual=sel.value;
-      sel.innerHTML='<option value="">Todos os técnicos</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${normalizarNomeTecnicoCampo(t)}</option>`).join('');
+      const rotuloTodos = filtroAdminUF==='RJ'?'Todos do RJ':filtroAdminUF==='EXT'?'Todos externos':'Todos os técnicos';
+      sel.innerHTML='<option value="">'+rotuloTodos+'</option>'+tecs.map(t=>`<option value="${t}"${t===valAtual?' selected':''}>${normalizarNomeTecnicoCampo(t)}</option>`).join('');
     }
   }
   // Ajustar labels das abas conforme perfil
