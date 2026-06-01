@@ -1212,6 +1212,15 @@ function formatCNPJ(v){
   return n.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');
 }
 
+// Pega o telefone do campo próprio; se vazio, tenta extrair do campo contato (quando o vendedor digita nome + fone juntos)
+function extrairTelefone(o){
+  if(!o) return '';
+  if(o.telefone && String(o.telefone).trim()) return String(o.telefone).trim();
+  const c = String(o.contato||'');
+  const m = c.match(/\(?\d{2}\)?\s?\d{4,5}[-\s.]?\d{4}/);
+  return m ? m[0].trim() : '';
+}
+
 function renderPipeline(){
   // Guardar IDs dos cards abertos antes de re-renderizar
   const abertos = new Set();
@@ -1274,23 +1283,24 @@ function renderPipeline(){
     const cs=proj.steps.find(s=>!s.done);
     const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluído';
     const concluido=pct===100;
-    const produtoInfo=(proj.produto==='HD'||proj.produto==='SD')?`
+    const _telProj=extrairTelefone(proj);
+    const _contatoLinha=proj.contato?`<div style="font-size:12px;margin-top:4px"><b>Contato:</b> ${proj.contato}</div>`:'';
+    const _telLinha=_telProj?`<div style="font-size:12px;margin-top:4px"><b>📞 Telefone:</b> <a href="tel:${_telProj.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${_telProj}</a></div>`:'';
+    const _ehHDSD=(proj.produto==='HD'||proj.produto==='SD');
+    const produtoInfo=(proj.produto||proj.contato||_telProj||proj.endereco)?`
   <div class="step-card" style="border-color:var(--c-previsto)">
     <div class="step-number">Dados do projeto</div>
-    <div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>
+    ${proj.produto?`<div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>`:''}
+    ${_contatoLinha}
+    ${_telLinha}
     <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${proj.endereco||'—'}</div>
-    <div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;">
+    ${_ehHDSD?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;">
       <b style="white-space:nowrap">Qtd. canais:</b>
       <input type="number" min="0" placeholder="Ex: 15"
         value="${proj.canais||''}"
         onchange="salvarCanaisPipeline('${proj.id}',this.value)"
         style="width:70px;height:26px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Mono',monospace;outline:none;">
-    </div>
-  </div>`:proj.produto?`
-  <div class="step-card" style="border-color:var(--c-previsto)">
-    <div class="step-number">Dados do projeto</div>
-    <div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>
-    <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${proj.endereco||'—'}</div>
+    </div>`:''}
   </div>`:'';
 const sh=STEPS.map(s=>{
       const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
@@ -1298,7 +1308,7 @@ const sh=STEPS.map(s=>{
       const ir=s.remote&&proj.uhs<50;
       return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.cnpj?' | CNPJ: '+formatCNPJ(proj.cnpj):''}${proj.vendedor?' | Vendedor: '+proj.vendedor:''}${proj.moduladores?' | 📡 '+proj.moduladores+' mod.':''}${proj.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(proj.ponto_extra_qtd?' ('+proj.ponto_extra_qtd+')':''):''}${proj.pagamento_operadora&&proj.pagamento_operadora!=='N/A'?` | <span style="font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'}</span>`:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" moduladores":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
+    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.cnpj?' | CNPJ: '+formatCNPJ(proj.cnpj):''}${proj.vendedor?' | Vendedor: '+proj.vendedor:''}${_telProj?' | 📞 '+_telProj:''}${proj.moduladores?' | 📡 '+proj.moduladores+' mod.':''}${proj.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(proj.ponto_extra_qtd?' ('+proj.ponto_extra_qtd+')':''):''}${proj.pagamento_operadora&&proj.pagamento_operadora!=='N/A'?` | <span style="font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'}</span>`:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" moduladores":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
 <div style="margin:8px 16px;padding:10px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <span style="font-size:13px;font-weight:600;color:var(--text-muted)">💳 Pagamento operadora:</span>
   <select onchange="salvarPagamentoPipeline('${proj.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;cursor:pointer;">
@@ -1535,6 +1545,7 @@ function renderComercial(){
             <div class="step-number">Dados do cliente</div>
             ${p.cnpj?`<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${p.cnpj}</div>`:''}
             ${p.contato?`<div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${p.contato}</div>`:''}
+            ${extrairTelefone(p)?`<div style="font-size:12px;margin-top:2px"><b>📞 Telefone:</b> <a href="tel:${extrairTelefone(p).replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${extrairTelefone(p)}</a></div>`:''}
             ${p.prazo_instalacao?`<div style="font-size:12px;margin-top:6px;padding:4px 8px;background:#1a1500;border-radius:6px;border:1px solid #2a2000"><span style="color:#F5B800;font-weight:700">📅 Prazo de instalação: ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
           </div>
           <div class="step-card">
@@ -1768,7 +1779,7 @@ function renderClientes(){
   const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
   let listaFiltrada=buscaTxt?clientes.filter(c=>(c.nome||'').toLowerCase().includes(buscaTxt)||(c.cidade||'').toLowerCase().includes(buscaTxt)):clientes;
   if(!listaFiltrada.length){list.innerHTML='<div class="empty-state" style="padding:3rem">'+(buscaTxt?'Nenhum resultado para "'+buscaTxt+'"':'Nenhum cliente ainda.')+'</div>';return;}
-  const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=listaFiltrada.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${c.id}')"><div><div class="project-name">${c.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} — ${c.produto||''}${c.canais?' ('+c.canais+' mod.)':''} — ${c.uhs||''} UHs${c.moduladores?' · '+c.moduladores+' mod.':''}${c.pagamento_operadora&&c.pagamento_operadora!=='N/A'?' | '+(c.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'):''}${c.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(c.ponto_extra_qtd?' ('+c.ponto_extra_qtd+')':''):''}</div><div style="font-size:11px;color:var(--text-light,#bbb);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${c.endereco||''}</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}${c.canais?' ('+c.canais+' moduladores)':''}</div>`:''}
+  const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=listaFiltrada.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${c.id}')"><div><div class="project-name">${c.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} — ${c.produto||''}${c.canais?' ('+c.canais+' mod.)':''} — ${c.uhs||''} UHs${c.moduladores?' · '+c.moduladores+' mod.':''}${c.pagamento_operadora&&c.pagamento_operadora!=='N/A'?' | '+(c.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'):''}${c.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(c.ponto_extra_qtd?' ('+c.ponto_extra_qtd+')':''):''}</div><div style="font-size:11px;color:var(--text-light,#bbb);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${c.endereco||''}</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div>${extrairTelefone(c)?`<div style="font-size:12px;margin-top:2px"><b>📞 Telefone:</b> <a href="tel:${extrairTelefone(c).replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${extrairTelefone(c)}</a></div>`:''}<div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}${c.canais?' ('+c.canais+' moduladores)':''}</div>`:''}
 <div style="font-size:12px;margin-top:6px"><b>💳 Pagamento operadora:</b>
 <select onchange="salvarPagamentoCliente('${c.id}',this.value)" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
 <option value="" ${!c.pagamento_operadora?'selected':''}>— Não definido —</option>
