@@ -11,7 +11,20 @@
 :root{--black:#111111;--gold:#F5B800;--gold-dark:#B88A00;--bg:#F7F6F2;--surface:#fff;--border:#E8E6DF;--text:#111111;--text-muted:#888880;--text-light:#BBBBB0;--radius:10px;--radius-sm:6px;--c-previsto:#1A5FC8;--c-previsto-bg:#EBF0FB;--c-andamento:#0F6E56;--c-andamento-bg:#E1F5EE;--c-atrasado:#A32D2D;--c-atrasado-bg:#FCEBEB;--c-concluido:#3B6D11;--c-concluido-bg:#EAF3DE;--c-pendente:#B86A00;--c-pendente-bg:#FEF3E0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
-header{background:var(--black);padding:0 2rem;height:56px;position:relative;display:none;align-items:center;justify-content:space-between;}
+header{background:var(--black);padding:0 2rem;height:56px;position:sticky;top:0;z-index:50;display:none;align-items:center;justify-content:space-between;}
+#tabbar{position:sticky;top:56px;z-index:49;background:#1a1a1d;border-bottom:1px solid #2a2a2e;padding:0 8px;display:flex;align-items:flex-end;gap:2px;overflow-x:auto;overflow-y:hidden;min-height:38px;scrollbar-width:thin;}
+#tabbar::-webkit-scrollbar{height:5px;}
+#tabbar::-webkit-scrollbar-thumb{background:#3a3a3e;border-radius:3px;}
+.app-tab{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 6px 0 13px;margin-top:5px;background:#252528;border:1px solid #2a2a2e;border-bottom:none;border-radius:8px 8px 0 0;color:#9a9a9f;font-size:12.5px;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap;max-width:200px;transition:background .12s,color .12s;flex:0 0 auto;}
+.app-tab:hover{background:#2e2e32;color:#ccc;}
+.app-tab.active{background:var(--surface,#fff);color:var(--text,#111);border-color:transparent;font-weight:600;height:33px;}
+.app-tab .tab-label{overflow:hidden;text-overflow:ellipsis;}
+.app-tab .tab-close{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:13px;line-height:1;color:inherit;opacity:.6;transition:background .12s,opacity .12s;flex:0 0 auto;}
+.app-tab .tab-close:hover{background:rgba(128,128,128,.35);opacity:1;}
+#clock-screen{position:fixed;top:56px;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg,#f7f7f5);z-index:30;user-select:none;}
+#clock-time{font-family:'DM Mono',monospace;font-weight:600;font-size:clamp(60px,16vw,220px);line-height:1;letter-spacing:2px;color:var(--text,#1a1a1d);}
+#clock-time .clk-sec{color:var(--gold,#F5B800);}
+#clock-date{font-family:'DM Sans',sans-serif;font-size:clamp(14px,2.5vw,26px);color:var(--text-muted,#888);text-transform:capitalize;}
 .logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:2px;font-weight:500;}
 .status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#555;}
@@ -412,6 +425,15 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button onclick="fazerLogout()" title="Sair" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-left:8px;transition:all .15s;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⏻ Sair</button>
   </div>
 </header></div>
+
+<!-- BARRA DE ABAS (estilo Chrome) -->
+<div id="tabbar" style="display:none;"></div>
+
+<!-- RELÓGIO (tela vazia, sem abas abertas) -->
+<div id="clock-screen" style="display:none;">
+  <div id="clock-time">00:00:00</div>
+  <div id="clock-date"></div>
+</div>
 
 <!-- PIPELINE -->
 <div id="page-pipeline" class="main" style="display:none">
@@ -1016,6 +1038,93 @@ function closeSidebar(){
 }
 function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
+// ===================== BARRA DE ABAS (estilo Chrome) =====================
+const TAB_LABELS = {
+  pipeline:'Pipeline', vistoria:'Vistorias', agenda:'Agenda', dashboard:'Dashboard',
+  comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
+  orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
+  requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
+  estoque:'Estoque', 'arm-cadastro':'Estoque · Cadastro', 'arm-interno':'Estoque · Interno',
+  'arm-externo':'Estoque · Externo', os:'Ordens de Serviço', 'checklist-impl':'Checklist Implantação',
+  'os-relatorio':'Relatório OS', colaboradores:'Colaboradores'
+};
+let abasAbertas = [];     // ordem das abas (ids)
+let abaAtiva = null;
+
+function renderTabbar(){
+  const bar = document.getElementById('tabbar');
+  if(!bar) return;
+  if(!abasAbertas.length){ bar.style.display='none'; bar.innerHTML=''; return; }
+  bar.style.display='flex';
+  bar.innerHTML = abasAbertas.map(id=>{
+    const lbl = TAB_LABELS[id] || id;
+    const at = id===abaAtiva;
+    return `<div class="app-tab${at?' active':''}" onclick="ativarAba('${id}')" title="${lbl}">
+      <span class="tab-label">${lbl}</span>
+      <span class="tab-close" onclick="event.stopPropagation();fecharAba('${id}')">✕</span>
+    </div>`;
+  }).join('');
+  // rolar para a aba ativa
+  const ativaEl = bar.querySelector('.app-tab.active');
+  if(ativaEl) ativaEl.scrollIntoView({inline:'nearest',block:'nearest'});
+}
+
+function abrirAba(id){
+  if(!abasAbertas.includes(id)) abasAbertas.push(id);
+  abaAtiva = id;
+  renderTabbar();
+  mostrarRelogio(false);
+}
+
+function ativarAba(id){
+  if(id===abaAtiva) return;
+  switchMainTab(id);   // switchMainTab cuida de exibir a página e marcar a aba
+}
+
+function fecharAba(id){
+  const idx = abasAbertas.indexOf(id);
+  if(idx<0) return;
+  abasAbertas.splice(idx,1);
+  if(id===abaAtiva){
+    // ativa a aba vizinha (a anterior, ou a próxima, ou nenhuma)
+    const proxima = abasAbertas[idx-1] || abasAbertas[idx] || abasAbertas[abasAbertas.length-1] || null;
+    if(proxima){ switchMainTab(proxima); }
+    else {
+      // não sobrou nenhuma: limpa a tela (esconde todas as páginas) e mostra o relógio
+      abaAtiva=null;
+      document.querySelectorAll('.main').forEach(p=>p.style.display='none');
+      renderTabbar();
+      mostrarRelogio(true);
+    }
+  } else {
+    renderTabbar();
+  }
+}
+
+// ---------- Relógio na tela vazia ----------
+let _clockInterval = null;
+function _tickClock(){
+  const el = document.getElementById('clock-time');
+  if(!el) return;
+  const a = new Date();
+  const p = n => String(n).padStart(2,'0');
+  el.innerHTML = p(a.getHours())+':'+p(a.getMinutes())+'<span class="clk-sec">:'+p(a.getSeconds())+'</span>';
+  const dt = document.getElementById('clock-date');
+  if(dt) dt.textContent = a.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+}
+function mostrarRelogio(mostrar){
+  const tela = document.getElementById('clock-screen');
+  if(!tela) return;
+  if(mostrar){
+    tela.style.display='flex';
+    _tickClock();
+    if(!_clockInterval) _clockInterval = setInterval(_tickClock, 1000);
+  } else {
+    tela.style.display='none';
+    if(_clockInterval){ clearInterval(_clockInterval); _clockInterval=null; }
+  }
+}
+
 function switchMainTab(t){
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
@@ -1047,6 +1156,7 @@ function switchMainTab(t){
   if(t==='os')loadOS();
   if(t==='checklist-impl')loadChecklistImpl();
   if(t==='colaboradores')loadColaboradores();
+  abrirAba(t);
 }
 
 // ===================== AGENDA =====================
