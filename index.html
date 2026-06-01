@@ -4054,6 +4054,111 @@ function showToast(msg){
   setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},2500);
 }
 
+/* ===== Estado de carregamento automático nos botões de ação =====
+   Intercepta o clique, troca o rótulo pelo gerúndio (Salvar→Salvando...),
+   desabilita o botão até a ação terminar e restaura. Evita clique duplo. */
+(function(){
+  // Mapa verbo→gerúndio. A chave é comparada em minúsculas, sem ícones.
+  const GERUNDIOS = [
+    ['salvar alterações','Salvando...'],
+    ['salvar permissões','Salvando...'],
+    ['salvar requisição','Salvando...'],
+    ['salvar rascunho','Salvando...'],
+    ['salvar checklist','Salvando...'],
+    ['salvar saldo','Salvando...'],
+    ['salvar','Salvando...'],
+    ['encerrar balanço','Encerrando...'],
+    ['encerrar','Encerrando...'],
+    ['adicionar ao quadro','Adicionando...'],
+    ['adicionar trecho','Adicionando...'],
+    ['adicionar linha','Adicionando...'],
+    ['adicionar tarefa','Adicionando...'],
+    ['adicionar','Adicionando...'],
+    ['concluir definitivamente','Concluindo...'],
+    ['concluir','Concluindo...'],
+    ['confirmar','Confirmando...'],
+    ['criar projeto','Criando...'],
+    ['criar cliente','Criando...'],
+    ['criar vistoria','Criando...'],
+    ['criar e abrir checklist →','Criando...'],
+    ['criar primeira os','Criando...'],
+    ['criar','Criando...'],
+    ['cadastrar primeiro','Cadastrando...'],
+    ['cadastrar','Cadastrando...'],
+    ['lançar','Lançando...'],
+    ['converter para pipeline','Convertendo...'],
+    ['converter','Convertendo...'],
+    ['solicitar','Solicitando...'],
+    ['enviar solicitação','Enviando...'],
+    ['enviar e-mail de conclusao','Enviando...'],
+    ['enviar e-mail','Enviando...'],
+    ['enviar para montagem','Enviando...'],
+    ['enviar','Enviando...'],
+    ['importar histórico','Importando...'],
+    ['importar datas','Importando...'],
+    ['importar','Importando...'],
+    ['gerar','Gerando...']
+  ];
+  function gerundioPara(texto){
+    const limpo = texto.replace(/[^\wÀ-ÿ →]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+    for(const [chave,ger] of GERUNDIOS){ if(limpo.includes(chave)) return ger; }
+    return null;
+  }
+  // Ações que NÃO vão ao servidor (locais/instantâneas): restaurar bem rápido,
+  // só pra dar o feedback visual sem travar o botão.
+  const LOCAIS = ['adicionar trecho','adicionar linha','adicionar tarefa','adicionar ao quadro',
+                  'concluir definitivamente','confirmar'];
+  function ehLocal(texto){
+    const limpo = texto.replace(/[^\wÀ-ÿ →]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+    return LOCAIS.some(c=>limpo.includes(c));
+  }
+  // Captura na fase de captura para rodar antes do onclick do botão
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!btn) return;
+    if(btn.disabled) { ev.preventDefault(); ev.stopPropagation(); return; }
+    const oc = btn.getAttribute('onclick');
+    if(!oc) return;                         // só botões com ação inline
+    const ger = gerundioPara(btn.textContent||'');
+    if(!ger) return;                        // não é botão de salvar/ação
+    if(btn.dataset.loading==='1') { ev.preventDefault(); ev.stopPropagation(); return; }
+
+    const htmlOrig = btn.innerHTML;
+    const wOrig = btn.offsetWidth;
+    const local = ehLocal(btn.textContent||'');
+    btn.dataset.loading='1';
+    btn.style.minWidth = wOrig+'px';
+    btn.innerHTML = '<span style="opacity:.85">'+ger+'</span>';
+    btn.disabled = true;
+    btn.style.cursor='wait';
+
+    const restaurar = ()=>{
+      btn.innerHTML = htmlOrig;
+      btn.disabled = false;
+      btn.style.cursor='';
+      btn.style.minWidth='';
+      delete btn.dataset.loading;
+    };
+
+    if(local){
+      // Ação instantânea: só pisca o feedback e volta
+      setTimeout(restaurar, 350);
+      return;
+    }
+
+    // Ações de rede: restaura quando o botão sai da tela (modal fechou)
+    // ou após 4s (tempo de ida/volta do AppScript), o que vier primeiro.
+    const inicio = Date.now();
+    const checar = ()=>{
+      const visivel = btn.offsetParent !== null;
+      if(!visivel){ restaurar(); return; }
+      if(Date.now()-inicio > 4000){ restaurar(); return; }
+      setTimeout(checar, 300);
+    };
+    setTimeout(checar, 300);
+  }, true);
+})();
+
 async function salvarPagamentoCliente(id, valor){
   const c = clientes.find(x=>x.id===id);
   if(c) c.pagamento_operadora = valor;
