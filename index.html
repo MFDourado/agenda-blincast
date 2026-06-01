@@ -761,9 +761,9 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
   <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto;">
     <h3 id="ata-modal-title">Novo registro</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="modal-field"><label>Data de abertura</label><input type="date" id="at-dt-abertura"></div>
+      <div class="modal-field"><label>Data de abertura *</label><input type="date" id="at-dt-abertura"></div>
       <div class="modal-field"><label>No OS / Código</label><input type="text" id="at-no" placeholder="Ex: 4521"></div>
-      <div class="modal-field"><label>Data *</label><input type="date" id="at-data"></div>
+      <input type="hidden" id="at-data">
       <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" placeholder="Nome do cliente"></div>
       <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase" oninput="filtrarTecnicosPorUF(this.value,'at-tecnico')"></div>
       <div class="modal-field"><label>Técnico</label>
@@ -4586,6 +4586,7 @@ function openAtaModal(){
   if(aj2El){ aj2El.style.display='none'; }
   const btn2 = document.getElementById('btn-ajudante2');
   if(btn2){ btn2.textContent='+'; btn2.style.color='var(--text-muted)'; }
+  document.getElementById('at-dt-abertura').value=todayStr;
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
   document.getElementById('at-edit-id').value='';
@@ -4615,7 +4616,7 @@ function editarAta(id){
   document.getElementById('at-problema').value=r.problema||'';
   document.getElementById('at-status').value=r.status||'em_andamento';
   document.getElementById('at-obs').value=r.obs||'';
-  document.getElementById('at-dt-abertura').value=r.dt_abertura||'';
+  document.getElementById('at-dt-abertura').value=r.dt_abertura||r.data||'';
   const dtPrev=document.getElementById('at-dt-prevista');if(dtPrev)dtPrev.value=r.dt_prevista||'';
   document.getElementById('at-dt-conclusao').value=r.dt_conclusao||'';
   document.getElementById('ata-modal-title').textContent='Editar registro';
@@ -4642,13 +4643,15 @@ async function salvarAta(){
   const cliente=document.getElementById('at-cliente').value.trim();
   const problema=document.getElementById('at-problema').value.trim();
   const status=document.getElementById('at-status').value;
+  const dtAbertura=document.getElementById('at-dt-abertura').value;
   if(!cliente||!problema)return alert('Preencha Cliente e Problema.');
+  if(!dtAbertura)return alert('Preencha a Data de abertura.');
   const _btn=document.querySelector('#ata-modal .modal-btn.primary');
   if(_btn){_btn.textContent='Registrando...';_btn.disabled=true;}
   const editId=document.getElementById('at-edit-id').value;
   const payload={
     no:document.getElementById('at-no').value.trim(),
-    data:document.getElementById('at-data').value||todayStr,
+    data:dtAbertura,
     cliente,
     estado:document.getElementById('at-estado').value.trim().toUpperCase(),
     tecnico:document.getElementById('at-tecnico').value.trim(),
@@ -4657,7 +4660,7 @@ async function salvarAta(){
     obs:document.getElementById('at-obs').value.trim(),
     solicitante:document.getElementById('at-solicitante').value.trim(),
     tel_solicitante:document.getElementById('at-tel-solicitante').value.trim(),
-    dt_abertura:document.getElementById('at-dt-abertura').value||'',
+    dt_abertura:dtAbertura,
     dt_prevista:document.getElementById('at-dt-prevista')?.value||'',
     dt_conclusao:document.getElementById('at-dt-conclusao').value||''
   };
