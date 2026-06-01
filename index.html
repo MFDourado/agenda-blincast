@@ -373,7 +373,12 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-implantacoes" onclick="switchMainTab('implantacoes');closeSidebar()">Implantações</button>
     <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
     <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
-    <button class="snav-btn" id="mt-estoque" onclick="switchMainTab('estoque');closeSidebar()">Estoque</button>
+    <button class="snav-btn" id="mt-estoque-group" onclick="toggleSubMenu('estoque-sub')">Estoque <span id="arrow-estoque-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="estoque-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-arm-cadastro" onclick="switchMainTab('arm-cadastro');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Cadastro</button>
+      <button class="snav-btn" id="mt-arm-interno" onclick="switchMainTab('arm-interno');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Interno</button>
+      <button class="snav-btn" id="mt-arm-externo" onclick="switchMainTab('arm-externo');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Externo</button>
+    </div>
     <button class="snav-btn" id="mt-os-group" onclick="toggleSubMenu('os-sub')">Ordens de Serviço <span id="arrow-os-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="os-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-os" onclick="switchMainTab('os');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Ordens</button>
@@ -1012,7 +1017,7 @@ function closeSidebar(){
 function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -1035,6 +1040,9 @@ function switchMainTab(t){
   if(t==='viagem')iniciarViagem();
   if(t==='implantacoes')loadImplantacoes();
   if(t==='estoque')iniciarEstoque();
+  if(t==='arm-cadastro')loadArmCadastro();
+  if(t==='arm-interno')loadArmazens('interno');
+  if(t==='arm-externo')loadArmazens('externo');
   if(t==='os-relatorio')loadOsRelatorio();
   if(t==='os')loadOS();
   if(t==='checklist-impl')loadChecklistImpl();
@@ -5835,6 +5843,371 @@ function exportarViagemPDF(i){
   w.document.close();
 }
 
+// ===================== ESTOQUE / ARMAZÉNS =====================
+let armazensCache = [];
+let armSelecionados = { interno:new Set(), externo:new Set() };
+let armSenhaCallback = null;        // ação após senha gerencial correta
+let armCadFiltroTipo = '';          // filtro da tela Cadastro
+let armBalArmazem = null;           // armazém em balanço
+let armBalItens = [];               // itens carregados da planilha (com quantidade)
+let armBalancosCache = [];          // histórico carregado
+
+async function _fetchArmazens(){
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getArmazens');
+    const d = await r.json();
+    armazensCache = Array.isArray(d.armazens) ? d.armazens : [];
+  }catch(e){ /* mantém cache */ }
+}
+
+// ---------- CADASTRO ----------
+async function loadArmCadastro(){
+  const sync = document.getElementById('arm-cadastro-sync');
+  if(sync) sync.textContent = 'Carregando...';
+  await _fetchArmazens();
+  if(sync) sync.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  renderArmCadastro();
+}
+
+function armCadFiltro(tipo){
+  armCadFiltroTipo = tipo;
+  document.querySelectorAll('.arm-cad-fbtn').forEach(b=>{b.style.background='none';b.style.borderColor='var(--border)';b.style.color='var(--text-muted)';b.style.fontWeight='400';});
+  const id = tipo===''?'arm-cad-f-todos':tipo==='interno'?'arm-cad-f-interno':'arm-cad-f-externo';
+  const btn=document.getElementById(id);
+  if(btn){btn.style.background='rgba(245,184,0,.15)';btn.style.borderColor='var(--gold)';btn.style.color='var(--gold)';btn.style.fontWeight='600';}
+  renderArmCadastro();
+}
+
+function renderArmCadastro(){
+  const wrap=document.getElementById('arm-cad-lista');
+  if(!wrap) return;
+  let lista = armazensCache.slice();
+  if(armCadFiltroTipo) lista = lista.filter(a=>String(a.tipo).toLowerCase()===armCadFiltroTipo);
+  if(!lista.length){
+    wrap.innerHTML='<div style="grid-column:1/-1;padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum armazém cadastrado. Clique em "＋ Novo armazém".</div>';
+    return;
+  }
+  wrap.innerHTML = lista.map(a=>{
+    const tipo=String(a.tipo).toLowerCase();
+    const cor = tipo==='interno' ? '#5B8FC9' : '#e67e22';
+    const lbl = tipo==='interno' ? 'Interno' : 'Externo';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${a.nome||'—'}</div>
+        <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;background:${cor}22;color:${cor};border:1px solid ${cor}66;white-space:nowrap;">${lbl}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Criado em ${a.criado_em||'—'}</div>
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <button onclick="armRenomear('${a.id}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✏️ Renomear</button>
+        <button onclick="armPedirSenhaExcluir('${a.id}')" style="flex:1;height:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗑️ Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function armToggleNovoCad(){
+  const box=document.getElementById('arm-cad-novo');
+  if(!box) return;
+  const show = box.style.display==='none' || !box.style.display;
+  box.style.display = show?'flex':'none';
+  if(show){ const i=document.getElementById('arm-cad-nome'); if(i) i.focus(); }
+}
+
+async function armCadastrarNovo(){
+  const nome=(document.getElementById('arm-cad-nome').value||'').trim();
+  const tipo=document.getElementById('arm-cad-tipo').value;
+  if(!nome){ alert('Informe o nome do armazém.'); return; }
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'saveArmazem',token:getToken(),tipo,nome})});
+    const d=await r.json();
+    if(d.error){ alert(d.error); return; }
+    document.getElementById('arm-cad-nome').value='';
+    armToggleNovoCad();
+    await loadArmCadastro();
+  }catch(e){ alert('Erro ao salvar armazém.'); }
+}
+
+// Renomear — LIVRE (sem senha)
+async function armRenomear(id){
+  const arm=armazensCache.find(a=>a.id===id); if(!arm) return;
+  const novo=prompt('Novo nome do armazém:', arm.nome||'');
+  if(novo===null) return;
+  if(!novo.trim()){ alert('Nome não pode ser vazio.'); return; }
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'renomearArmazem',token:getToken(),id,nome:novo.trim()})});
+    const d=await r.json();
+    if(d.error){ alert(d.error); return; }
+    await loadArmCadastro();
+  }catch(e){ alert('Erro ao renomear.'); }
+}
+
+// Excluir — EXIGE senha gerencial
+function armPedirSenhaExcluir(id){
+  const arm=armazensCache.find(a=>a.id===id);
+  document.getElementById('arm-senha-titulo').textContent='Excluir armazém';
+  document.getElementById('arm-senha-msg').textContent='Para excluir "'+(arm?arm.nome:'')+'" é necessária a senha gerencial.';
+  document.getElementById('arm-senha-erro').textContent='';
+  document.getElementById('arm-senha-input').value='';
+  armSenhaCallback = (senha)=>armExcluir(id,senha);
+  document.getElementById('arm-senha-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('arm-senha-input').focus(),50);
+}
+function armFecharSenha(){ document.getElementById('arm-senha-modal').style.display='none'; armSenhaCallback=null; }
+function armConfirmarSenha(){
+  const senha=document.getElementById('arm-senha-input').value;
+  if(!senha){ document.getElementById('arm-senha-erro').textContent='Digite a senha.'; return; }
+  if(armSenhaCallback) armSenhaCallback(senha);
+}
+async function armExcluir(id,senha){
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteArmazem',token:getToken(),id,senha_gerencial:senha})});
+    const d=await r.json();
+    if(d.error){ document.getElementById('arm-senha-erro').textContent=d.error; return; }
+    armSelecionados.interno.delete(id); armSelecionados.externo.delete(id);
+    armFecharSenha();
+    await loadArmCadastro();
+  }catch(e){ document.getElementById('arm-senha-erro').textContent='Erro de conexão.'; }
+}
+
+// ---------- INTERNO / EXTERNO (listagem + seleção) ----------
+async function loadArmazens(tipo){
+  const sync=document.getElementById('arm-'+tipo+'-sync');
+  if(sync) sync.textContent='Carregando...';
+  await _fetchArmazens();
+  if(sync) sync.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  renderArmazens(tipo);
+}
+
+function renderArmazens(tipo){
+  const wrap=document.getElementById('arm-'+tipo+'-lista');
+  if(!wrap) return;
+  const lista=armazensCache.filter(a=>String(a.tipo).toLowerCase()===tipo);
+  if(!lista.length){
+    wrap.innerHTML='<div style="grid-column:1/-1;padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum armazém '+(tipo==='interno'?'interno':'externo')+' cadastrado. Vá em Estoque → Cadastro para criar.</div>';
+    return;
+  }
+  wrap.innerHTML=lista.map(a=>{
+    const sel=armSelecionados[tipo].has(a.id);
+    return `<div style="background:var(--surface);border:1px solid ${sel?'var(--gold)':'var(--border)'};border-radius:var(--radius);padding:14px;transition:border-color .15s;">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+        <input type="checkbox" ${sel?'checked':''} onchange="armToggleSel('${tipo}','${a.id}')" style="margin-top:3px;width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${a.nome||'—'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Criado em ${a.criado_em||'—'}</div>
+        </div>
+      </label>
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <button onclick="armNovoBalanco('${a.id}')" style="flex:1;height:28px;border:1px solid var(--gold);border-radius:5px;background:rgba(245,184,0,.12);color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Balanço</button>
+        <button onclick="armVerHistorico('${a.id}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗂️ Encerrados</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function armToggleSel(tipo,id){
+  if(armSelecionados[tipo].has(id)) armSelecionados[tipo].delete(id);
+  else armSelecionados[tipo].add(id);
+  renderArmazens(tipo);
+}
+
+// ---------- BALANÇO (upload Excel + lançar quantidade) ----------
+function armNovoBalanco(id){
+  const arm=armazensCache.find(a=>a.id===id); if(!arm) return;
+  armBalArmazem=arm; armBalItens=[];
+  document.getElementById('arm-balanco-titulo').textContent='📋 Novo balanço';
+  document.getElementById('arm-bal-armazem-info').textContent = (String(arm.tipo).toLowerCase()==='interno'?'Interno':'Externo')+' · '+arm.nome;
+  document.getElementById('arm-bal-ref').value='';
+  document.getElementById('arm-bal-obs').value='';
+  document.getElementById('arm-bal-arquivo').value='';
+  document.getElementById('arm-bal-preview').innerHTML='';
+  document.getElementById('arm-bal-body').innerHTML='';
+  document.getElementById('arm-bal-itens-wrap').style.display='none';
+  document.getElementById('arm-bal-resp-nome').value='';
+  document.getElementById('arm-bal-resp-cargo').value='';
+  document.getElementById('arm-bal-resp-cpf').value='';
+  document.getElementById('arm-balanco-modal').style.display='flex';
+}
+
+function armBalancoSelecionados(tipo){
+  const ids=[...armSelecionados[tipo]];
+  if(!ids.length){ alert('Selecione ao menos um armazém para fazer o balanço.'); return; }
+  if(ids.length>1){ alert('O balanço é feito de um armazém por vez. Selecione apenas um (ou use o botão "Balanço" no card).'); return; }
+  armNovoBalanco(ids[0]);
+}
+
+async function armBalCarregarArquivo(input){
+  const file=input.files[0]; if(!file) return;
+  const prev=document.getElementById('arm-bal-preview');
+  prev.innerHTML='<div style="font-size:12px;color:var(--text-muted)">⏳ Lendo arquivo...</div>';
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(rows.length<=1){ prev.innerHTML='<div style="font-size:12px;color:#e00">Arquivo vazio ou sem dados.</div>'; return; }
+    const headers=rows[0].map(h=>String(h).trim());
+    const findCol=(...names)=>{ for(const n of names){ const i=headers.findIndex(h=>h.toLowerCase().includes(n.toLowerCase())); if(i>=0)return i;} return -1; };
+    const colCod=findCol('código','codigo','cod','ref','referencia');
+    const colDesc=findCol('descrição','descricao','desc','nome','material','item');
+    const colUn=findCol('unidade','un','und');
+    armBalItens=rows.slice(1).filter(r=>r.some(c=>c!=='')).map(r=>({
+      codigo: colCod>=0?String(r[colCod]||'').trim():'',
+      descricao: colDesc>=0?String(r[colDesc]||'').trim():String(r[0]||'').trim(),
+      unidade: colUn>=0?String(r[colUn]||'').trim():'',
+      quantidade:''
+    })).filter(i=>i.descricao);
+    document.getElementById('arm-bal-qtd').textContent=armBalItens.length;
+    prev.innerHTML='<div style="font-size:12px;color:var(--c-andamento)">✅ '+armBalItens.length+' itens carregados de "'+file.name+'"</div>';
+    armBalRenderTabela();
+    document.getElementById('arm-bal-itens-wrap').style.display='block';
+  }catch(e){
+    prev.innerHTML='<div style="font-size:12px;color:#e00">Erro ao ler arquivo: '+e.message+'</div>';
+  }
+}
+
+function armBalRenderTabela(){
+  const tbody=document.getElementById('arm-bal-body');
+  if(!tbody) return;
+  tbody.innerHTML=armBalItens.map((it,i)=>`<tr style="border-top:1px solid var(--border)">
+    <td style="padding:5px 8px;font-size:11px">${it.codigo||'—'}</td>
+    <td style="padding:5px 8px;font-size:12px">${it.descricao}</td>
+    <td style="padding:5px 8px;text-align:center"><input type="number" min="0" value="${it.quantidade}" onchange="armBalItens[${i}].quantidade=this.value" style="width:74px;border:1px solid var(--border);border-radius:3px;padding:3px 5px;font-size:12px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);"></td>
+    <td style="padding:5px 8px;font-size:11px">${it.unidade||'—'}</td>
+  </tr>`).join('');
+}
+
+async function armEncerrarBalanco(){
+  if(!armBalArmazem){ return; }
+  const ref=document.getElementById('arm-bal-ref').value.trim();
+  const obs=document.getElementById('arm-bal-obs').value.trim();
+  const nome=document.getElementById('arm-bal-resp-nome').value.trim();
+  const cargo=document.getElementById('arm-bal-resp-cargo').value.trim();
+  const cpf=document.getElementById('arm-bal-resp-cpf').value.trim();
+  if(!ref){ alert('Informe a referência (ex: Maio/2026).'); return; }
+  if(!armBalItens.length){ alert('Carregue a planilha Excel com os itens.'); return; }
+  if(!nome){ alert('Informe o nome do responsável.'); return; }
+  if(!cargo){ alert('Informe o cargo do responsável.'); return; }
+  if(cpf.replace(/\D/g,'').length<11){ alert('Informe o CPF completo.'); return; }
+
+  const agora=new Date();
+  const dtConc=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const payload={
+    action:'salvarBalanco', token:getToken(),
+    armazem_id:armBalArmazem.id, armazem_nome:armBalArmazem.nome, tipo:armBalArmazem.tipo,
+    referencia:ref, obs, resp_nome:nome, resp_cargo:cargo, resp_cpf:cpf,
+    itens:armBalItens, dt_conclusao:dtConc
+  };
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.error){ alert(d.error); return; }
+    showToast('📦 Balanço encerrado!');
+    armFecharBalanco();
+  }catch(e){ alert('Erro ao encerrar balanço.'); }
+}
+
+function armFecharBalanco(){ document.getElementById('arm-balanco-modal').style.display='none'; armBalArmazem=null; armBalItens=[]; }
+
+// ---------- HISTÓRICO + PDF ----------
+async function armVerHistorico(armazemId){
+  const arm=armazensCache.find(a=>a.id===armazemId);
+  document.getElementById('arm-hist-titulo').textContent='Balanços encerrados — '+(arm?arm.nome:'');
+  document.getElementById('arm-hist-conteudo').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:13px;">Carregando...</div>';
+  document.getElementById('arm-hist-modal').style.display='flex';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getBalancos&armazem_id='+encodeURIComponent(armazemId));
+    const d=await r.json();
+    armBalancosCache=Array.isArray(d.balancos)?d.balancos:[];
+  }catch(e){ armBalancosCache=[]; }
+  armRenderHistorico();
+}
+
+function armRenderHistorico(){
+  const cont=document.getElementById('arm-hist-conteudo');
+  if(!cont) return;
+  if(!armBalancosCache.length){
+    cont.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum balanço encerrado para este armazém ainda.</div>';
+    return;
+  }
+  const ordenado=[...armBalancosCache].reverse();
+  cont.innerHTML=ordenado.map(b=>`<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--text);">📦 ${b.referencia||'—'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${b.total_itens||(b.itens?b.itens.length:0)} itens · Resp: ${b.resp_nome||'—'} · ${b.dt_conclusao||'—'}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="armBalancoPDF('${b.id}')" style="height:28px;padding:0 12px;border:1px solid var(--gold);border-radius:5px;background:none;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 PDF</button>
+        <button onclick="armPedirSenhaExcluirBalanco('${b.id}')" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">🗑️</button>
+      </div>
+    </div>
+  </div>`).join('');
+}
+
+function armBalancoPDF(id){
+  const b=armBalancosCache.find(x=>x.id===id); if(!b) return;
+  const itens=b.itens||[];
+  const linhas=itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${it.codigo||'—'}</td><td>${it.descricao||''}</td><td style="text-align:center">${it.quantidade||'—'}</td><td>${it.unidade||'—'}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Balanço — ${b.referencia||''}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:900px;margin:0 auto}
+.logo{font-size:22px;font-weight:900;margin-bottom:4px}.logo span{color:#F5B800}
+h1{font-size:17px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:8px;margin:16px 0}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th{background:#111;color:#F5B800;padding:7px 10px;font-size:10px;text-align:left;text-transform:uppercase}
+td{padding:6px 10px;font-size:11px;border-bottom:1px solid #eee}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.info-box{border:1px solid #ddd;border-radius:4px;padding:8px 12px}
+.info-box label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;display:block}
+.info-box span{font-size:13px;font-weight:600}
+.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
+.sig-box{border-top:1.5px solid #111;padding-top:6px;text-align:center;font-size:10px;color:#666}
+.footer{margin-top:20px;font-size:9px;color:#aaa;text-align:right}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #2e7d32;color:#2e7d32;background:#e8f5e9;margin-bottom:12px}
+</style></head><body>
+<div class="logo">Blin<span>Track</span></div>
+<div style="font-size:10px;color:#888">Blincast Media S/A — Documento Interno</div>
+<h1>📦 Balanço de Estoque — ${b.armazem_nome||''}</h1>
+<div class="badge">✅ Balanço encerrado · ${(String(b.tipo).toLowerCase()==='interno'?'Interno':'Externo')}</div>
+<div class="info-grid">
+  <div class="info-box"><label>Referência</label><span>${b.referencia||'—'}</span></div>
+  <div class="info-box"><label>Total de itens</label><span>${itens.length}</span></div>
+  <div class="info-box"><label>Data</label><span>${b.dt_conclusao||'—'}</span></div>
+</div>
+${b.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${b.obs}</div>`:''}
+<table><thead><tr><th>Código</th><th>Descrição</th><th style="text-align:center;width:60px">Qtd</th><th>Unid.</th></tr></thead><tbody>${linhas}</tbody></table>
+<div class="sig-row">
+  <div class="sig-box">______________________________<br>${b.resp_nome||'___________'}<br>CPF: ${b.resp_cpf||'—'}<br>${b.resp_cargo||'Responsável'}<br>${b.dt_conclusao||''}</div>
+  <div class="sig-box">______________________________<br>Gerência Operacional<br>Ciência</div>
+</div>
+<div class="footer">BlinTrack — Blincast Media S/A — gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+function armPedirSenhaExcluirBalanco(id){
+  document.getElementById('arm-senha-titulo').textContent='Excluir balanço';
+  document.getElementById('arm-senha-msg').textContent='Para excluir este balanço encerrado é necessária a senha gerencial.';
+  document.getElementById('arm-senha-erro').textContent='';
+  document.getElementById('arm-senha-input').value='';
+  armSenhaCallback=(senha)=>armExcluirBalanco(id,senha);
+  document.getElementById('arm-senha-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('arm-senha-input').focus(),50);
+}
+async function armExcluirBalanco(id,senha){
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'excluirBalanco',token:getToken(),id,senha_gerencial:senha})});
+    const d=await r.json();
+    if(d.error){ document.getElementById('arm-senha-erro').textContent=d.error; return; }
+    armBalancosCache=armBalancosCache.filter(b=>b.id!==id);
+    armFecharSenha();
+    armRenderHistorico();
+  }catch(e){ document.getElementById('arm-senha-erro').textContent='Erro de conexão.'; }
+}
+
 function iniciarEstoque(){
   renderListaEstoque();
 }
@@ -7503,6 +7876,137 @@ async function estEnviarEmail(reg){
 
 
 
+
+<!-- ESTOQUE: CADASTRO DE ARMAZÉNS -->
+<div id="page-arm-cadastro" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Cadastro de armazéns</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="arm-cadastro-sync"></div>
+    </div>
+    <button onclick="armToggleNovoCad()" id="arm-cad-novo-btn" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Novo armazém</button>
+  </div>
+  <div id="arm-cad-novo" style="display:none;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:1.2rem;">
+    <div style="display:flex;flex-direction:column;gap:4px;flex:2;min-width:200px;"><label style="font-size:11px;color:var(--text-muted)">Nome do armazém *</label><input id="arm-cad-nome" type="text" placeholder="Ex: Galpão Matriz - RJ" style="width:100%;height:32px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;"></div>
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;"><label style="font-size:11px;color:var(--text-muted)">Classificação *</label>
+      <select id="arm-cad-tipo" style="height:32px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;cursor:pointer;">
+        <option value="interno">Interno</option>
+        <option value="externo">Externo</option>
+      </select>
+    </div>
+    <button onclick="armCadastrarNovo()" style="height:32px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--black);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Salvar</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button id="arm-cad-f-todos" class="arm-cad-fbtn" onclick="armCadFiltro('')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--gold);background:rgba(245,184,0,.15);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Todos</button>
+    <button id="arm-cad-f-interno" class="arm-cad-fbtn" onclick="armCadFiltro('interno')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Internos</button>
+    <button id="arm-cad-f-externo" class="arm-cad-fbtn" onclick="armCadFiltro('externo')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Externos</button>
+  </div>
+  <div id="arm-cad-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
+</div>
+
+<!-- ESTOQUE: INTERNO -->
+<div id="page-arm-interno" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Estoque interno</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="arm-interno-sync"></div>
+    </div>
+    <button onclick="armBalancoSelecionados('interno')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Fazer balanço dos selecionados</button>
+  </div>
+  <div id="arm-interno-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+</div>
+
+<!-- ESTOQUE: EXTERNO -->
+<div id="page-arm-externo" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Estoque externo</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="arm-externo-sync"></div>
+    </div>
+    <button onclick="armBalancoSelecionados('externo')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Fazer balanço dos selecionados</button>
+  </div>
+  <div id="arm-externo-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+</div>
+
+<!-- MODAL BALANÇO POR EXCEL (Interno/Externo) -->
+<div class="modal-overlay" id="arm-balanco-modal" style="display:none" onclick="if(event.target===this)armFecharBalanco()">
+  <div class="modal" style="max-width:780px;width:95vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 id="arm-balanco-titulo" style="margin:0;">📋 Novo balanço</h3>
+      <button onclick="armFecharBalanco()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="arm-bal-armazem-info" style="padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;font-weight:600;"></div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Referência (ex: Maio/2026) *</label>
+      <input id="arm-bal-ref" type="text" placeholder="Ex: Maio/2026" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;background:var(--bg);color:var(--text);">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Observações</label>
+      <textarea id="arm-bal-obs" rows="2" placeholder="Observações sobre este balanço..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;box-sizing:border-box;background:var(--bg);color:var(--text);"></textarea>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">📎 Planilha Excel com os itens *</label>
+      <input type="file" id="arm-bal-arquivo" accept=".xlsx,.xls,.csv" onchange="armBalCarregarArquivo(this)" style="font-size:12px;font-family:'DM Sans',sans-serif;">
+      <div id="arm-bal-preview" style="margin-top:10px;"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">A planilha não é guardada — serve só para trazer os itens. Você lança a quantidade ao lado de cada um.</div>
+    </div>
+    <div id="arm-bal-itens-wrap" style="display:none;margin-bottom:18px;">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Itens (<span id="arm-bal-qtd">0</span>) — lance a quantidade</div>
+      <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--bg);position:sticky;top:0;">
+            <th style="padding:7px 10px;font-size:11px;text-align:left;">Código</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:left;">Descrição</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:center;width:90px;">Qtd</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:left;">Unid.</th>
+          </tr></thead>
+          <tbody id="arm-bal-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;background:var(--bg);">
+      <div style="font-size:12px;font-weight:700;margin-bottom:12px;">Responsável pelo balanço</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Nome completo *</label><input id="arm-bal-resp-nome" type="text" placeholder="Nome do responsável" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;background:var(--surface);color:var(--text);"></div>
+        <div><label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">Cargo *</label><input id="arm-bal-resp-cargo" type="text" placeholder="Ex: Almoxarife" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;background:var(--surface);color:var(--text);"></div>
+      </div>
+      <div><label style="font-size:11px;font-weight:600;display:block;margin-bottom:3px">CPF *</label><input id="arm-bal-resp-cpf" type="text" placeholder="000.000.000-00" maxlength="14" oninput="fmtCpfEstoque(this)" style="width:200px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="armFecharBalanco()" class="modal-btn secondary">Cancelar</button>
+      <button onclick="armEncerrarBalanco()" style="padding:8px 20px;background:#2e7d32;color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">🔒 Encerrar balanço</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HISTÓRICO DE BALANÇOS -->
+<div class="modal-overlay" id="arm-hist-modal" style="display:none" onclick="if(event.target===this)document.getElementById('arm-hist-modal').style.display='none'">
+  <div class="modal" style="max-width:720px;width:95vw;max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 id="arm-hist-titulo" style="margin:0;">Balanços encerrados</h3>
+      <button onclick="document.getElementById('arm-hist-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="arm-hist-conteudo"></div>
+  </div>
+</div>
+
+<!-- MODAL SENHA GERENCIAL -->
+<div class="modal-overlay" id="arm-senha-modal" style="display:none" onclick="if(event.target===this)armFecharSenha()">
+  <div class="modal" style="max-width:380px;width:92%;">
+    <h3 style="margin:0 0 6px;" id="arm-senha-titulo">Senha gerencial</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;" id="arm-senha-msg"></p>
+    <input id="arm-senha-input" type="password" placeholder="Digite a senha gerencial" onkeydown="if(event.key==='Enter')armConfirmarSenha()" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;margin-bottom:6px;">
+    <div id="arm-senha-erro" style="font-size:11px;color:#e00;min-height:14px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="armFecharSenha()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
+      <button onclick="armConfirmarSenha()" style="height:32px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--black);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ORDENS DE SERVICO -->
 <div id="page-os" class="main" style="display:none">
