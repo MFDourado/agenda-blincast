@@ -589,6 +589,7 @@ function renderProspects(){ render(); }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function prioLabel(p){return p==='urgente'?'Urgente':p==='media'?'Média':p==='baixa'?'Baixa':p||'';}
 function formatDateBR(ds){if(!ds)return'';const[y,m,d]=String(ds).slice(0,10).split('-');return d+'/'+m+'/'+y;}
+function extrairTelefone(o){if(!o)return'';if(o.telefone&&String(o.telefone).trim())return String(o.telefone).trim();const c=String(o.contato||'');const m=c.match(/\(?\d{2}\)?\s?\d{4,5}[-\s.]?\d{4}/);return m?m[0].trim():'';}
 
 function render(){
   const grid=document.getElementById('cards-grid');
@@ -609,7 +610,7 @@ function render(){
       <div class="card-body">
         ${p.cnpj?`<div class="card-row"><span class="card-lbl">CNPJ</span><span class="card-val">${p.cnpj}</span></div>`:''}
         <div class="card-row"><span class="card-lbl">Contato</span><span class="card-val">${p.contato||'—'}</span></div>
-        <div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${p.telefone||'—'}</span></div>
+        <div class="card-row"><span class="card-lbl">Telefone</span><span class="card-val">${extrairTelefone(p)||'—'}</span></div>
         <div class="card-row"><span class="card-lbl">Endereço</span><span class="card-val">${p.endereco||'—'}</span></div>
         <div class="card-row"><span class="card-lbl">Produto</span><span class="card-val">${p.produto||'-'}${p.canais?' ('+p.canais+' moduladores)':''}</span></div>
         <div class="card-row"><span class="card-lbl">UHs</span><span class="card-val">${p.uhs||'-'}</span></div>
@@ -981,7 +982,7 @@ function renderClientes(){
             <div class="step-number">Dados do cliente</div>
             <div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div>
             <div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div>
-            <div style="font-size:12px;margin-top:2px"><b>Telefone:</b> ${c.telefone||'—'}</div>
+            <div style="font-size:12px;margin-top:2px"><b>Telefone:</b> ${extrairTelefone(c)||'—'}</div>
             <div style="font-size:12px;margin-top:2px"><b>Endereço:</b> ${c.endereco||'—'}</div>
             <div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>
           </div>
