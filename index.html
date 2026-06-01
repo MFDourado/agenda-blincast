@@ -2627,7 +2627,75 @@ function getImplStatusColor(s){
   return m[s]||{c:'var(--text-muted)',bg:'var(--border)'};
 }
 
+// ===== Quadro manual "Em andamento agora" (Implantações) — local, sem backend =====
+const IMPL_BOARD_KEY='impl_board_andamento';
+let implBoard=[];
+function implBoardLoad(){
+  try{ implBoard=JSON.parse(localStorage.getItem(IMPL_BOARD_KEY)||'[]'); if(!Array.isArray(implBoard)) implBoard=[]; }
+  catch(e){ implBoard=[]; }
+}
+function implBoardPersist(){
+  try{ localStorage.setItem(IMPL_BOARD_KEY, JSON.stringify(implBoard)); }catch(e){}
+}
+function implBoardToggleForm(force){
+  const f=document.getElementById('impl-board-form');
+  if(!f) return;
+  const show = force!==undefined ? force : (f.style.display==='none' || !f.style.display);
+  f.style.display = show?'grid':'none';
+  if(show){ const c=document.getElementById('ib-cliente'); if(c) c.focus(); }
+}
+function implBoardAdd(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const cliente=g('ib-cliente');
+  if(!cliente){ alert('Informe ao menos o cliente.'); return; }
+  implBoard.unshift({
+    id:'ib'+Date.now()+Math.random().toString(36).slice(2,6),
+    cliente, tecnico:g('ib-tecnico'), localidade:g('ib-localidade'),
+    equipamento:g('ib-equipamento'), data:g('ib-data'),
+    status:g('ib-status')||'Em andamento'
+  });
+  implBoardPersist();
+  ['ib-cliente','ib-tecnico','ib-localidade','ib-equipamento','ib-data'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const st=document.getElementById('ib-status'); if(st) st.value='Em andamento';
+  implBoardToggleForm(false);
+  implBoardRender();
+}
+function implBoardDelete(id){
+  const item=implBoard.find(x=>x.id===id);
+  if(item && !confirm('Remover "'+(item.cliente||'este item')+'" do quadro?')) return;
+  implBoard=implBoard.filter(x=>x.id!==id);
+  implBoardPersist();
+  implBoardRender();
+}
+function implBoardRender(){
+  const wrap=document.getElementById('impl-board-cards');
+  if(!wrap) return;
+  const cnt=document.getElementById('impl-board-count');
+  if(!implBoard.length){
+    wrap.innerHTML='<div style="grid-column:1/-1;padding:1.2rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhuma instalação no quadro. Clique em "＋ Adicionar" para inserir.</div>';
+    if(cnt) cnt.textContent='';
+    return;
+  }
+  const cores={'Em andamento':'#F5B800','Aguardando':'#5B8FC9','Pausado':'#e67e22','Concluído':'#27ae60'};
+  const fmtData=d=>{ if(!d) return ''; const s=String(d).slice(0,10).split('-'); return s.length===3?s[2]+'/'+s[1]+'/'+s[0]:d; };
+  const linha=(lbl,val)=> val?`<div style="font-size:12px;margin-top:3px;color:var(--text)"><span style="color:var(--text-muted)">${lbl}:</span> ${val}</div>`:'';
+  wrap.innerHTML=implBoard.map(it=>{
+    const cor=cores[it.status]||'#888';
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:var(--radius-sm);padding:12px 14px;position:relative;">
+      <button onclick="implBoardDelete('${it.id}')" title="Remover" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border:1px solid var(--border);border-radius:5px;background:none;color:#e00;cursor:pointer;font-size:12px;line-height:1;">✕</button>
+      <div style="font-weight:700;font-size:14px;color:var(--text);padding-right:26px;">${it.cliente||'—'}</div>
+      ${linha('Técnico',it.tecnico)}
+      ${linha('Localidade',it.localidade)}
+      ${linha('Equipamento',it.equipamento)}
+      ${linha('Data',fmtData(it.data))}
+      <div style="margin-top:8px;"><span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${cor}22;color:${cor};border:1px solid ${cor}66;">${it.status||'—'}</span></div>
+    </div>`;
+  }).join('');
+  if(cnt) cnt.textContent=' ('+implBoard.length+')';
+}
+
 async function loadImplantacoes(){
+  implBoardLoad(); implBoardRender();
   const syncEl = document.getElementById('impl-sync');
   if(syncEl) syncEl.textContent = 'Carregando...';
   try{
@@ -6917,6 +6985,32 @@ async function estEnviarEmail(reg){
       <button onclick="exportarImplantacoesExcel()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Exportar Excel</button>
       <button onclick="exportarImplantacoesPDF()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Exportar PDF</button>
     </div>
+  </div>
+
+  <!-- QUADRO MANUAL: EM ANDAMENTO AGORA (local, sem backend) -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;">🔧 Em andamento agora<span id="impl-board-count" style="color:var(--gold)"></span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Quadro manual — você insere e remove à mão. Fica salvo só neste navegador.</div>
+      </div>
+      <button onclick="implBoardToggleForm()" style="height:32px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Adicionar</button>
+    </div>
+
+    <div id="impl-board-form" style="display:none;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin:12px 0 4px;">
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Cliente *</label><input id="ib-cliente" type="text" placeholder="Nome do cliente" style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Técnico</label><input id="ib-tecnico" type="text" placeholder="Técnico responsável" style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Localidade</label><input id="ib-localidade" type="text" placeholder="Cidade / UF" style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Equipamento</label><input id="ib-equipamento" type="text" placeholder="Ex: Rack HD, STB..." style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Data</label><input id="ib-data" type="date" style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="ib-status" style="width:100%;height:30px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;"><option value="Em andamento">Em andamento</option><option value="Aguardando">Aguardando</option><option value="Pausado">Pausado</option><option value="Concluído">Concluído</option></select></div>
+      <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;margin-top:2px;">
+        <button onclick="implBoardToggleForm(false)" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
+        <button onclick="implBoardAdd()" style="height:32px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--black);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Adicionar ao quadro</button>
+      </div>
+    </div>
+
+    <div id="impl-board-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px;"></div>
   </div>
 
   <!-- KPI CARDS -->
