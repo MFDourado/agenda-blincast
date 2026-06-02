@@ -832,7 +832,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <div class="modal-field"><label>Data de abertura *</label><input type="date" id="at-dt-abertura"></div>
       <div class="modal-field"><label>No OS / Código</label><input type="text" id="at-no" placeholder="Ex: 4521"></div>
       <input type="hidden" id="at-data">
-      <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" list="clientes-datalist" autocomplete="off" placeholder="Digite para buscar na base de clientes" oninput="onClienteInput('at')"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Cliente *</label><input type="text" id="at-cliente" list="clientes-datalist" placeholder="Digite para buscar na base de clientes" oninput="onClienteInput('at')"></div>
       <div class="modal-field" style="grid-column:span 2" id="at-vinculo-wrap"></div>
       <div class="modal-field"><label>Estado (UF)</label><input type="text" id="at-estado" placeholder="Ex: RJ" maxlength="2" style="text-transform:uppercase" oninput="filtrarTecnicosPorUF(this.value,'at-tecnico')"></div>
       <div class="modal-field"><label>Técnico</label>
@@ -9163,7 +9163,7 @@ async function estEnviarEmail(reg){
     <h3 id="consulta-titulo">Consultar por cliente</h3>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:14px 0;">
       <div style="flex:1;min-width:220px;"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Cliente *</label>
-        <input type="text" id="consulta-cliente" list="clientes-datalist" autocomplete="off" placeholder="Digite para buscar na base" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+        <input type="text" id="consulta-cliente" list="clientes-datalist" placeholder="Digite para buscar na base" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">De</label>
         <input type="date" id="consulta-de" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Até</label>
@@ -9200,7 +9200,7 @@ async function estEnviarEmail(reg){
 
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Cliente</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="os-cliente" list="clientes-datalist" autocomplete="off" placeholder="Digite para buscar na base de clientes" oninput="onClienteInput('os')"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="os-cliente" list="clientes-datalist" placeholder="Digite para buscar na base de clientes" oninput="onClienteInput('os')"></div>
       <div class="modal-field" style="grid-column:span 2" id="os-vinculo-wrap"></div>
       <div class="modal-field"><label>CNPJ</label><input type="text" id="os-cnpj" placeholder="00.000.000/0000-00"></div>
       <div class="modal-field"><label>Cidade / UF</label><input type="text" id="os-cidade" placeholder="Ex: São Paulo, SP" oninput="filtrarTecnicosPorUFdaOS(this.value)"></div>
