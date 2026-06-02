@@ -9456,10 +9456,35 @@ async function loadColaboradores(){
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getColaboradores');
     const d=await r.json();
     colabLista=Array.isArray(d.colaboradores)?d.colaboradores:[];
+    // Normaliza datas (o Sheets pode devolver número de série ou data por extenso)
+    colabLista.forEach(c=>{ c.nascimento=normalizarDataISO(c.nascimento); c.admissao=normalizarDataISO(c.admissao); });
     if(s) s.textContent=colabLista.length+' colaborador(es) cadastrado(s)';
   }catch(e){colabLista=[];if(s)s.textContent='Nenhum colaborador ainda';}
   renderColaboradores();
   popularSelectColaboradores();
+}
+
+// Converte qualquer formato de data vindo da planilha para AAAA-MM-DD (valor do input type=date)
+function normalizarDataISO(v){
+  if(!v) return '';
+  const s=String(v).trim();
+  if(!s) return '';
+  // Já está em AAAA-MM-DD
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[1]+'-'+m[2]+'-'+m[3];
+  // Formato BR DD/MM/AAAA
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return m[3]+'-'+m[2]+'-'+m[1];
+  // Número de série do Sheets (ex: 46157) — base 1899-12-30
+  if(/^\d+(\.\d+)?$/.test(s)){
+    const base=new Date(Date.UTC(1899,11,30));
+    base.setUTCDate(base.getUTCDate()+Math.floor(parseFloat(s)));
+    return base.toISOString().slice(0,10);
+  }
+  // Data por extenso / ISO completo (ex: "Thu May 15 2026..." ou "2026-05-15T03:00:00.000Z")
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime())) return dt.toISOString().slice(0,10);
+  return '';
 }
 
 function popularSelectColaboradores(){
