@@ -1222,13 +1222,48 @@ const RT_SIT_COR = {
   'Sem informações':{bg:'var(--border)',c:'var(--text-muted)'}
 };
 
+let rastreioBoxFiltro = { correios:'', jamef:'' };  // '' | 'pendentes' | 'concluidos'
+
+// Classifica um envio: pendente (Não enviado/Em andamento) ou concluído (Entregue)
+function _rtGrupo(r){
+  const s=String(r.situacao||'').trim();
+  if(s==='Entregue') return 'concluidos';
+  if(s==='Não enviado' || s==='Em andamento') return 'pendentes';
+  return 'outros';  // Retorno do item, Sem informações
+}
+
+function renderRastreioBoxes(tipo){
+  const wrap=document.getElementById('rastreio-'+tipo+'-boxes');
+  if(!wrap) return;
+  const lista=rastreioCache[tipo];
+  const nPend=lista.filter(r=>_rtGrupo(r)==='pendentes').length;
+  const nConc=lista.filter(r=>_rtGrupo(r)==='concluidos').length;
+  const ativo=rastreioBoxFiltro[tipo];
+  const box=(id,num,titulo,cor,bg)=>`<div onclick="toggleRastreioBox('${tipo}','${id}')" style="cursor:pointer;background:${ativo===id?bg:'var(--surface)'};border:2px solid ${ativo===id?cor:'var(--border)'};border-radius:var(--radius);padding:16px;text-align:center;transition:.12s;">
+    <div style="font-size:30px;font-weight:800;color:${cor};line-height:1;">${num}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;">${titulo}</div>
+  </div>`;
+  wrap.innerHTML =
+    box('', lista.length, 'Todos', 'var(--text)', 'var(--border)')
+    + box('pendentes', nPend, 'Pendentes de envio', '#b8860b', 'rgba(245,184,0,.12)')
+    + box('concluidos', nConc, 'Concluídos', '#2e7d32', '#e8f5e9');
+}
+
+function toggleRastreioBox(tipo,id){
+  rastreioBoxFiltro[tipo] = (rastreioBoxFiltro[tipo]===id) ? '' : id;
+  renderRastreio(tipo);
+}
+
 function renderRastreio(tipo){
   const wrap=document.getElementById('rastreio-'+tipo+'-lista');
   if(!wrap) return;
+  renderRastreioBoxes(tipo);
   const busca=(document.getElementById('rastreio-'+tipo+'-busca')?.value||'').trim().toLowerCase();
   const sit=document.getElementById('rastreio-'+tipo+'-situacao')?.value||'';
   const data=document.getElementById('rastreio-'+tipo+'-data')?.value||'';
   let lista=rastreioCache[tipo].slice();
+  const boxF=rastreioBoxFiltro[tipo];
+  if(boxF) lista=lista.filter(r=>_rtGrupo(r)===boxF);
   if(busca) lista=lista.filter(r=>[r.cliente,r.requisicao,r.codigo,r.nf,r.cte,r.objeto].some(v=>String(v||'').toLowerCase().includes(busca)));
   if(sit) lista=lista.filter(r=>String(r.situacao||'')===sit);
   if(data) lista=lista.filter(r=>_rtNormData(r.data_pedido)===data || _rtNormData(r.previsao)===data || _rtNormData(r.data_entrega)===data);
@@ -1263,6 +1298,7 @@ function renderRastreio(tipo){
 
 function limparFiltrosRastreio(tipo){
   ['busca','situacao','data'].forEach(f=>{const el=document.getElementById('rastreio-'+tipo+'-'+f);if(el)el.value='';});
+  rastreioBoxFiltro[tipo]='';
   renderRastreio(tipo);
 }
 
@@ -8673,6 +8709,7 @@ async function estEnviarEmail(reg){
       <button onclick="novoRastreio('correios')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Novo envio</button>
     </div>
   </div>
+  <div id="rastreio-correios-boxes" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1rem;"></div>
   <div class="rastreio-filtros" data-tipo="correios" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
     <input type="text" id="rastreio-correios-busca" oninput="renderRastreio('correios')" placeholder="🔍 Buscar cliente / OS / código..." style="flex:1;min-width:200px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
     <select id="rastreio-correios-situacao" onchange="renderRastreio('correios')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
@@ -8701,6 +8738,7 @@ async function estEnviarEmail(reg){
       <button onclick="novoRastreio('jamef')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Novo envio</button>
     </div>
   </div>
+  <div id="rastreio-jamef-boxes" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1rem;"></div>
   <div class="rastreio-filtros" data-tipo="jamef" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
     <input type="text" id="rastreio-jamef-busca" oninput="renderRastreio('jamef')" placeholder="🔍 Buscar cliente / OS / NF / CTe..." style="flex:1;min-width:200px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
     <select id="rastreio-jamef-situacao" onchange="renderRastreio('jamef')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
