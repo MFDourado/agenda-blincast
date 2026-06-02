@@ -750,6 +750,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <button onclick="exportarAtaCSV()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Exportar Excel</button>
       <button id="btn-importar-datas-ata" onclick="importarDatasAta()" style="height:36px;padding:0 16px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--gold)">📅 Importar datas</button>
       <button id="btn-corrigir-datas-ata" onclick="corrigirDatasAtaFront()" style="height:36px;padding:0 16px;border:1px solid #e74c3c;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#e74c3c">🔧 Corrigir datas</button>
+      <button onclick="abrirConsultaCliente('ata')" style="height:36px;padding:0 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto)">🔎 Consultar por cliente</button>
       <button class="btn-new-project" onclick="openAtaModal()">+ Novo registro</button>
     </div>
   </div>
@@ -9132,7 +9133,7 @@ async function estEnviarEmail(reg){
 <div id="page-os" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
-    <button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
+    <button onclick="abrirConsultaCliente('os')" style="height:36px;padding:0 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);margin-right:8px;">🔎 Consultar por cliente</button><button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
   </div>
   <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
     <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
@@ -9145,6 +9146,28 @@ async function estEnviarEmail(reg){
     </select>
   </div>
   <div id="os-lista" style="padding:16px 20px;"></div>
+</div>
+
+<!-- MODAL CONSULTA POR CLIENTE (OS / Painel) -->
+<div class="modal-overlay" id="consulta-modal" style="display:none" onclick="if(event.target===this)fecharConsulta()">
+  <div class="modal" style="max-width:760px;max-height:90vh;overflow-y:auto;">
+    <h3 id="consulta-titulo">Consultar por cliente</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:14px 0;">
+      <div style="flex:1;min-width:220px;"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Cliente *</label>
+        <input type="text" id="consulta-cliente" list="clientes-datalist" autocomplete="off" placeholder="Digite para buscar na base" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">De</label>
+        <input type="date" id="consulta-de" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Até</label>
+        <input type="date" id="consulta-ate" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <button class="btn-new-project" onclick="rodarConsulta()" style="height:36px;">🔎 Consultar</button>
+    </div>
+    <div id="consulta-resultado"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <button onclick="exportarConsultaPDF()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📄 PDF</button>
+      <button onclick="exportarConsultaExcel()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Excel</button>
+      <button class="modal-btn" onclick="fecharConsulta()">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL OS COMPLETO -->
@@ -9911,6 +9934,132 @@ function normalizarNomeTecnico(t){
   return TECNICOS_NOMES[key] || TECNICOS_NOMES[t.trim().toLowerCase()] || t.trim();
 }
 function fecharModalOS(){document.getElementById('os-modal').style.display='none';}
+
+// ===================== CONSULTA POR CLIENTE + PERÍODO (OS / Painel) =====================
+let _consultaTipo='os';
+function _consNormDate(d){
+  if(!d) return '';
+  const s=String(d).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  if(s.includes('/')){const p=s.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
+  const dt=new Date(s); return isNaN(dt.getTime())?'':dt.toISOString().slice(0,10);
+}
+function _consFmtData(d){const n=_consNormDate(d);if(!n)return '—';const p=n.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+
+function abrirConsultaCliente(tipo){
+  _consultaTipo=tipo;
+  popularDatalistClientes();
+  document.getElementById('consulta-titulo').textContent = tipo==='os' ? 'Consultar Ordens de Serviço por cliente' : 'Consultar Atendimentos por cliente';
+  document.getElementById('consulta-cliente').value='';
+  document.getElementById('consulta-de').value='';
+  document.getElementById('consulta-ate').value='';
+  document.getElementById('consulta-resultado').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px">Escolha o cliente e o período e clique em Consultar.</div>';
+  document.getElementById('consulta-modal').style.display='flex';
+}
+function fecharConsulta(){document.getElementById('consulta-modal').style.display='none';}
+
+function _consultaDados(){
+  const cli=document.getElementById('consulta-cliente').value.trim().toLowerCase();
+  const de=document.getElementById('consulta-de').value;
+  const ate=document.getElementById('consulta-ate').value;
+  const base = _consultaTipo==='os' ? (osLista||[]) : (ataRegistros||[]);
+  return base.filter(r=>{
+    const nome=(r.cliente||'').toLowerCase();
+    if(cli && !nome.includes(cli)) return false;
+    // período: qualquer data do registro dentro do intervalo
+    const datas = _consultaTipo==='os'
+      ? [r.data, r.data_prevista, r.data_conclusao]
+      : [r.dt_abertura, r.data, r.dt_prevista, r.dt_conclusao];
+    const norm = datas.map(_consNormDate).filter(Boolean);
+    if(de){ if(!norm.some(d=>d>=de)) return false; }
+    if(ate){ if(!norm.some(d=>d<=ate)) return false; }
+    return true;
+  });
+}
+
+function rodarConsulta(){
+  const cli=document.getElementById('consulta-cliente').value.trim();
+  if(!cli){ alert('Informe o cliente para consultar.'); return; }
+  const lista=_consultaDados();
+  const wrap=document.getElementById('consulta-resultado');
+  if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px">Nenhum registro encontrado para esse cliente no período.</div>'; return; }
+  let linhas;
+  if(_consultaTipo==='os'){
+    linhas=lista.map(o=>`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:7px 10px;font-size:12px;font-weight:500">${o.numero||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${o.descricao||o.tipo||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${o.tecnico||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${o.status||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data)}</td>
+      <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data_conclusao)}</td>
+    </tr>`).join('');
+    wrap.innerHTML=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">${lista.length} ordem(ns) de serviço encontrada(s)</div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg)"><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">OS</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Descrição</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Técnico</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Status</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Data</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Conclusão</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`;
+  } else {
+    linhas=lista.map(r=>`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:7px 10px;font-size:12px;font-weight:500">${r.no||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${r.problema||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${r.tecnico||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(r.dt_abertura||r.data)}</td>
+      <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(r.dt_conclusao)}</td>
+    </tr>`).join('');
+    wrap.innerHTML=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">${lista.length} atendimento(s) encontrado(s)</div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg)"><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Nº/OS</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Problema</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Técnico</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Status</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Abertura</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Conclusão</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`;
+  }
+}
+
+function _consultaPeriodoLabel(){
+  const de=document.getElementById('consulta-de').value, ate=document.getElementById('consulta-ate').value;
+  if(de&&ate) return _consFmtData(de)+' a '+_consFmtData(ate);
+  if(de) return 'a partir de '+_consFmtData(de);
+  if(ate) return 'até '+_consFmtData(ate);
+  return 'todos os períodos';
+}
+
+function exportarConsultaExcel(){
+  const lista=_consultaDados();
+  if(!lista.length){ alert('Nada para exportar.'); return; }
+  const cli=document.getElementById('consulta-cliente').value.trim();
+  let headers, rows;
+  if(_consultaTipo==='os'){
+    headers=['OS','Cliente','Tipo','Descrição','Técnico','Status','Data','Prevista','Conclusão','Materiais'];
+    rows=lista.map(o=>[o.numero||'',o.cliente||'',o.tipo||'',o.descricao||'',o.tecnico||'',o.status||'',_consFmtData(o.data),_consFmtData(o.data_prevista),_consFmtData(o.data_conclusao),o.materiais||'']);
+  } else {
+    headers=['Nº/OS','Cliente','UF','Problema','Técnico','Status','Abertura','Prevista','Conclusão','Observações'];
+    rows=lista.map(r=>[r.no||'',r.cliente||'',r.estado||'',r.problema||'',r.tecnico||'',(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||'',_consFmtData(r.dt_abertura||r.data),_consFmtData(r.dt_prevista),_consFmtData(r.dt_conclusao),r.obs||'']);
+  }
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=headers.map((h,i)=>({wch: i===3||i===9?40:16}));
+  XLSX.utils.book_append_sheet(wb,ws,_consultaTipo==='os'?'OS':'Atendimentos');
+  const nome=(_consultaTipo==='os'?'OS_':'Atendimentos_')+cli.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'.xlsx';
+  XLSX.writeFile(wb,nome);
+}
+
+function exportarConsultaPDF(){
+  const lista=_consultaDados();
+  if(!lista.length){ alert('Nada para exportar.'); return; }
+  const cli=document.getElementById('consulta-cliente').value.trim();
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const titulo=_consultaTipo==='os'?'Ordens de Serviço':'Atendimentos';
+  let cols, linhasHtml;
+  if(_consultaTipo==='os'){
+    cols='<th>OS</th><th>Descrição</th><th>Técnico</th><th>Status</th><th>Data</th><th>Conclusão</th>';
+    linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${o.numero||''}</td><td>${o.descricao||o.tipo||''}</td><td>${o.tecnico||''}</td><td>${o.status||''}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
+  } else {
+    cols='<th>Nº/OS</th><th>Problema</th><th>Técnico</th><th>Status</th><th>Abertura</th><th>Conclusão</th>';
+    linhasHtml=lista.map((r,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${r.no||''}</td><td>${r.problema||''}</td><td>${r.tecnico||''}</td><td>${(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||''}</td><td>${_consFmtData(r.dt_abertura||r.data)}</td><td>${_consFmtData(r.dt_conclusao)}</td></tr>`).join('');
+  }
+  const w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titulo+' — '+cli+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:28px}.logo{font-size:20px;font-weight:900}.logo span{color:#F5B800}h1{font-size:16px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:7px;margin:14px 0 6px}.meta{font-size:10px;color:#888;margin-bottom:14px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#111;color:#F5B800;padding:6px 8px;font-size:9px;text-align:left;text-transform:uppercase}td{padding:5px 8px;font-size:10px;border-bottom:1px solid #eee}.footer{margin-top:18px;font-size:9px;color:#aaa;text-align:right}@media print{body{padding:0}}</style></head><body><div class="logo">Blin<span>Track</span></div><div style="font-size:9px;color:#888">Blincast Media S/A — Documento Interno</div><h1>'+titulo+' — '+cli+'</h1><div class="meta">Período: '+_consultaPeriodoLabel()+' · '+lista.length+' registro(s) · Gerado em '+hoje+'</div><table><thead><tr>'+cols+'</tr></thead><tbody>'+linhasHtml+'</tbody></table><div class="footer">BlinTrack — Blincast Media S/A</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>');
+  w.document.close();
+}
+
 
 async function salvarOS(){
   const _btn = document.querySelector('#os-modal .modal-btn.primary');
