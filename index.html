@@ -426,6 +426,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <button class="snav-btn" id="mt-escala-n2" onclick="switchMainTab('escala-n2');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">N2</button>
     </div>
     <button class="snav-btn" id="mt-colaboradores" onclick="switchMainTab('colaboradores');closeSidebar()">Colaboradores</button>
+    <button class="snav-btn" id="mt-consulta-cnpj" onclick="switchMainTab('consulta-cnpj');closeSidebar()">Consultar CNPJ</button>
   </div>
 </nav>
 
@@ -699,7 +700,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="modal-field" style="grid-column:span 2"><label>Nome do cliente *</label><input type="text" id="cm-nome" placeholder="Ex: Hotel Beira Mar"></div>
       <div class="modal-field"><label>Cidade *</label><input type="text" id="cm-cidade" placeholder="Ex: Recife"></div>
-      <div class="modal-field"><label>CNPJ</label><input type="text" id="cm-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field"><label>CNPJ</label><div style="display:flex;gap:6px;"><input type="text" id="cm-cnpj" placeholder="00.000.000/0000-00" style="flex:1;"><button type="button" id="cm-cnpj-btn" onclick="buscarCNPJ('cm')" style="white-space:nowrap;padding:0 12px;height:36px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;color:var(--c-previsto);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">🔍 Buscar</button></div><div id="cm-cnpj-info" style="display:none;font-size:11px;color:var(--text-muted);margin-top:4px;"></div></div>
       <div class="modal-field" style="grid-column:span 2"><label>Contato (nome e telefone) *</label><input type="text" id="cm-contato" placeholder="Ex: João Silva - (81) 99999-9999"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço completo *</label><input type="text" id="cm-endereco" placeholder="Rua, número, bairro, cidade, UF"></div>
       <div class="modal-field"><label>Produto *</label>
@@ -1120,7 +1121,8 @@ const TAB_LABELS = {
   'arm-externo':'Estoque · Externo', os:'Ordens de Serviço', 'checklist-impl':'Checklist Implantação',
   'rastreio-correios':'Rastreio · Correios', 'rastreio-jamef':'Rastreio · Jamef',
   'os-relatorio':'Relatório OS', colaboradores:'Colaboradores',
-  'escala-sac':'Escala · SAC', 'escala-tecnico':'Escala · Técnico campo', 'escala-n2':'Escala · N2'
+  'escala-sac':'Escala · SAC', 'escala-tecnico':'Escala · Técnico campo', 'escala-n2':'Escala · N2',
+  'consulta-cnpj':'Consultar CNPJ'
 };
 let abasAbertas = [];     // ordem das abas (ids)
 let abaAtiva = null;
@@ -1176,7 +1178,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.2';
+const BLINTRACK_VERSAO = 'V1.4';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1206,7 +1208,91 @@ function mostrarRelogio(mostrar){
 let rastreioCache = { correios:[], jamef:[] };
 let rtEventos = [];   // eventos do envio sendo editado
 
-// ===================== ESCALA DE ATENDIMENTO =====================
+// ===================== CONSULTA DE CNPJ (BrasilAPI via AppScript) =====================
+// Mapa de campos por contexto: quais IDs preencher com os dados retornados
+const CNPJ_CAMPO_MAP = {
+  ec: { razao_social:'ec-razao', nome_fantasia:'ec-nome', endereco:'ec-endereco', cidade:'ec-cidade', uf:'ec-uf', telefone:'ec-telefone', email:'ec-email', segmento:null },
+  cm: { nome_fantasia:'cm-nome', endereco:'cm-endereco', cidade:'cm-cidade' }
+};
+
+// ===================== CONSULTA DE CNPJ (BrasilAPI via AppScript) =====================
+async function consultarCnpjAvulso(){
+  const cnpjEl=document.getElementById('cc-cnpj');
+  const cnpj=String(cnpjEl.value||'').replace(/\D/g,'');
+  const out=document.getElementById('cc-resultado');
+  if(cnpj.length!==14){ alert('Digite um CNPJ válido (14 dígitos).'); return; }
+  const btn=document.getElementById('cc-btn');
+  btn.textContent='Consultando...'; btn.disabled=true;
+  out.innerHTML='';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=consultarCNPJ&cnpj='+encodeURIComponent(cnpj));
+    const res=await r.json();
+    if(!res.ok){ out.innerHTML='<div style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);color:#c0392b;font-size:13px;">'+_esc(res.error||'CNPJ não encontrado.')+'</div>'; return; }
+    const d=res.dados;
+    const linha=(label,val)=> val?('<tr><td style="padding:7px 10px;color:var(--text-muted);font-size:12px;white-space:nowrap;vertical-align:top;">'+label+'</td><td style="padding:7px 10px;font-size:13px;">'+_esc(val)+'</td></tr>'):'';
+    out.innerHTML='<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface);">'
+      +'<div style="background:var(--bg);padding:12px 14px;border-bottom:1px solid var(--border);"><b style="font-size:14px;">'+_esc(d.razao_social||d.nome_fantasia||'—')+'</b>'+(d.situacao?(' <span class="badge '+(d.situacao.toUpperCase()==='ATIVA'?'concluido':'atrasado')+'" style="margin-left:6px;">'+_esc(d.situacao)+'</span>'):'')+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;">'
+      +linha('CNPJ', d.cnpj)
+      +linha('Nome fantasia', d.nome_fantasia)
+      +linha('Endereço', d.endereco)
+      +linha('Cidade/UF', (d.cidade||'')+(d.uf?(' / '+d.uf):''))
+      +linha('CEP', d.cep)
+      +linha('Telefone', d.telefone)
+      +linha('E-mail', d.email)
+      +linha('CNAE', d.cnae)
+      +'</table></div>';
+  }catch(e){ out.innerHTML='<div style="padding:16px;color:#c0392b;font-size:13px;">Erro ao consultar.</div>'; }
+  finally{ btn.textContent='🔍 Consultar'; btn.disabled=false; }
+}
+
+async function buscarCNPJ(pref){
+  const cnpjEl = document.getElementById(pref+'-cnpj');
+  if(!cnpjEl){ return; }
+  const cnpj = String(cnpjEl.value||'').replace(/\D/g,'');
+  if(cnpj.length!==14){ alert('Digite um CNPJ válido (14 dígitos) antes de buscar.'); return; }
+  const btn = document.getElementById(pref+'-cnpj-btn');
+  const oldTxt = btn?btn.textContent:'';
+  if(btn){ btn.textContent='Buscando...'; btn.disabled=true; }
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=consultarCNPJ&cnpj='+encodeURIComponent(cnpj));
+    const res = await r.json();
+    if(!res.ok){ alert(res.error||'Não foi possível consultar o CNPJ.'); return; }
+    _cnpjPreencher(pref, res.dados);
+  }catch(e){ alert('Erro ao consultar o CNPJ.'); }
+  finally{ if(btn){ btn.textContent=oldTxt||'🔍 Buscar'; btn.disabled=false; } }
+}
+
+// preenche apenas campos vazios
+function _cnpjPreencher(pref, d){
+  const setSeVazio = (id, val) => {
+    if(!id || !val) return;
+    const el = document.getElementById(id);
+    if(el && !String(el.value||'').trim()){ el.value = val; }
+  };
+  if(pref==='ec'){
+    setSeVazio('ec-razao', d.razao_social);
+    setSeVazio('ec-nome', d.nome_fantasia || d.razao_social);
+    setSeVazio('ec-endereco', d.endereco);
+    setSeVazio('ec-cidade', d.cidade);
+    setSeVazio('ec-uf', d.uf);
+    setSeVazio('ec-telefone', d.telefone);
+    setSeVazio('ec-email', d.email);
+  } else if(pref==='cm'){
+    setSeVazio('cm-nome', d.nome_fantasia || d.razao_social);
+    setSeVazio('cm-endereco', d.endereco + (d.cidade?(', '+d.cidade+(d.uf?'/'+d.uf:'')):''));
+    setSeVazio('cm-cidade', d.cidade + (d.uf?(', '+d.uf):''));
+    if(!String((document.getElementById('cm-cnpj')||{}).value||'').trim() && d.cnpj) document.getElementById('cm-cnpj').value=d.cnpj;
+  }
+  // feedback visual de situação cadastral
+  const info = document.getElementById(pref+'-cnpj-info');
+  if(info){
+    info.textContent = (d.situacao?('Situação: '+d.situacao):'') + (d.cnae?('  ·  CNAE: '+d.cnae):'');
+    info.style.display = (d.situacao||d.cnae)?'block':'none';
+  }
+}
+
+
 let escalaCache = {};        // setor -> array de escalas
 let escalaSetorAtual = 'SAC';
 let escalaImportada = null;  // dados lidos do Excel aguardando salvar
@@ -1250,7 +1336,7 @@ function renderEscala(setor){
     h += '<div style="background:var(--c-pendente-bg,#FFF7E6);border:1px solid var(--gold);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
       +'<div><b style="font-size:14px;">⏳ Aguardando aprovação — '+(e.mes_ano||'')+'</b>'
-      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviado por '+(e.enviado_por||'—')+' em '+(e.enviado_em||'—')+'</div></div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviado por '+(e.enviado_por||'—')+' em '+_escFmtDataHora(e.enviado_em)+'</div></div>'
       +'<div style="display:flex;gap:8px;">'
       + (escalaEhGestor()
           ? '<button onclick="escalaAprovar(\''+e.id+'\',\''+setor.replace(/'/g,"\\'")+'\')" style="padding:6px 14px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:none;color:var(--c-concluido);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;font-weight:600;">✓ Aprovar escala</button>'
@@ -1265,7 +1351,7 @@ function renderEscala(setor){
   if(vigente){
     h += '<div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--c-concluido);">✓ Escala vigente — '+(vigente.mes_ano||'')+'</div>';
     h += _escalaTabelaHTML(vigente.dados);
-    h += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Aprovada por '+(vigente.aprovado_por||'—')+' em '+(vigente.aprovado_em||'—')+'</div>';
+    h += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Aprovada por '+(vigente.aprovado_por||'—')+' em '+_escFmtDataHora(vigente.aprovado_em)+'</div>';
   } else if(!pendentes.length){
     h += '<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma escala ainda. Importe um Excel para começar.</div>';
   }
@@ -1282,16 +1368,55 @@ function renderEscala(setor){
   cont.innerHTML = h;
 }
 
+function _escHorasDia(d){
+  if(!d || d.tipo!=='Trabalha' || !d.ini || !d.fim) return 0;
+  const pa=String(d.ini).match(/(\d{1,2}):(\d{2})/), pb=String(d.fim).match(/(\d{1,2}):(\d{2})/);
+  if(!pa||!pb) return 0;
+  let min=(parseInt(pb[1])*60+parseInt(pb[2]))-(parseInt(pa[1])*60+parseInt(pa[2]));
+  if(min<0) min+=24*60;  // virada de meia-noite
+  return min/60;
+}
+function _escFmtH(h){
+  if(!h) return '0h';
+  const horas=Math.floor(h), min=Math.round((h-horas)*60);
+  return min? (horas+'h'+String(min).padStart(2,'0')) : (horas+'h');
+}
+function _escSemanaDoDia(dia){
+  const n=parseInt(dia,10); if(!n) return 0;
+  return Math.floor((n-1)/7)+1;  // 1-7 => sem 1, 8-14 => sem 2 ...
+}
+
 function _escalaTabelaHTML(dados){
   if(!dados||!dados.colaboradores||!dados.colaboradores.length) return '<div style="font-size:12px;color:var(--text-muted);">Sem dados.</div>';
-  const cols = dados.colaboradores;       // [{nome, dias:[{dia,diasem,ini,fim,tipo}]}]
+  const cols = dados.colaboradores;
   const maxDias = Math.max(...cols.map(c=>c.dias.length));
   const cor = t => t==='Trabalha'?'c-green':t==='Feriado'?'c-amber':(t==='Férias'||t==='Ferias')?'c-blue':'c-gray';
+
+  // calcula horas por colaborador: total mês + por semana
+  const totMes = cols.map(c=> c.dias.reduce((s,d)=>s+_escHorasDia(d),0));
+  const semanas = {};  // semana -> [horas por colaborador]
+  cols.forEach((c,ci)=>{
+    c.dias.forEach(d=>{
+      const sem=_escSemanaDoDia(d.dia);
+      if(!sem) return;
+      if(!semanas[sem]) semanas[sem]=cols.map(()=>0);
+      semanas[sem][ci]+=_escHorasDia(d);
+    });
+  });
+
   let ths = '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#888;text-transform:uppercase;border-bottom:1px solid var(--border);">Dia</th>';
   cols.forEach(c=>{ ths += '<th style="padding:7px 8px;text-align:left;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);">'+_esc(c.nome)+'</th>'; });
+
   let linhas='';
+  let semanaAtual=null;
   for(let i=0;i<maxDias;i++){
     const ref = cols[0].dias[i] || {};
+    const sem=_escSemanaDoDia(ref.dia);
+    // ao trocar de semana, insere linha de subtotal da semana anterior
+    if(semanaAtual!==null && sem!==semanaAtual && semanas[semanaAtual]){
+      linhas += _escLinhaSubtotal('Semana '+semanaAtual, semanas[semanaAtual], cols.length);
+    }
+    semanaAtual=sem;
     linhas += '<tr><td style="padding:5px 8px;border-bottom:0.5px solid var(--border);white-space:nowrap;font-size:12px;"><b>'+(ref.dia||(i+1))+'</b> <span style="color:var(--text-muted);font-size:11px;">'+(ref.diasem||'')+'</span></td>';
     cols.forEach(c=>{
       const d=c.dias[i]||{};
@@ -1301,7 +1426,22 @@ function _escalaTabelaHTML(dados){
     });
     linhas += '</tr>';
   }
+  // subtotal da última semana
+  if(semanaAtual!==null && semanas[semanaAtual]){
+    linhas += _escLinhaSubtotal('Semana '+semanaAtual, semanas[semanaAtual], cols.length);
+  }
+  // total do mês
+  linhas += _escLinhaSubtotal('Total do mês', totMes, cols.length, true);
+
   return '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--bg);">'+ths+'</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+}
+
+function _escLinhaSubtotal(rotulo, horasArr, n, destaque){
+  const bg = destaque ? 'background:var(--gold);color:#000;' : 'background:var(--bg);';
+  const fw = destaque ? '700' : '600';
+  let tds='';
+  horasArr.forEach(h=>{ tds += '<td style="padding:5px 8px;font-size:11px;font-weight:'+fw+';border-bottom:0.5px solid var(--border);">'+_escFmtH(h)+'</td>'; });
+  return '<tr style="'+bg+'"><td style="padding:5px 8px;font-size:11px;font-weight:'+fw+';border-bottom:0.5px solid var(--border);white-space:nowrap;">'+rotulo+'</td>'+tds+'</tr>';
 }
 function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -1389,13 +1529,38 @@ function _escalaHora(v){
   return s;
 }
 function _escalaMesAno(rows, dados){
-  // tenta achar texto tipo "JUNHO 2026" no topo
-  for(let i=0;i<Math.min(rows.length,4);i++){
+  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  // 1) tenta achar texto tipo "JUNHO 2026" no topo
+  for(let i=0;i<Math.min(rows.length,6);i++){
     const txt=(rows[i]||[]).map(x=>String(x||'')).join(' ').trim();
     const m=txt.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\s\/]*(\d{4})/i);
-    if(m) return (m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase())+'/'+m[2];
+    if(m){ let nome=m[1].toLowerCase().replace('marco','março'); return (nome.charAt(0).toUpperCase()+nome.slice(1))+'/'+m[2]; }
+  }
+  // 2) deriva da primeira data válida encontrada nas linhas (coluna Data dos blocos)
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i]||[];
+    for(let c=0;c<row.length;c++){
+      const s=String(row[c]||'').trim();
+      let mm=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(mm){ return MESES[parseInt(mm[2],10)-1]+'/'+mm[1]; }
+      mm=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if(mm){ return MESES[parseInt(mm[2],10)-1]+'/'+mm[3]; }
+    }
   }
   return 'Escala importada';
+}
+
+// formata data/hora vinda do Sheets (ISO, timestamp) para dd/mm/aaaa hh:mm
+function _escFmtDataHora(v){
+  if(!v) return '—';
+  const s=String(v).trim();
+  if(!s) return '—';
+  // já está em dd/mm/aaaa
+  if(/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s.slice(0,16);
+  const d=new Date(s);
+  if(isNaN(d.getTime())) return s;
+  const p=n=>String(n).padStart(2,'0');
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
 }
 
 async function escalaSalvar(setor, mesAno, dados){
@@ -1699,7 +1864,7 @@ function switchImplSub(tipo){
 }
 
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -7984,7 +8149,7 @@ async function estEnviarEmail(reg){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="modal-field" style="grid-column:span 2"><label>Nome *</label><input type="text" id="ec-nome" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Cidade</label><input type="text" id="ec-cidade" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
-      <div class="modal-field"><label>CNPJ</label><input type="text" id="ec-cnpj" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>CNPJ</label><div style="display:flex;gap:6px;"><input type="text" id="ec-cnpj" style="flex:1;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><button type="button" id="ec-cnpj-btn" onclick="buscarCNPJ('ec')" style="white-space:nowrap;padding:0 12px;height:36px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;color:var(--c-previsto);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">🔍 Buscar</button></div><div id="ec-cnpj-info" style="display:none;font-size:11px;color:var(--text-muted);margin-top:4px;"></div></div>
       <div class="modal-field"><label>Contato (nome) *</label><input type="text" id="ec-contato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>Telefone *</label><input type="text" id="ec-telefone" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço</label><input type="text" id="ec-endereco" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
@@ -10517,6 +10682,17 @@ async function excluirOS(id){
 <div id="page-escala-tecnico" class="main" style="display:none"><div class="escala-container" data-setor="Técnico campo"></div></div>
 <div id="page-escala-n2" class="main" style="display:none"><div class="escala-container" data-setor="N2"></div></div>
 <input type="file" id="escala-file-input" accept=".xlsx,.xls" style="display:none">
+<div id="page-consulta-cnpj" class="main" style="display:none">
+  <div style="max-width:640px;">
+    <h2 style="font-size:18px;font-weight:600;margin-bottom:4px;">Consultar CNPJ</h2>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px;">Dados oficiais via Receita Federal (BrasilAPI). Digite o CNPJ e busque.</div>
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+      <input type="text" id="cc-cnpj" placeholder="00.000.000/0000-00" style="flex:1;height:40px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <button id="cc-btn" onclick="consultarCnpjAvulso()" class="btn-new-project" style="height:40px;">🔍 Consultar</button>
+    </div>
+    <div id="cc-resultado"></div>
+  </div>
+</div>
 <div id="page-colaboradores" class="main" style="display:none">
   <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
