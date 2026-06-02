@@ -1205,8 +1205,23 @@ async function loadRastreio(tipo){
 function _rtNormData(d){
   if(!d) return '';
   let s=String(d).trim();
-  if(s.includes('/')) s=s.split('/').reverse().join('-');
-  return s.slice(0,10);
+  if(!s) return '';
+  // AAAA-MM-DD (ou ISO completo)
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[1]+'-'+m[2]+'-'+m[3];
+  // DD/MM/AAAA
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return m[3]+'-'+m[2]+'-'+m[1];
+  // Número de série do Sheets
+  if(/^\d+(\.\d+)?$/.test(s)){
+    const base=new Date(Date.UTC(1899,11,30));
+    base.setUTCDate(base.getUTCDate()+Math.floor(parseFloat(s)));
+    return base.toISOString().slice(0,10);
+  }
+  // Data por extenso em inglês (ex: "Wed May 06 2026 00:00:00 GMT-0300")
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime())) return dt.toISOString().slice(0,10);
+  return '';
 }
 function _rtFmtData(d){
   const s=_rtNormData(d);
