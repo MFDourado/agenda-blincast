@@ -779,6 +779,18 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <select id="ata-filtro-tecnico" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
       <option value="">Todos os técnicos</option>
     </select>
+    <select id="ata-filtro-equipamento" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
+      <option value="">Todos os equipamentos</option>
+      <option value="Rack SD">Rack SD</option>
+      <option value="Rack HD">Rack HD</option>
+      <option value="STB">STB</option>
+      <option value="Rack IP">Rack IP</option>
+    </select>
+    <select id="ata-filtro-forma" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="renderAta()">
+      <option value="">Remoto / In Loco</option>
+      <option value="Remoto">Remoto</option>
+      <option value="In Loco">In Loco</option>
+    </select>
     <button onclick="limparFiltrosAta()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar filtros</button>
   </div>
   <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;">
@@ -790,6 +802,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">No OS</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Cliente</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:3%;">UF</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Equip.</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:18%;">Problema</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:11%;">Técnico / Aj.</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Status</th>
@@ -842,10 +855,26 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <option value="concluido_tecnico">Concluído pelo técnico</option>
         </select>
       </div>
+      <div class="modal-field"><label>Equipamento</label>
+        <select class="field-sel" id="at-equipamento">
+          <option value="">—</option>
+          <option value="Rack SD">Rack SD</option>
+          <option value="Rack HD">Rack HD</option>
+          <option value="STB">STB</option>
+          <option value="Rack IP">Rack IP</option>
+        </select>
+      </div>
       <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Observações</label><input type="text" id="at-obs" placeholder="Informações complementares"></div>
       <div class="modal-field"><label>Data prevista do serviço</label><input type="date" id="at-dt-prevista"></div>
       <div class="modal-field"><label>Data de conclusão</label><input type="date" id="at-dt-conclusao"></div>
+      <div class="modal-field"><label>Forma de conclusão</label>
+        <select class="field-sel" id="at-forma-conclusao">
+          <option value="">—</option>
+          <option value="Remoto">Remoto</option>
+          <option value="In Loco">In Loco</option>
+        </select>
+      </div>
     </div>
     <input type="hidden" id="at-edit-id">
     <div class="modal-actions">
@@ -4708,8 +4737,12 @@ function renderAta(){
     lista=lista.filter(r=>String(r.status||'').trim()!=='feito');
   }
   if(filtroTecnico)lista=lista.filter(r=>String(r.tecnico||'').trim()===filtroTecnico);
+  const filtroEquip=document.getElementById('ata-filtro-equipamento')?.value||'';
+  if(filtroEquip)lista=lista.filter(r=>String(r.equipamento||'').trim()===filtroEquip);
+  const filtroForma=document.getElementById('ata-filtro-forma')?.value||'';
+  if(filtroForma)lista=lista.filter(r=>String(r.forma_conclusao||'').trim()===filtroForma);
   const tbody=document.getElementById('ata-tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${r.id}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${r.id}')">
@@ -4722,6 +4755,7 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
       <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
+      <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${r.equipamento||'—'}</td>
       <td class="prob-cell" style="padding:3px 5px;">
         <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${r.id}')">${r.problema||'—'}</div>
         <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${r.id}')">▼ ver mais</div>
@@ -4751,6 +4785,11 @@ function renderAta(){
         <input type="date" value="${r.dt_prevista||''}" onchange="alterarAtaData('${r.id}','dt_prevista',this.value)" style="border:1px solid var(--c-previsto);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:3px;margin-bottom:1px;">Concl.</div>
         <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
+        <select onchange="alterarAtaData('${r.id}','forma_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:9px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text-muted);outline:none;height:20px;width:100%;margin-top:3px;cursor:pointer;">
+          <option value="" ${!r.forma_conclusao?'selected':''}>— forma —</option>
+          <option value="Remoto" ${r.forma_conclusao==='Remoto'?'selected':''}>Remoto</option>
+          <option value="In Loco" ${r.forma_conclusao==='In Loco'?'selected':''}>In Loco</option>
+        </select>
       </td>
     </tr>`;
   }).join('');;;
@@ -4866,6 +4905,8 @@ function limparFiltrosAta(){
   window._ataFiltroHoje = false;
   const btnH=document.getElementById('ata-btn-hoje');if(btnH){btnH.style.background='none';btnH.style.color='var(--c-previsto)';}
   document.getElementById('ata-filtro-tecnico').value='';
+  const fe=document.getElementById('ata-filtro-equipamento');if(fe)fe.value='';
+  const ff=document.getElementById('ata-filtro-forma');if(ff)ff.value='';
   document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
   const excl=document.getElementById('ata-excluir-feito');
   if(excl)excl.checked=true; // volta ao padrão: ocultar feito
@@ -4881,6 +4922,8 @@ function openAtaModal(){
   document.getElementById('at-dt-abertura').value=todayStr;
   document.getElementById('at-data').value=todayStr;
   document.getElementById('at-status').value='em_andamento';
+  const _eqN=document.getElementById('at-equipamento');if(_eqN)_eqN.value='';
+  const _fcN=document.getElementById('at-forma-conclusao');if(_fcN)_fcN.value='';
   document.getElementById('at-edit-id').value='';
   // Reset select técnico para Pool
   const _sel=document.getElementById('at-tecnico');if(_sel){_sel.innerHTML='<option value="">Pool — qualquer técnico</option>';filtrarTecnicosPorUF('',"at-tecnico");}
@@ -4911,6 +4954,8 @@ function editarAta(id){
   document.getElementById('at-dt-abertura').value=r.dt_abertura||r.data||'';
   const dtPrev=document.getElementById('at-dt-prevista');if(dtPrev)dtPrev.value=r.dt_prevista||'';
   document.getElementById('at-dt-conclusao').value=r.dt_conclusao||'';
+  const _eq=document.getElementById('at-equipamento');if(_eq)_eq.value=r.equipamento||'';
+  const _fc=document.getElementById('at-forma-conclusao');if(_fc)_fc.value=r.forma_conclusao||'';
   document.getElementById('ata-modal-title').textContent='Editar registro';
   document.getElementById('ata-modal').style.display='flex';
 }
@@ -4954,7 +4999,9 @@ async function salvarAta(){
     tel_solicitante:document.getElementById('at-tel-solicitante').value.trim(),
     dt_abertura:dtAbertura,
     dt_prevista:document.getElementById('at-dt-prevista')?.value||'',
-    dt_conclusao:document.getElementById('at-dt-conclusao').value||''
+    dt_conclusao:document.getElementById('at-dt-conclusao').value||'',
+    equipamento:document.getElementById('at-equipamento')?.value||'',
+    forma_conclusao:document.getElementById('at-forma-conclusao')?.value||''
   };
   try{
     const ataId = editId || uid();
