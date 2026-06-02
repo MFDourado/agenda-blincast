@@ -2423,8 +2423,9 @@ function setCliView(v){
 }
 
 function _cliUF(c){
-  // tenta usar campo uf; se vazio, tenta extrair " - XX" do fim da cidade/endereço
+  // tenta uf; depois estado; se vazio, extrai " - XX" do fim da cidade
   if(c.uf) return String(c.uf).trim().toUpperCase();
+  if(c.estado) return String(c.estado).trim().toUpperCase();
   const m=String(c.cidade||'').match(/[-/]\s*([A-Z]{2})\s*$/i);
   return m?m[1].toUpperCase():'';
 }
