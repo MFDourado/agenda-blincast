@@ -9098,13 +9098,13 @@ async function estEnviarEmail(reg){
     </div>
     <input type="hidden" id="rt-id"><input type="hidden" id="rt-tipo">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div class="modal-field"><label>Requisição / OS</label><input type="text" id="rt-requisicao" placeholder="Ex: REQ. 82915 ou O.S 15123"></div>
-      <div class="modal-field"><label>Cliente / Destinatário *</label><input type="text" id="rt-cliente" placeholder="Nome do cliente ou técnico"></div>
+      <div class="modal-field"><label>Requisição / OS</label><input type="text" id="rt-requisicao" autocomplete="off" placeholder="Ex: REQ. 82915 ou O.S 15123"></div>
+      <div class="modal-field"><label>Cliente / Destinatário *</label><input type="text" id="rt-cliente" autocomplete="off" placeholder="Nome do cliente ou técnico"></div>
       <div class="modal-field"><label>Data do pedido/envio</label><input type="date" id="rt-data-pedido"></div>
-      <div class="modal-field" id="rt-wrap-codigo"><label>Código de rastreio (AR/Sedex)</label><input type="text" id="rt-codigo" placeholder="Ex: OY359880183BR"></div>
-      <div class="modal-field" id="rt-wrap-nf"><label>Nº da NF</label><input type="text" id="rt-nf" placeholder="Ex: NF 2581"></div>
-      <div class="modal-field" id="rt-wrap-cte" style="display:none"><label>Nº Conhecimento / CTe</label><input type="text" id="rt-cte" placeholder="Ex: CTe 123456"></div>
-      <div class="modal-field"><label>Valor do frete</label><input type="text" id="rt-valor" placeholder="Ex: R$ 66,20"></div>
+      <div class="modal-field" id="rt-wrap-codigo"><label>Código de rastreio (AR/Sedex)</label><input type="text" id="rt-codigo" autocomplete="off" placeholder="Ex: OY359880183BR"></div>
+      <div class="modal-field" id="rt-wrap-nf"><label>Nº da NF</label><input type="text" id="rt-nf" autocomplete="off" placeholder="Ex: NF 2581"></div>
+      <div class="modal-field" id="rt-wrap-cte" style="display:none"><label>Nº Conhecimento / CTe</label><input type="text" id="rt-cte" autocomplete="off" placeholder="Ex: CTe 123456"></div>
+      <div class="modal-field"><label>Valor do frete</label><input type="text" id="rt-valor" autocomplete="off" placeholder="Ex: R$ 66,20"></div>
       <div class="modal-field"><label>Previsão de entrega</label><input type="date" id="rt-previsao"></div>
       <div class="modal-field"><label>Data de entrega</label><input type="date" id="rt-data-entrega"></div>
       <div class="modal-field"><label>Situação</label>
