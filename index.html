@@ -419,6 +419,12 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-ferias" onclick="switchMainTab('ferias');closeSidebar()">Férias</button>
     <button class="snav-btn" id="mt-viagem" onclick="switchMainTab('viagem');closeSidebar()">Viagem</button>
     <button class="snav-btn" id="mt-requisicoes" onclick="switchMainTab('requisicoes');closeSidebar()">Requisições</button>
+    <button class="snav-btn" id="mt-escala-group" onclick="toggleSubMenu('escala-sub')">Escala de atendimento <span id="arrow-escala-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="escala-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-escala-sac" onclick="switchMainTab('escala-sac');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">SAC</button>
+      <button class="snav-btn" id="mt-escala-tecnico" onclick="switchMainTab('escala-tecnico');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Técnico campo</button>
+      <button class="snav-btn" id="mt-escala-n2" onclick="switchMainTab('escala-n2');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">N2</button>
+    </div>
     <button class="snav-btn" id="mt-colaboradores" onclick="switchMainTab('colaboradores');closeSidebar()">Colaboradores</button>
   </div>
 </nav>
@@ -981,6 +987,7 @@ function iniciarApp(){
         if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
         setTimeout(sincronizarOperacional,3000);
         setTimeout(verificarNotificacoesFerias,8000);
+        setTimeout(verificarEscalasPendentes,9000);
         return;
       }
     }
@@ -1112,7 +1119,8 @@ const TAB_LABELS = {
   estoque:'Estoque', 'arm-cadastro':'Estoque · Cadastro', 'arm-interno':'Estoque · Interno',
   'arm-externo':'Estoque · Externo', os:'Ordens de Serviço', 'checklist-impl':'Checklist Implantação',
   'rastreio-correios':'Rastreio · Correios', 'rastreio-jamef':'Rastreio · Jamef',
-  'os-relatorio':'Relatório OS', colaboradores:'Colaboradores'
+  'os-relatorio':'Relatório OS', colaboradores:'Colaboradores',
+  'escala-sac':'Escala · SAC', 'escala-tecnico':'Escala · Técnico campo', 'escala-n2':'Escala · N2'
 };
 let abasAbertas = [];     // ordem das abas (ids)
 let abaAtiva = null;
@@ -1168,7 +1176,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.1';
+const BLINTRACK_VERSAO = 'V1.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1197,6 +1205,245 @@ function mostrarRelogio(mostrar){
 // ===================== RASTREIO (Correios / Jamef) =====================
 let rastreioCache = { correios:[], jamef:[] };
 let rtEventos = [];   // eventos do envio sendo editado
+
+// ===================== ESCALA DE ATENDIMENTO =====================
+let escalaCache = {};        // setor -> array de escalas
+let escalaSetorAtual = 'SAC';
+let escalaImportada = null;  // dados lidos do Excel aguardando salvar
+
+function escalaEhGestor(){ return usuarioLogado && usuarioLogado.perfil==='admin'; }
+
+async function loadEscala(setor){
+  escalaSetorAtual = setor;
+  const cont = document.querySelector('#page-'+_escalaPageId(setor)+' .escala-container');
+  if(cont) cont.innerHTML = '<div style="padding:2rem;color:var(--text-muted);font-size:13px;">Carregando escala...</div>';
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEscalas&setor='+encodeURIComponent(setor));
+    const d = await r.json();
+    escalaCache[setor] = Array.isArray(d)?d:[];
+  }catch(e){ escalaCache[setor]=[]; }
+  renderEscala(setor);
+}
+
+function _escalaPageId(setor){
+  if(setor==='SAC') return 'escala-sac';
+  if(setor==='N2') return 'escala-n2';
+  return 'escala-tecnico';
+}
+
+function renderEscala(setor){
+  const cont = document.querySelector('#page-'+_escalaPageId(setor)+' .escala-container');
+  if(!cont) return;
+  const lista = escalaCache[setor]||[];
+  const vigente = lista.find(e=>e.status==='aprovada');
+  const pendentes = lista.filter(e=>e.status==='rascunho');
+  const historico = lista.filter(e=>e.status==='arquivada');
+
+  let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px;">'
+    +'<div><h2 style="font-size:18px;font-weight:600;">Escala '+setor+'</h2>'
+    +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">'+(vigente?('Vigente: '+(vigente.mes_ano||'')):'Nenhuma escala vigente')+'</div></div>'
+    +'<button class="btn-new-project" onclick="escalaImportarClick(\''+setor.replace(/'/g,"\\'")+'\')">📥 Importar Excel</button>'
+    +'</div>';
+
+  // Pendentes de aprovação
+  pendentes.forEach(e=>{
+    h += '<div style="background:var(--c-pendente-bg,#FFF7E6);border:1px solid var(--gold);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+      +'<div><b style="font-size:14px;">⏳ Aguardando aprovação — '+(e.mes_ano||'')+'</b>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviado por '+(e.enviado_por||'—')+' em '+(e.enviado_em||'—')+'</div></div>'
+      +'<div style="display:flex;gap:8px;">'
+      + (escalaEhGestor()
+          ? '<button onclick="escalaAprovar(\''+e.id+'\',\''+setor.replace(/'/g,"\\'")+'\')" style="padding:6px 14px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:none;color:var(--c-concluido);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;font-weight:600;">✓ Aprovar escala</button>'
+          : '<span style="font-size:12px;color:var(--text-muted);">Aguardando aprovação do gestor</span>')
+      +'<button onclick="escalaExcluir(\''+e.id+'\',\''+setor.replace(/'/g,"\\'")+'\')" style="padding:6px 12px;border:1px solid #e00;border-radius:var(--radius-sm);background:none;color:#e00;font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✕</button>'
+      +'</div></div>'
+      + '<div style="margin-top:12px;">'+_escalaTabelaHTML(e.dados)+'</div>'
+      +'</div>';
+  });
+
+  // Vigente
+  if(vigente){
+    h += '<div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--c-concluido);">✓ Escala vigente — '+(vigente.mes_ano||'')+'</div>';
+    h += _escalaTabelaHTML(vigente.dados);
+    h += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Aprovada por '+(vigente.aprovado_por||'—')+' em '+(vigente.aprovado_em||'—')+'</div>';
+  } else if(!pendentes.length){
+    h += '<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma escala ainda. Importe um Excel para começar.</div>';
+  }
+
+  // Histórico
+  if(historico.length){
+    h += '<div style="margin-top:24px;border-top:1px solid var(--border);padding-top:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">Histórico</div>';
+    historico.forEach(e=>{
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);padding:6px 0;">'+(e.mes_ano||'')+' — aprovada por '+(e.aprovado_por||'—')+'</summary><div style="padding:8px 0;">'+_escalaTabelaHTML(e.dados)+'</div></details>';
+    });
+    h += '</div>';
+  }
+
+  cont.innerHTML = h;
+}
+
+function _escalaTabelaHTML(dados){
+  if(!dados||!dados.colaboradores||!dados.colaboradores.length) return '<div style="font-size:12px;color:var(--text-muted);">Sem dados.</div>';
+  const cols = dados.colaboradores;       // [{nome, dias:[{dia,diasem,ini,fim,tipo}]}]
+  const maxDias = Math.max(...cols.map(c=>c.dias.length));
+  const cor = t => t==='Trabalha'?'c-green':t==='Feriado'?'c-amber':(t==='Férias'||t==='Ferias')?'c-blue':'c-gray';
+  let ths = '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#888;text-transform:uppercase;border-bottom:1px solid var(--border);">Dia</th>';
+  cols.forEach(c=>{ ths += '<th style="padding:7px 8px;text-align:left;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);">'+_esc(c.nome)+'</th>'; });
+  let linhas='';
+  for(let i=0;i<maxDias;i++){
+    const ref = cols[0].dias[i] || {};
+    linhas += '<tr><td style="padding:5px 8px;border-bottom:0.5px solid var(--border);white-space:nowrap;font-size:12px;"><b>'+(ref.dia||(i+1))+'</b> <span style="color:var(--text-muted);font-size:11px;">'+(ref.diasem||'')+'</span></td>';
+    cols.forEach(c=>{
+      const d=c.dias[i]||{};
+      const tipo=d.tipo||'';
+      const txt = (tipo==='Trabalha'&&d.ini)?(d.ini+'–'+d.fim):(tipo||'—');
+      linhas += '<td style="padding:5px 8px;border-bottom:0.5px solid var(--border);"><span class="'+cor(tipo)+'" style="font-size:11px;padding:2px 7px;border-radius:4px;white-space:nowrap;">'+_esc(txt)+'</span></td>';
+    });
+    linhas += '</tr>';
+  }
+  return '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--bg);">'+ths+'</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+}
+function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function escalaImportarClick(setor){
+  escalaSetorAtual = setor;
+  const inp = document.getElementById('escala-file-input');
+  inp.value='';
+  inp.onchange = escalaArquivoSelecionado;
+  inp.click();
+}
+
+async function escalaArquivoSelecionado(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf,{type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    const dados = _escalaParse(rows);
+    if(!dados.colaboradores.length){ alert('Não consegui ler colaboradores nesse arquivo. Confira se segue o modelo (blocos com Data/Dia/Horário Início/Horário Fim/Tipo).'); return; }
+    escalaImportada = dados;
+    // mês/ano: tenta detectar do título ou primeira data
+    const mesAno = _escalaMesAno(rows, dados);
+    if(!confirm('Escala lida: '+dados.colaboradores.length+' colaborador(es), '+mesAno+'.\n\nEnviar para aprovação?')) return;
+    await escalaSalvar(escalaSetorAtual, mesAno, dados);
+  }catch(e){ alert('Erro ao ler o Excel: '+e.message); }
+}
+
+function _escalaParse(rows){
+  // procura a linha de cabeçalhos (que contém "Data" e "Tipo")
+  let hRow=-1;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const linha=(rows[i]||[]).map(x=>String(x||'').trim().toLowerCase());
+    if(linha.includes('data') && linha.includes('tipo')){ hRow=i; break; }
+  }
+  if(hRow===-1) return {colaboradores:[]};
+  const headerCols = rows[hRow].map(x=>String(x||'').trim().toLowerCase());
+  // identifica blocos: cada "data" inicia um bloco de 5 colunas (data,dia,início,fim,tipo)
+  const blocos=[];
+  headerCols.forEach((h,idx)=>{ if(h==='data') blocos.push(idx); });
+  // nomes: linha acima do cabeçalho
+  const nomeRow = hRow>0 ? rows[hRow-1] : [];
+  const colaboradores=[];
+  blocos.forEach(cini=>{
+    let nome = String((nomeRow[cini]||'')).trim();
+    if(!nome){ // procura à direita no bloco
+      for(let k=cini;k<cini+5;k++){ if(nomeRow[k]){ nome=String(nomeRow[k]).trim(); break; } }
+    }
+    if(!nome) nome='Colaborador';
+    const dias=[];
+    for(let r=hRow+1;r<rows.length;r++){
+      const row=rows[r]||[];
+      const data=row[cini];
+      if(data==null||String(data).trim()==='') continue;
+      const dia = _escalaDiaNum(data);
+      const diasem = String(row[cini+1]||'').trim();
+      let ini=String(row[cini+2]||'').trim();
+      let fim=String(row[cini+3]||'').trim();
+      let tipo=String(row[cini+4]||'').trim();
+      if(ini.toLowerCase()==='x') ini='';
+      if(fim.toLowerCase()==='x') fim='';
+      if(ini) ini=_escalaHora(ini);
+      if(fim) fim=_escalaHora(fim);
+      if(!tipo) tipo = ini?'Trabalha':'Folga';
+      dias.push({dia:dia, diasem:diasem, ini:ini, fim:fim, tipo:tipo});
+    }
+    colaboradores.push({nome:nome, dias:dias});
+  });
+  return {colaboradores:colaboradores};
+}
+
+function _escalaDiaNum(v){
+  // v pode ser data serial, "2026-06-01", "01/06/2026" etc.
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return parseInt(m[3],10);
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return parseInt(m[1],10);
+  m=s.match(/^(\d{1,2})$/); if(m) return parseInt(m[1],10);
+  const d=new Date(s); if(!isNaN(d.getTime())) return d.getDate();
+  return '';
+}
+function _escalaHora(v){
+  const s=String(v).trim();
+  let m=s.match(/^(\d{1,2}):(\d{2})/); if(m) return m[1].padStart(2,'0')+':'+m[2];
+  return s;
+}
+function _escalaMesAno(rows, dados){
+  // tenta achar texto tipo "JUNHO 2026" no topo
+  for(let i=0;i<Math.min(rows.length,4);i++){
+    const txt=(rows[i]||[]).map(x=>String(x||'')).join(' ').trim();
+    const m=txt.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\s\/]*(\d{4})/i);
+    if(m) return (m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase())+'/'+m[2];
+  }
+  return 'Escala importada';
+}
+
+async function escalaSalvar(setor, mesAno, dados){
+  try{
+    const payload={token:getToken(),action:'saveEscala',setor:setor,mes_ano:mesAno,enviado_por:(usuarioLogado&&usuarioLogado.nome)||'',dados:dados};
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    alert('Escala enviada para aprovação!');
+    await loadEscala(setor);
+  }catch(e){ alert('Erro ao salvar a escala.'); }
+}
+
+async function escalaAprovar(id, setor){
+  if(!escalaEhGestor()){ alert('Apenas o gestor pode aprovar.'); return; }
+  if(!confirm('Aprovar esta escala? Ela passará a ser a vigente.')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'aprovarEscala',id:id,aprovado_por:(usuarioLogado&&usuarioLogado.nome)||'Gestor'})});
+    alert('Escala aprovada!');
+    await loadEscala(setor);
+  }catch(e){ alert('Erro ao aprovar.'); }
+}
+
+async function escalaExcluir(id, setor){
+  if(!confirm('Excluir esta escala?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteEscala',id:id})});
+    await loadEscala(setor);
+  }catch(e){ alert('Erro ao excluir.'); }
+}
+
+async function verificarEscalasPendentes(){
+  if(!escalaEhGestor()) return;  // só o gestor recebe o aviso
+  const setores=['SAC','Técnico campo','N2'];
+  let pendentes=[];
+  for(const setor of setores){
+    try{
+      const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEscalas&setor='+encodeURIComponent(setor));
+      const d=await r.json();
+      (Array.isArray(d)?d:[]).filter(e=>e.status==='rascunho').forEach(e=>pendentes.push({setor:setor, e:e}));
+    }catch(e){}
+  }
+  if(!pendentes.length) return;
+  const linhas=pendentes.map(p=>'• '+p.setor+' — '+(p.e.mes_ano||'')+' (enviado por '+(p.e.enviado_por||'—')+')').join('\n');
+  const ir = confirm('📋 Você tem '+pendentes.length+' escala(s) aguardando aprovação:\n\n'+linhas+'\n\nDeseja revisar agora?');
+  if(ir){
+    const setorMap={'SAC':'escala-sac','Técnico campo':'escala-tecnico','N2':'escala-n2'};
+    switchMainTab(setorMap[pendentes[0].setor]||'escala-sac');
+  }
+}
 
 async function loadRastreio(tipo){
   const sync=document.getElementById('rastreio-'+tipo+'-sync');
@@ -1452,7 +1699,7 @@ function switchImplSub(tipo){
 }
 
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -1484,6 +1731,9 @@ function switchMainTab(t){
   if(t==='os')loadOS();
   if(t==='checklist-impl')loadChecklistImpl();
   if(t==='colaboradores')loadColaboradores();
+  if(t==='escala-sac')loadEscala('SAC');
+  if(t==='escala-tecnico')loadEscala('Técnico campo');
+  if(t==='escala-n2')loadEscala('N2');
   abrirAba(t);
 }
 
@@ -10263,6 +10513,10 @@ async function excluirOS(id){
     </div>
   </div>
 </div>
+<div id="page-escala-sac" class="main" style="display:none"><div class="escala-container" data-setor="SAC"></div></div>
+<div id="page-escala-tecnico" class="main" style="display:none"><div class="escala-container" data-setor="Técnico campo"></div></div>
+<div id="page-escala-n2" class="main" style="display:none"><div class="escala-container" data-setor="N2"></div></div>
+<input type="file" id="escala-file-input" accept=".xlsx,.xls" style="display:none">
 <div id="page-colaboradores" class="main" style="display:none">
   <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
