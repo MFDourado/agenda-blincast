@@ -442,6 +442,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 <div id="tabbar" style="display:none;"></div>
 
 <!-- RELÓGIO (tela vazia, sem abas abertas) -->
+<datalist id="clientes-datalist"></datalist>
 <div id="clock-screen" style="display:none;">
   <div id="clock-time">00:00:00</div>
   <div id="clock-date"></div>
@@ -1167,7 +1168,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.0';
+const BLINTRACK_VERSAO = 'V1.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2356,9 +2357,10 @@ function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);cons
 function popularDatalistClientes(){
   let dl=document.getElementById('clientes-datalist');
   if(!dl){ dl=document.createElement('datalist'); dl.id='clientes-datalist'; document.body.appendChild(dl); }
+  if(!Array.isArray(clientes)||!clientes.length){ return; }
   dl.innerHTML=clientes.map(c=>{
     const extra=[c.cidade,c.cnpj].filter(Boolean).join(' · ');
-    return '<option value="'+(c.nome||'').replace(/"/g,'&quot;')+'">'+extra+'</option>';
+    return '<option value="'+String(c.nome||'').replace(/"/g,'&quot;')+'">'+extra+'</option>';
   }).join('');
 }
 // Verifica se um nome digitado bate com algum cliente da base (match exato, case-insensitive)
@@ -5479,7 +5481,7 @@ function openAtaModal(){
   const _fcN=document.getElementById('at-forma-conclusao');if(_fcN)_fcN.value='';
   document.getElementById('at-edit-id').value='';
   const _atVw=document.getElementById('at-vinculo-wrap'); if(_atVw) _atVw.innerHTML=htmlVinculoCliente('at');
-  popularDatalistClientes();
+  if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
   // Reset select técnico para Pool
   const _sel=document.getElementById('at-tecnico');if(_sel){_sel.innerHTML='<option value="">Pool — qualquer técnico</option>';filtrarTecnicosPorUF('',"at-tecnico");}
   document.getElementById('ata-modal-title').textContent='Novo registro';
@@ -9354,7 +9356,7 @@ function abrirNovaOS(){
   document.getElementById('os-data').value=new Date().toISOString().split('T')[0];
   ['os-cliente','os-cnpj','os-cidade','os-endereco','os-descricao','os-obs-nova','os-materiais','os-horas','os-data-prevista','os-data-conclusao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';})
   const _osVw=document.getElementById('os-vinculo-wrap'); if(_osVw) _osVw.innerHTML=htmlVinculoCliente('os');
-  popularDatalistClientes();
+  if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
   osObsBuffer=[];
   renderObsOS();
   bloquearObsOSSeConcluida('');;
@@ -9961,7 +9963,7 @@ function _consFmtData(d){const n=_consNormDate(d);if(!n)return '—';const p=n.s
 
 function abrirConsultaCliente(tipo){
   _consultaTipo=tipo;
-  popularDatalistClientes();
+  if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
   document.getElementById('consulta-titulo').textContent = tipo==='os' ? 'Consultar Ordens de Serviço por cliente' : 'Consultar Atendimentos por cliente';
   document.getElementById('consulta-cliente').value='';
   document.getElementById('consulta-de').value='';
