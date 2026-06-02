@@ -398,6 +398,11 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <button class="snav-btn" id="mt-arm-interno" onclick="switchMainTab('arm-interno');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Interno</button>
       <button class="snav-btn" id="mt-arm-externo" onclick="switchMainTab('arm-externo');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Externo</button>
     </div>
+    <button class="snav-btn" id="mt-rastreio-group" onclick="toggleSubMenu('rastreio-sub')">Rastreio <span id="arrow-rastreio-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="rastreio-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-rastreio-correios" onclick="switchMainTab('rastreio-correios');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Correios</button>
+      <button class="snav-btn" id="mt-rastreio-jamef" onclick="switchMainTab('rastreio-jamef');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Transportadora (Jamef)</button>
+    </div>
     <button class="snav-btn" id="mt-os-group" onclick="toggleSubMenu('os-sub')">Ordens de Serviço <span id="arrow-os-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="os-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-os" onclick="switchMainTab('os');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Ordens</button>
@@ -1101,6 +1106,7 @@ const TAB_LABELS = {
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
   estoque:'Estoque', 'arm-cadastro':'Estoque · Cadastro', 'arm-interno':'Estoque · Interno',
   'arm-externo':'Estoque · Externo', os:'Ordens de Serviço', 'checklist-impl':'Checklist Implantação',
+  'rastreio-correios':'Rastreio · Correios', 'rastreio-jamef':'Rastreio · Jamef',
   'os-relatorio':'Relatório OS', colaboradores:'Colaboradores'
 };
 let abasAbertas = [];     // ordem das abas (ids)
@@ -1180,6 +1186,205 @@ function mostrarRelogio(mostrar){
   }
 }
 
+// ===================== RASTREIO (Correios / Jamef) =====================
+let rastreioCache = { correios:[], jamef:[] };
+let rtEventos = [];   // eventos do envio sendo editado
+
+async function loadRastreio(tipo){
+  const sync=document.getElementById('rastreio-'+tipo+'-sync');
+  if(sync) sync.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getRastreios&tipo='+tipo);
+    const d=await r.json();
+    rastreioCache[tipo]=Array.isArray(d.rastreios)?d.rastreios:[];
+    if(sync) sync.textContent=rastreioCache[tipo].length+' envio(s) · sincronizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ rastreioCache[tipo]=[]; if(sync) sync.textContent='Erro de conexão'; }
+  renderRastreio(tipo);
+}
+
+function _rtNormData(d){
+  if(!d) return '';
+  let s=String(d).trim();
+  if(s.includes('/')) s=s.split('/').reverse().join('-');
+  return s.slice(0,10);
+}
+function _rtFmtData(d){
+  const s=_rtNormData(d);
+  if(!s) return '—';
+  const p=s.split('-');
+  return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : d;
+}
+const RT_SIT_COR = {
+  'Entregue':{bg:'#e8f5e9',c:'#2e7d32'},
+  'Em andamento':{bg:'rgba(245,184,0,.15)',c:'#b8860b'},
+  'Não enviado':{bg:'var(--border)',c:'var(--text-muted)'},
+  'Retorno do item':{bg:'#fdecea',c:'#c0392b'},
+  'Sem informações':{bg:'var(--border)',c:'var(--text-muted)'}
+};
+
+function renderRastreio(tipo){
+  const wrap=document.getElementById('rastreio-'+tipo+'-lista');
+  if(!wrap) return;
+  const busca=(document.getElementById('rastreio-'+tipo+'-busca')?.value||'').trim().toLowerCase();
+  const sit=document.getElementById('rastreio-'+tipo+'-situacao')?.value||'';
+  const data=document.getElementById('rastreio-'+tipo+'-data')?.value||'';
+  let lista=rastreioCache[tipo].slice();
+  if(busca) lista=lista.filter(r=>[r.cliente,r.requisicao,r.codigo,r.nf,r.cte,r.objeto].some(v=>String(v||'').toLowerCase().includes(busca)));
+  if(sit) lista=lista.filter(r=>String(r.situacao||'')===sit);
+  if(data) lista=lista.filter(r=>_rtNormData(r.data_pedido)===data || _rtNormData(r.previsao)===data || _rtNormData(r.data_entrega)===data);
+  if(!lista.length){
+    wrap.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum envio encontrado.</div>';
+    return;
+  }
+  wrap.innerHTML=lista.map(r=>{
+    const sc=RT_SIT_COR[r.situacao]||{bg:'var(--border)',c:'var(--text-muted)'};
+    const cod = tipo==='correios' ? (r.codigo||'—') : (r.nf||r.cte||'—');
+    const codLabel = tipo==='correios' ? 'Cód' : 'NF/CTe';
+    const nEv = (r.eventos&&r.eventos.length)||0;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-weight:700;font-size:14px;color:var(--text);">${r.cliente||'—'} ${r.requisicao?'<span style="font-size:11px;color:var(--text-muted);font-weight:400;">· '+r.requisicao+'</span>':''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${codLabel}: ${cod}${r.valor?' · '+r.valor:''}${r.objeto?' · '+r.objeto:''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Pedido: ${_rtFmtData(r.data_pedido)} · Prev: ${_rtFmtData(r.previsao)} · Entrega: ${_rtFmtData(r.data_entrega)}</div>
+          ${r.info?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-style:italic;">${r.info}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${sc.bg};color:${sc.c};white-space:nowrap;">${r.situacao||'—'}</span>
+          <div style="display:flex;gap:6px;">
+            <button onclick="editarRastreio('${tipo}','${r.id}')" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✎ Abrir${nEv?' ('+nEv+'📍)':''}</button>
+            <button onclick="removerRastreio('${tipo}','${r.id}')" style="height:26px;width:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function limparFiltrosRastreio(tipo){
+  ['busca','situacao','data'].forEach(f=>{const el=document.getElementById('rastreio-'+tipo+'-'+f);if(el)el.value='';});
+  renderRastreio(tipo);
+}
+
+function novoRastreio(tipo){
+  document.getElementById('rt-id').value='';
+  document.getElementById('rt-tipo').value=tipo;
+  ['rt-requisicao','rt-cliente','rt-data-pedido','rt-codigo','rt-nf','rt-cte','rt-valor','rt-previsao','rt-data-entrega','rt-objeto','rt-info'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('rt-situacao').value='Não enviado';
+  rtEventos=[];
+  rtRenderEventos();
+  _rtAjustarCampos(tipo);
+  document.getElementById('rastreio-modal-titulo').textContent='Novo envio — '+(tipo==='correios'?'Correios':'Jamef');
+  document.getElementById('rastreio-modal').style.display='flex';
+}
+
+function _rtAjustarCampos(tipo){
+  // Correios mostra código de rastreio; Jamef mostra NF + CTe
+  document.getElementById('rt-wrap-codigo').style.display = tipo==='correios'?'block':'none';
+  document.getElementById('rt-wrap-cte').style.display = tipo==='jamef'?'block':'none';
+}
+
+function editarRastreio(tipo,id){
+  const r=rastreioCache[tipo].find(x=>x.id===id); if(!r) return;
+  document.getElementById('rt-id').value=r.id;
+  document.getElementById('rt-tipo').value=tipo;
+  document.getElementById('rt-requisicao').value=r.requisicao||'';
+  document.getElementById('rt-cliente').value=r.cliente||'';
+  document.getElementById('rt-data-pedido').value=_rtNormData(r.data_pedido);
+  document.getElementById('rt-codigo').value=r.codigo||'';
+  document.getElementById('rt-nf').value=r.nf||'';
+  document.getElementById('rt-cte').value=r.cte||'';
+  document.getElementById('rt-valor').value=r.valor||'';
+  document.getElementById('rt-previsao').value=_rtNormData(r.previsao);
+  document.getElementById('rt-data-entrega').value=_rtNormData(r.data_entrega);
+  document.getElementById('rt-objeto').value=r.objeto||'';
+  document.getElementById('rt-info').value=r.info||'';
+  document.getElementById('rt-situacao').value=r.situacao||'Não enviado';
+  rtEventos=Array.isArray(r.eventos)?r.eventos.slice():[];
+  rtRenderEventos();
+  _rtAjustarCampos(tipo);
+  document.getElementById('rastreio-modal-titulo').textContent='Editar envio — '+(tipo==='correios'?'Correios':'Jamef');
+  document.getElementById('rastreio-modal').style.display='flex';
+}
+
+function rtRenderEventos(){
+  const wrap=document.getElementById('rt-eventos-lista');
+  if(!wrap) return;
+  if(!rtEventos.length){
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-muted);">Nenhum evento ainda. Adicione abaixo conforme o envio se movimenta.</div>';
+    return;
+  }
+  // Ordena por data
+  const ord=[...rtEventos].sort((a,b)=>_rtNormData(a.data).localeCompare(_rtNormData(b.data)));
+  wrap.innerHTML=ord.map((ev)=>{
+    const idxReal=rtEventos.indexOf(ev);
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;">
+      <span style="color:var(--gold);">●</span>
+      <span style="font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;">${_rtFmtData(ev.data)}</span>
+      <span style="flex:1;color:var(--text);">${ev.descricao||''}</span>
+      <button onclick="rastreioDelEvento(${idxReal})" style="border:none;background:none;color:#e00;cursor:pointer;font-size:12px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function rastreioAddEvento(){
+  const data=document.getElementById('rt-ev-data').value;
+  const desc=document.getElementById('rt-ev-desc').value.trim();
+  if(!desc){ alert('Descreva o evento (ex: Saiu para entrega).'); return; }
+  rtEventos.push({data:data||new Date().toISOString().slice(0,10), descricao:desc});
+  document.getElementById('rt-ev-desc').value='';
+  document.getElementById('rt-ev-data').value='';
+  rtRenderEventos();
+}
+function rastreioDelEvento(idx){
+  rtEventos.splice(idx,1);
+  rtRenderEventos();
+}
+
+async function salvarRastreio(){
+  const tipo=document.getElementById('rt-tipo').value;
+  const cliente=document.getElementById('rt-cliente').value.trim();
+  if(!cliente){ alert('Informe o cliente/destinatário.'); return; }
+  const id=document.getElementById('rt-id').value;
+  const payload={
+    action:'saveRastreio', token:getToken(), tipo,
+    id: id||undefined,
+    requisicao:document.getElementById('rt-requisicao').value.trim(),
+    cliente,
+    data_pedido:document.getElementById('rt-data-pedido').value,
+    codigo:document.getElementById('rt-codigo').value.trim(),
+    nf:document.getElementById('rt-nf').value.trim(),
+    cte:document.getElementById('rt-cte').value.trim(),
+    valor:document.getElementById('rt-valor').value.trim(),
+    objeto:document.getElementById('rt-objeto').value.trim(),
+    previsao:document.getElementById('rt-previsao').value,
+    data_entrega:document.getElementById('rt-data-entrega').value,
+    info:document.getElementById('rt-info').value.trim(),
+    situacao:document.getElementById('rt-situacao').value,
+    eventos:rtEventos
+  };
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.error){ alert(d.error); return; }
+    fecharRastreioModal();
+    await loadRastreio(tipo);
+  }catch(e){ alert('Erro ao salvar envio.'); }
+}
+
+async function removerRastreio(tipo,id){
+  if(!confirm('Excluir este envio do rastreio?')) return;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'deleteRastreio',token:getToken(),id})});
+    const d=await r.json();
+    if(d.error){ alert(d.error); return; }
+    rastreioCache[tipo]=rastreioCache[tipo].filter(x=>x.id!==id);
+    renderRastreio(tipo);
+  }catch(e){ alert('Erro ao excluir.'); }
+}
+
+function fecharRastreioModal(){ document.getElementById('rastreio-modal').style.display='none'; rtEventos=[]; }
+
 // Define o filtro do submenu de Implantações e abre a aba
 function switchImplSub(tipo){
   implSubmenuTipo = tipo || '';
@@ -1188,7 +1393,7 @@ function switchImplSub(tipo){
 }
 
 function switchMainTab(t){
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
@@ -1214,6 +1419,8 @@ function switchMainTab(t){
   if(t==='arm-cadastro')loadArmCadastro();
   if(t==='arm-interno')loadArmazens('interno');
   if(t==='arm-externo')loadArmazens('externo');
+  if(t==='rastreio-correios')loadRastreio('correios');
+  if(t==='rastreio-jamef')loadRastreio('jamef');
   if(t==='os-relatorio')loadOsRelatorio();
   if(t==='os')loadOS();
   if(t==='checklist-impl')loadChecklistImpl();
@@ -8450,6 +8657,111 @@ async function estEnviarEmail(reg){
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button onclick="armFecharSenha()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
       <button onclick="armConfirmarSenha()" style="height:32px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--black);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- RASTREIO: CORREIOS -->
+<div id="page-rastreio-correios" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Rastreio · Correios</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="rastreio-correios-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <a href="https://rastreamento.correios.com.br/app/index.php" target="_blank" rel="noopener" style="height:34px;display:inline-flex;align-items:center;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;text-decoration:none;">🔗 Site dos Correios</a>
+      <button onclick="novoRastreio('correios')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Novo envio</button>
+    </div>
+  </div>
+  <div class="rastreio-filtros" data-tipo="correios" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <input type="text" id="rastreio-correios-busca" oninput="renderRastreio('correios')" placeholder="🔍 Buscar cliente / OS / código..." style="flex:1;min-width:200px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    <select id="rastreio-correios-situacao" onchange="renderRastreio('correios')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <option value="">Todas as situações</option>
+      <option value="Não enviado">Não enviado</option>
+      <option value="Em andamento">Em andamento</option>
+      <option value="Entregue">Entregue</option>
+      <option value="Retorno do item">Retorno do item</option>
+      <option value="Sem informações">Sem informações</option>
+    </select>
+    <input type="date" id="rastreio-correios-data" onchange="renderRastreio('correios')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    <button onclick="limparFiltrosRastreio('correios')" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar</button>
+  </div>
+  <div id="rastreio-correios-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+</div>
+
+<!-- RASTREIO: JAMEF -->
+<div id="page-rastreio-jamef" class="main" style="display:none">
+  <div class="pipeline-header">
+    <div>
+      <h2>Rastreio · Transportadora (Jamef)</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="rastreio-jamef-sync"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <a href="https://cliente.jamef.com.br/login" target="_blank" rel="noopener" style="height:34px;display:inline-flex;align-items:center;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;text-decoration:none;">🔗 Portal Jamef</a>
+      <button onclick="novoRastreio('jamef')" style="height:34px;padding:0 14px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:rgba(245,184,0,.12);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Novo envio</button>
+    </div>
+  </div>
+  <div class="rastreio-filtros" data-tipo="jamef" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <input type="text" id="rastreio-jamef-busca" oninput="renderRastreio('jamef')" placeholder="🔍 Buscar cliente / OS / NF / CTe..." style="flex:1;min-width:200px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    <select id="rastreio-jamef-situacao" onchange="renderRastreio('jamef')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <option value="">Todas as situações</option>
+      <option value="Não enviado">Não enviado</option>
+      <option value="Em andamento">Em andamento</option>
+      <option value="Entregue">Entregue</option>
+      <option value="Retorno do item">Retorno do item</option>
+      <option value="Sem informações">Sem informações</option>
+    </select>
+    <input type="date" id="rastreio-jamef-data" onchange="renderRastreio('jamef')" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+    <button onclick="limparFiltrosRastreio('jamef')" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Limpar</button>
+  </div>
+  <div id="rastreio-jamef-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+</div>
+
+<!-- MODAL CADASTRO/EDIÇÃO RASTREIO -->
+<div class="modal-overlay" id="rastreio-modal" style="display:none" onclick="if(event.target===this)fecharRastreioModal()">
+  <div class="modal" style="max-width:680px;width:95vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 id="rastreio-modal-titulo" style="margin:0;">Novo envio</h3>
+      <button onclick="fecharRastreioModal()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <input type="hidden" id="rt-id"><input type="hidden" id="rt-tipo">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>Requisição / OS</label><input type="text" id="rt-requisicao" placeholder="Ex: REQ. 82915 ou O.S 15123"></div>
+      <div class="modal-field"><label>Cliente / Destinatário *</label><input type="text" id="rt-cliente" placeholder="Nome do cliente ou técnico"></div>
+      <div class="modal-field"><label>Data do pedido/envio</label><input type="date" id="rt-data-pedido"></div>
+      <div class="modal-field" id="rt-wrap-codigo"><label>Código de rastreio (AR/Sedex)</label><input type="text" id="rt-codigo" placeholder="Ex: OY359880183BR"></div>
+      <div class="modal-field" id="rt-wrap-nf"><label>Nº da NF</label><input type="text" id="rt-nf" placeholder="Ex: NF 2581"></div>
+      <div class="modal-field" id="rt-wrap-cte" style="display:none"><label>Nº Conhecimento / CTe</label><input type="text" id="rt-cte" placeholder="Ex: CTe 123456"></div>
+      <div class="modal-field"><label>Valor do frete</label><input type="text" id="rt-valor" placeholder="Ex: R$ 66,20"></div>
+      <div class="modal-field"><label>Previsão de entrega</label><input type="date" id="rt-previsao"></div>
+      <div class="modal-field"><label>Data de entrega</label><input type="date" id="rt-data-entrega"></div>
+      <div class="modal-field"><label>Situação</label>
+        <select id="rt-situacao" class="field-sel">
+          <option value="Não enviado">Não enviado</option>
+          <option value="Em andamento">Em andamento</option>
+          <option value="Entregue">Entregue</option>
+          <option value="Retorno do item">Retorno do item</option>
+          <option value="Sem informações">Sem informações</option>
+        </select>
+      </div>
+      <div class="modal-field" style="grid-column:span 2"><label>Objeto / Peças</label><input type="text" id="rt-objeto" placeholder="Ex: 1 conversor UHF e 1 amplificador"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Informações cliente/parceiro</label><input type="text" id="rt-info" placeholder="Ex: Reposição do material utilizado na OS 14691"></div>
+    </div>
+
+    <!-- HISTÓRICO DE EVENTOS -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-top:14px;background:var(--bg);">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📍 Histórico de rastreio</div>
+      <div id="rt-eventos-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:3px;"><label style="font-size:10px;color:var(--text-muted)">Data</label><input type="date" id="rt-ev-data" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+        <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:3px;"><label style="font-size:10px;color:var(--text-muted)">Status / descrição</label><input type="text" id="rt-ev-desc" placeholder="Ex: Saiu para entrega" onkeydown="if(event.key==='Enter'){event.preventDefault();rastreioAddEvento();}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+        <button onclick="rastreioAddEvento()" style="height:30px;padding:0 14px;border:none;border-radius:var(--radius-sm);background:var(--black);color:var(--gold);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">＋ Evento</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="fecharRastreioModal()" class="modal-btn secondary">Cancelar</button>
+      <button onclick="salvarRastreio()" class="modal-btn primary">Salvar</button>
     </div>
   </div>
 </div>
