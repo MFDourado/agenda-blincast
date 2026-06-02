@@ -445,6 +445,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 <div id="clock-screen" style="display:none;">
   <div id="clock-time">00:00:00</div>
   <div id="clock-date"></div>
+  <div id="clock-versao" style="margin-top:18px;font-size:12px;color:var(--text-muted);letter-spacing:1px;">BlinTrack V1.0</div>
 </div>
 
 <!-- PIPELINE -->
@@ -1166,6 +1167,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
+const BLINTRACK_VERSAO = 'V1.0';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1175,6 +1177,8 @@ function _tickClock(){
   el.innerHTML = p(a.getHours())+':'+p(a.getMinutes())+'<span class="clk-sec">:'+p(a.getSeconds())+'</span>';
   const dt = document.getElementById('clock-date');
   if(dt) dt.textContent = a.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const vs = document.getElementById('clock-versao');
+  if(vs) vs.textContent = 'BlinTrack '+BLINTRACK_VERSAO;
 }
 function mostrarRelogio(mostrar){
   const tela = document.getElementById('clock-screen');
