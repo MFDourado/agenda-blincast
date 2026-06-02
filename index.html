@@ -2609,6 +2609,8 @@ function cliDetalheHTML(id){
     +linha('UHs', c.uhs)
     +linha('Vigência início', formatDateBRCli(c.vigencia_inicio))
     +linha('Vendedor', c.vendedor)
+    +linha('🏨 Segmento', c.segmento)
+    +linha('🔗 Grupo/Rede', c.grupo_rede)
     +'</div>';
   info+='<div>'
     +linha('💰 Mensalidade', c.mensalidade)
@@ -2672,6 +2674,8 @@ function abrirEditarCliente(id){
   const ecM=document.getElementById('ec-mensalidade');if(ecM)ecM.value=c.mensalidade||'';
   const ecV=document.getElementById('ec-valor-operadora');if(ecV)ecV.value=c.valor_operadora||'';
   const ecVd=document.getElementById('ec-vendedor');if(ecVd)ecVd.value=c.vendedor||'';
+  const ecSg=document.getElementById('ec-segmento');if(ecSg)ecSg.value=c.segmento||'';
+  const ecGr=document.getElementById('ec-grupo-rede');if(ecGr)ecGr.value=c.grupo_rede||'';
   document.getElementById('editar-cliente-modal').style.display='flex';
 }
 
@@ -2699,6 +2703,8 @@ async function salvarEdicaoCliente(){
     mensalidade:document.getElementById('ec-mensalidade')?.value.trim()||'',
     valor_operadora:document.getElementById('ec-valor-operadora')?.value.trim()||'',
     vendedor:document.getElementById('ec-vendedor')?.value.trim()||'',
+    segmento:document.getElementById('ec-segmento')?.value.trim()||'',
+    grupo_rede:document.getElementById('ec-grupo-rede')?.value.trim()||'',
   };
   const _btn=document.querySelector('#editar-cliente-modal .modal-btn.primary')||document.querySelector('#editar-cliente-modal button[onclick="salvarEdicaoCliente()"]');
   if(_btn){_btn.textContent='Salvando...';_btn.disabled=true;}
@@ -7739,6 +7745,8 @@ async function estEnviarEmail(reg){
       <div class="modal-field"><label>💰 Mensalidade (R$)</label><input type="text" id="ec-mensalidade" placeholder="Ex: R$ 1.500,00" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>📡 Valor operadora (R$)</label><input type="text" id="ec-valor-operadora" placeholder="Ex: R$ 25,00" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>👤 Vendedor responsável</label><input type="text" id="ec-vendedor" placeholder="Nome do vendedor" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>🏨 Segmento</label><input type="text" id="ec-segmento" placeholder="Ex: Hotel, Hospital, Resort" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div class="modal-field"><label>🔗 Grupo / Rede</label><input type="text" id="ec-grupo-rede" placeholder="Ex: Accor, Atlantica, Sem rede" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
       <div class="modal-field"><label>💳 Pagamento operadora</label>
         <select id="ec-pagamento-op" class="field-sel" style="width:100%;height:36px;">
           <option value="">— Não se aplica —</option>
