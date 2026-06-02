@@ -383,7 +383,13 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-clientes" onclick="switchMainTab('clientes');closeSidebar()">Clientes</button>
     <button class="snav-btn" id="mt-cronograma" onclick="switchMainTab('cronograma');closeSidebar()">Cronograma</button>
     <button class="snav-btn" id="mt-ata" onclick="switchMainTab('ata');closeSidebar()">Painel de Atendimento</button>
-    <button class="snav-btn" id="mt-implantacoes" onclick="switchMainTab('implantacoes');closeSidebar()">Implantações</button>
+    <button class="snav-btn" id="mt-implantacoes-group" onclick="toggleSubMenu('impl-sub')">Implantações <span id="arrow-impl-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="impl-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-impl-todos" onclick="switchImplSub('');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Todos</button>
+      <button class="snav-btn" id="mt-impl-instalacao" onclick="switchImplSub('Instalação');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Instalação</button>
+      <button class="snav-btn" id="mt-impl-ampliacao" onclick="switchImplSub('Ampliação');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Ampliação</button>
+      <button class="snav-btn" id="mt-impl-upgrade" onclick="switchImplSub('Upgrade');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Upgrade</button>
+    </div>
     <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
     <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
     <button class="snav-btn" id="mt-estoque-group" onclick="toggleSubMenu('estoque-sub')">Estoque <span id="arrow-estoque-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
@@ -445,6 +451,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="text" id="pipeline-busca" placeholder="🔍 Buscar projeto..." oninput="renderPipeline()" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
       <button onclick="sincronizarPipeline()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar dados</button>
+      <button onclick="exportarPipeline('pdf')" title="Exportar PDF" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📄 PDF</button>
+      <button onclick="exportarPipeline('excel')" title="Exportar Excel" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Excel</button>
       <button class="btn-new-project" onclick="openModal()">+ Novo projeto</button>
     </div>
   </div>
@@ -467,8 +475,24 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       </select>
     </div>
   </div>
-  <!-- BOXES concluídos / pendentes -->
-  <div class="pipeline-boxes">
+  <!-- MODAL ESCOLHA DE EXPORT -->
+  <div class="modal-overlay" id="pipe-export-modal" style="display:none" onclick="if(event.target===this)document.getElementById('pipe-export-modal').style.display='none'">
+    <div class="modal" style="max-width:400px;width:92%;">
+      <h3 style="margin:0 0 6px;" id="pipe-export-titulo">Exportar Pipeline</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px;" id="pipe-export-msg">O que você quer exportar?</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button onclick="executarExportPipeline('filtrados')" style="text-align:left;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">
+          <b id="pipe-export-opt1">Apenas os filtrados na tela</b><br><span style="font-size:11px;color:var(--text-muted)" id="pipe-export-cont">—</span>
+        </button>
+        <button onclick="executarExportPipeline('todos')" style="text-align:left;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">
+          <b>Todos os projetos</b><br><span style="font-size:11px;color:var(--text-muted)" id="pipe-export-cont-todos">—</span>
+        </button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button onclick="document.getElementById('pipe-export-modal').style.display='none'" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>
+  </div>
     <div class="pipeline-box concluidos" id="box-concluidos" onclick="togglePipelineBox('concluidos')">
       <div class="pipeline-box-num verde" id="box-num-concluidos">0</div>
       <div class="pipeline-box-label">Concluídos (100%)</div>
@@ -1125,6 +1149,13 @@ function mostrarRelogio(mostrar){
   }
 }
 
+// Define o filtro do submenu de Implantações e abre a aba
+function switchImplSub(tipo){
+  implSubmenuTipo = tipo || '';
+  TAB_LABELS['implantacoes'] = tipo ? ('Implantações · '+tipo) : 'Implantações';
+  switchMainTab('implantacoes');
+}
+
 function switchMainTab(t){
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','os','checklist-impl','os-relatorio','colaboradores'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
@@ -1446,6 +1477,140 @@ const sh=STEPS.map(s=>{
     if(el){ el.style.display='block'; }
     if(chev){ chev.className='chevron open'; }
   });
+}
+
+// ===================== EXPORTAR PIPELINE (PDF / Excel) =====================
+let _pipeExportFormato = 'pdf';
+
+// Replica a mesma filtragem do renderPipeline (box + busca + tecnologia + ordenação)
+function getPipelineFiltrado(){
+  const buscaEl=document.getElementById('pipeline-busca');
+  const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
+  let lista=projects;
+  if(pipelineBoxFilter==='concluidos')lista=projects.filter(p=>p.steps.every(s=>s.done));
+  else if(pipelineBoxFilter==='pendentes')lista=projects.filter(p=>!p.steps.every(s=>s.done)&&!p.congelado);
+  else if(pipelineBoxFilter==='congelados')lista=projects.filter(p=>p.congelado);
+  if(buscaTxt)lista=lista.filter(p=>p.nome.toLowerCase().includes(buscaTxt));
+  if(pipelineTipoFiltros.size>0){
+    lista=lista.filter(p=>{
+      const prod=(p.produto||'').toUpperCase();
+      return [...pipelineTipoFiltros].some(f=>{
+        if(f==='rack-hd') return prod==='HD';
+        if(f==='rack-sd') return prod==='SD';
+        if(f==='stb') return prod==='STB';
+        if(f==='str') return prod==='STR';
+        if(f==='outros') return !['HD','SD','STB','STR'].includes(prod);
+        return false;
+      });
+    });
+  }
+  return lista;
+}
+
+function _pipeStatusTexto(p){
+  if(p.congelado) return 'Congelado';
+  if(p.steps.every(s=>s.done)) return 'Concluído';
+  return 'Pendente';
+}
+function _pipeEtapaAtual(p){
+  const doneCnt=p.steps.filter(s=>s.done).length;
+  if(doneCnt===11) return 'Concluído (11/11)';
+  const cs=p.steps.find(s=>!s.done);
+  const cst=cs?(STEPS.find(s=>s.id===cs.id)?.title||''):'';
+  return doneCnt+'/11'+(cst?(' — '+cst):'');
+}
+function _pipeFmtData(d){ if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
+
+// Monta as linhas (resumo) a partir de uma lista de projetos
+function _pipeLinhas(lista){
+  return lista.map(p=>({
+    cliente: p.nome||'',
+    status: _pipeStatusTexto(p),
+    etapa: _pipeEtapaAtual(p),
+    equipamento: p.produto||'—',
+    vendedor: p.vendedor||'—',
+    telefone: (typeof extrairTelefone==='function'?extrairTelefone(p):'')||'—',
+    cidade_uf: [p.cidade,p.uf].filter(Boolean).join(' - ')||'—',
+    uhs: p.uhs||'—',
+    prazo: _pipeFmtData(p.prazo_instalacao),
+    inicio: _pipeFmtData(p.inicio)
+  }));
+}
+
+// Abre o modal de escolha (filtrados x todos)
+function exportarPipeline(formato){
+  _pipeExportFormato = formato;
+  const filtrados = getPipelineFiltrado().length;
+  const todos = projects.length;
+  document.getElementById('pipe-export-titulo').textContent = 'Exportar Pipeline — '+(formato==='pdf'?'PDF':'Excel');
+  document.getElementById('pipe-export-cont').textContent = filtrados+' projeto(s)';
+  document.getElementById('pipe-export-cont-todos').textContent = todos+' projeto(s)';
+  document.getElementById('pipe-export-modal').style.display='flex';
+}
+
+function executarExportPipeline(escopo){
+  document.getElementById('pipe-export-modal').style.display='none';
+  const lista = escopo==='todos' ? projects : getPipelineFiltrado();
+  if(!lista.length){ alert('Nenhum projeto para exportar.'); return; }
+  const linhas = _pipeLinhas(lista);
+  if(_pipeExportFormato==='excel') _pipeExportExcel(linhas, escopo);
+  else _pipeExportPDF(linhas, escopo);
+}
+
+function _pipeExportExcel(linhas, escopo){
+  const cab = ['Cliente','Status','Etapa atual','Equipamento','Vendedor','Telefone','Cidade/UF','UHs','Prazo instalação','Início'];
+  const dados = linhas.map(l=>[l.cliente,l.status,l.etapa,l.equipamento,l.vendedor,l.telefone,l.cidade_uf,l.uhs,l.prazo,l.inicio]);
+  const ws = XLSX.utils.aoa_to_sheet([cab, ...dados]);
+  ws['!cols'] = [{wch:28},{wch:12},{wch:22},{wch:12},{wch:14},{wch:16},{wch:20},{wch:8},{wch:14},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
+  const hoje = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'Pipeline_'+(escopo==='todos'?'todos':'filtrados')+'_'+hoje+'.xlsx');
+}
+
+function _pipeExportPDF(linhas, escopo){
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const escopoLabel = escopo==='todos' ? 'Todos os projetos' : 'Projetos filtrados';
+  const corStatus = s => s==='Concluído'?'#2e7d32':s==='Congelado'?'#1A5FC8':'#b8860b';
+  const linhasHtml = linhas.map((l,i)=>`<tr style="${i%2===0?'background:#fafafa':''}">
+    <td>${l.cliente}</td>
+    <td style="color:${corStatus(l.status)};font-weight:600">${l.status}</td>
+    <td style="font-size:10px">${l.etapa}</td>
+    <td style="text-align:center">${l.equipamento}</td>
+    <td>${l.vendedor}</td>
+    <td style="font-size:10px">${l.cidade_uf}</td>
+    <td style="text-align:center">${l.uhs}</td>
+    <td style="text-align:center">${l.prazo}</td>
+  </tr>`).join('');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pipeline — ${hoje}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:28px}
+.logo{font-size:20px;font-weight:900}.logo span{color:#F5B800}
+h1{font-size:16px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:7px;margin:14px 0 6px}
+.meta{font-size:10px;color:#888;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th{background:#111;color:#F5B800;padding:6px 8px;font-size:9px;text-align:left;text-transform:uppercase}
+td{padding:5px 8px;font-size:10px;border-bottom:1px solid #eee}
+.footer{margin-top:18px;font-size:9px;color:#aaa;text-align:right}
+@media print{body{padding:0}}
+</style></head><body>
+<div class="logo">Blin<span>Track</span></div>
+<div style="font-size:9px;color:#888">Blincast Media S/A — Documento Interno</div>
+<h1>Pipeline Operacional</h1>
+<div class="meta">${escopoLabel} · ${linhas.length} projeto(s) · Gerado em ${hoje}</div>
+<table>
+  <thead><tr>
+    <th>Cliente</th><th>Status</th><th>Etapa atual</th><th style="text-align:center">Equip.</th>
+    <th>Vendedor</th><th>Cidade/UF</th><th style="text-align:center">UHs</th><th style="text-align:center">Prazo</th>
+  </tr></thead>
+  <tbody>${linhasHtml}</tbody>
+</table>
+<div class="footer">BlinTrack — Blincast Media S/A</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
+</body></html>`);
+  w.document.close();
 }
 
 function openModal(){document.getElementById('m-nome').value='';document.getElementById('m-uhs').value='';document.getElementById('m-inicio').value=todayStr;document.getElementById('modal').style.display='flex';}
@@ -2716,6 +2881,7 @@ async function montDrop(event, targetId){
 
 // ===================== IMPLANTAÇÕES =====================
 let implDados = [];
+let implSubmenuTipo = '';   // '' = Todos | 'Instalação' | 'Ampliação' | 'Upgrade'
 
 function getImplStatus(proj, item){
   // Registro histórico (sem pipeline)
@@ -2824,6 +2990,7 @@ async function loadImplantacoes(){
       const proj = projects.find(p => p.id === item.pipeline_id || p.nome === item.nome);
       return {
         ...item,
+        tipo: (item.tipo && String(item.tipo).trim()) ? item.tipo : 'Instalação',
         status_dinamico: getImplStatus(proj, item),
         cnpj: proj ? (proj.cnpj||item.cnpj||'') : (item.cnpj||''),
         cidade: proj ? (proj.cidade||item.cidade||'') : (item.cidade||''),
@@ -2860,6 +3027,19 @@ function popularFiltroMes(){
   });
 }
 
+// Converte previsão "MM/AAAA" ou "MM/AA" para "AAAA-MM" (valor de <input type=month>)
+function implPrevToMonth(prev){
+  if(!prev) return '';
+  const partes = String(prev).split('/');
+  if(partes.length<2) return '';
+  let mes = partes[0].padStart(2,'0');
+  let ano = partes[1];
+  if(ano.length===2) ano = '20'+ano;        // 26 -> 2026
+  if(ano.length===6 && ano.startsWith('20')) ano = ano.slice(2); // recupera 202026 -> 2026
+  if(ano.length!==4) return '';             // proteção contra lixo restante
+  return ano+'-'+mes;
+}
+
 function renderImplantacoes(){
   const tbody = document.getElementById('impl-tbody');
   const totalEl = document.getElementById('impl-total');
@@ -2881,6 +3061,7 @@ function renderImplantacoes(){
     try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
   };
   if(fMes) lista = lista.filter(i=>getMesItem(i)===fMes);
+  if(implSubmenuTipo) lista = lista.filter(i=>(i.tipo||'Instalação')===implSubmenuTipo);
   if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
   if(implStatusFiltros.size>0) lista = lista.filter(i=>implStatusFiltros.has(i.status_dinamico));
   else if(fStatus) lista = lista.filter(i=>i.status_dinamico===fStatus);
@@ -2913,7 +3094,7 @@ function renderImplantacoes(){
   }).join('');
 
   if(!lista.length){
-    tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
     if(totalEl) totalEl.textContent='';
     return;
   }
@@ -2933,11 +3114,10 @@ function renderImplantacoes(){
       +'<td style="padding:8px 12px;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+item.nome+'">'+item.nome+'</td>'
       +'<td style="padding:8px;white-space:nowrap;color:var(--text-muted);font-size:11px;">'+(item.cidade||'—')+'<br>'+(item.uf||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+formatCNPJ(item.cnpj||'')+'</td>'
-      +'<td style="padding:8px;font-size:11px;white-space:nowrap;">'+(item.tipo||'—')+'</td>'
       +'<td style="padding:8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.equipamento||'')+'">'+( item.equipamento||'—')+'</td>'
       +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span>'+(item.status_op?'<br><span style="font-size:10px;color:#888;font-style:italic;">'+item.status_op+'</span>':'')+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--text-muted);">'+fmtDate(item.assinatura)+'</td>'
-      +'<td style="padding:8px;font-size:11px;white-space:nowrap;"><input type="month" value="'+(item.previsao?'20'+item.previsao.split('/').reverse().join('-'):'')+'" onchange="salvarPrevInline(\''+item.id+'\',this.value)" style="border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;font-family:DM Sans,sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;width:110px;"></td>'
+      +'<td style="padding:8px;font-size:11px;white-space:nowrap;"><input type="month" value="'+implPrevToMonth(item.previsao)+'" onchange="salvarPrevInline(\''+item.id+'\',this.value)" style="border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;font-family:DM Sans,sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;width:110px;"></td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:'+(item.conclusao?'var(--c-concluido)':'var(--text-muted)')+'">'+fmtDate(item.conclusao)+'</td>'
       +'<td style="padding:8px;font-size:11px;font-weight:600;color:'+diasColor+';white-space:nowrap;">'+diasStr+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.obs||'')+'">'+( item.obs||'—')+'</td>'
@@ -3124,7 +3304,7 @@ function editarImplantacao(id){
   if(!item) return;
   document.getElementById('impl-edit-id').value = id;
   document.getElementById('impl-modal-nome').textContent = item.nome;
-  document.getElementById('impl-edit-tipo').value = item.tipo||'';
+  document.getElementById('impl-edit-tipo').value = item.tipo||'Instalação';
   document.getElementById('impl-edit-conclusao').value = item.conclusao||'';
   document.getElementById('impl-edit-previsao').value = item.previsao ? item.previsao.split('/').reverse().join('-') : '';
   document.getElementById('impl-edit-obs').value = item.obs||'';
@@ -7669,7 +7849,6 @@ async function estEnviarEmail(reg){
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Cliente</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Cidade/UF</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">CNPJ</th>
-          <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Tipo</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Equipamento</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Status</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Assinatura</th>
