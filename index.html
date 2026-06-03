@@ -1185,7 +1185,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V2.6';
+const BLINTRACK_VERSAO = 'V2.7';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -6248,6 +6248,7 @@ function abrirExportarAtaDia(formato){
   // pré-preenche com hoje em dd/mm/aaaa
   const hoje = (window.todayStr)||new Date().toISOString().slice(0,10);
   inp.value = _ataDiaFmtBR(hoje);
+  const tx=document.getElementById('ata-dia-tecnicos'); if(tx) tx.value='';
   m.style.display='flex';
   setTimeout(()=>{ inp.focus(); inp.select(); }, 50);
 }
@@ -6265,10 +6266,13 @@ function _ataDiaConfirmar(){
   const br=inp.value.trim();
   const m=br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(!m){ alert('Data inválida. Use o formato dd/mm/aaaa (ex: 06/05/2026).'); return; }
-  const iso=m[3]+'-'+m[2]+'-'+m[1];   // converte pra AAAA-MM-DD internamente
+  const iso=m[3]+'-'+m[2]+'-'+m[1];
+  // técnicos das 20h digitados (separa por linha ou vírgula)
+  const txt=(document.getElementById('ata-dia-tecnicos')?.value||'');
+  const tec20h=txt.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
   document.getElementById('ata-dia-modal').style.display='none';
-  if(_ataDiaFormato==='pdf') gerarAtaDiaPDF(iso);
-  else gerarAtaDiaXLSX(iso);
+  if(_ataDiaFormato==='pdf') gerarAtaDiaPDF(iso, tec20h);
+  else gerarAtaDiaXLSX(iso, tec20h);
 }
 
 function _ataDiaNormD(d){
@@ -6305,9 +6309,9 @@ function _ataDiaDados(data){
   return {grupos:grupos, diaSemana:diaSemana, total:doDia.length, tecnicos:tecnicos};
 }
 
-async function gerarAtaDiaXLSX(data){
+async function gerarAtaDiaXLSX(data, tec20h){
   if(typeof ExcelJS==='undefined'){ alert('Biblioteca de Excel não carregada. Recarregue a página.'); return; }
-  const {grupos, diaSemana, total, tecnicos} = _ataDiaDados(data);
+  const {grupos, diaSemana, total} = _ataDiaDados(data);
   if(!total){ alert('Nenhum atendimento encontrado para '+_ataDiaFmtBR(data)+'.'); return; }
 
   const wb=new ExcelJS.Workbook();
@@ -6342,14 +6346,12 @@ async function gerarAtaDiaXLSX(data){
   bloco('PREVISTO → RETORNAR (não concluído no dia)', grupos.retornar);
   bloco('PREVISTO → NÃO FOI FEITO (PENDENTE)', grupos.pendente);
 
-  // lista de técnicos para marcar quem ficou até 20h
+  // colaboradores que ficaram até 20h (digitados no modal)
   const ct=ws.getCell('A'+lin); ct.value='Colaboradores que ficaram até as 20:00h:'; ct.font={bold:true,size:11}; lin++;
-  ['Colaborador','Ficou até 20h? (marque X)'].forEach((h,i)=>{ const c=ws.getCell(lin,i+1); c.value=h; c.font={bold:true}; c.border=borda; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}}; });
-  lin++;
-  const listaTec = tecnicos.length? tecnicos : [''];
+  const listaTec = (tec20h && tec20h.length)? tec20h : [''];
   listaTec.forEach(nome=>{
     const c1=ws.getCell(lin,1); c1.value=nome; c1.border=borda;
-    const c2=ws.getCell(lin,2); c2.value=''; c2.border=borda;
+    ws.mergeCells(lin,1,lin,5);
     lin++;
   });
 
@@ -6360,8 +6362,8 @@ async function gerarAtaDiaXLSX(data){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function gerarAtaDiaPDF(data){
-  const {grupos, diaSemana, total, tecnicos} = _ataDiaDados(data);
+function gerarAtaDiaPDF(data, tec20h){
+  const {grupos, diaSemana, total} = _ataDiaDados(data);
   if(!total){ alert('Nenhum atendimento encontrado para '+_ataDiaFmtBR(data)+'.'); return; }
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const bloco=(titulo, arr)=>{
@@ -6371,8 +6373,8 @@ function gerarAtaDiaPDF(data){
     return '<div class="sec">'+esc(titulo)+'</div>'
       +'<table><thead><tr><th>OS/SS</th><th>Cliente</th><th>UF</th><th>Descrição</th><th>Técnico</th></tr></thead><tbody>'+linhas+'</tbody></table>';
   };
-  const listaTec = tecnicos.length? tecnicos : [''];
-  const tecRows = listaTec.map(n=>'<tr><td>'+esc(n)+'</td><td style="width:160px;"></td></tr>').join('');
+  const listaTec = (tec20h && tec20h.length)? tec20h : [''];
+  const tecRows = listaTec.map(n=>'<tr><td>'+esc(n)+'</td></tr>').join('');
   const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ata '+_ataDiaFmtBR(data)+'</title>'
     +'<style>'
     +'body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px;font-size:12px;}'
@@ -6389,7 +6391,7 @@ function gerarAtaDiaPDF(data){
     +bloco('PREVISTO → RETORNAR (não concluído no dia)', grupos.retornar)
     +bloco('PREVISTO → NÃO FOI FEITO (PENDENTE)', grupos.pendente)
     +'<div class="assin">Colaboradores que ficaram até as 20:00h:</div>'
-    +'<table><thead><tr><th>Colaborador</th><th style="width:160px;">Ficou até 20h? (marque X)</th></tr></thead><tbody>'+tecRows+'</tbody></table>'
+    +'<table><tbody>'+tecRows+'</tbody></table>'
     +'<script>window.onload=function(){window.print();}<\/script>'
     +'</body></html>';
   const w=window.open('','_blank');
@@ -11117,6 +11119,8 @@ async function excluirOS(id){
     <div id="ata-dia-formato" style="font-size:12px;color:var(--text-muted);margin-bottom:16px;"></div>
     <label style="font-size:12px;color:var(--text-muted);">Data (dia/mês/ano)</label>
     <input type="text" id="ata-dia-data" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" oninput="_ataMascaraData(this)" style="width:100%;height:40px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:15px;font-family:'DM Mono',monospace;letter-spacing:1px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;margin-top:4px;">
+    <label style="font-size:12px;color:var(--text-muted);display:block;margin-top:14px;">Colaboradores que ficaram até as 20:00h <span style="color:var(--text-muted);">(um por linha ou separados por vírgula)</span></label>
+    <textarea id="ata-dia-tecnicos" rows="3" placeholder="Ex: Rogério Silva, Daniel, Gabriel" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;margin-top:4px;resize:vertical;"></textarea>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
       <button onclick="document.getElementById('ata-dia-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
       <button onclick="_ataDiaConfirmar()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Exportar</button>
