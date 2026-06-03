@@ -1182,7 +1182,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.9';
+const BLINTRACK_VERSAO = 'V2.0';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1555,6 +1555,10 @@ function _escalaMesAno(rows, dados){
   }
   return 'Escala importada';
 }
+
+// Registra onde o mousedown começou — usado pra só fechar modal em clique REAL no fundo
+// (evita fechar quando o usuário seleciona texto num campo e solta o mouse fora)
+function _overlayDown(ev){ window._overlayStart = ev.target; }
 
 // Normaliza data do Painel forçando ano para 2026 (todos os registros são de 2026), preservando mês e dia.
 // Aceita ISO (AAAA-MM-DD), BR (DD/MM/AAAA) e devolve sempre AAAA-MM-DD.
@@ -7043,6 +7047,7 @@ function abrirNovaViagem(){
   adicionarTrecho({tipo:'Volta'});
   adicionarDiaria();
   calcularTotalViagem();
+  const _selCol=document.getElementById('viagem-colaborador-sel'); if(_selCol) _selCol.value='';
   if(!Array.isArray(colabLista)||!colabLista.length){ loadColaboradores().then(()=>popularSelectColaboradores()); } else { popularSelectColaboradores(); }
   document.getElementById('viagem-modal').style.display='flex';
 }
@@ -9199,7 +9204,7 @@ async function estEnviarEmail(reg){
 
 
 <!-- MODAL REQUISIÇÃO DE VIAGEM -->
-<div class="modal-overlay" id="viagem-modal" style="display:none" onclick="if(event.target===this)fecharViagemModal()">
+<div class="modal-overlay" id="viagem-modal" style="display:none" onmousedown="_overlayDown(event)" onmouseup="if(event.target===this&&window._overlayStart===this)fecharViagemModal()">
   <div class="modal" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
     <input type="hidden" id="viagem-edit-idx">
     <div style="flex:1;overflow-y:auto;padding:24px 24px 0 24px;">
@@ -9211,7 +9216,7 @@ async function estEnviarEmail(reg){
     <!-- IDENTIFICAÇÃO -->
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Identificação</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="modal-field"><label>Nº Requisição (ddmmaa.iniciais)</label><input type="text" id="viagem-numero" placeholder="Ex: 01042026.RS"></div>
+      <div class="modal-field"><label>Nº Requisição (ddmmaa.iniciais)</label><input type="text" id="viagem-numero" autocomplete="off" placeholder="Ex: 01042026.RS"></div>
       <div class="modal-field"><label>Status</label>
         <select id="viagem-status" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
           <option value="Pendente">Pendente</option>
@@ -9226,10 +9231,10 @@ async function estEnviarEmail(reg){
           <option value="">Selecione um colaborador...</option>
         </select>
       </div>
-      <div class="modal-field" style="grid-column:span 2"><label>Solicitante</label><input type="text" id="viagem-solicitante" placeholder="Nome completo"></div>
-      <div class="modal-field"><label>E-mail</label><input type="email" id="viagem-email" placeholder="colaborador@blincast.com.br"></div>
-      <div class="modal-field"><label>CPF <span style="color:#e00">*</span></label><input type="text" id="viagem-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" style="letter-spacing:.5px"></div>
-      <div class="modal-field"><label>RG</label><input type="text" id="viagem-rg"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Solicitante</label><input type="text" id="viagem-solicitante" autocomplete="off" placeholder="Nome completo"></div>
+      <div class="modal-field"><label>E-mail</label><input type="email" id="viagem-email" autocomplete="off" placeholder="colaborador@blincast.com.br"></div>
+      <div class="modal-field"><label>CPF <span style="color:#e00">*</span></label><input type="text" id="viagem-cpf" autocomplete="off" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" style="letter-spacing:.5px"></div>
+      <div class="modal-field"><label>RG</label><input type="text" id="viagem-rg" autocomplete="off"></div>
       <div class="modal-field"><label>Data de Nascimento</label><input type="date" id="viagem-nascimento"></div>
       <div class="modal-field"><label>Sexo</label>
         <select id="viagem-sexo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
@@ -9254,7 +9259,7 @@ async function estEnviarEmail(reg){
           <option value="Outros">Outros</option>
         </select>
       </div>
-      <div class="modal-field"><label>Companhia / Empresa</label><input type="text" id="viagem-cia" placeholder="Ex: Latam, Localiza..."></div>
+      <div class="modal-field"><label>Companhia / Empresa</label><input type="text" id="viagem-cia" autocomplete="off" placeholder="Ex: Latam, Localiza..."></div>
     </div>
 
     <!-- TRECHOS DINÂMICOS -->
@@ -9287,7 +9292,7 @@ async function estEnviarEmail(reg){
           <option value="Por conta do cliente">Por conta do cliente</option>
         </select>
       </div>
-      <div class="modal-field"><label>Hotel / Local</label><input type="text" id="viagem-hotel" placeholder="Nome do hotel"></div>
+      <div class="modal-field"><label>Hotel / Local</label><input type="text" id="viagem-hotel" autocomplete="off" placeholder="Nome do hotel"></div>
       <div class="modal-field"><label>Nº de Noites</label><input type="number" min="0" id="viagem-noites" placeholder="0"></div>
       <div class="modal-field"><label>Valor Diária (R$)</label><input type="number" min="0" step="0.01" id="viagem-vl-diaria" placeholder="0,00"></div>
     </div>
@@ -9323,9 +9328,9 @@ async function estEnviarEmail(reg){
         </select>
       </div>
       <div class="modal-field"><label>Nº Requisição de Antecipação</label><input type="text" id="viagem-num-antecipacao" placeholder="RQA..." onfocus="if(!this.value){ const n=document.getElementById('viagem-numero').value; if(n) this.value=n; }"></div>
-      <div class="modal-field"><label>Cartão</label><input type="text" id="viagem-cartao" placeholder="Ex: Cartão 05"></div>
-      <div class="modal-field"><label>Centro de Custo</label><input type="text" id="viagem-centro-custo" placeholder="Ex: Operacional"></div>
-      <div class="modal-field" style="grid-column:span 2"><label>Viagem aprovada por</label><input type="text" id="viagem-aprovado-por" placeholder="Nome do superior direto"></div>
+      <div class="modal-field"><label>Cartão</label><input type="text" id="viagem-cartao" autocomplete="off" placeholder="Ex: Cartão 05"></div>
+      <div class="modal-field"><label>Centro de Custo</label><input type="text" id="viagem-centro-custo" autocomplete="off" placeholder="Ex: Operacional"></div>
+      <div class="modal-field" style="grid-column:span 2"><label>Viagem aprovada por</label><input type="text" id="viagem-aprovado-por" autocomplete="off" placeholder="Nome do superior direto"></div>
     </div>
 
     </div><!-- fim scroll -->
