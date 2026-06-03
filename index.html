@@ -1182,7 +1182,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.8';
+const BLINTRACK_VERSAO = 'V1.9';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1244,7 +1244,8 @@ async function consultarCnpjAvulso(){
       +linha('CEP', d.cep)
       +linha('Telefone', d.telefone)
       +linha('E-mail', d.email)
-      +linha('CNAE', d.cnae)
+      +linha('CNAE principal', d.cnae)
+      +((d.cnae_secundarios&&d.cnae_secundarios.length)?('<tr><td style="padding:7px 10px;color:var(--text-muted);font-size:12px;white-space:nowrap;vertical-align:top;">CNAEs secundários</td><td style="padding:7px 10px;font-size:13px;">'+d.cnae_secundarios.map(x=>_esc(x)).join('<br>')+'</td></tr>'):'')
       +'</table></div>';
   }catch(e){ out.innerHTML='<div style="padding:16px;color:#c0392b;font-size:13px;">Erro ao consultar.</div>'; }
   finally{ btn.textContent='🔍 Consultar'; btn.disabled=false; }
@@ -1291,7 +1292,8 @@ function _cnpjPreencher(pref, d){
   // feedback visual de situação cadastral
   const info = document.getElementById(pref+'-cnpj-info');
   if(info){
-    info.textContent = (d.situacao?('Situação: '+d.situacao):'') + (d.cnae?('  ·  CNAE: '+d.cnae):'');
+    const nSec=(d.cnae_secundarios&&d.cnae_secundarios.length)?d.cnae_secundarios.length:0;
+    info.textContent = (d.situacao?('Situação: '+d.situacao):'') + (d.cnae?('  ·  CNAE: '+d.cnae):'') + (nSec?('  ·  +'+nSec+' CNAE(s) secundário(s)'):'');
     info.style.display = (d.situacao||d.cnae)?'block':'none';
   }
 }
@@ -6878,12 +6880,146 @@ function renderListaViagem(){
         <td style="padding:10px 12px"><span style="background:${sc}22;color:${sc};padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">${v.status||'Pendente'}</span></td>
         <td style="padding:10px 12px;display:flex;gap:8px;">
           <button onclick="exportarViagemPDF(${i})" style="padding:4px 10px;font-size:11px;background:var(--gold);border:1px solid var(--gold-dark);border-radius:var(--radius-sm);cursor:pointer;color:#111;font-weight:600;">📄 PDF</button>
+          <button onclick="abrirPrestacao(${i})" style="padding:4px 10px;font-size:11px;background:var(--surface);border:1px solid var(--c-concluido);border-radius:var(--radius-sm);cursor:pointer;color:var(--c-concluido);font-weight:600;">💰 Prestação${_prestacaoBadge(v)}</button>
           <button onclick="editarViagem(${i})" style="padding:4px 10px;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text);">✏️ Editar</button>
           <button onclick="excluirViagem(${i})" style="padding:4px 10px;font-size:11px;background:#e74c3c22;border:1px solid #e74c3c44;border-radius:var(--radius-sm);cursor:pointer;color:#e74c3c;">🗑️ Excluir</button>
         </td>
       </tr>`;
     }).join('')
     +'</tbody></table></div>';
+}
+
+// ===================== PRESTAÇÃO DE CONTAS (Viagem) =====================
+const PRESTACAO_CATEGORIAS = ['Alimentação','Combustível','Hospedagem','Transporte','Estacionamento','Pedágio','Outros'];
+let prestacaoViagemIdx = -1;
+let prestacaoDespesas = [];
+
+function _prestacaoBadge(v){
+  const st=(v.prestacao_status||'').toLowerCase();
+  if(st==='aguardando') return ' <span style="background:#F5B80022;color:#b8860b;padding:1px 5px;border-radius:3px;font-size:9px;">●</span>';
+  if(st==='aprovada') return ' <span style="background:#27ae6022;color:#27ae60;padding:1px 5px;border-radius:3px;font-size:9px;">✓</span>';
+  if(st==='reprovada') return ' <span style="background:#e74c3c22;color:#e74c3c;padding:1px 5px;border-radius:3px;font-size:9px;">✕</span>';
+  return '';
+}
+
+function abrirPrestacao(idx){
+  prestacaoViagemIdx = idx;
+  const v = viagemRegistros[idx];
+  if(!v) return;
+  prestacaoDespesas = Array.isArray(v.prestacao) ? JSON.parse(JSON.stringify(v.prestacao)) : [];
+  const st=(v.prestacao_status||'').toLowerCase();
+  const stTxt = st==='aprovada'?'✓ Aprovada':st==='reprovada'?'✕ Reprovada':st==='aguardando'?'⏳ Aguardando aprovação':'Não enviada';
+  document.getElementById('prestacao-sub').innerHTML = 'Viagem <b>'+(v.numero_req||'')+'</b> · '+(v.solicitante||'')+' · '+(v.missao||'')+'<br>Status: '+stTxt;
+  if(!prestacaoDespesas.length) addDespesa();
+  renderPrestacaoDespesas();
+  document.getElementById('prestacao-modal').style.display='flex';
+}
+
+function fecharPrestacao(){ document.getElementById('prestacao-modal').style.display='none'; }
+
+function addDespesa(){
+  prestacaoDespesas.push({categoria:'Alimentação', valor:'', data:'', comprovante_link:'', comprovante_nome:''});
+  renderPrestacaoDespesas();
+}
+function removerDespesa(i){ prestacaoDespesas.splice(i,1); renderPrestacaoDespesas(); }
+
+function renderPrestacaoDespesas(){
+  const box=document.getElementById('prestacao-despesas');
+  const ehGestor = usuarioLogado && usuarioLogado.perfil==='admin';
+  box.innerHTML = prestacaoDespesas.map((d,i)=>{
+    const opts=PRESTACAO_CATEGORIAS.map(c=>'<option value="'+c+'"'+(d.categoria===c?' selected':'')+'>'+c+'</option>').join('');
+    return '<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border);">'
+      +'<div><label style="font-size:11px;color:var(--text-muted);">Categoria</label><select onchange="prestacaoDespesas['+i+'].categoria=this.value;renderPrestacaoTotais()" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:\'DM Sans\',sans-serif;">'+opts+'</select></div>'
+      +'<div><label style="font-size:11px;color:var(--text-muted);">Valor (R$)</label><input type="text" value="'+(d.valor||'')+'" oninput="prestacaoDespesas['+i+'].valor=this.value;renderPrestacaoTotais()" placeholder="0,00" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;background:var(--surface);color:var(--text);font-size:13px;font-family:\'DM Sans\',sans-serif;box-sizing:border-box;"></div>'
+      +'<div><label style="font-size:11px;color:var(--text-muted);">Data</label><input type="date" value="'+(d.data||'')+'" onchange="prestacaoDespesas['+i+'].data=this.value" style="width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;background:var(--surface);color:var(--text);font-size:13px;font-family:\'DM Sans\',sans-serif;box-sizing:border-box;"></div>'
+      +'<button onclick="removerDespesa('+i+')" style="height:34px;padding:0 10px;border:1px solid #e74c3c44;border-radius:var(--radius-sm);background:#e74c3c11;color:#e74c3c;cursor:pointer;">×</button>'
+      +'<div style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;">'
+        +(d.comprovante_link
+            ? '<a href="'+d.comprovante_link+'" target="_blank" style="font-size:12px;color:var(--c-concluido);">📎 '+_esc(d.comprovante_nome||'comprovante')+'</a> <button onclick="prestacaoDespesas['+i+'].comprovante_link=\'\';prestacaoDespesas['+i+'].comprovante_nome=\'\';renderPrestacaoDespesas()" style="font-size:11px;border:none;background:none;color:#e74c3c;cursor:pointer;">remover anexo</button>'
+            : '<button onclick="anexarComprovante('+i+')" id="anexo-btn-'+i+'" style="font-size:12px;padding:5px 12px;border:1px dashed var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;">📎 Anexar comprovante</button>')
+      +'</div>'
+      +'</div>';
+  }).join('');
+  renderPrestacaoTotais();
+}
+
+function renderPrestacaoTotais(){
+  const box=document.getElementById('prestacao-totais');
+  const porCat={};
+  let total=0;
+  prestacaoDespesas.forEach(d=>{
+    const v=parseFloat(String(d.valor||'').replace(/\./g,'').replace(',','.'))||0;
+    porCat[d.categoria]=(porCat[d.categoria]||0)+v;
+    total+=v;
+  });
+  const fmt=n=>'R$ '+n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  let h='<div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px 14px;">';
+  h+='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Total por categoria</div>';
+  h+=Object.entries(porCat).filter(([,v])=>v>0).map(([cat,v])=>'<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span style="color:var(--text-muted);">'+cat+'</span><span>'+fmt(v)+'</span></div>').join('')||'<div style="font-size:12px;color:var(--text-muted);">Nenhuma despesa lançada.</div>';
+  h+='<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;color:var(--gold-dark);"><span>TOTAL</span><span>'+fmt(total)+'</span></div>';
+  h+='</div>';
+  box.innerHTML=h;
+  // botões de ação conforme perfil/status
+  const acoes=document.getElementById('prestacao-acoes');
+  const ehGestor = usuarioLogado && usuarioLogado.perfil==='admin';
+  const v=viagemRegistros[prestacaoViagemIdx]||{};
+  const st=(v.prestacao_status||'').toLowerCase();
+  let ab='<button onclick="fecharPrestacao()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:\'DM Sans\',sans-serif;">Fechar</button>';
+  ab+='<button onclick="salvarPrestacao()" style="padding:8px 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:\'DM Sans\',sans-serif;">Salvar / Enviar</button>';
+  if(ehGestor && st==='aguardando'){
+    ab+='<button onclick="aprovarPrestacao(true)" style="padding:8px 16px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:var(--c-concluido);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:\'DM Sans\',sans-serif;">✓ Aprovar</button>';
+    ab+='<button onclick="aprovarPrestacao(false)" style="padding:8px 16px;border:1px solid #e74c3c;border-radius:var(--radius-sm);background:none;color:#e74c3c;cursor:pointer;font-size:13px;font-family:\'DM Sans\',sans-serif;">Reprovar</button>';
+  }
+  acoes.innerHTML=ab;
+}
+
+function anexarComprovante(i){
+  const inp=document.getElementById('prestacao-file-input');
+  inp.value='';
+  inp.onchange=async (ev)=>{
+    const file=ev.target.files[0]; if(!file) return;
+    const btn=document.getElementById('anexo-btn-'+i); if(btn){ btn.textContent='Enviando...'; btn.disabled=true; }
+    try{
+      const base64=await _fileToBase64(file);
+      const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadComprovante',base64:base64,filename:file.name,mimetype:file.type})});
+      const res=await r.json();
+      if(res.ok){ prestacaoDespesas[i].comprovante_link=res.link; prestacaoDespesas[i].comprovante_nome=file.name; renderPrestacaoDespesas(); }
+      else { alert('Erro no upload: '+(res.error||'')); if(btn){ btn.textContent='📎 Anexar comprovante'; btn.disabled=false; } }
+    }catch(e){ alert('Erro ao enviar o comprovante.'); if(btn){ btn.textContent='📎 Anexar comprovante'; btn.disabled=false; } }
+  };
+  inp.click();
+}
+
+function _fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(String(r.result).split(',')[1]);
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function salvarPrestacao(){
+  const v=viagemRegistros[prestacaoViagemIdx]; if(!v) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPrestacao',numero_req:v.numero_req,despesas:prestacaoDespesas})});
+    alert('Prestação de contas enviada!');
+    v.prestacao=prestacaoDespesas; v.prestacao_status='aguardando';
+    fecharPrestacao();
+    iniciarViagem();
+  }catch(e){ alert('Erro ao salvar a prestação.'); }
+}
+
+async function aprovarPrestacao(aprovar){
+  const v=viagemRegistros[prestacaoViagemIdx]; if(!v) return;
+  if(!confirm(aprovar?'Aprovar esta prestação de contas?':'Reprovar esta prestação?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'aprovarPrestacao',numero_req:v.numero_req,aprovado:aprovar})});
+    alert(aprovar?'Prestação aprovada!':'Prestação reprovada.');
+    v.prestacao_status=aprovar?'aprovada':'reprovada';
+    fecharPrestacao();
+    iniciarViagem();
+  }catch(e){ alert('Erro ao processar.'); }
 }
 
 function abrirNovaViagem(){
@@ -6907,6 +7043,7 @@ function abrirNovaViagem(){
   adicionarTrecho({tipo:'Volta'});
   adicionarDiaria();
   calcularTotalViagem();
+  if(!Array.isArray(colabLista)||!colabLista.length){ loadColaboradores().then(()=>popularSelectColaboradores()); } else { popularSelectColaboradores(); }
   document.getElementById('viagem-modal').style.display='flex';
 }
 
@@ -10777,6 +10914,24 @@ async function excluirOS(id){
 <div id="page-escala-tecnico" class="main" style="display:none"><div class="escala-container" data-setor="Técnico campo"></div></div>
 <div id="page-escala-n2" class="main" style="display:none"><div class="escala-container" data-setor="N2"></div></div>
 <input type="file" id="escala-file-input" accept=".xlsx,.xls" style="display:none">
+<input type="file" id="prestacao-file-input" accept="image/*,application/pdf" style="display:none">
+<div id="prestacao-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:760px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <h2 style="font-size:18px;font-weight:600;">💰 Prestação de Contas</h2>
+      <button onclick="fecharPrestacao()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <div id="prestacao-sub" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;"></div>
+
+    <div id="prestacao-despesas"></div>
+
+    <button onclick="addDespesa()" style="margin-top:10px;padding:8px 16px;border:1px dashed var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;width:100%;">+ Adicionar despesa</button>
+
+    <div id="prestacao-totais" style="margin-top:18px;"></div>
+
+    <div id="prestacao-acoes" style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;"></div>
+  </div>
+</div>
 <div id="page-consulta-cnpj" class="main" style="display:none">
   <div style="max-width:640px;">
     <h2 style="font-size:18px;font-weight:600;margin-bottom:4px;">Consultar CNPJ</h2>
@@ -10916,7 +11071,11 @@ function popularSelectColaboradores(){
   if(!sel) return;
   const val=sel.value;
   sel.innerHTML='<option value="">Selecione um colaborador...</option>';
-  colabLista.filter(c=>c.status==='Ativo').forEach(c=>{
+  // aceita "Ativo" em qualquer caixa; inclui também quem não tem status definido
+  colabLista.filter(c=>{
+    const st=String(c.status||'').trim().toLowerCase();
+    return st===''||st==='ativo';
+  }).forEach(c=>{
     const opt=document.createElement('option');
     opt.value=c.id;
     opt.textContent=c.nome+(c.cargo?' — '+c.cargo:'');
