@@ -1182,7 +1182,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V2.0';
+const BLINTRACK_VERSAO = 'V2.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1355,7 +1355,10 @@ function renderEscala(setor){
 
   // Vigente
   if(vigente){
-    h += '<div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--c-concluido);">✓ Escala vigente — '+(vigente.mes_ano||'')+'</div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">'
+      +'<span style="font-size:13px;font-weight:600;color:var(--c-concluido);">✓ Escala vigente — '+(vigente.mes_ano||'')+'</span>'
+      +(escalaEhGestor()?'<button onclick="escalaExcluir(\''+vigente.id+'\',\''+setor.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border:1px solid #e00;border-radius:var(--radius-sm);background:none;color:#e00;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">🗑 Excluir escala</button>':'')
+      +'</div>';
     h += _escalaTabelaHTML(vigente.dados);
     h += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Aprovada por '+(vigente.aprovado_por||'—')+' em '+_escFmtDataHora(vigente.aprovado_em)+'</div>';
   } else if(!pendentes.length){
@@ -1366,7 +1369,9 @@ function renderEscala(setor){
   if(historico.length){
     h += '<div style="margin-top:24px;border-top:1px solid var(--border);padding-top:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">Histórico</div>';
     historico.forEach(e=>{
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);padding:6px 0;">'+(e.mes_ano||'')+' — aprovada por '+(e.aprovado_por||'—')+'</summary><div style="padding:8px 0;">'+_escalaTabelaHTML(e.dados)+'</div></details>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);padding:6px 0;">'+(e.mes_ano||'')+' — aprovada por '+(e.aprovado_por||'—')+'</summary><div style="padding:8px 0;">'
+        +(escalaEhGestor()?'<div style="text-align:right;margin-bottom:6px;"><button onclick="escalaExcluir(\''+e.id+'\',\''+setor.replace(/'/g,"\\'")+'\')" style="padding:3px 9px;border:1px solid #e00;border-radius:var(--radius-sm);background:none;color:#e00;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">🗑 Excluir</button></div>':'')
+        +_escalaTabelaHTML(e.dados)+'</div></details>';
     });
     h += '</div>';
   }
