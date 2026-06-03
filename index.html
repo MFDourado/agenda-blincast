@@ -677,6 +677,10 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-left:auto;font-style:italic">Mínimo: 14 dias corridos em uma das saídas · Abono pecuniário: até 10 dias</div>
   </div>
+  <div id="ferias-abas" style="display:none;padding:0 24px;margin-bottom:12px;gap:6px;">
+    <button id="ferias-aba-solicitadas" onclick="setFeriasAba('solicitadas')" style="padding:7px 16px;border:1px solid var(--gold);border-radius:var(--radius-sm) 0 0 var(--radius-sm);background:var(--gold);color:#000;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">⏳ Solicitadas</button>
+    <button id="ferias-aba-historico" onclick="setFeriasAba('historico')" style="padding:7px 16px;border:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;background:none;color:var(--text-muted);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">✅ Concedidas / Histórico</button>
+  </div>
   <div id="ferias-list" style="padding:0 24px 24px;"></div>
 </div>
 <!-- VIAGEM -->
@@ -1178,7 +1182,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V1.4';
+const BLINTRACK_VERSAO = 'V1.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1548,6 +1552,18 @@ function _escalaMesAno(rows, dados){
     }
   }
   return 'Escala importada';
+}
+
+// Normaliza data do Painel forçando ano para 2026 (todos os registros são de 2026), preservando mês e dia.
+// Aceita ISO (AAAA-MM-DD), BR (DD/MM/AAAA) e devolve sempre AAAA-MM-DD.
+function ataAnoFix(d){
+  if(!d) return '';
+  let s=String(d).trim();
+  if(s.includes('/')) s=s.split('/').reverse().join('-');
+  s=s.slice(0,10);
+  const p=s.split('-');
+  if(p.length===3){ p[0]='2026'; return p.join('-'); }
+  return s;
 }
 
 // formata data/hora vinda do Sheets (ISO, timestamp) para dd/mm/aaaa hh:mm
@@ -2929,11 +2945,46 @@ function renderClientesFiltros(){
   wrap.innerHTML=h;
 }
 
+// Autocomplete customizado da busca de clientes (match por qualquer parte do nome/cidade/cnpj)
+function onBuscaClienteInput(){
+  renderClientes();  // mantém o filtro da tabela em tempo real
+  const inp=document.getElementById('clientes-busca');
+  const box=document.getElementById('cli-sugestoes');
+  if(!inp||!box) return;
+  const txt=inp.value.trim().toLowerCase();
+  if(!txt){ box.style.display='none'; box.innerHTML=''; return; }
+  const achados=clientes.filter(c=>
+    String(c.nome||'').toLowerCase().includes(txt) ||
+    String(c.cidade||'').toLowerCase().includes(txt) ||
+    String(c.cnpj||'').toLowerCase().includes(txt)
+  ).slice(0,12);
+  if(!achados.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML=achados.map(c=>{
+    const sub=[_cliUF(c)?(c.cidade+'/'+_cliUF(c)):c.cidade, c.produto].filter(Boolean).join(' · ');
+    const nomeEsc=String(c.nome||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return '<div onclick="selecionarSugestaoCliente(\''+nomeEsc+'\')" style="padding:8px 12px;cursor:pointer;border-bottom:0.5px solid var(--border);font-size:13px;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'">'
+      +'<div style="font-weight:500;">'+_esc(c.nome||'')+'</div>'
+      +(sub?'<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">'+_esc(sub)+'</div>':'')
+      +'</div>';
+  }).join('');
+  box.style.display='block';
+}
+function selecionarSugestaoCliente(nome){
+  const inp=document.getElementById('clientes-busca');
+  if(inp){ inp.value=nome; }
+  fecharSugestoesCliente();
+  renderClientes();
+}
+function fecharSugestoesCliente(){
+  const box=document.getElementById('cli-sugestoes');
+  if(box){ box.style.display='none'; }
+}
+
 function getClientesFiltrados(){
   const buscaEl=document.getElementById('clientes-busca');
   const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
   return clientes.filter(c=>{
-    if(buscaTxt && !((c.nome||'').toLowerCase().includes(buscaTxt)||(c.cidade||'').toLowerCase().includes(buscaTxt)||(c.cnpj||'').toLowerCase().includes(buscaTxt))) return false;
+    if(buscaTxt && !(String(c.nome||'').toLowerCase().includes(buscaTxt)||String(c.cidade||'').toLowerCase().includes(buscaTxt)||String(c.cnpj||'').toLowerCase().includes(buscaTxt))) return false;
     // status (dentro do grupo: OR; vazio = todos)
     if(cliFiltros.status.size){
       const st=(c.status==='inativo')?'inativo':'ativo';
@@ -2961,8 +3012,8 @@ function renderClientes(){
   if(!lista.length){ list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente para os filtros.</div>'; return; }
   const dir=cliSort.dir, col=cliSort.col;
   const val=(c)=>{
-    if(col==='nome') return (c.nome||'').toLowerCase();
-    if(col==='cidade') return (c.cidade||'').toLowerCase();
+    if(col==='nome') return String(c.nome||'').toLowerCase();
+    if(col==='cidade') return String(c.cidade||'').toLowerCase();
     if(col==='produto') return _cliProdutoCanon(c);
     if(col==='uhs') return parseInt(c.uhs)||0;
     if(col==='status') return (c.status==='inativo')?'inativo':'ativo';
@@ -4011,9 +4062,7 @@ function popularFiltroMes(){
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMes = i => {
     const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
-    if(!d) return '';
-    if(d.includes('/')) return d; // já MM/yyyy
-    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+    return implMesAnoNorm(d);
   };
   const meses = [...new Set(implDados.map(getMes).filter(Boolean))].sort((a,b)=>{
     const [ma,ya]=[parseInt(a.split('/')[0]),parseInt(a.split('/')[1])];
@@ -4028,17 +4077,43 @@ function popularFiltroMes(){
   });
 }
 
-// Converte previsão "MM/AAAA" ou "MM/AA" para "AAAA-MM" (valor de <input type=month>)
+// Converte previsão para "AAAA-MM" (valor de <input type=month>). Ano sempre 2026 (todos os registros são de 2026), preservando o mês.
 function implPrevToMonth(prev){
   if(!prev) return '';
-  const partes = String(prev).split('/');
-  if(partes.length<2) return '';
-  let mes = partes[0].padStart(2,'0');
-  let ano = partes[1];
-  if(ano.length===2) ano = '20'+ano;        // 26 -> 2026
-  if(ano.length===6 && ano.startsWith('20')) ano = ano.slice(2); // recupera 202026 -> 2026
-  if(ano.length!==4) return '';             // proteção contra lixo restante
-  return ano+'-'+mes;
+  let mes='';
+  let s=String(prev).trim();
+  // ISO AAAA-MM-DD ou AAAA-MM
+  let m=s.match(/^(\d{4})-(\d{2})/);
+  if(m){ mes=m[2]; }
+  else {
+    // MM/AAAA, MM/AA, MM/AAAAAA etc.
+    const partes=s.split('/');
+    if(partes.length>=2 && /^\d{1,2}$/.test(partes[0].trim())){ mes=partes[0].trim().padStart(2,'0'); }
+    else {
+      // tenta extrair mês de um Date
+      try{ const dt=new Date(s.includes('T')?s:s+'T12:00:00'); if(!isNaN(dt.getTime())) mes=String(dt.getMonth()+1).padStart(2,'0'); }catch(e){}
+    }
+  }
+  if(!mes || mes<'01' || mes>'12') return '';
+  return '2026-'+mes;   // ano forçado para 2026
+}
+
+// Normaliza qualquer data de implantação para "MM/2026" (ano sempre 2026, preservando o mês)
+function implMesAnoNorm(d){
+  if(!d) return '';
+  let s=String(d).trim();
+  let mes='';
+  let m=s.match(/^(\d{4})-(\d{2})/);
+  if(m){ mes=m[2]; }
+  else {
+    m=s.match(/^(\d{1,2})\/\d{2,6}/);
+    if(m){ mes=m[1].padStart(2,'0'); }
+    else {
+      try{ const dt=new Date(s.includes('T')?s:s+'T12:00:00'); if(!isNaN(dt.getTime())) mes=String(dt.getMonth()+1).padStart(2,'0'); }catch(e){}
+    }
+  }
+  if(!mes || mes<'01' || mes>'12') return '';
+  return mes+'/2026';   // ano forçado para 2026
 }
 
 function renderImplantacoes(){
@@ -4057,9 +4132,7 @@ function renderImplantacoes(){
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMesItem = i => {
     const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
-    if(!d) return '';
-    if(d.includes('/')) return d;
-    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+    return implMesAnoNorm(d);
   };
   if(fMes) lista = lista.filter(i=>getMesItem(i)===fMes);
   if(implSubmenuTipo) lista = lista.filter(i=>(i.tipo||'Instalação')===implSubmenuTipo);
@@ -4156,10 +4229,10 @@ function renderImplCharts(lista){
   }
 
   // --- Barras: Por Mês ---
-  const mesesAll = [...new Set(implDados.map(i=>i.previsao).filter(Boolean))].sort();
-  const mesesFiltrado = [...new Set(lista.map(i=>i.previsao).filter(Boolean))].sort();
+  const mesesAll = [...new Set(implDados.map(i=>implMesAnoNorm(i.previsao)).filter(Boolean))].sort();
+  const mesesFiltrado = [...new Set(lista.map(i=>implMesAnoNorm(i.previsao)).filter(Boolean))].sort();
   const mesesUsar = mesesFiltrado.length > 0 ? mesesFiltrado : mesesAll;
-  const mesData  = mesesUsar.map(m => lista.filter(i=>i.previsao===m).length);
+  const mesData  = mesesUsar.map(m => lista.filter(i=>implMesAnoNorm(i.previsao)===m).length);
 
   const ctxM = document.getElementById('impl-chart-mes');
   if(ctxM){
@@ -4366,9 +4439,7 @@ function buildPreview(){
   const tipoMes = document.getElementById('impl-f-tipo-mes')?.value||'previsao';
   const getMesItem = i => {
     const d = tipoMes==='assinatura' ? i.assinatura : tipoMes==='conclusao' ? i.conclusao : i.previsao;
-    if(!d) return '';
-    if(d.includes('/')) return d;
-    try{ const dt=new Date(d+'T12:00:00'); return String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }catch(e){ return ''; }
+    return implMesAnoNorm(d);
   };
   if(fMes) lista = lista.filter(i=>getMesItem(i)===fMes);
   if(fTipo)   lista = lista.filter(i=>(i.tipo||'')===fTipo);
@@ -4645,45 +4716,64 @@ async function carregarFeriasColaborador(){
   }catch(e){}
 }
 
+let feriasAba = 'solicitadas';
+function setFeriasAba(aba){
+  feriasAba = aba;
+  const s=document.getElementById('ferias-aba-solicitadas'), h=document.getElementById('ferias-aba-historico');
+  if(s&&h){
+    const on='background:var(--gold);color:#000;font-weight:600;', off='background:none;color:var(--text-muted);font-weight:400;';
+    s.style.cssText='padding:7px 16px;border:1px solid var(--gold);border-radius:var(--radius-sm) 0 0 var(--radius-sm);font-size:13px;font-family:\'DM Sans\',sans-serif;cursor:pointer;'+(aba==='solicitadas'?on:off);
+    h.style.cssText='padding:7px 16px;border:1px solid '+(aba==='historico'?'var(--gold)':'var(--border)')+';border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:13px;font-family:\'DM Sans\',sans-serif;cursor:pointer;'+(aba==='historico'?on:off);
+  }
+  renderFeriasAdmin();
+}
+
 function renderFeriasAdmin(){
   const list = document.getElementById('ferias-list');
   if(!list) return;
+  // mostra as abas (só admin chega aqui)
+  const abas=document.getElementById('ferias-abas'); if(abas) abas.style.display='flex';
+  // filtra os registros conforme a aba: solicitadas = status 'solicitado'; histórico = aprovado/reprovado
+  const filtroStatus = feriasAba==='solicitadas' ? ['solicitado'] : ['aprovado','reprovado'];
+  const dados = (feriasDados||[]).filter(f=>filtroStatus.includes(f.status));
   // Agrupar por usuário
   const usuarios = {};
-  (feriasDados||[]).forEach(f => {
+  dados.forEach(f => {
     if(!usuarios[f.usuario]) usuarios[f.usuario] = {nome:f.nome||f.usuario, solicitacoes:[], saldo:parseInt(f.saldo_dias)||30};
     else if(f.saldo_dias) usuarios[f.usuario].saldo = parseInt(f.saldo_dias)||30;
     usuarios[f.usuario].solicitacoes.push(f);
   });
-  // Adicionar usuários sem solicitações
-  (usuariosSistema||[]).forEach(u => {
-    if(!usuarios[u.usuario]) usuarios[u.usuario] = {nome:u.nome, solicitacoes:[], saldo:30};
-  });
-  const pendentes = (feriasDados||[]).filter(f=>f.status==='solicitado').length;
-  const bannerHtml = pendentes ? `<div id="ferias-pendentes-banner" style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600;cursor:pointer;" onclick="this.style.display='none'">⚠️ ${pendentes} solicitação(ões) pendente(s) de aprovação <span style="font-size:11px;color:var(--text-muted)">(clique para fechar)</span></div>` : '';
-  list.innerHTML = bannerHtml
-    + Object.entries(usuarios).map(([usuario, info]) => {
-    const pend = info.solicitacoes.filter(f=>f.status==='solicitado').length;
-    return '<div class="project-card" style="padding:16px;margin-bottom:12px;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
-      +'<div>'
-      +'<div style="font-size:15px;font-weight:700">'+info.nome+'</div>'
-      +'<div style="font-size:12px;color:var(--text-muted)">'+usuario+(pend?` <span style="color:#e67e22;font-weight:600">· ${pend} pendente(s)</span>`:'')+'</div>'
-      +'</div>'
-      +'<div style="display:flex;gap:8px;align-items:center;">'
-      +'<span style="font-size:22px;font-weight:800;color:var(--c-concluido)">'+info.saldo+'</span>'
-      +'<span style="font-size:11px;color:var(--text-muted)">dias<br>disponíveis</span>'
-      +'<button onclick="abrirAdminSaldo(\''+usuario+'\',\''+info.nome+'\','+info.saldo+')" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:none;cursor:pointer;color:var(--text-muted);">⚙ Saldo</button>'
-      +'</div></div>'
-      +(info.solicitacoes.length?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">'
-        +info.solicitacoes.map(f=>renderFeriasCard(f, true)).join('')+'</div>':'')
-      +'</div>';
-  }).join('');
+  if(feriasAba==='solicitadas'){
+    const pendentes = dados.length;
+    const banner = pendentes ? '<div style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600;">⏳ '+pendentes+' solicitação(ões) aguardando sua aprovação</div>' : '<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma solicitação aguardando aprovação.</div>';
+    list.innerHTML = banner + Object.entries(usuarios).map(([usuario, info]) => _feriasBlocoUsuario(usuario, info)).join('');
+  } else {
+    if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma férias concedida ou histórico ainda.</div>'; return; }
+    list.innerHTML = Object.entries(usuarios).map(([usuario, info]) => _feriasBlocoUsuario(usuario, info)).join('');
+  }
+}
+
+function _feriasBlocoUsuario(usuario, info){
+  return '<div class="project-card" style="padding:16px;margin-bottom:12px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
+    +'<div>'
+    +'<div style="font-size:15px;font-weight:700">'+info.nome+'</div>'
+    +'<div style="font-size:12px;color:var(--text-muted)">'+usuario+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;">'
+    +'<span style="font-size:22px;font-weight:800;color:var(--c-concluido)">'+info.saldo+'</span>'
+    +'<span style="font-size:11px;color:var(--text-muted)">dias<br>disponíveis</span>'
+    +'<button onclick="abrirAdminSaldo(\''+usuario+'\',\''+info.nome+'\','+info.saldo+')" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:none;cursor:pointer;color:var(--text-muted);">⚙ Saldo</button>'
+    +'</div></div>'
+    +(info.solicitacoes.length?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">'
+      +info.solicitacoes.map(f=>renderFeriasCard(f, true)).join('')+'</div>':'')
+    +'</div>';
 }
 
 function renderFeriasColaborador(){
   const list = document.getElementById('ferias-list');
   if(!list) return;
+  const abas=document.getElementById('ferias-abas'); if(abas) abas.style.display='none';
   if(!feriasDados.length){
     list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma solicitação de férias. Clique em "+ Solicitar férias".</div>';
     return;
@@ -5153,7 +5243,7 @@ function filtrarClienteReq(input){
   const el = document.getElementById('req-cliente-sugest');
   if(!el) return;
   if(q.length < 1){ el.style.display='none'; return; }
-  const lista = (clientes||[]).filter(c=>c.status!=='inativo'&&(c.nome||'').toLowerCase().includes(q)).slice(0,20);
+  const lista = (clientes||[]).filter(c=>c.status!=='inativo'&&String(c.nome||'').toLowerCase().includes(q)).slice(0,20);
   if(!lista.length){ el.style.display='none'; return; }
   el.innerHTML = lista.map(c=>
     '<div onclick="selecionarClienteReq(\''+c.nome.replace(/'/g,"\\'")+'\')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+c.nome+(c.cidade?' <span style="font-size:10px;color:var(--text-muted)">— '+c.cidade+'</span>':'')+'</div>'
@@ -5683,8 +5773,15 @@ function renderAta(){
     let s = String(d).trim();
     if(s.includes('/')) s = s.split('/').reverse().join('-');
     s = s.slice(0,10);
-    // Corrigir anos errados: 0202, 2002, 2020, 2023 → 2026
-    s = s.replace(/^0202-/, '2026-').replace(/^2002-/, '2026-').replace(/^2020-/, '2026-').replace(/^2023-0[45]-/, m=>'2026-'+m.slice(5));
+    const partes = s.split('-');
+    // Todas as datas do Painel são de 2026: normaliza o ano preservando mês e dia
+    if(partes.length===3){
+      partes[0]='2026';
+      s=partes.join('-');
+    } else if(partes.length>=1 && partes[0].length!==4){
+      partes[0]='2026';
+      s=partes.join('-');
+    }
     return s;
   };
   if(filtroData)lista=lista.filter(r=>{
@@ -5750,11 +5847,11 @@ function renderAta(){
       </td>
       <td style="padding:2px 3px;vertical-align:top;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
-        <input type="date" value="${r.dt_abertura||''}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
+        <input type="date" value="${ataAnoFix(r.dt_abertura)}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--c-previsto);font-weight:600;margin-top:3px;margin-bottom:1px;">Prevista</div>
-        <input type="date" value="${r.dt_prevista||''}" onchange="alterarAtaData('${r.id}','dt_prevista',this.value)" style="border:1px solid var(--c-previsto);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;height:22px;width:100%;">
+        <input type="date" value="${ataAnoFix(r.dt_prevista)}" onchange="alterarAtaData('${r.id}','dt_prevista',this.value)" style="border:1px solid var(--c-previsto);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:3px;margin-bottom:1px;">Concl.</div>
-        <input type="date" value="${r.dt_conclusao||''}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
+        <input type="date" value="${ataAnoFix(r.dt_conclusao)}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <select onchange="alterarAtaData('${r.id}','forma_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:9px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text-muted);outline:none;height:20px;width:100%;margin-top:3px;cursor:pointer;">
           <option value="" ${!r.forma_conclusao?'selected':''}>— forma —</option>
           <option value="Remoto" ${r.forma_conclusao==='Remoto'?'selected':''}>Remoto</option>
@@ -6113,12 +6210,7 @@ function exportarAtaCSV(){
   const de  = document.getElementById('ata-csv-de').value;
   const ate = document.getElementById('ata-csv-ate').value;
   const filtroTecnico = document.getElementById('ata-filtro-tecnico').value;
-  const normDate = d => {
-    if(!d) return '';
-    const s = String(d).trim();
-    const iso = s.includes('/') ? s.split('/').reverse().join('-') : s.slice(0,10);
-    return iso.replace(/^0202-/,'2026-').replace(/^2002-/,'2026-').replace(/^2020-/,'2026-');
-  };
+  const normDate = d => ataAnoFix(d);
   const fmtDate = d => { const n=normDate(d); if(!n) return ''; try{ return new Date(n+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return n; } };
   let lista = [...ataRegistros];
   if(de)  lista = lista.filter(r => normDate(r.dt_abertura)>=de || normDate(r.dt_prevista)>=de);
@@ -6460,7 +6552,7 @@ function nvFiltrarClientes(){
     loadClientes().then(()=>nvFiltrarClientes());
     return;
   }
-  const filtrados = clientes.filter(c=>c.status==='ativo' && (c.nome||'').toLowerCase().includes(q)).slice(0,8);
+  const filtrados = clientes.filter(c=>c.status==='ativo' && String(c.nome||'').toLowerCase().includes(q)).slice(0,8);
   if(!filtrados.length){
     lista.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">Nenhum cliente encontrado.</div>';
     lista.style.display='block';
@@ -7980,7 +8072,10 @@ async function estEnviarEmail(reg){
   <div class="pipeline-header">
     <div><h2>Clientes</h2><div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="cli-sync"></div></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <input type="text" id="clientes-busca" placeholder="🔍 Buscar cliente..." oninput="renderClientes()" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <div style="position:relative;display:inline-block;">
+        <input type="text" id="clientes-busca" autocomplete="off" placeholder="🔍 Buscar cliente..." oninput="onBuscaClienteInput()" onfocus="onBuscaClienteInput()" onblur="setTimeout(fecharSugestoesCliente,200)" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:240px;">
+        <div id="cli-sugestoes" style="display:none;position:absolute;top:40px;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:280px;overflow-y:auto;z-index:50;"></div>
+      </div>
       <button onclick="sincronizarClientes()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar</button>
       <button class="btn-new-project" onclick="openNovoClienteModal()">+ Novo cliente</button>
     </div>
