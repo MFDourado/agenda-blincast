@@ -1185,7 +1185,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V2.8';
+const BLINTRACK_VERSAO = 'V2.9';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4048,6 +4048,10 @@ async function loadImplantacoes(){
   implBoardLoad(); implBoardRender();
   const syncEl = document.getElementById('impl-sync');
   if(syncEl) syncEl.textContent = 'Carregando...';
+  // garante que os projetos do Pipeline estejam carregados (origem das UHs)
+  if(!Array.isArray(projects) || !projects.length){
+    try{ await loadPipeline(); }catch(e){}
+  }
   try{
     const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getImplantacoes');
     const d = await r.json();
@@ -4060,6 +4064,7 @@ async function loadImplantacoes(){
         status_dinamico: getImplStatus(proj, item),
         cnpj: proj ? (proj.cnpj||item.cnpj||'') : (item.cnpj||''),
         cidade: proj ? (proj.cidade||item.cidade||'') : (item.cidade||''),
+        uhs: (item.uhs && parseInt(item.uhs)) ? item.uhs : (proj ? (proj.uhs||'') : ''),
       };
     }) : [];
     if(syncEl) syncEl.textContent = 'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -4130,13 +4135,25 @@ function implMesAnoNorm(d){
   return mes+'/2026';   // ano forçado para 2026
 }
 
-// Pega a quantidade de UHs de uma implantação: usa o campo do próprio item; se não houver, cruza com o cliente pelo CNPJ
+// Pega a quantidade de UHs de uma implantação: tenta o próprio item; depois cruza com o Pipeline (projects)
+// pelo CNPJ ou pelo nome; por fim tenta a base de clientes.
 function _implUHs(item){
   let u = item.uhs || item.uh || '';
-  if(!u && item.cnpj && Array.isArray(clientes)){
-    const cnpjN = String(item.cnpj).replace(/\D/g,'');
-    const c = clientes.find(x=>String(x.cnpj||'').replace(/\D/g,'')===cnpjN);
-    if(c) u = c.uhs||'';
+  const cnpjItem = String(item.cnpj||'').replace(/\D/g,'');
+  const nomeItem = String(item.nome||'').trim().toLowerCase();
+  // 1) Pipeline (projects)
+  if((!u||u==='0') && Array.isArray(typeof projects!=='undefined'?projects:[])){
+    let p = null;
+    if(cnpjItem) p = projects.find(x=>String(x.cnpj||'').replace(/\D/g,'')===cnpjItem);
+    if(!p && nomeItem) p = projects.find(x=>String(x.nome||'').trim().toLowerCase()===nomeItem);
+    if(p && p.uhs) u = p.uhs;
+  }
+  // 2) base de clientes
+  if((!u||u==='0') && Array.isArray(typeof clientes!=='undefined'?clientes:[])){
+    let c = null;
+    if(cnpjItem) c = clientes.find(x=>String(x.cnpj||'').replace(/\D/g,'')===cnpjItem);
+    if(!c && nomeItem) c = clientes.find(x=>String(x.nome||'').trim().toLowerCase()===nomeItem);
+    if(c && c.uhs) u = c.uhs;
   }
   const n = parseInt(String(u).replace(/\D/g,''),10);
   return isNaN(n)?'' :n;
