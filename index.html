@@ -1185,7 +1185,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V2.7';
+const BLINTRACK_VERSAO = 'V2.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4130,6 +4130,18 @@ function implMesAnoNorm(d){
   return mes+'/2026';   // ano forçado para 2026
 }
 
+// Pega a quantidade de UHs de uma implantação: usa o campo do próprio item; se não houver, cruza com o cliente pelo CNPJ
+function _implUHs(item){
+  let u = item.uhs || item.uh || '';
+  if(!u && item.cnpj && Array.isArray(clientes)){
+    const cnpjN = String(item.cnpj).replace(/\D/g,'');
+    const c = clientes.find(x=>String(x.cnpj||'').replace(/\D/g,'')===cnpjN);
+    if(c) u = c.uhs||'';
+  }
+  const n = parseInt(String(u).replace(/\D/g,''),10);
+  return isNaN(n)?'' :n;
+}
+
 function renderImplantacoes(){
   const tbody = document.getElementById('impl-tbody');
   const totalEl = document.getElementById('impl-total');
@@ -4182,7 +4194,7 @@ function renderImplantacoes(){
   }).join('');
 
   if(!lista.length){
-    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
     if(totalEl) totalEl.textContent='';
     return;
   }
@@ -4203,6 +4215,7 @@ function renderImplantacoes(){
       +'<td style="padding:8px;white-space:nowrap;color:var(--text-muted);font-size:11px;">'+(item.cidade||'—')+'<br>'+(item.uf||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+formatCNPJ(item.cnpj||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.equipamento||'')+'">'+( item.equipamento||'—')+'</td>'
+      +'<td style="padding:8px;font-size:11px;text-align:center;white-space:nowrap;">'+(_implUHs(item)||'—')+'</td>'
       +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span>'+(item.status_op?'<br><span style="font-size:10px;color:#888;font-style:italic;">'+item.status_op+'</span>':'')+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--text-muted);">'+fmtDate(item.assinatura)+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;"><input type="month" value="'+implPrevToMonth(item.previsao)+'" onchange="salvarPrevInline(\''+item.id+'\',this.value)" style="border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;font-family:DM Sans,sans-serif;background:var(--surface);color:var(--c-previsto);outline:none;width:110px;"></td>'
@@ -4214,7 +4227,10 @@ function renderImplantacoes(){
       +'</tr>';
   }).join('');
 
-  if(totalEl) totalEl.textContent = lista.length + ' registros';
+  if(totalEl){
+    const totalUHs = lista.reduce((s,i)=>s+(parseInt(_implUHs(i))||0),0);
+    totalEl.textContent = lista.length + ' registros · ' + totalUHs.toLocaleString('pt-BR') + ' UHs';
+  }
 
   // Renderizar gráficos com os dados filtrados
   renderImplCharts(lista);
@@ -4471,13 +4487,13 @@ function exportarImplantacoesExcel(){
   previewEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">'+lista.length+' registros — clique em "Baixar Excel" para confirmar.</div>'
     +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
     +'<thead><tr style="background:var(--black);color:#888;">'
-    +['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Assinatura','Previsão','Conclusão','Dias','Obs']
+    +['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','UHs','Status','Assinatura','Previsão','Conclusão','Dias','Obs']
       .map(h=>'<th style="padding:8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">'+h+'</th>').join('')
     +'</tr></thead><tbody>'
     +lista.map((item,i) => {
       const dias = item.assinatura&&item.conclusao ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))+'d' : '—';
       return '<tr style="background:'+(i%2===0?'var(--surface)':'');+'border-bottom:1px solid var(--border);">'
-        +[item.nome,item.cidade||'',item.uf||'',formatCNPJ(item.cnpj||''),item.tipo||'',item.equipamento||'',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'',fmtDate(item.conclusao),dias,item.obs||'']
+        +[item.nome,item.cidade||'',item.uf||'',formatCNPJ(item.cnpj||''),item.tipo||'',item.equipamento||'',_implUHs(item)||'',item.status_dinamico,fmtDate(item.assinatura),item.previsao||'',fmtDate(item.conclusao),dias,item.obs||'']
           .map(v=>'<td style="padding:6px 8px;">'+v+'</td>').join('')
         +'</tr>';
     }).join('')
@@ -4493,14 +4509,14 @@ function exportarImplantacoesPDF(){
 function confirmarExportarExcel(){
   const fmtDate = d => { if(!d) return ''; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } };
 
-  const headers = ['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','Status','Status Operacional','Assinatura','Previsão','Conclusão','Dias','Observações'];
+  const headers = ['Cliente','Cidade','UF','CNPJ','Tipo','Equipamento','UHs','Status','Status Operacional','Assinatura','Previsão','Conclusão','Dias','Observações'];
   const rows = implExportData.map(item => {
     const dias = item.assinatura && item.conclusao
       ? Math.floor((new Date(item.conclusao)-new Date(item.assinatura))/(1000*60*60*24))
       : '';
     return [
       item.nome, item.cidade||'', item.uf||'', formatCNPJ(item.cnpj||''),
-      item.tipo||'', item.equipamento||'', item.status_dinamico, item.status_op||'',
+      item.tipo||'', item.equipamento||'', _implUHs(item)||'', item.status_dinamico, item.status_op||'',
       fmtDate(item.assinatura), item.previsao||'', fmtDate(item.conclusao),
       dias, item.obs||''
     ];
@@ -4513,7 +4529,7 @@ function confirmarExportarExcel(){
 
   // Larguras das colunas
   ws['!cols'] = [
-    {wch:35},{wch:18},{wch:5},{wch:20},{wch:14},{wch:28},
+    {wch:35},{wch:18},{wch:5},{wch:20},{wch:14},{wch:28},{wch:7},
     {wch:16},{wch:22},{wch:13},{wch:10},{wch:13},{wch:7},{wch:30}
   ];
 
@@ -9327,6 +9343,7 @@ async function estEnviarEmail(reg){
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Cidade/UF</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">CNPJ</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Equipamento</th>
+          <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">UHs</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Status</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Assinatura</th>
           <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;">Previsão</th>
