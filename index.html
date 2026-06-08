@@ -1185,7 +1185,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.1';
+const BLINTRACK_VERSAO = 'V3.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -3120,7 +3120,13 @@ function cliDetalheHTML(id){
     +linha('💰 Mensalidade', c.mensalidade)
     +linha('📡 Valor operadora', c.valor_operadora)
     +linha('Pagamento operadora', c.pagamento_operadora&&c.pagamento_operadora!=='N/A'?c.pagamento_operadora:'')
-    +(c.link_contrato?`<div style="font-size:12px;margin:6px 0;"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="${c.link_contrato}" data-nome="${c.nome}" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>`:'')
+    +`<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">`
+    +(c.link_contrato?`<button onclick="event.stopPropagation();abrirAnexoNovaAba('${c.link_contrato}','${(c.nome||'').replace(/'/g,"\\'")}');" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Ver contrato</button>`:'')
+    +(c.link_grade?`<button onclick="event.stopPropagation();abrirAnexoNovaAba('${c.link_grade}','${(c.nome||'').replace(/'/g,"\\'")} — Grade');" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Ver grade</button>`:'')
+    +`<input type="file" id="tab-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-contrato-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button>`
+    +`<input type="file" id="tab-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-grade-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button>`
+    +`<span id="cli-contrato-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span><span id="cli-grade-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span>`
+    +`</div>`
     +'</div>';
   info+='</div>';
   const btns=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
