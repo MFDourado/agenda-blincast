@@ -2658,6 +2658,20 @@ async function confirmarEnvioEmail(){const projId=document.getElementById('ec-pr
 // ===================== PRÉ-VISTORIA STREAMBLINK (operacional · somente leitura) =====================
 const PV_SECOES=[{"t": "1 · Dados do cliente e negociação", "f": [["s1_nome", "Nome do cliente"], ["s1_cidade", "Cidade"], ["s1_uf", "UF"], ["s1_contato", "Contato"], ["s1_celular", "Celular"], ["s1_cnpj", "CNPJ"], ["s1_blocos", "Qtd. blocos"], ["s1_andares", "Qtd. andares"], ["s1_aptos_andar", "Aptos por andar"], ["s1_total_quartos", "Total de quartos"], ["s1_situacao", "Situação do cliente"], ["s1_tipo_cliente", "Tipo de cliente"], ["s1_tipo_outro", "Se outro, qual?"], ["s1_uhs_instalacao", "Nº dos UHs de instalação"], ["s1_consultor", "Consultor Blincast"], ["s1_valor_instalacao", "Valor da instalação"], ["s1_servicos", "Serviços em negociação"], ["s1_tecnico_instalacao", "Técnico de instalação"], ["s1_data_contrato", "Data assinatura contrato"], ["s1_restricao", "Restrição para instalação?"], ["s1_restricao_quais", "Quais restrições?"], ["s1_obs_quartos", "Observações sobre os quartos"]]}, {"t": "2 · Específico Streamblink", "f": [["s2_qtd_telas", "Qtd. de telas"], ["s2_tipo_instalacao", "Tipo de instalação"], ["s2_cast", "Terá CAST?"], ["s2_conteudo_online", "Conteúdo online?"], ["s2_pacote_milplay", "Pacote Milplay contratado"], ["s2_globo", "Globo disponível?"], ["s2_integracao", "Cliente possuirá integração?"], ["s2_integracao_qual", "Qual integração?"], ["s2_wifi_empresa", "Empresa gerencia WIFI?"], ["s2_wifi_nome", "Nome da empresa de WIFI"], ["s2_suporte_nome", "Suporte instalação · Nome"], ["s2_suporte_cargo", "Suporte instalação · Cargo"], ["s2_suporte_telefone", "Suporte instalação · Telefone"], ["s2_suporte_obs", "Suporte instalação · Obs"]]}, {"t": "3 · Específico rede do cliente", "f": [["s3_tipo_rede", "Tipo de rede"], ["s3_ponto_rede_tv", "Ponto de rede na TV?"], ["s3_tipo_switch", "Tipo de switch"], ["s3_switch_gerenciavel", "Switch gerenciável?"], ["s3_switch_marcas", "Marcas/modelos do switch"], ["s3_porta_livre", "Porta livre?"], ["s3_vlan", "Possui VLAN?"], ["s3_bloqueios", "Possui bloqueios na rede?"], ["s3_internet_contato", "Gestão internet · Contato"], ["s3_internet_telefone", "Gestão internet · Telefone"], ["s3_internet_obs", "Gestão internet · Obs"], ["s3_qtd_links", "Qtd. de links"], ["s3_velocidade", "Velocidade (MB/s)"], ["s3_obs_rede", "Observações da rede"]]}, {"t": "4 · Sobre racks", "f": [["s4_possui_rack", "Cliente já possui RACK?"], ["s4_tipo_rack", "Tipo do rack"]]}, {"t": "5 · Sobre as TVs do cliente", "f": [["s5_tvs_android", "Possui TVs Android?"], ["s5_tvs_qtd", "Quantas TVs Android?"], ["s5_versao_android", "Versão do Android"], ["s5_marcas", "Marcas"], ["s5_modelos", "Modelos"], ["s5_tempo_uso", "Tempo de uso"], ["s5_mesma_marca", "TVs mesma marca/modelo?"], ["s5_controles_originais", "Controles remotos originais?"], ["s5_tomada_livre", "Tomada livre atrás da TV?"], ["s5_hdmi_lateral", "Entrada HDMI lateral?"], ["s5_obs", "Observação"]]}, {"t": "6 · Equipe de manutenção e T.I.", "f": [["s6_manut_nome", "Manutenção · Nome"], ["s6_manut_celular", "Manutenção · Celular"], ["s6_manut_email", "Manutenção · E-mail"], ["s6_manut_obs", "Manutenção · Obs"], ["s6_ti_nome", "T.I. · Nome"], ["s6_ti_celular", "T.I. · Celular"], ["s6_ti_email", "T.I. · E-mail"], ["s6_ti_obs", "T.I. · Obs"]]}, {"t": "7 · Equipe de faturamento", "f": [["s7_resp1_nome", "Responsável 1 · Nome"], ["s7_resp1_celular", "Responsável 1 · Celular"], ["s7_resp1_email", "Responsável 1 · E-mail"], ["s7_resp1_obs", "Responsável 1 · Obs"], ["s7_resp2_nome", "Responsável 2 · Nome"], ["s7_resp2_celular", "Responsável 2 · Celular"], ["s7_resp2_email", "Responsável 2 · E-mail"], ["s7_resp2_obs", "Responsável 2 · Obs"]]}, {"t": "8 · Responsável pelo preenchimento", "f": [["s8_cli_nome", "Cliente · Nome"], ["s8_cli_cargo", "Cliente · Cargo"], ["s8_cli_empresa", "Cliente · Empresa"], ["s8_cli_obs", "Cliente · Obs"], ["s8_blin_nome", "Blincast · Nome"], ["s8_blin_obs", "Blincast · Obs"]]}, {"t": "9 · Equipamentos / necessidades", "f": [["s9_benjamin", "Necessita de Benjamin Articulado?"], ["s9_benjamin_qtd", "Quantidade"]]}];
 let preVistoriasOp=[];
+function fmtPvDate(v){
+  if(v==null||v==='') return '—';
+  var s=String(v).trim();
+  if(/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s.slice(0,16);
+  var d=new Date(s);
+  if(!isNaN(d.getTime())){ try{ return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(',',''); }catch(e){ return s; } }
+  return s;
+}
+function pvSortKey(v){
+  var s=String(v||'').trim();
+  var m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5]).getTime();
+  var d=new Date(s); return isNaN(d.getTime())?0:d.getTime();
+}
 const PVOP_BTN="height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer";
 
 async function loadPreVistoriasOp(){
@@ -2683,7 +2697,7 @@ function renderPvOpList(){
   const q=(bq?bq.value:'').toLowerCase().trim();
   let lista=preVistoriasOp.slice();
   if(q) lista=lista.filter(function(x){ return (x.nome_cliente||'').toLowerCase().indexOf(q)>=0 || String(x.cnpj||'').indexOf(q)>=0; });
-  lista.sort(function(a,b){ return String(b.atualizado_em||'').localeCompare(String(a.atualizado_em||'')); });
+  lista.sort(function(a,b){ return pvSortKey(b.atualizado_em)-pvSortKey(a.atualizado_em); });
   if(!lista.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:24px;text-align:center">Nenhuma pré-vistoria encontrada.</div>'; return; }
   cont.innerHTML=lista.map(function(x){
     const d=x.dados||{}; const cidade=d.s1_cidade||''; const fin=(x.status==='finalizado');
@@ -2691,7 +2705,7 @@ function renderPvOpList(){
     return '<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
       +'<div style="min-width:200px"><div style="font-weight:600;font-size:14px">'+pvOpEsc(x.nome_cliente||'—')+'</div>'
       +'<div style="font-size:12px;color:var(--text-muted);font-family:\'DM Mono\',monospace">'+pvOpEsc(x.cnpj||'sem CNPJ')+(cidade?' · '+pvOpEsc(cidade):'')+'</div>'
-      +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Atualizado: '+pvOpEsc(x.atualizado_em||'—')+(x.consultor?' · '+pvOpEsc(x.consultor):'')+'</div></div>'
+      +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Atualizado: '+pvOpEsc(fmtPvDate(x.atualizado_em))+(x.consultor?' · '+pvOpEsc(x.consultor):'')+'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center">'+badge
       +'<button style="'+PVOP_BTN+'" onclick="openPvOpDetail(\''+x.id+'\')">Ver</button></div></div>';
   }).join('');
@@ -2705,7 +2719,7 @@ function openPvOpDetail(id){
   let head='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px">'
     +'<div><div style="font-size:18px;font-weight:700">'+pvOpEsc(x.nome_cliente||'—')+'</div>'
     +'<div style="font-size:12px;color:var(--text-muted);font-family:\'DM Mono\',monospace;margin-top:2px">'+pvOpEsc(x.cnpj||'sem CNPJ')+'</div>'
-    +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Consultor: '+pvOpEsc(x.consultor||'—')+' · Atualizado: '+pvOpEsc(x.atualizado_em||'—')+'</div></div>'
+    +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Consultor: '+pvOpEsc(x.consultor||'—')+' · Atualizado: '+pvOpEsc(fmtPvDate(x.atualizado_em))+'</div></div>'
     +'<div>'+badge+'</div></div>';
   let body='';
   PV_SECOES.forEach(function(sec){
