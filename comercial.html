@@ -213,6 +213,7 @@ footer{position:fixed;bottom:12px;right:16px;font-size:11px;font-family:'DM Mono
   <button class="com-tab active" id="ct-prospects" onclick="switchComTab('prospects')">Prospects</button>
   <button class="com-tab" id="ct-clientes" onclick="switchComTab('clientes')">Clientes</button>
   <button class="com-tab" id="ct-poc" onclick="switchComTab('poc')">PoC</button>
+  <button class="com-tab" id="ct-previstoria" onclick="switchComTab('previstoria')">Pré-Vistoria</button>
 </div>
 <div id="com-page-prospects">
 <div class="main">
@@ -626,6 +627,7 @@ function render(){
           ${p.status==='vistoria_concluida'?'Vistoria Realizada':'Solicitar Vistoria'}
         </button>`:''}
         ${p.status!=='convertido'?`<button class="btn-sm" onclick="editar('${p.id}')">Editar</button>`:''}
+        <button class="btn-sm" onclick="openPreVistoria('${p.id}','')">Pré-Vistoria</button>
         <button class="btn-sm danger" onclick="remover('${p.id}')">Remover</button>
       </div>
     </div>
@@ -1360,7 +1362,7 @@ function renderCronogramas(){
 
 
 function switchComTab(t){
-  ['prospects','clientes','poc'].forEach(tab=>{
+  ['prospects','clientes','poc','previstoria'].forEach(tab=>{
     const btn=document.getElementById('ct-'+tab);
     const pg=document.getElementById('com-page-'+tab);
     if(btn) btn.className='com-tab'+(t===tab?' active':'');
@@ -1368,6 +1370,7 @@ function switchComTab(t){
   });
   if(t==='clientes') loadClientes();
   if(t==='poc') loadPocComercial();
+  if(t==='previstoria') loadPreVistorias();
 }
 
 
@@ -1823,6 +1826,133 @@ async function esqueceuSenha(){
   }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
 }
 
+
+// ===================== PRÉ-VISTORIA STREAMBLINK =====================
+const PV_OP_TOKEN='3gBU&KVkzf%c52-*F3N6tucGAf2&3ixpJTjE+g0uq4Z0!OL5wa8*5Hk04C5Lr%r9';
+const PV_FIELDS=['s1_nome','s1_cidade','s1_uf','s1_contato','s1_celular','s1_cnpj','s1_blocos','s1_andares','s1_aptos_andar','s1_total_quartos','s1_situacao','s1_tipo_cliente','s1_tipo_outro','s1_uhs_instalacao','s1_consultor','s1_valor_instalacao','s1_servicos','s1_tecnico_instalacao','s1_data_contrato','s1_restricao','s1_restricao_quais','s1_obs_quartos','s2_qtd_telas','s2_tipo_instalacao','s2_cast','s2_conteudo_online','s2_pacote_milplay','s2_globo','s2_integracao','s2_integracao_qual','s2_wifi_empresa','s2_wifi_nome','s2_suporte_nome','s2_suporte_cargo','s2_suporte_telefone','s2_suporte_obs','s3_tipo_rede','s3_ponto_rede_tv','s3_tipo_switch','s3_switch_gerenciavel','s3_switch_marcas','s3_porta_livre','s3_vlan','s3_bloqueios','s3_internet_contato','s3_internet_telefone','s3_internet_obs','s3_qtd_links','s3_velocidade','s3_obs_rede','s4_possui_rack','s4_tipo_rack','s5_tvs_android','s5_tvs_qtd','s5_versao_android','s5_marcas','s5_modelos','s5_tempo_uso','s5_mesma_marca','s5_controles_originais','s5_tomada_livre','s5_hdmi_lateral','s5_obs','s6_manut_nome','s6_manut_celular','s6_manut_email','s6_manut_obs','s6_ti_nome','s6_ti_celular','s6_ti_email','s6_ti_obs','s7_resp1_nome','s7_resp1_celular','s7_resp1_email','s7_resp1_obs','s7_resp2_nome','s7_resp2_celular','s7_resp2_email','s7_resp2_obs','s8_cli_nome','s8_cli_cargo','s8_cli_empresa','s8_cli_obs','s8_blin_nome','s8_blin_obs','s9_benjamin','s9_benjamin_qtd'];
+let preVistorias=[];
+
+function pvToggle(val,wrapId,vals){
+  const w=document.getElementById(wrapId);
+  if(w) w.style.display = (vals.indexOf(val)>=0) ? '' : 'none';
+}
+function pvSetVal(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?'':v); }
+function pvSyncConds(){
+  ['s1_tipo_cliente','s1_restricao','s2_integracao','s2_wifi_empresa','s4_possui_rack','s5_tvs_android','s9_benjamin']
+    .forEach(k=>{ const el=document.getElementById('pv-'+k); if(el) el.dispatchEvent(new Event('change')); });
+}
+
+function openPreVistoria(prospectId,editId){
+  PV_FIELDS.forEach(k=>pvSetVal('pv-'+k,''));
+  pvSetVal('pv-_id',''); pvSetVal('pv-_prospect_id',''); pvSetVal('pv-_status','rascunho');
+  document.getElementById('pv-modal-title').textContent='Nova Pré-Vistoria';
+  if(editId){
+    const r=preVistorias.find(x=>String(x.id)===String(editId));
+    if(r){
+      pvSetVal('pv-_id',r.id); pvSetVal('pv-_prospect_id',r.prospect_id||'');
+      pvSetVal('pv-_status',r.status||'rascunho');
+      const d=r.dados||{};
+      PV_FIELDS.forEach(k=>pvSetVal('pv-'+k,d[k]));
+      document.getElementById('pv-modal-title').textContent='Editar Pré-Vistoria — '+(r.nome_cliente||'');
+    }
+  } else if(prospectId){
+    const p=prospects.find(x=>String(x.id)===String(prospectId));
+    if(p){
+      pvSetVal('pv-_prospect_id',p.id);
+      pvSetVal('pv-s1_nome',p.nome);
+      pvSetVal('pv-s1_cidade',p.cidade);
+      pvSetVal('pv-s1_cnpj',p.cnpj);
+      pvSetVal('pv-s1_contato',p.contato);
+      pvSetVal('pv-s1_celular',extrairTelefone(p));
+      pvSetVal('pv-s1_total_quartos',p.uhs);
+      pvSetVal('pv-s1_consultor',p.vendedor);
+      document.getElementById('pv-modal-title').textContent='Nova Pré-Vistoria — '+(p.nome||'');
+    }
+  }
+  if(!document.getElementById('pv-s1_servicos').value) pvSetVal('pv-s1_servicos','Streamblink');
+  pvSyncConds();
+  document.getElementById('previstoria-modal').style.display='flex';
+}
+function closePreVistoria(){ document.getElementById('previstoria-modal').style.display='none'; }
+
+function pvCollect(){
+  const dados={};
+  PV_FIELDS.forEach(k=>{ const el=document.getElementById('pv-'+k); dados[k]=el?String(el.value).trim():''; });
+  return dados;
+}
+
+async function salvarPreVistoria(){
+  const nome=document.getElementById('pv-s1_nome').value.trim();
+  const cnpj=document.getElementById('pv-s1_cnpj').value.trim();
+  if(!nome){ alert('Informe o nome do cliente (Seção 1).'); return; }
+  const btn=document.querySelector('#previstoria-modal .modal-btn.primary');
+  const _t=btn?btn.textContent:''; if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+  const payload={
+    token:PV_OP_TOKEN, action:'savePreVistoria',
+    id:document.getElementById('pv-_id').value||'',
+    prospect_id:document.getElementById('pv-_prospect_id').value||'',
+    cnpj:cnpj, nome_cliente:nome,
+    consultor:document.getElementById('pv-s1_consultor').value.trim(),
+    status:document.getElementById('pv-_status').value||'rascunho',
+    dados:pvCollect()
+  };
+  try{
+    const r=await fetch(API_OPERACIONAL,{method:'POST',body:JSON.stringify(payload)});
+    const j=await r.json();
+    if(j&&j.ok){ closePreVistoria(); await loadPreVistorias(); setStatus('ok','Pré-Vistoria salva'); }
+    else alert('Erro ao salvar: '+((j&&j.error)||'desconhecido'));
+  }catch(e){ alert('Falha de conexão ao salvar: '+e.message); }
+  finally{ if(btn){btn.disabled=false;btn.textContent=_t;} }
+}
+
+async function loadPreVistorias(){
+  const cont=document.getElementById('pv-lista');
+  if(cont) cont.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center">Carregando...</div>';
+  try{
+    const r=await fetch(API_OPERACIONAL+'?token='+encodeURIComponent(PV_OP_TOKEN)+'&action=getPreVistorias');
+    const j=await r.json();
+    preVistorias=Array.isArray(j)?j:[];
+    renderPreVistorias();
+  }catch(e){
+    if(cont) cont.innerHTML='<div style="color:#e74c3c;font-size:13px;padding:20px;text-align:center">Erro ao carregar: '+e.message+'</div>';
+  }
+}
+
+function renderPreVistorias(){
+  const cont=document.getElementById('pv-lista');
+  if(!cont) return;
+  const bq=document.getElementById('pv-busca');
+  const q=(bq?bq.value:'').toLowerCase().trim();
+  let lista=preVistorias.slice();
+  if(q) lista=lista.filter(x=> (x.nome_cliente||'').toLowerCase().indexOf(q)>=0 || String(x.cnpj||'').indexOf(q)>=0 );
+  lista.sort((a,b)=> String(b.atualizado_em||'').localeCompare(String(a.atualizado_em||'')));
+  if(!lista.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center">Nenhuma pré-vistoria ainda. Clique em “+ Nova Pré-Vistoria” ou abra pelo card de um prospect.</div>'; return; }
+  cont.innerHTML=lista.map(function(x){
+    const d=x.dados||{};
+    const cidade=d.s1_cidade||'';
+    const fin=(x.status==='finalizado');
+    const badge='<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;'+(fin?'background:#EAF3DE;color:#3B6D11':'background:#FEF3E0;color:#B86A00')+'">'+(fin?'Finalizado':'Rascunho')+'</span>';
+    return '<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<div style="min-width:200px"><div style="font-weight:600;font-size:14px">'+(x.nome_cliente||'—')+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);font-family:\'DM Mono\',monospace">'+(x.cnpj||'sem CNPJ')+(cidade?' · '+cidade:'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Atualizado: '+(x.atualizado_em||'—')+'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'+badge
+      +'<button class="btn-sm" onclick="openPreVistoria(\'\',\''+x.id+'\')">Editar</button>'
+      +'<button class="btn-sm danger" onclick="excluirPreVistoria(\''+x.id+'\')">Excluir</button></div></div>';
+  }).join('');
+}
+
+async function excluirPreVistoria(id){
+  if(!confirm('Excluir esta pré-vistoria? Esta ação não pode ser desfeita.')) return;
+  try{
+    const r=await fetch(API_OPERACIONAL,{method:'POST',body:JSON.stringify({token:PV_OP_TOKEN,action:'deletePreVistoria',id:id})});
+    const j=await r.json();
+    if(j&&j.ok){ await loadPreVistorias(); setStatus('ok','Pré-Vistoria excluída'); }
+    else alert('Erro ao excluir: '+((j&&j.error)||'desconhecido'));
+  }catch(e){ alert('Falha ao excluir: '+e.message); }
+}
+// =================== FIM PRÉ-VISTORIA STREAMBLINK ===================
+
 document.addEventListener('DOMContentLoaded', iniciarApp);
 
 </script>
@@ -2014,6 +2144,40 @@ document.addEventListener('DOMContentLoaded', iniciarApp);
 </div>
 
 <!-- MODAL VISUALIZAR CONTRATO -->
+<!-- PRÉ-VISTORIA STREAMBLINK -->
+<div id="com-page-previstoria" style="display:none">
+<div class="main">
+  <div class="page-header">
+    <div>
+      <h2>Pré-Vistoria Streamblink</h2>
+      <div class="page-sync">Levantamento técnico — salvo no sistema operacional</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="pv-busca" oninput="renderPreVistorias()" placeholder="Buscar nome ou CNPJ..." style="height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:220px">
+      <button class="btn-sm converter" onclick="openPreVistoria('','')">+ Nova Pré-Vistoria</button>
+    </div>
+  </div>
+  <div id="pv-lista"></div>
+</div>
+</div>
+
+<!-- MODAL PRÉ-VISTORIA -->
+<div class="modal-overlay" id="previstoria-modal" style="display:none">
+  <div class="modal" style="max-width:680px">
+    <h3 id="pv-modal-title">Nova Pré-Vistoria</h3>
+    <input type="hidden" id="pv-_id">
+    <input type="hidden" id="pv-_prospect_id">
+    <div class="modal-grid">
+      <div class="mf full"><label>Status do preenchimento</label><select id="pv-_status" style="max-width:260px"><option value="rascunho">Rascunho</option><option value="finalizado">Finalizado</option></select></div>
+      <div class="section-title">1 · Dados do cliente e negociação</div><div class="mf full"><label>Nome do cliente</label><input type="text" id="pv-s1_nome"></div><div class="mf"><label>Cidade</label><input type="text" id="pv-s1_cidade"></div><div class="mf"><label>UF</label><input type="text" id="pv-s1_uf"></div><div class="mf"><label>Contato</label><input type="text" id="pv-s1_contato"></div><div class="mf"><label>Celular</label><input type="text" id="pv-s1_celular"></div><div class="mf"><label>CNPJ</label><input type="text" id="pv-s1_cnpj"></div><div class="mf"><label>Qtd. blocos</label><input type="number" id="pv-s1_blocos"></div><div class="mf"><label>Qtd. andares</label><input type="number" id="pv-s1_andares"></div><div class="mf"><label>Aptos por andar</label><input type="number" id="pv-s1_aptos_andar"></div><div class="mf"><label>Total de quartos</label><input type="number" id="pv-s1_total_quartos"></div><div class="mf"><label>Situação do cliente</label><select id="pv-s1_situacao"><option value="">—</option><option>Aberto</option><option>Em obras</option><option>Fechado</option></select></div><div class="mf"><label>Tipo de cliente</label><select id="pv-s1_tipo_cliente" onchange="pvToggle(this.value,'w_s1_tipo_outro',['Outro'])"><option value="">—</option><option>Hotel</option><option>Pousada</option><option>Hospital</option><option>Outro</option></select></div><div id="w_s1_tipo_outro" style="display:none;"><div class="mf"><label>Se outro, qual?</label><input type="text" id="pv-s1_tipo_outro"></div></div><div class="mf full"><label>Nº dos UHs de instalação</label><input type="text" id="pv-s1_uhs_instalacao"></div><div class="mf"><label>Consultor Blincast</label><input type="text" id="pv-s1_consultor"></div><div class="mf"><label>Valor da instalação</label><input type="text" id="pv-s1_valor_instalacao"></div><div class="mf"><label>Serviços em negociação</label><input type="text" id="pv-s1_servicos"></div><div class="mf"><label>Técnico de instalação</label><select id="pv-s1_tecnico_instalacao"><option value="">—</option><option>Blincast</option><option>Cliente Instala</option><option>Ambos</option></select></div><div class="mf"><label>Data assinatura contrato</label><input type="date" id="pv-s1_data_contrato"></div><div class="mf"><label>Restrição para instalação?</label><select id="pv-s1_restricao" onchange="pvToggle(this.value,'w_s1_restricao',['Sim'])"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div id="w_s1_restricao" style="display:none;"><div class="mf"><label>Quais restrições?</label><input type="text" id="pv-s1_restricao_quais"></div></div><div class="mf full"><label>Observações sobre os quartos</label><textarea id="pv-s1_obs_quartos"></textarea></div><div class="section-title">2 · Específico Streamblink</div><div class="mf"><label>Qtd. de telas</label><input type="number" id="pv-s2_qtd_telas"></div><div class="mf"><label>Tipo de instalação</label><select id="pv-s2_tipo_instalacao"><option value="">—</option><option>Box Blincast</option><option>Box Cliente</option><option>TV Android</option></select></div><div class="mf"><label>Terá CAST?</label><select id="pv-s2_cast"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Conteúdo online?</label><select id="pv-s2_conteudo_online"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Pacote Milplay contratado</label><input type="text" id="pv-s2_pacote_milplay"></div><div class="mf"><label>Globo disponível?</label><select id="pv-s2_globo"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Cliente possuirá integração?</label><select id="pv-s2_integracao" onchange="pvToggle(this.value,'w_s2_integracao',['Sim'])"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div id="w_s2_integracao" style="display:none;"><div class="mf"><label>Qual integração?</label><input type="text" id="pv-s2_integracao_qual"></div></div><div class="mf"><label>Empresa gerencia WIFI?</label><select id="pv-s2_wifi_empresa" onchange="pvToggle(this.value,'w_s2_wifi',['Possui'])"><option value="">—</option><option>Não possui</option><option>Possui</option></select></div><div id="w_s2_wifi" style="display:none;"><div class="mf"><label>Nome da empresa de WIFI</label><input type="text" id="pv-s2_wifi_nome"></div></div><div class="mf"><label>Suporte instalação · Nome</label><input type="text" id="pv-s2_suporte_nome"></div><div class="mf"><label>Suporte instalação · Cargo</label><input type="text" id="pv-s2_suporte_cargo"></div><div class="mf"><label>Suporte instalação · Telefone</label><input type="text" id="pv-s2_suporte_telefone"></div><div class="mf"><label>Suporte instalação · Obs</label><input type="text" id="pv-s2_suporte_obs"></div><div class="section-title">3 · Específico rede do cliente</div><div class="mf"><label>Tipo de rede</label><select id="pv-s3_tipo_rede"><option value="">—</option><option>WIFI</option><option>Cabeada</option></select></div><div class="mf"><label>Ponto de rede na TV?</label><select id="pv-s3_ponto_rede_tv"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Tipo de switch</label><select id="pv-s3_tipo_switch"><option value="">—</option><option>10/100/1000</option><option>10/100</option></select></div><div class="mf"><label>Switch gerenciável?</label><select id="pv-s3_switch_gerenciavel"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf full"><label>Marcas/modelos do switch</label><input type="text" id="pv-s3_switch_marcas"></div><div class="mf"><label>Porta livre?</label><select id="pv-s3_porta_livre"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Possui VLAN?</label><select id="pv-s3_vlan"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Possui bloqueios na rede?</label><select id="pv-s3_bloqueios"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Gestão internet · Contato</label><input type="text" id="pv-s3_internet_contato"></div><div class="mf"><label>Gestão internet · Telefone</label><input type="text" id="pv-s3_internet_telefone"></div><div class="mf full"><label>Gestão internet · Obs</label><input type="text" id="pv-s3_internet_obs"></div><div class="mf"><label>Qtd. de links</label><input type="number" id="pv-s3_qtd_links"></div><div class="mf"><label>Velocidade (MB/s)</label><input type="text" id="pv-s3_velocidade"></div><div class="mf full"><label>Observações da rede</label><textarea id="pv-s3_obs_rede"></textarea></div><div class="section-title">4 · Sobre racks</div><div class="mf"><label>Cliente já possui RACK?</label><select id="pv-s4_possui_rack" onchange="pvToggle(this.value,'w_s4_rack',['Sim'])"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div id="w_s4_rack" style="display:none;"><div class="mf"><label>Tipo do rack</label><select id="pv-s4_tipo_rack"><option value="">—</option><option>HD</option><option>IP</option><option>SD</option></select></div></div><div class="section-title">5 · Sobre as TVs do cliente</div><div class="mf"><label>Possui TVs Android?</label><select id="pv-s5_tvs_android" onchange="pvToggle(this.value,'w_s5_qtd',['Sim'])"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div id="w_s5_qtd" style="display:none;"><div class="mf"><label>Quantas TVs Android?</label><input type="number" id="pv-s5_tvs_qtd"></div></div><div class="mf"><label>Versão do Android</label><input type="text" id="pv-s5_versao_android"></div><div class="mf"><label>Marcas</label><input type="text" id="pv-s5_marcas"></div><div class="mf"><label>Modelos</label><input type="text" id="pv-s5_modelos"></div><div class="mf"><label>Tempo de uso</label><input type="text" id="pv-s5_tempo_uso"></div><div class="mf"><label>TVs mesma marca/modelo?</label><select id="pv-s5_mesma_marca"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Controles remotos originais?</label><select id="pv-s5_controles_originais"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Tomada livre atrás da TV?</label><select id="pv-s5_tomada_livre"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf"><label>Entrada HDMI lateral?</label><select id="pv-s5_hdmi_lateral"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div class="mf full"><label>Observação</label><textarea id="pv-s5_obs"></textarea></div><div class="section-title">6 · Equipe de manutenção e T.I.</div><div class="mf"><label>Manutenção · Nome</label><input type="text" id="pv-s6_manut_nome"></div><div class="mf"><label>Manutenção · Celular</label><input type="text" id="pv-s6_manut_celular"></div><div class="mf"><label>Manutenção · E-mail</label><input type="text" id="pv-s6_manut_email"></div><div class="mf full"><label>Manutenção · Obs</label><input type="text" id="pv-s6_manut_obs"></div><div class="mf"><label>T.I. · Nome</label><input type="text" id="pv-s6_ti_nome"></div><div class="mf"><label>T.I. · Celular</label><input type="text" id="pv-s6_ti_celular"></div><div class="mf"><label>T.I. · E-mail</label><input type="text" id="pv-s6_ti_email"></div><div class="mf full"><label>T.I. · Obs</label><input type="text" id="pv-s6_ti_obs"></div><div class="section-title">7 · Equipe de faturamento</div><div class="mf"><label>Responsável 1 · Nome</label><input type="text" id="pv-s7_resp1_nome"></div><div class="mf"><label>Responsável 1 · Celular</label><input type="text" id="pv-s7_resp1_celular"></div><div class="mf"><label>Responsável 1 · E-mail</label><input type="text" id="pv-s7_resp1_email"></div><div class="mf full"><label>Responsável 1 · Obs</label><input type="text" id="pv-s7_resp1_obs"></div><div class="mf"><label>Responsável 2 · Nome</label><input type="text" id="pv-s7_resp2_nome"></div><div class="mf"><label>Responsável 2 · Celular</label><input type="text" id="pv-s7_resp2_celular"></div><div class="mf"><label>Responsável 2 · E-mail</label><input type="text" id="pv-s7_resp2_email"></div><div class="mf full"><label>Responsável 2 · Obs</label><input type="text" id="pv-s7_resp2_obs"></div><div class="section-title">8 · Responsável pelo preenchimento</div><div class="mf"><label>Cliente · Nome</label><input type="text" id="pv-s8_cli_nome"></div><div class="mf"><label>Cliente · Cargo</label><input type="text" id="pv-s8_cli_cargo"></div><div class="mf"><label>Cliente · Empresa</label><input type="text" id="pv-s8_cli_empresa"></div><div class="mf full"><label>Cliente · Obs</label><input type="text" id="pv-s8_cli_obs"></div><div class="mf"><label>Blincast · Nome</label><input type="text" id="pv-s8_blin_nome"></div><div class="mf"><label>Blincast · Obs</label><input type="text" id="pv-s8_blin_obs"></div><div class="section-title">9 · Equipamentos / necessidades</div><div class="mf"><label>Necessita de Benjamin Articulado?</label><select id="pv-s9_benjamin" onchange="pvToggle(this.value,'w_s9_benj',['Sim'])"><option value="">—</option><option>Sim</option><option>Não</option><option>N/A</option></select></div><div id="w_s9_benj" style="display:none;"><div class="mf"><label>Quantidade</label><input type="number" id="pv-s9_benjamin_qtd"></div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closePreVistoria()">Cancelar</button>
+      <button class="modal-btn primary" onclick="salvarPreVistoria()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="contrato-modal-com" style="display:none" onclick="if(event.target===this)fecharContratoModalCom()">
   <div style="background:var(--surface);border-radius:var(--radius);width:92%;max-width:900px;height:88vh;display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--black);flex-shrink:0;">
