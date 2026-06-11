@@ -558,6 +558,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <div class="pipeline-box-label">Pendentes</div>
     </div>
   </div>
+  <div id="preventiva-painel-bloco" style="display:none;margin-bottom:1.5rem;"></div>
   <div id="vistoria-list"></div>
 </div>
 
@@ -1186,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.3';
+const BLINTRACK_VERSAO = 'V3.5';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2752,8 +2753,140 @@ function exportarVistoriasPDF(){
 function filtrarVistoriaTipo(tipo){
   vistoriaFiltroTipo = tipo;
   const titulo = document.getElementById('vistoria-titulo');
-  if(titulo) titulo.textContent = 'Vistorias — ' + (tipo==='preventiva'?'Preventiva':'Instalação');
+  if(titulo) titulo.textContent = (tipo==='preventiva'?'Preventiva':'Vistorias — Instalação');
   renderVistoria();
+  renderPreventivaPainel();
+}
+
+// Lista os atendimentos do Painel com status "preventiva" dentro da aba Preventiva
+function renderPreventivaPainel(){
+  const box=document.getElementById('preventiva-painel-bloco');
+  if(!box) return;
+  if(vistoriaFiltroTipo!=='preventiva'){ box.style.display='none'; box.innerHTML=''; return; }
+  // garante dados do painel carregados
+  if(!Array.isArray(ataRegistros) || !ataRegistros.length){
+    if(typeof loadAta==='function'){ loadAta().then(()=>renderPreventivaPainel()); }
+  }
+  const lista=(ataRegistros||[]).filter(r=>String(r.status||'').toLowerCase()==='preventiva');
+  box.style.display='block';
+  let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">'
+    +'<div style="font-size:14px;font-weight:600;color:var(--text);">📋 Preventivas do Painel de Atendimento <span style="color:var(--text-muted);font-weight:400;">('+lista.length+')</span></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<button onclick="abrirNovaPreventiva()" style="height:30px;padding:0 12px;border:1px solid var(--gold);border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:12px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer;">+ Nova preventiva</button>'
+    +'<button onclick="exportarPreventivaXLSX()" style="height:30px;padding:0 12px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:none;color:var(--c-concluido);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Excel</button>'
+    +'<button onclick="exportarPreventivaPDF()" style="height:30px;padding:0 12px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:none;color:var(--c-concluido);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 PDF</button>'
+    +'</div></div>';
+  if(!lista.length){
+    h+='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;border:1px dashed var(--border);border-radius:var(--radius-sm);">Nenhuma preventiva no Painel. Marque um atendimento como "Preventiva" no Painel ou clique em "+ Nova preventiva".</div>';
+    box.innerHTML=h;
+    return;
+  }
+  h+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    +'<thead><tr style="background:var(--bg);">'
+    +['Nº OS','Cliente','UF','Técnico / Ajudante','Abertura','Conclusão','Status',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;">'+c+'</th>').join('')
+    +'</tr></thead><tbody>';
+  lista.forEach(r=>{
+    const concl=_ataDiaNormD(r.dt_conclusao);
+    const stTxt=concl?'✅ Concluída':'⏳ Aberta';
+    const stCor=concl?'var(--c-concluido)':'var(--c-pendente)';
+    h+='<tr style="border-bottom:0.5px solid var(--border);">'
+      +'<td style="padding:7px 8px;white-space:nowrap;">'+(r.no||'—')+'</td>'
+      +'<td style="padding:7px 8px;">'+(r.cliente||'—')+'</td>'
+      +'<td style="padding:7px 8px;">'+(r.estado||'—')+'</td>'
+      +'<td style="padding:7px 8px;">'+(_ataTecAj(r)||'—')+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;">'+(r.dt_abertura?_ataDiaFmtBR(_ataDiaNormD(r.dt_abertura)):'—')+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;">'+(concl?_ataDiaFmtBR(concl):'—')+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;color:'+stCor+';font-weight:600;">'+stTxt+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;display:flex;gap:6px;">'
+        +'<button onclick="abrirEditarPreventiva(\''+r.id+'\')" style="padding:3px 9px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--text);font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✏️ Editar</button>'
+        +(concl?'':'<button onclick="concluirPreventiva(\''+r.id+'\')" style="padding:3px 9px;border:1px solid var(--c-concluido);border-radius:4px;background:var(--c-concluido);color:#fff;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✓ Concluir</button>')
+      +'</td>'
+      +'</tr>';
+  });
+  h+='</tbody></table></div>';
+  box.innerHTML=h;
+}
+
+// Abre o modal de atendimento já como preventiva
+function abrirNovaPreventiva(){
+  openAtaModal();
+  const st=document.getElementById('at-status'); if(st) st.value='preventiva';
+  const title=document.getElementById('ata-modal-title'); if(title) title.textContent='Nova preventiva';
+}
+// Edita uma preventiva (reusa o editor do painel) — ao salvar, mantém o status escolhido
+function abrirEditarPreventiva(id){
+  editarAta(id);
+  const title=document.getElementById('ata-modal-title'); if(title) title.textContent='Editar preventiva';
+}
+// Conclui a preventiva: pede a data e sincroniza com o Painel (mantém status preventiva + data de conclusão)
+async function concluirPreventiva(id){
+  const reg=ataRegistros.find(r=>String(r.id)===String(id));
+  if(!reg) return;
+  const hoje=(window.todayStr)||new Date().toISOString().slice(0,10);
+  const resp=prompt('Concluir preventiva de "'+(reg.cliente||'')+'"\n\nData de conclusão (dd/mm/aaaa):', _ataDiaFmtBR(hoje));
+  if(!resp) return;
+  const m=resp.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m){ alert('Data inválida. Use dd/mm/aaaa.'); return; }
+  const iso=m[3]+'-'+m[2]+'-'+m[1];
+  reg.dt_conclusao=iso;
+  try{
+    // grava a data de conclusão no Painel sem trocar o status (continua "preventiva", mas concluída)
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id,campo:'dt_conclusao',valor:iso})});
+  }catch(e){ alert('Erro ao salvar.'); return; }
+  renderPreventivaPainel();
+  if(typeof renderAta==='function') renderAta();
+  alert('✅ Preventiva concluída e sincronizada com o Painel.');
+}
+
+// ===== Exportar preventivas (Excel / PDF) =====
+function _preventivaLista(){
+  return (ataRegistros||[]).filter(r=>{
+    const st=String(r.status||'').toLowerCase();
+    // inclui as que estão como preventiva e as preventivas já concluídas (status feito mas marcadas como preventiva ficam só enquanto preventiva)
+    return st==='preventiva';
+  });
+}
+async function exportarPreventivaXLSX(){
+  if(typeof ExcelJS==='undefined'){ alert('Biblioteca de Excel não carregada. Recarregue a página.'); return; }
+  const lista=_preventivaLista();
+  if(!lista.length){ alert('Nenhuma preventiva para exportar.'); return; }
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('Preventivas');
+  ws.columns=[{width:14},{width:34},{width:6},{width:28},{width:14},{width:14},{width:14}];
+  const borda={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+  ws.mergeCells('A1:G1');
+  const t=ws.getCell('A1'); t.value='PREVENTIVAS — '+new Date().toLocaleDateString('pt-BR'); t.font={bold:true,size:13};
+  const head=['Nº OS','Cliente','UF','Técnico / Ajudante','Abertura','Conclusão','Status'];
+  head.forEach((h,i)=>{ const c=ws.getCell(3,i+1); c.value=h; c.font={bold:true}; c.border=borda; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}}; });
+  let lin=4;
+  lista.forEach(r=>{
+    const concl=_ataDiaNormD(r.dt_conclusao);
+    const vals=[r.no||'', r.cliente||'', r.estado||'', _ataTecAj(r), r.dt_abertura?_ataDiaFmtBR(_ataDiaNormD(r.dt_abertura)):'', concl?_ataDiaFmtBR(concl):'', concl?'Concluída':'Aberta'];
+    vals.forEach((v,i)=>{ const c=ws.getCell(lin,i+1); c.value=v; c.border=borda; c.alignment={vertical:'top',wrapText:true}; });
+    lin++;
+  });
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='Preventivas_'+new Date().toISOString().slice(0,10)+'.xlsx'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportarPreventivaPDF(){
+  const lista=_preventivaLista();
+  if(!lista.length){ alert('Nenhuma preventiva para exportar.'); return; }
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows=lista.map(r=>{
+    const concl=_ataDiaNormD(r.dt_conclusao);
+    return '<tr><td>'+esc(r.no)+'</td><td>'+esc(r.cliente)+'</td><td>'+esc(r.estado)+'</td><td>'+esc(_ataTecAj(r))+'</td><td>'+(r.dt_abertura?esc(_ataDiaFmtBR(_ataDiaNormD(r.dt_abertura))):'')+'</td><td>'+(concl?esc(_ataDiaFmtBR(concl)):'')+'</td><td>'+(concl?'Concluída':'Aberta')+'</td></tr>';
+  }).join('');
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Preventivas</title>'
+    +'<style>body{font-family:Arial,sans-serif;color:#111;padding:24px;font-size:12px;}h1{font-size:16px;border-bottom:2px solid #111;padding-bottom:8px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #999;padding:5px 7px;text-align:left;}th{background:#f0f0f0;}@media print{body{padding:0;}}</style>'
+    +'</head><body><h1>PREVENTIVAS — '+new Date().toLocaleDateString('pt-BR')+'</h1>'
+    +'<table><thead><tr><th>Nº OS</th><th>Cliente</th><th>UF</th><th>Técnico / Ajudante</th><th>Abertura</th><th>Conclusão</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<script>window.onload=function(){window.print();}<\/script></body></html>';
+  const w=window.open('','_blank');
+  if(!w){ alert('Permita pop-ups para gerar o PDF.'); return; }
+  w.document.write(html); w.document.close();
 }
 
 function renderVistoria(){
@@ -2783,10 +2916,10 @@ function renderVistoria(){
   const elP = document.getElementById('vbox-num-pendentes');
   if(elC) elC.textContent = numConc;
   if(elP) elP.textContent = numPend;
-  // Filtrar
-  let lista = vistorias;
-  if(vistoriaBoxFilter==='concluidas') lista = vistorias.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done));
-  else if(vistoriaBoxFilter==='pendentes') lista = vistorias.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done));
+  // Filtrar (sempre a partir da lista já filtrada por TIPO)
+  let lista = vistoriasFiltradas;
+  if(vistoriaBoxFilter==='concluidas') lista = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done));
+  else if(vistoriaBoxFilter==='pendentes') lista = vistoriasFiltradas.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done));
   if(!lista.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria nesta categoria.</div>';return;}list.innerHTML=lista.map(v=>{const doneCnt=v.steps.filter(s=>s.done).length;const pct=Math.round((doneCnt/5)*100);const concluida=v.status==='concluida'||pct===100;const cs=v.steps.find(s=>!s.done);const cst=cs?STEPS_VISTORIA.find(s=>s.id===cs.id)?.title:'Concluida';const infoCard=`<div class="step-card done">
   <div class="step-number">Dados da instalação</div>
   ${v.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+v.produto+'</div>':''}
@@ -6452,6 +6585,14 @@ function _ataDiaDados(data){
   return {grupos:grupos, diaSemana:diaSemana, total:doDia.length};
 }
 
+// junta técnico + ajudante num texto só ("Mozart / Rogério")
+function _ataTecAj(r){
+  const t=String(r.tecnico||'').trim();
+  const a=String(r.ajudante||'').trim();
+  if(t&&a) return t+' / '+a;
+  return t||a||'';
+}
+
 async function gerarAtaDiaXLSX(data, tec20h){
   if(typeof ExcelJS==='undefined'){ alert('Biblioteca de Excel não carregada. Recarregue a página.'); return; }
   const {grupos, diaSemana, total} = _ataDiaDados(data);
@@ -6472,12 +6613,12 @@ async function gerarAtaDiaXLSX(data, tec20h){
   let lin=3;
   const bloco=(titulo, arr)=>{
     const ct=ws.getCell('A'+lin); ct.value=titulo; ct.font={bold:true,size:11}; lin++;
-    const head=['OS/SS','Cliente','UF','Descrição','Técnico'];
+    const head=['OS/SS','Cliente','UF','Descrição','Técnico / Ajudante'];
     head.forEach((h,i)=>{ const c=ws.getCell(lin,i+1); c.value=h; c.font={bold:true}; c.border=borda; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}}; });
     lin++;
     if(arr.length){
       arr.forEach(r=>{
-        [r.no,r.cliente,r.estado,r.problema,r.tecnico].forEach((v,i)=>{ const c=ws.getCell(lin,i+1); c.value=v||''; c.border=borda; c.alignment={vertical:'top',wrapText:true}; });
+        [r.no,r.cliente,r.estado,r.problema,_ataTecAj(r)].forEach((v,i)=>{ const c=ws.getCell(lin,i+1); c.value=v||''; c.border=borda; c.alignment={vertical:'top',wrapText:true}; });
         lin++;
       });
     } else {
@@ -6511,10 +6652,10 @@ function gerarAtaDiaPDF(data, tec20h){
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const bloco=(titulo, arr)=>{
     let linhas = arr.length
-      ? arr.map(r=>'<tr><td>'+esc(r.no)+'</td><td>'+esc(r.cliente)+'</td><td>'+esc(r.estado)+'</td><td>'+esc(r.problema)+'</td><td>'+esc(r.tecnico)+'</td></tr>').join('')
+      ? arr.map(r=>'<tr><td>'+esc(r.no)+'</td><td>'+esc(r.cliente)+'</td><td>'+esc(r.estado)+'</td><td>'+esc(r.problema)+'</td><td>'+esc(_ataTecAj(r))+'</td></tr>').join('')
       : '<tr><td colspan="5" style="color:#888;">—</td></tr>';
     return '<div class="sec">'+esc(titulo)+'</div>'
-      +'<table><thead><tr><th>OS/SS</th><th>Cliente</th><th>UF</th><th>Descrição</th><th>Técnico</th></tr></thead><tbody>'+linhas+'</tbody></table>';
+      +'<table><thead><tr><th>OS/SS</th><th>Cliente</th><th>UF</th><th>Descrição</th><th>Técnico / Ajudante</th></tr></thead><tbody>'+linhas+'</tbody></table>';
   };
   const listaTec = (tec20h && tec20h.length)? tec20h : [''];
   const tecRows = listaTec.map(n=>'<tr><td>'+esc(n)+'</td></tr>').join('');
