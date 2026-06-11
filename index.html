@@ -535,7 +535,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vistoria-sync"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
+      <button id="btn-nova-vistoria" class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
       <button onclick="exportarVistoriasPDF()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ Exportar PDF</button>
     </div>
   </div>
@@ -1187,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.5';
+const BLINTRACK_VERSAO = 'V3.6';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2754,6 +2754,14 @@ function filtrarVistoriaTipo(tipo){
   vistoriaFiltroTipo = tipo;
   const titulo = document.getElementById('vistoria-titulo');
   if(titulo) titulo.textContent = (tipo==='preventiva'?'Preventiva':'Vistorias — Instalação');
+  // destaca o submenu correto (Instalação x Preventiva)
+  const mInst=document.getElementById('mt-vistoria');
+  const mPrev=document.getElementById('mt-vistoria-preventiva');
+  if(mInst) mInst.className='snav-btn'+(tipo!=='preventiva'?' active':'');
+  if(mPrev) mPrev.className='snav-btn'+(tipo==='preventiva'?' active':'');
+  // botão "Nova vistoria" só faz sentido na Instalação (na Preventiva usa "+ Nova preventiva")
+  const btnNV=document.getElementById('btn-nova-vistoria');
+  if(btnNV) btnNV.style.display = (tipo==='preventiva')?'none':'';
   renderVistoria();
   renderPreventivaPainel();
 }
@@ -2908,14 +2916,14 @@ function renderVistoria(){
     }
     return true;
   });
-  if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.</div>';return;}
-  // Atualizar contagem dos boxes
+  // Atualizar contagem dos boxes ANTES de qualquer return (senão fica o valor da aba anterior)
   const numConc = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done)).length;
   const numPend = vistoriasFiltradas.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done)).length;
   const elC = document.getElementById('vbox-num-concluidas');
   const elP = document.getElementById('vbox-num-pendentes');
   if(elC) elC.textContent = numConc;
   if(elP) elP.textContent = numPend;
+  if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.</div>';return;}
   // Filtrar (sempre a partir da lista já filtrada por TIPO)
   let lista = vistoriasFiltradas;
   if(vistoriaBoxFilter==='concluidas') lista = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done));
