@@ -536,7 +536,6 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <button class="btn-new-project" onclick="openNovaVistoriaModal()">+ Nova vistoria</button>
-      <button id="pvop-open-btn" onclick="openPvOpList()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Pré-Vistorias</button>
       <button onclick="exportarVistoriasPDF()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ Exportar PDF</button>
     </div>
   </div>
@@ -876,6 +875,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <option value="acompanhar">Acompanhar</option>
           <option value="planejado">Planejado</option>
           <option value="em_atraso">Em atraso</option>
+          <option value="preventiva">Preventiva</option>
           <option value="em_andamento_tecnico">Em andamento pelo técnico</option>
           <option value="concluido_tecnico">Concluído pelo técnico</option>
         </select>
@@ -1186,7 +1186,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.2';
+const BLINTRACK_VERSAO = 'V3.3';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1903,7 +1903,7 @@ function switchMainTab(t){
     if(page) page.style.display=t===tab?'block':'none';
   });
   if(t==='pipeline')loadPipeline();
-  if(t==='vistoria'){loadVistoria();filtrarVistoriaTipo(vistoriaFiltroTipo);loadPreVistoriasOp();}
+  if(t==='vistoria'){loadVistoria();filtrarVistoriaTipo(vistoriaFiltroTipo);}
   if(t==='dashboard')renderDashboard();
   if(t==='comercial')loadComercial();
   if(t==='clientes')loadClientes();
@@ -2655,90 +2655,6 @@ function cancelarDoubleCheck(){clearInterval(ecTimer);document.getElementById('e
 async function confirmarEnvioEmail(){const projId=document.getElementById('ec-proj-id').value;const msg=document.getElementById('ec-mensagem').value.trim();const dest=document.getElementById('ec-destinatarios').value.trim();const proj=projects.find(p=>p.id===projId);const destinatarios=dest.split(',').map(e=>e.trim()).filter(Boolean);document.getElementById('email-conclusao-modal').style.display='none';document.getElementById('pipeline-sync').textContent='Enviando e-mail...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailConclusao',projeto:proj?proj.nome:projId,destinatarios,mensagem:msg})});document.getElementById('pipeline-sync').textContent='E-mail enviado!';}catch(e){document.getElementById('pipeline-sync').textContent='Erro ao enviar e-mail.';}}
 
 // ===================== VISTORIA =====================
-// ===================== PRÉ-VISTORIA STREAMBLINK (operacional · somente leitura) =====================
-const PV_SECOES=[{"t": "1 · Dados do cliente e negociação", "f": [["s1_nome", "Nome do cliente"], ["s1_cidade", "Cidade"], ["s1_uf", "UF"], ["s1_contato", "Contato"], ["s1_celular", "Celular"], ["s1_cnpj", "CNPJ"], ["s1_blocos", "Qtd. blocos"], ["s1_andares", "Qtd. andares"], ["s1_aptos_andar", "Aptos por andar"], ["s1_total_quartos", "Total de quartos"], ["s1_situacao", "Situação do cliente"], ["s1_tipo_cliente", "Tipo de cliente"], ["s1_tipo_outro", "Se outro, qual?"], ["s1_uhs_instalacao", "Nº dos UHs de instalação"], ["s1_consultor", "Consultor Blincast"], ["s1_valor_instalacao", "Valor da instalação"], ["s1_servicos", "Serviços em negociação"], ["s1_tecnico_instalacao", "Técnico de instalação"], ["s1_data_contrato", "Data assinatura contrato"], ["s1_restricao", "Restrição para instalação?"], ["s1_restricao_quais", "Quais restrições?"], ["s1_obs_quartos", "Observações sobre os quartos"]]}, {"t": "2 · Específico Streamblink", "f": [["s2_qtd_telas", "Qtd. de telas"], ["s2_tipo_instalacao", "Tipo de instalação"], ["s2_cast", "Terá CAST?"], ["s2_conteudo_online", "Conteúdo online?"], ["s2_pacote_milplay", "Pacote Milplay contratado"], ["s2_globo", "Globo disponível?"], ["s2_integracao", "Cliente possuirá integração?"], ["s2_integracao_qual", "Qual integração?"], ["s2_wifi_empresa", "Empresa gerencia WIFI?"], ["s2_wifi_nome", "Nome da empresa de WIFI"], ["s2_suporte_nome", "Suporte instalação · Nome"], ["s2_suporte_cargo", "Suporte instalação · Cargo"], ["s2_suporte_telefone", "Suporte instalação · Telefone"], ["s2_suporte_obs", "Suporte instalação · Obs"]]}, {"t": "3 · Específico rede do cliente", "f": [["s3_tipo_rede", "Tipo de rede"], ["s3_ponto_rede_tv", "Ponto de rede na TV?"], ["s3_tipo_switch", "Tipo de switch"], ["s3_switch_gerenciavel", "Switch gerenciável?"], ["s3_switch_marcas", "Marcas/modelos do switch"], ["s3_porta_livre", "Porta livre?"], ["s3_vlan", "Possui VLAN?"], ["s3_bloqueios", "Possui bloqueios na rede?"], ["s3_internet_contato", "Gestão internet · Contato"], ["s3_internet_telefone", "Gestão internet · Telefone"], ["s3_internet_obs", "Gestão internet · Obs"], ["s3_qtd_links", "Qtd. de links"], ["s3_velocidade", "Velocidade (MB/s)"], ["s3_obs_rede", "Observações da rede"]]}, {"t": "4 · Sobre racks", "f": [["s4_possui_rack", "Cliente já possui RACK?"], ["s4_tipo_rack", "Tipo do rack"]]}, {"t": "5 · Sobre as TVs do cliente", "f": [["s5_tvs_android", "Possui TVs Android?"], ["s5_tvs_qtd", "Quantas TVs Android?"], ["s5_versao_android", "Versão do Android"], ["s5_marcas", "Marcas"], ["s5_modelos", "Modelos"], ["s5_tempo_uso", "Tempo de uso"], ["s5_mesma_marca", "TVs mesma marca/modelo?"], ["s5_controles_originais", "Controles remotos originais?"], ["s5_tomada_livre", "Tomada livre atrás da TV?"], ["s5_hdmi_lateral", "Entrada HDMI lateral?"], ["s5_obs", "Observação"]]}, {"t": "6 · Equipe de manutenção e T.I.", "f": [["s6_manut_nome", "Manutenção · Nome"], ["s6_manut_celular", "Manutenção · Celular"], ["s6_manut_email", "Manutenção · E-mail"], ["s6_manut_obs", "Manutenção · Obs"], ["s6_ti_nome", "T.I. · Nome"], ["s6_ti_celular", "T.I. · Celular"], ["s6_ti_email", "T.I. · E-mail"], ["s6_ti_obs", "T.I. · Obs"]]}, {"t": "7 · Equipe de faturamento", "f": [["s7_resp1_nome", "Responsável 1 · Nome"], ["s7_resp1_celular", "Responsável 1 · Celular"], ["s7_resp1_email", "Responsável 1 · E-mail"], ["s7_resp1_obs", "Responsável 1 · Obs"], ["s7_resp2_nome", "Responsável 2 · Nome"], ["s7_resp2_celular", "Responsável 2 · Celular"], ["s7_resp2_email", "Responsável 2 · E-mail"], ["s7_resp2_obs", "Responsável 2 · Obs"]]}, {"t": "8 · Responsável pelo preenchimento", "f": [["s8_cli_nome", "Cliente · Nome"], ["s8_cli_cargo", "Cliente · Cargo"], ["s8_cli_empresa", "Cliente · Empresa"], ["s8_cli_obs", "Cliente · Obs"], ["s8_blin_nome", "Blincast · Nome"], ["s8_blin_obs", "Blincast · Obs"]]}, {"t": "9 · Equipamentos / necessidades", "f": [["s9_benjamin", "Necessita de Benjamin Articulado?"], ["s9_benjamin_qtd", "Quantidade"]]}];
-let preVistoriasOp=[];
-function fmtPvDate(v){
-  if(v==null||v==='') return '—';
-  var s=String(v).trim();
-  if(/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s.slice(0,16);
-  var d=new Date(s);
-  if(!isNaN(d.getTime())){ try{ return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(',',''); }catch(e){ return s; } }
-  return s;
-}
-function pvSortKey(v){
-  var s=String(v||'').trim();
-  var m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-  if(m) return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5]).getTime();
-  var d=new Date(s); return isNaN(d.getTime())?0:d.getTime();
-}
-const PVOP_BTN="height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer";
-
-async function loadPreVistoriasOp(){
-  try{
-    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getPreVistorias');
-    const j=await r.json();
-    preVistoriasOp=Array.isArray(j)?j:[];
-    const b=document.getElementById('pvop-open-btn');
-    if(b) b.textContent='Pré-Vistorias'+(preVistoriasOp.length?' ('+preVistoriasOp.length+')':'');
-  }catch(e){ preVistoriasOp=[]; }
-}
-
-function pvOpEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function openPvOpList(){
-  loadPreVistoriasOp().then(function(){ renderPvOpList(); document.getElementById('pvop-list-modal').style.display='flex'; });
-}
-function closePvOpList(){ document.getElementById('pvop-list-modal').style.display='none'; }
-
-function renderPvOpList(){
-  const cont=document.getElementById('pvop-list-body'); if(!cont) return;
-  const bq=document.getElementById('pvop-busca');
-  const q=(bq?bq.value:'').toLowerCase().trim();
-  let lista=preVistoriasOp.slice();
-  if(q) lista=lista.filter(function(x){ return (x.nome_cliente||'').toLowerCase().indexOf(q)>=0 || String(x.cnpj||'').indexOf(q)>=0; });
-  lista.sort(function(a,b){ return pvSortKey(b.atualizado_em)-pvSortKey(a.atualizado_em); });
-  if(!lista.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:24px;text-align:center">Nenhuma pré-vistoria encontrada.</div>'; return; }
-  cont.innerHTML=lista.map(function(x){
-    const d=x.dados||{}; const cidade=d.s1_cidade||''; const fin=(x.status==='finalizado');
-    const badge='<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;'+(fin?'background:#EAF3DE;color:#3B6D11':'background:#FEF3E0;color:#B86A00')+'">'+(fin?'Finalizado':'Rascunho')+'</span>';
-    return '<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-      +'<div style="min-width:200px"><div style="font-weight:600;font-size:14px">'+pvOpEsc(x.nome_cliente||'—')+'</div>'
-      +'<div style="font-size:12px;color:var(--text-muted);font-family:\'DM Mono\',monospace">'+pvOpEsc(x.cnpj||'sem CNPJ')+(cidade?' · '+pvOpEsc(cidade):'')+'</div>'
-      +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Atualizado: '+pvOpEsc(fmtPvDate(x.atualizado_em))+(x.consultor?' · '+pvOpEsc(x.consultor):'')+'</div></div>'
-      +'<div style="display:flex;gap:6px;align-items:center">'+badge
-      +'<button style="'+PVOP_BTN+'" onclick="openPvOpDetail(\''+x.id+'\')">Ver</button></div></div>';
-  }).join('');
-}
-
-function openPvOpDetail(id){
-  const x=preVistoriasOp.find(function(r){ return String(r.id)===String(id); });
-  if(!x) return;
-  const d=x.dados||{}; const fin=(x.status==='finalizado');
-  const badge='<span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:10px;'+(fin?'background:#EAF3DE;color:#3B6D11':'background:#FEF3E0;color:#B86A00')+'">'+(fin?'Finalizado':'Rascunho')+'</span>';
-  let head='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px">'
-    +'<div><div style="font-size:18px;font-weight:700">'+pvOpEsc(x.nome_cliente||'—')+'</div>'
-    +'<div style="font-size:12px;color:var(--text-muted);font-family:\'DM Mono\',monospace;margin-top:2px">'+pvOpEsc(x.cnpj||'sem CNPJ')+'</div>'
-    +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Consultor: '+pvOpEsc(x.consultor||'—')+' · Atualizado: '+pvOpEsc(fmtPvDate(x.atualizado_em))+'</div></div>'
-    +'<div>'+badge+'</div></div>';
-  let body='';
-  PV_SECOES.forEach(function(sec){
-    const rows=sec.f.filter(function(f){ const v=d[f[0]]; return v!=null && String(v).trim()!==''; });
-    if(!rows.length) return;
-    body+='<div style="margin-top:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#B8860B;border-bottom:2px solid #F5B800;padding-bottom:4px;margin-bottom:8px">'+pvOpEsc(sec.t)+'</div>';
-    body+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px">';
-    rows.forEach(function(f){
-      body+='<div style="font-size:12px;display:flex;flex-direction:column;gap:1px"><span style="color:var(--text-muted);font-size:11px">'+pvOpEsc(f[1])+'</span><span style="font-weight:500;white-space:pre-wrap">'+pvOpEsc(d[f[0]])+'</span></div>';
-    });
-    body+='</div></div>';
-  });
-  if(!body) body='<div style="color:var(--text-muted);font-size:13px;padding:16px;text-align:center">Sem campos preenchidos.</div>';
-  document.getElementById('pvop-detail-body').innerHTML=head+body;
-  document.getElementById('pvop-detail-modal').style.display='flex';
-}
-function closePvOpDetail(){ document.getElementById('pvop-detail-modal').style.display='none'; }
-// =================== FIM PRÉ-VISTORIA (operacional) ===================
-
 const STEPS_VISTORIA=[{id:1,title:'Vistoria solicitada',resp:'SAC'},{id:2,title:'Agendamento com cliente',resp:'SAC'},{id:3,title:'Vistoria realizada',resp:'SAC'},{id:4,title:'Relatorio tecnico emitido',resp:'SAC'},{id:5,title:'Enviado ao comercial',resp:'SAC'}];
 let vistorias=[],vstSaveTimer=null;
 async function loadVistoria(){
@@ -5899,7 +5815,7 @@ return `<div class="cron-card"><div class="cron-header"><div style="cursor:point
 // ===================== ATA DO DIA =====================
 let ataRegistros=[];
 const ATA_STATUS_LABEL={feito:'Feito',em_andamento:'Em andamento',pendente:'Pendente',retornar:'Retornar',acompanhar:'Acompanhar',planejado:'Planejado',em_atraso:'Em atraso',em_andamento_tecnico:'Em andamento pelo técnico',concluido_tecnico:'Concluído pelo técnico'};
-const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'},em_andamento_tecnico:{bg:'#E8F4FD',c:'#1A6FB5'},concluido_tecnico:{bg:'#EAF3DE',c:'#3B6D11'}};
+const ATA_STATUS_COLOR={feito:{bg:'var(--c-concluido-bg)',c:'var(--c-concluido)'},em_andamento:{bg:'var(--c-andamento-bg)',c:'var(--c-andamento)'},pendente:{bg:'var(--c-pendente-bg)',c:'var(--c-pendente)'},retornar:{bg:'#FEE9F5',c:'#9B2370'},acompanhar:{bg:'var(--c-previsto-bg)',c:'var(--c-previsto)'},planejado:{bg:'#F3F0FF',c:'#5B3ECC'},em_atraso:{bg:'var(--c-atrasado-bg)',c:'var(--c-atrasado)'},em_andamento_tecnico:{bg:'#E8F4FD',c:'#1A6FB5'},concluido_tecnico:{bg:'#EAF3DE',c:'#3B6D11'},preventiva:{bg:'#FFF4E0',c:'#B8860B'}};
 
 async function loadAta(){
   document.getElementById('ata-sync').textContent='Carregando...';
@@ -6059,6 +5975,7 @@ function renderAta(){
           <option value="acompanhar" ${r.status==='acompanhar'?'selected':''}>Acompanhar</option>
           <option value="planejado" ${r.status==='planejado'?'selected':''}>Planejado</option>
           <option value="em_atraso" ${r.status==='em_atraso'?'selected':''}>Em atraso</option>
+          <option value="preventiva" ${r.status==='preventiva'?'selected':''}>Preventiva</option>
         </select>
       </td>
       <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">
@@ -6386,6 +6303,32 @@ async function removerAta(id){
   catch(e){setStatus('error','Erro ao remover');}
 }
 
+// ===== Banner/modal de data de retorno =====
+let _retornoAtaId = null;
+function abrirModalRetorno(id){
+  _retornoAtaId = id;
+  const reg = ataRegistros.find(r=>String(r.id)===String(id));
+  const inp = document.getElementById('retorno-data-input');
+  if(inp) inp.value = (reg && reg.dt_prevista) ? ataAnoFix(reg.dt_prevista) : '';
+  document.getElementById('retorno-modal').style.display='flex';
+}
+async function _retornoSalvarData(){
+  const inp=document.getElementById('retorno-data-input');
+  const data=inp?inp.value:'';
+  if(!data){ alert('Escolha uma data ou clique em "Deixar em aberto".'); return; }
+  if(_retornoAtaId!=null){
+    await alterarAtaData(_retornoAtaId,'dt_prevista',data);
+  }
+  document.getElementById('retorno-modal').style.display='none';
+  _retornoAtaId=null;
+  renderAta();
+}
+function _retornoDeixarAberto(){
+  // deixa sem data prevista (em aberto) — apenas fecha; o status retornar já foi salvo
+  document.getElementById('retorno-modal').style.display='none';
+  _retornoAtaId=null;
+}
+
 async function alterarAtaStatus(id, novoStatus, selEl){
   const sc=ATA_STATUS_COLOR[novoStatus]||{bg:'var(--border)',c:'var(--text-muted)'};
   selEl.style.background=sc.bg;
@@ -6393,6 +6336,10 @@ async function alterarAtaStatus(id, novoStatus, selEl){
   selEl.style.borderColor=sc.c;
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg.status=novoStatus;
+  // Banner ao marcar "Retornar": oferece preencher data prevista de retorno ou deixar em aberto
+  if(novoStatus==='retornar'){
+    abrirModalRetorno(id);
+  }
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaStatus',id,status:novoStatus})});
     // Item 5 do fluxo: ATA "Feito" → OS vinculada concluída automaticamente
@@ -6481,21 +6428,28 @@ function _ataDiaGrupo(status){
   return 'pendente';
 }
 
-// monta {grupos, diaSemana, vazio} para o dia escolhido
+// monta {grupos, diaSemana, total} para o dia escolhido.
+// Critério "daquele dia" = a DATA PREVISTA é o dia escolhido (não usa mais data de abertura).
+// Grupos: concluido (previsto pro dia E com conclusão preenchida), retornar, naofeito (pendente/resto).
 function _ataDiaDados(data){
-  const doDia = (ataRegistros||[]).filter(r=>
-    _ataDiaNormD(r.dt_abertura)===data || _ataDiaNormD(r.dt_prevista)===data || _ataDiaNormD(r.dt_conclusao)===data
-  );
-  const grupos={feito:[],retornar:[],pendente:[]};
-  doDia.forEach(r=>{ grupos[_ataDiaGrupo(r.status)].push(r); });
-  const diaSemana = new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long'});
-  // técnicos únicos que aparecem na ata do dia (separa nomes combinados por vírgula/e)
-  const setTec=new Set();
+  const ehConcluido = r => {
+    const st=String(r.status||'').toLowerCase();
+    const temConcl = !!_ataDiaNormD(r.dt_conclusao);
+    return (st.includes('conclu')||st==='feito') && temConcl;
+  };
+  const ehRetornar = r => String(r.status||'').toLowerCase().includes('retorn');
+
+  // só entram os previstos para o dia escolhido
+  const doDia = (ataRegistros||[]).filter(r => _ataDiaNormD(r.dt_prevista)===data);
+
+  const grupos={concluido:[],retornar:[],naofeito:[]};
   doDia.forEach(r=>{
-    String(r.tecnico||'').split(/,| e /).map(t=>t.trim()).filter(Boolean).forEach(t=>setTec.add(t));
+    if(ehConcluido(r)) grupos.concluido.push(r);
+    else if(ehRetornar(r)) grupos.retornar.push(r);
+    else grupos.naofeito.push(r);
   });
-  const tecnicos=[...setTec].sort();
-  return {grupos:grupos, diaSemana:diaSemana, total:doDia.length, tecnicos:tecnicos};
+  const diaSemana = new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long'});
+  return {grupos:grupos, diaSemana:diaSemana, total:doDia.length};
 }
 
 async function gerarAtaDiaXLSX(data, tec20h){
@@ -6531,9 +6485,9 @@ async function gerarAtaDiaXLSX(data, tec20h){
     }
     lin++; // linha em branco
   };
-  bloco('PREVISTO → FEITO NO DIA', grupos.feito);
-  bloco('PREVISTO → RETORNAR (não concluído no dia)', grupos.retornar);
-  bloco('PREVISTO → NÃO FOI FEITO (PENDENTE)', grupos.pendente);
+  bloco('PREVISTO → CONCLUÍDO', grupos.concluido);
+  bloco('PREVISTO → RETORNAR', grupos.retornar);
+  bloco('PREVISTO → NÃO FOI FEITO', grupos.naofeito);
 
   // colaboradores que ficaram até 20h (digitados no modal)
   const ct=ws.getCell('A'+lin); ct.value='Colaboradores que ficaram até as 20:00h:'; ct.font={bold:true,size:11}; lin++;
@@ -6576,9 +6530,9 @@ function gerarAtaDiaPDF(data, tec20h){
     +'@media print{body{padding:0;}}'
     +'</style></head><body>'
     +'<h1>ATA DE ATENDIMENTO — '+esc(diaSemana)+', '+_ataDiaFmtBR(data)+'</h1>'
-    +bloco('PREVISTO → FEITO NO DIA', grupos.feito)
-    +bloco('PREVISTO → RETORNAR (não concluído no dia)', grupos.retornar)
-    +bloco('PREVISTO → NÃO FOI FEITO (PENDENTE)', grupos.pendente)
+    +bloco('PREVISTO → CONCLUÍDO', grupos.concluido)
+    +bloco('PREVISTO → RETORNAR', grupos.retornar)
+    +bloco('PREVISTO → NÃO FOI FEITO', grupos.naofeito)
     +'<div class="assin">Colaboradores que ficaram até as 20:00h:</div>'
     +'<table><tbody>'+tecRows+'</tbody></table>'
     +'<script>window.onload=function(){window.print();}<\/script>'
@@ -11303,6 +11257,18 @@ async function excluirOS(id){
 <div id="page-escala-n2" class="main" style="display:none"><div class="escala-container" data-setor="N2"></div></div>
 <input type="file" id="escala-file-input" accept=".xlsx,.xls" style="display:none">
 <input type="file" id="prestacao-file-input" accept="image/*,application/pdf" style="display:none">
+<div id="retorno-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:400px;width:100%;padding:24px;">
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Retorno do atendimento</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Quer definir a data prevista de retorno agora, ou deixar em aberto pra definir depois?</div>
+    <label style="font-size:12px;color:var(--text-muted);">Data prevista de retorno</label>
+    <input type="date" id="retorno-data-input" style="width:100%;height:40px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:0 12px;font-size:14px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;box-sizing:border-box;margin-top:4px;">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
+      <button onclick="_retornoDeixarAberto()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Deixar em aberto</button>
+      <button onclick="_retornoSalvarData()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar data</button>
+    </div>
+  </div>
+</div>
 <div id="ata-dia-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:380px;width:100%;padding:24px;">
     <div style="font-size:16px;font-weight:600;margin-bottom:4px;">Exportar Ata do dia</div>
@@ -11672,30 +11638,6 @@ async function excluirColab(id){
 </div>
 
 <!-- MODAL CHECKLIST DE IMPLANTAÇÃO -->
-<!-- PRÉ-VISTORIA STREAMBLINK (operacional · leitura) -->
-<div class="modal-overlay" id="pvop-list-modal" style="display:none" onclick="if(event.target===this)closePvOpList()">
-  <div class="modal" style="max-width:640px;max-height:88vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h3 style="font-size:16px;font-weight:600">Pré-Vistorias (comercial)</h3>
-      <button onclick="closePvOpList()" style="border:none;background:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1">&times;</button>
-    </div>
-    <input id="pvop-busca" oninput="renderPvOpList()" placeholder="Buscar por nome ou CNPJ..." style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-bottom:12px">
-    <div id="pvop-list-body"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="pvop-detail-modal" style="display:none" onclick="if(event.target===this)closePvOpDetail()">
-  <div class="modal" style="max-width:720px;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:-6px">
-      <button onclick="closePvOpDetail()" style="border:none;background:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1">&times;</button>
-    </div>
-    <div id="pvop-detail-body"></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:16px">
-      <button onclick="closePvOpDetail()" style="height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="ci-modal" style="display:none" onclick="if(event.target===this)fecharChecklistImpl()">
   <div class="modal" style="max-width:680px;max-height:92vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
