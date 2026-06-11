@@ -1187,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.8';
+const BLINTRACK_VERSAO = 'V3.9';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -6611,6 +6611,12 @@ function _retornosAtaPular(){
   _ataExportarAgora();
 }
 
+// Fecha o banner pelo X — cancela a exportação (não gera arquivo)
+function _retornosAtaFechar(){
+  document.getElementById('retornos-ata-modal').style.display='none';
+  _ataExportPendente = null;
+}
+
 function _ataDiaNormD(d){
   if(!d) return '';
   let s=String(d).trim();
@@ -11478,7 +11484,8 @@ async function excluirOS(id){
   </div>
 </div>
 <div id="retornos-ata-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--surface);border-radius:var(--radius);max-width:540px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:540px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="_retornosAtaFechar()" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
     <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Datas de retorno</div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Há atendimentos marcados como "Retornar" neste dia. Defina ou confira a data prevista de retorno de cada um antes de exportar. As datas serão salvas no atendimento.</div>
     <div id="retornos-ata-lista"></div>
