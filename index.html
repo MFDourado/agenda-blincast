@@ -374,8 +374,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn active" id="mt-pipeline" onclick="switchMainTab('pipeline');closeSidebar()">Pipeline</button>
     <button class="snav-btn" id="mt-vistoria-group" onclick="toggleSubMenu('vistoria-sub')">Vistorias <span id="arrow-vistoria-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="vistoria-sub" style="display:none;background:rgba(0,0,0,.15)">
-      <button class="snav-btn" id="mt-vistoria" onclick="vistoriaFiltroTipo='instalacao';switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Instalação</button>
-      <button class="snav-btn" id="mt-vistoria-preventiva" onclick="vistoriaFiltroTipo='preventiva';switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Preventiva</button>
+      <button class="snav-btn" id="mt-vistoria" onclick="switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Instalação</button>
+      <button class="snav-btn" id="mt-vistoria-preventiva" onclick="switchMainTab('vistoria-preventiva');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Preventiva</button>
     </div>
     <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
     <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">Dashboard</button>
@@ -1122,7 +1122,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Vistorias', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -1187,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.6';
+const BLINTRACK_VERSAO = 'V3.7';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1896,15 +1896,24 @@ function switchImplSub(tipo){
 }
 
 function switchMainTab(t){
+  // Abas virtuais de vistoria: 'vistoria' = Instalação, 'vistoria-preventiva' = Preventiva.
+  // As duas usam a MESMA página (page-vistoria), mudando só o filtro de tipo.
+  const ehVistoria = (t==='vistoria' || t==='vistoria-preventiva');
+  if(t==='vistoria') vistoriaFiltroTipo='instalacao';
+  if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
+  const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
+
   ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj'].forEach(tab=>{
-    const btn = document.getElementById('mt-'+tab);
-    if(btn){btn.classList.toggle('active',tab===t);btn.classList.toggle('snav-btn',true);}
     const page = document.getElementById('page-'+tab);
-    if(btn) btn.className='snav-btn'+(t===tab?' active':'');
-    if(page) page.style.display=t===tab?'block':'none';
+    if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
+  // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj'].forEach(tab=>{
+    const btn = document.getElementById('mt-'+tab);
+    if(btn) btn.className='snav-btn'+(t===tab?' active':'');
+  });
+  if(ehVistoria){ loadVistoria(); filtrarVistoriaTipo(vistoriaFiltroTipo); }
   if(t==='pipeline')loadPipeline();
-  if(t==='vistoria'){loadVistoria();filtrarVistoriaTipo(vistoriaFiltroTipo);}
   if(t==='dashboard')renderDashboard();
   if(t==='comercial')loadComercial();
   if(t==='clientes')loadClientes();
