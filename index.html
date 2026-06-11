@@ -1187,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.7';
+const BLINTRACK_VERSAO = 'V3.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -6547,6 +6547,9 @@ function _ataMascaraData(el){
   el.value=v;
 }
 
+// guarda os parâmetros da exportação em andamento
+let _ataExportPendente = null;
+
 function _ataDiaConfirmar(){
   const inp=document.getElementById('ata-dia-data');
   const br=inp.value.trim();
@@ -6557,8 +6560,55 @@ function _ataDiaConfirmar(){
   const txt=(document.getElementById('ata-dia-tecnicos')?.value||'');
   const tec20h=txt.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
   document.getElementById('ata-dia-modal').style.display='none';
-  if(_ataDiaFormato==='pdf') gerarAtaDiaPDF(iso, tec20h);
+  _ataExportPendente = { iso:iso, tec20h:tec20h, formato:_ataDiaFormato };
+  // Se houver "Retornar" no dia, abre o banner de datas de retorno antes de gerar
+  const {grupos} = _ataDiaDados(iso);
+  if(grupos.retornar && grupos.retornar.length){
+    _abrirBannerRetornosAta(grupos.retornar, iso);
+  } else {
+    _ataExportarAgora();
+  }
+}
+
+function _ataExportarAgora(){
+  if(!_ataExportPendente) return;
+  const {iso, tec20h, formato} = _ataExportPendente;
+  _ataExportPendente = null;
+  if(formato==='pdf') gerarAtaDiaPDF(iso, tec20h);
   else gerarAtaDiaXLSX(iso, tec20h);
+}
+
+function _abrirBannerRetornosAta(lista, iso){
+  const box=document.getElementById('retornos-ata-lista');
+  box.innerHTML = lista.map(r=>{
+    const dataAtual = r.dt_prevista ? ataAnoFix(r.dt_prevista) : '';
+    return '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border);">'
+      +'<div style="flex:1;font-size:13px;"><b>'+(r.no||'')+'</b> — '+(r.cliente||'')+'<div style="font-size:11px;color:var(--text-muted);">'+(r.problema||'').slice(0,60)+'</div></div>'
+      +'<input type="date" data-ataid="'+r.id+'" value="'+dataAtual+'" style="height:34px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:\'DM Mono\',monospace;background:#EBF0FB;color:var(--c-previsto);">'
+      +'</div>';
+  }).join('');
+  document.getElementById('retornos-ata-modal').style.display='flex';
+}
+
+async function _retornosAtaSalvarEExportar(){
+  const inputs=document.querySelectorAll('#retornos-ata-lista input[data-ataid]');
+  for(const inp of inputs){
+    const id=inp.getAttribute('data-ataid');
+    const val=inp.value;
+    if(val){
+      const reg=ataRegistros.find(r=>String(r.id)===String(id));
+      if(reg) reg.dt_prevista=val;
+      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaData',id:id,campo:'dt_prevista',valor:val})}); }catch(e){}
+    }
+  }
+  document.getElementById('retornos-ata-modal').style.display='none';
+  if(typeof renderAta==='function') renderAta();
+  _ataExportarAgora();
+}
+
+function _retornosAtaPular(){
+  document.getElementById('retornos-ata-modal').style.display='none';
+  _ataExportarAgora();
 }
 
 function _ataDiaNormD(d){
@@ -11424,6 +11474,17 @@ async function excluirOS(id){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
       <button onclick="_retornoDeixarAberto()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Deixar em aberto</button>
       <button onclick="_retornoSalvarData()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar data</button>
+    </div>
+  </div>
+</div>
+<div id="retornos-ata-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:540px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;">
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Datas de retorno</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Há atendimentos marcados como "Retornar" neste dia. Defina ou confira a data prevista de retorno de cada um antes de exportar. As datas serão salvas no atendimento.</div>
+    <div id="retornos-ata-lista"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
+      <button onclick="_retornosAtaPular()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Pular e exportar</button>
+      <button onclick="_retornosAtaSalvarEExportar()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar e exportar</button>
     </div>
   </div>
 </div>
