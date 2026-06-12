@@ -1187,7 +1187,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V3.9';
+const BLINTRACK_VERSAO = 'V4.0';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -6281,6 +6281,7 @@ function openAtaModal(){
   document.getElementById('at-edit-id').value='';
   const _atVw=document.getElementById('at-vinculo-wrap'); if(_atVw) _atVw.innerHTML=htmlVinculoCliente('at');
   if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
+  if(!Array.isArray(colabLista)||!colabLista.length){ if(typeof loadColaboradores==='function') loadColaboradores(); }
   // Reset select técnico para Pool
   const _sel=document.getElementById('at-tecnico');if(_sel){_sel.innerHTML='<option value="">Pool — qualquer técnico</option>';filtrarTecnicosPorUF('',"at-tecnico");}
   document.getElementById('ata-modal-title').textContent='Novo registro';
@@ -10630,20 +10631,28 @@ function filtrarTecnicosPorUF(uf, selectId) {
   const sel = document.getElementById(selectId);
   if(!sel) return;
   const val = sel.value;
-  const tecnicosUF = TECNICOS_POR_UF[uf?.toUpperCase()];
-  sel.innerHTML = '<option value="">Selecione o técnico...</option>';
-  // Se UF tem segmentação, mostrar só os dela; se não, mostrar TODOS os operacionais
-  const lista = tecnicosUF || Object.values(TECNICOS_NOMES);
+  const ufU = (uf||'').toUpperCase().trim();
+  // Fonte única: colaboradores cadastrados, filtrados pela UF de atuação
+  let lista = (colabLista||[])
+    .filter(c=>{
+      const st=String(c.status||'').toLowerCase();
+      const ativo = st===''||st==='ativo';
+      const ufC = String(c.uf||'').toUpperCase().trim();
+      return ativo && (ufU? ufC===ufU : true);
+    })
+    .map(c=>c.nome)
+    .filter(Boolean)
+    .sort();
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  if(!lista.length){
+    sel.innerHTML += '<option value="" disabled>Nenhum colaborador'+(ufU?(' em '+ufU):'')+'</option>';
+  }
   lista.forEach(t => {
     const o = document.createElement('option');
     o.value = t; o.textContent = t;
+    if(t===val) o.selected=true;
     sel.appendChild(o);
   });
-  // Opção "Pool" sempre disponível
-  const pool = document.createElement('option');
-  pool.value = ''; pool.textContent = 'Pool — qualquer técnico';
-  sel.insertBefore(pool, sel.firstChild);
-  if(val) sel.value = val;
 }
 function formatarData(val){
   if(!val) return '—';
@@ -11583,6 +11592,7 @@ async function excluirOS(id){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="modal-field"><label>Cargo / Função</label><input type="text" id="colab-cargo" placeholder="Ex: Técnico de Campo"></div>
       <div class="modal-field"><label>Setor</label><input type="text" id="colab-setor" placeholder="Ex: Operacional"></div>
+      <div class="modal-field"><label>UF de atuação</label><input type="text" id="colab-uf" maxlength="2" placeholder="Ex: RJ" style="text-transform:uppercase"></div>
       <div class="modal-field"><label>Data de Admissão</label><input type="date" id="colab-admissao"></div>
       <div class="modal-field"><label>Status</label>
         <select id="colab-status" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
@@ -11731,7 +11741,7 @@ function renderColaboradores(){
 function abrirNovoColab(){
   colabEditId=null;
   document.getElementById('colab-modal-titulo').textContent='Novo Colaborador';
-  ['colab-nome','colab-usuario','colab-cpf','colab-rg','colab-email','colab-telefone','colab-ramal','colab-cargo','colab-setor','colab-banco','colab-agencia','colab-conta','colab-pix'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['colab-nome','colab-usuario','colab-cpf','colab-rg','colab-email','colab-telefone','colab-ramal','colab-cargo','colab-setor','colab-uf','colab-banco','colab-agencia','colab-conta','colab-pix'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('colab-sexo').value='';
   document.getElementById('colab-status').value='Ativo';
   document.getElementById('colab-tipo-conta').value='';
@@ -11749,7 +11759,7 @@ function editarColab(id){
   const set=(el,val)=>{const e=document.getElementById(el);if(e)e.value=val||'';};
   set('colab-nome',c.nome); set('colab-cpf',c.cpf); set('colab-rg',c.rg);
   set('colab-email',c.email); set('colab-usuario',c.usuario); set('colab-telefone',c.telefone); set('colab-ramal',c.ramal);
-  set('colab-cargo',c.cargo); set('colab-setor',c.setor);
+  set('colab-cargo',c.cargo); set('colab-setor',c.setor); set('colab-uf',c.uf);
   set('colab-banco',c.banco); set('colab-agencia',c.agencia); set('colab-conta',c.conta); set('colab-pix',c.pix);
   set('colab-nascimento',c.nascimento); set('colab-admissao',c.admissao);
   document.getElementById('colab-sexo').value=c.sexo||'';
@@ -11770,7 +11780,7 @@ async function salvarColab(){
     nome:g('colab-nome'), usuario:g('colab-usuario'), cpf:g('colab-cpf'), rg:g('colab-rg'),
     nascimento:g('colab-nascimento'), sexo:g('colab-sexo'),
     email:g('colab-email'), telefone:g('colab-telefone'), ramal:g('colab-ramal'),
-    cargo:g('colab-cargo'), setor:g('colab-setor'), admissao:g('colab-admissao'),
+    cargo:g('colab-cargo'), setor:g('colab-setor'), uf:g('colab-uf').toUpperCase(), admissao:g('colab-admissao'),
     status:g('colab-status'),
     banco:g('colab-banco'), agencia:g('colab-agencia'), conta:g('colab-conta'),
     tipoConta:g('colab-tipo-conta'), pix:g('colab-pix'),
