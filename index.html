@@ -1188,7 +1188,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.1';
+const BLINTRACK_VERSAO = 'V4.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1474,6 +1474,36 @@ async function excluirPontoOperadora(id){
   if(!confirm('Excluir este ponto?')) return;
   try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOperadoraPonto',id:id})}); await loadOperadoras(); }
   catch(e){ alert('Erro ao excluir.'); }
+}
+
+// Importa os pontos a partir de um arquivo JSON escolhido pelo usuário, em lotes
+async function importarOperadorasArquivo(input){
+  const file=input.files[0]; if(!file) return;
+  let pontos;
+  try{
+    const txt=await file.text();
+    pontos=JSON.parse(txt);
+    if(!Array.isArray(pontos)) throw new Error('formato');
+  }catch(e){ alert('Arquivo inválido. Selecione o operadoras_dados.json que foi gerado.'); input.value=''; return; }
+  if(!pontos.length){ alert('O arquivo não tem pontos.'); input.value=''; return; }
+  const limpar=confirm('Importar '+pontos.length+' pontos.\n\nClique OK para LIMPAR a aba Operadoras antes (recomendado na 1ª vez).\nClique Cancelar para ADICIONAR sem limpar.');
+  const sub=document.getElementById('operadoras-sub');
+  const LOTE=400; let enviados=0;
+  for(let i=0;i<pontos.length;i+=LOTE){
+    const lote=pontos.slice(i,i+LOTE);
+    const body={token:getToken(),action:'importarOperadoras',pontos:lote};
+    if(i===0 && limpar) body.limpar=true;
+    if(sub) sub.textContent='Importando... '+Math.min(i+LOTE,pontos.length)+' de '+pontos.length;
+    try{
+      const r=await fetch(API,{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(d.error){ alert('Erro no lote '+(i/LOTE+1)+': '+d.error); break; }
+      enviados+=(d.inseridos||lote.length);
+    }catch(e){ alert('Falha de conexão durante a importação. Importados até agora: '+enviados); break; }
+  }
+  input.value='';
+  alert('✅ Importação concluída: '+enviados+' pontos.');
+  await loadOperadoras();
 }
 
 async function loadEscala(setor){
@@ -9607,6 +9637,8 @@ async function estEnviarEmail(reg){
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <input type="text" id="operadoras-busca" placeholder="🔍 Buscar hotel..." oninput="renderOperadoras()" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
       <button onclick="abrirNovoHotelOperadora()" style="height:36px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">+ Novo hotel</button>
+      <input type="file" id="op-import-file" accept="application/json,.json" style="display:none" onchange="importarOperadorasArquivo(this)">
+      <button onclick="document.getElementById('op-import-file').click()" style="height:36px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;color:var(--c-previsto);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">⬆️ Importar planilha</button>
     </div>
   </div>
   <div style="display:flex;gap:12px;margin:14px 0;flex-wrap:wrap;">
