@@ -394,6 +394,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     </div>
     <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
     <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
+    <button class="snav-btn" id="mt-operadoras" onclick="switchMainTab('operadoras');closeSidebar()">Operadoras</button>
     <button class="snav-btn" id="mt-estoque-group" onclick="toggleSubMenu('estoque-sub')">Estoque <span id="arrow-estoque-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="estoque-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-arm-cadastro" onclick="switchMainTab('arm-cadastro');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Cadastro</button>
@@ -1122,7 +1123,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -1187,7 +1188,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.0';
+const BLINTRACK_VERSAO = 'V4.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1309,6 +1310,171 @@ let escalaSetorAtual = 'SAC';
 let escalaImportada = null;  // dados lidos do Excel aguardando salvar
 
 function escalaEhGestor(){ return usuarioLogado && usuarioLogado.perfil==='admin'; }
+
+// ═══════════════════════ OPERADORAS ═══════════════════════
+let operadorasPontos = [];
+let operadorasHotelAberto = null;
+
+async function loadOperadoras(){
+  const sub=document.getElementById('operadoras-sub');
+  if(sub) sub.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOperadoras');
+    const d=await r.json();
+    operadorasPontos=Array.isArray(d.pontos)?d.pontos:[];
+  }catch(e){ operadorasPontos=[]; }
+  renderOperadoras();
+}
+
+function _opAgrupaHoteis(){
+  const mapa={};
+  operadorasPontos.forEach(p=>{
+    const chave=String(p.hotel||'(sem nome)').trim();
+    if(!mapa[chave]) mapa[chave]={hotel:chave,cnpj:p.cnpj||'',cidade:p.cidade||'',uf:p.uf||'',pontos:[]};
+    if(!mapa[chave].cnpj && p.cnpj) mapa[chave].cnpj=p.cnpj;
+    if(!mapa[chave].cidade && p.cidade) mapa[chave].cidade=p.cidade;
+    if(!mapa[chave].uf && p.uf) mapa[chave].uf=p.uf;
+    // só conta como ponto real se tiver algum dado
+    if(p.pacote||p.valor||p.canal||p.caid||p.contrato) mapa[chave].pontos.push(p);
+  });
+  return Object.values(mapa).sort((a,b)=>a.hotel.localeCompare(b.hotel));
+}
+
+function _opParseValor(v){
+  let s=String(v||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');
+  const n=parseFloat(s); return isNaN(n)?0:n;
+}
+function _opFmtValor(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function renderOperadoras(){
+  const cont=document.getElementById('operadoras-lista');
+  if(!cont) return;
+  const hoteis=_opAgrupaHoteis();
+  const busca=(document.getElementById('operadoras-busca')?.value||'').trim().toLowerCase();
+  const filtrados=busca? hoteis.filter(h=>h.hotel.toLowerCase().includes(busca)||String(h.cnpj).toLowerCase().includes(busca)) : hoteis;
+  // KPIs
+  const totalPontos=hoteis.reduce((s,h)=>s+h.pontos.length,0);
+  const totalValor=operadorasPontos.reduce((s,p)=>s+_opParseValor(p.valor),0);
+  document.getElementById('op-kpi-hoteis').textContent=hoteis.length;
+  document.getElementById('op-kpi-pontos').textContent=totalPontos.toLocaleString('pt-BR');
+  document.getElementById('op-kpi-valor').textContent=_opFmtValor(totalValor);
+  const sub=document.getElementById('operadoras-sub');
+  if(sub) sub.textContent=hoteis.length+' hotéis · '+totalPontos.toLocaleString('pt-BR')+' pontos ativos';
+
+  if(!filtrados.length){ cont.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);">Nenhum hotel encontrado.</div>'; return; }
+
+  cont.innerHTML=filtrados.map(h=>{
+    const aberto = operadorasHotelAberto===h.hotel;
+    const cab='<div onclick="toggleHotelOperadora(\''+_esc(h.hotel).replace(/'/g,"\\'")+'\')" style="padding:12px 16px;border-bottom:'+(aberto?'0.5px solid var(--border)':'none')+';display:flex;justify-content:space-between;align-items:center;cursor:pointer;">'
+      +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<span style="font-size:18px;">🏨</span>'
+        +'<div><div style="font-size:14px;font-weight:600;color:var(--text);">'+_esc(h.hotel)+'</div>'
+        +'<div style="font-size:11px;color:var(--text-muted);">'+(h.cnpj?('CNPJ '+_esc(h.cnpj)+' · '):'')+_esc(h.cidade||'')+(h.uf?(' / '+_esc(h.uf)):'')+' · '+h.pontos.length+' pontos</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;">'
+        +'<button onclick="event.stopPropagation();abrirEditarHotelOperadora(\''+_esc(h.hotel).replace(/'/g,"\\'")+'\')" style="height:28px;padding:0 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✏️ Editar</button>'
+        +'<button onclick="event.stopPropagation();excluirHotelOperadora(\''+_esc(h.hotel).replace(/'/g,"\\'")+'\')" style="height:28px;padding:0 10px;border:1px solid #e74c3c44;border-radius:5px;background:none;color:#e74c3c;font-size:11px;cursor:pointer;">🗑</button>'
+        +'<span style="color:var(--text-muted);font-size:12px;">'+(aberto?'▲':'▼')+'</span>'
+      +'</div></div>';
+    let corpo='';
+    if(aberto){
+      corpo='<div style="padding:6px 16px 4px;font-size:11px;color:var(--text-muted);">'+h.pontos.length+' pontos · <span onclick="abrirNovoPontoOperadora(\''+_esc(h.hotel).replace(/'/g,"\\'")+'\')" style="color:var(--c-previsto);cursor:pointer;">+ Adicionar ponto</span></div>'
+        +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:640px;"><thead><tr style="background:var(--bg);">'
+        +['Ativação','Pacote','Valor','Canal','CA/ID (decoder)','Contrato',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+c+'</th>').join('')
+        +'</tr></thead><tbody>'
+        +(h.pontos.length? h.pontos.map(p=>'<tr style="border-bottom:0.5px solid var(--border);">'
+            +'<td style="padding:7px 8px;white-space:nowrap;">'+_esc(p.ativacao||'—')+'</td>'
+            +'<td style="padding:7px 8px;">'+_esc(p.pacote||'—')+'</td>'
+            +'<td style="padding:7px 8px;white-space:nowrap;">'+(p.valor?_esc(p.valor):'—')+'</td>'
+            +'<td style="padding:7px 8px;">'+_esc(p.canal||'—')+'</td>'
+            +'<td style="padding:7px 8px;font-family:\'DM Mono\',monospace;font-size:11px;white-space:nowrap;">'+_esc(p.caid||'—')+'</td>'
+            +'<td style="padding:7px 8px;white-space:nowrap;">'+_esc(p.contrato||'—')+'</td>'
+            +'<td style="padding:7px 8px;white-space:nowrap;"><span onclick="abrirEditarPontoOperadora(\''+p.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirPontoOperadora(\''+p.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
+          +'</tr>').join('') : '<tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text-muted);">Nenhum ponto. Clique em "+ Adicionar ponto".</td></tr>')
+        +'</tbody></table></div>';
+    }
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;">'+cab+corpo+'</div>';
+  }).join('');
+}
+
+function toggleHotelOperadora(hotel){
+  operadorasHotelAberto = (operadorasHotelAberto===hotel)? null : hotel;
+  renderOperadoras();
+}
+
+// ---- Hotel ----
+function abrirNovoHotelOperadora(){
+  _opHotelEdit=null;
+  document.getElementById('op-hotel-titulo').textContent='Novo hotel';
+  ['op-hotel-nome','op-hotel-cnpj','op-hotel-cidade','op-hotel-uf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('op-hotel-modal').style.display='flex';
+}
+function abrirEditarHotelOperadora(hotel){
+  const h=_opAgrupaHoteis().find(x=>x.hotel===hotel); if(!h) return;
+  _opHotelEdit=hotel;
+  document.getElementById('op-hotel-titulo').textContent='Editar hotel';
+  document.getElementById('op-hotel-nome').value=h.hotel;
+  document.getElementById('op-hotel-cnpj').value=h.cnpj;
+  document.getElementById('op-hotel-cidade').value=h.cidade;
+  document.getElementById('op-hotel-uf').value=h.uf;
+  document.getElementById('op-hotel-modal').style.display='flex';
+}
+let _opHotelEdit=null;
+async function salvarHotelOperadora(){
+  const g=id=>document.getElementById(id).value.trim();
+  const payload={token:getToken(),action:'saveOperadoraHotel',hotel:g('op-hotel-nome'),hotelOriginal:_opHotelEdit||g('op-hotel-nome'),cnpj:g('op-hotel-cnpj'),cidade:g('op-hotel-cidade'),uf:g('op-hotel-uf').toUpperCase()};
+  if(!payload.hotel){ alert('Informe o nome do hotel.'); return; }
+  try{ await fetch(API,{method:'POST',body:JSON.stringify(payload)}); document.getElementById('op-hotel-modal').style.display='none'; await loadOperadoras(); }
+  catch(e){ alert('Erro ao salvar.'); }
+}
+async function excluirHotelOperadora(hotel){
+  if(!confirm('Excluir o hotel "'+hotel+'" e TODOS os seus pontos? Esta ação não pode ser desfeita.')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOperadoraHotel',hotel:hotel})}); await loadOperadoras(); }
+  catch(e){ alert('Erro ao excluir.'); }
+}
+
+// ---- Ponto ----
+let _opPontoEdit=null;
+function abrirNovoPontoOperadora(hotel){
+  _opPontoEdit=null;
+  const h=_opAgrupaHoteis().find(x=>x.hotel===hotel)||{hotel:hotel,cnpj:'',cidade:'',uf:''};
+  document.getElementById('op-ponto-titulo').textContent='Novo ponto — '+hotel;
+  document.getElementById('op-ponto-hotel').value=hotel;
+  document.getElementById('op-ponto-hotel-cnpj').value=h.cnpj;
+  document.getElementById('op-ponto-hotel-cidade').value=h.cidade;
+  document.getElementById('op-ponto-hotel-uf').value=h.uf;
+  ['op-ponto-ativacao','op-ponto-pacote','op-ponto-valor','op-ponto-canal','op-ponto-caid','op-ponto-contrato'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('op-ponto-modal').style.display='flex';
+}
+function abrirEditarPontoOperadora(id){
+  const p=operadorasPontos.find(x=>String(x.id)===String(id)); if(!p) return;
+  _opPontoEdit=id;
+  document.getElementById('op-ponto-titulo').textContent='Editar ponto — '+(p.hotel||'');
+  document.getElementById('op-ponto-hotel').value=p.hotel||'';
+  document.getElementById('op-ponto-hotel-cnpj').value=p.cnpj||'';
+  document.getElementById('op-ponto-hotel-cidade').value=p.cidade||'';
+  document.getElementById('op-ponto-hotel-uf').value=p.uf||'';
+  document.getElementById('op-ponto-ativacao').value=p.ativacao||'';
+  document.getElementById('op-ponto-pacote').value=p.pacote||'';
+  document.getElementById('op-ponto-valor').value=p.valor||'';
+  document.getElementById('op-ponto-canal').value=p.canal||'';
+  document.getElementById('op-ponto-caid').value=p.caid||'';
+  document.getElementById('op-ponto-contrato').value=p.contrato||'';
+  document.getElementById('op-ponto-modal').style.display='flex';
+}
+async function salvarPontoOperadora(){
+  const g=id=>document.getElementById(id).value.trim();
+  const payload={token:getToken(),action:'saveOperadoraPonto',
+    id:_opPontoEdit||'', hotel:g('op-ponto-hotel'),cnpj:g('op-ponto-hotel-cnpj'),cidade:g('op-ponto-hotel-cidade'),uf:g('op-ponto-hotel-uf'),
+    ativacao:g('op-ponto-ativacao'),pacote:g('op-ponto-pacote'),valor:g('op-ponto-valor'),canal:g('op-ponto-canal'),caid:g('op-ponto-caid'),contrato:g('op-ponto-contrato')};
+  try{ await fetch(API,{method:'POST',body:JSON.stringify(payload)}); document.getElementById('op-ponto-modal').style.display='none'; await loadOperadoras(); }
+  catch(e){ alert('Erro ao salvar.'); }
+}
+async function excluirPontoOperadora(id){
+  if(!confirm('Excluir este ponto?')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOperadoraPonto',id:id})}); await loadOperadoras(); }
+  catch(e){ alert('Erro ao excluir.'); }
+}
 
 async function loadEscala(setor){
   escalaSetorAtual = setor;
@@ -1903,12 +2069,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -1940,6 +2106,7 @@ function switchMainTab(t){
   if(t==='escala-sac')loadEscala('SAC');
   if(t==='escala-tecnico')loadEscala('Técnico campo');
   if(t==='escala-n2')loadEscala('N2');
+  if(t==='operadoras')loadOperadoras();
   abrirAba(t);
 }
 
@@ -9430,6 +9597,26 @@ async function estEnviarEmail(reg){
   </div>
 </div>
 
+<!-- OPERADORAS -->
+<div id="page-operadoras" class="main" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <h1 style="font-size:22px;font-weight:600;margin:0;">Operadoras</h1>
+      <div id="operadoras-sub" style="font-size:12px;color:var(--text-muted);">Carregando...</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="operadoras-busca" placeholder="🔍 Buscar hotel..." oninput="renderOperadoras()" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <button onclick="abrirNovoHotelOperadora()" style="height:36px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">+ Novo hotel</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;margin:14px 0;flex-wrap:wrap;">
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Hotéis</div><div id="op-kpi-hoteis" style="font-size:22px;font-weight:600;">—</div></div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Pontos ativos</div><div id="op-kpi-pontos" style="font-size:22px;font-weight:600;">—</div></div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Valor mensal</div><div id="op-kpi-valor" style="font-size:22px;font-weight:600;">—</div></div>
+  </div>
+  <div id="operadoras-lista"></div>
+</div>
+
 <!-- ENTREGAS -->
 <div id="page-requisicoes" class="main" style="display:none">
   <div class="pipeline-header">
@@ -11501,6 +11688,48 @@ async function excluirOS(id){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
       <button onclick="_retornosAtaPular()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Pular e exportar</button>
       <button onclick="_retornosAtaSalvarEExportar()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar e exportar</button>
+    </div>
+  </div>
+</div>
+<div id="op-hotel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:100%;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div id="op-hotel-titulo" style="font-size:16px;font-weight:600;">Novo hotel</div>
+      <button onclick="document.getElementById('op-hotel-modal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <label style="font-size:12px;color:var(--text-muted);">Nome do hotel</label>
+    <input type="text" id="op-hotel-nome" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;">
+    <label style="font-size:12px;color:var(--text-muted);">CNPJ</label>
+    <input type="text" id="op-hotel-cnpj" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;">
+    <div style="display:flex;gap:10px;">
+      <div style="flex:2;"><label style="font-size:12px;color:var(--text-muted);">Cidade</label><input type="text" id="op-hotel-cidade" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">UF</label><input type="text" id="op-hotel-uf" maxlength="2" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;text-transform:uppercase;"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+      <button onclick="document.getElementById('op-hotel-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
+      <button onclick="salvarHotelOperadora()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="op-ponto-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div id="op-ponto-titulo" style="font-size:16px;font-weight:600;">Novo ponto</div>
+      <button onclick="document.getElementById('op-ponto-modal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <input type="hidden" id="op-ponto-hotel"><input type="hidden" id="op-ponto-hotel-cnpj"><input type="hidden" id="op-ponto-hotel-cidade"><input type="hidden" id="op-ponto-hotel-uf">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label style="font-size:12px;color:var(--text-muted);">Data de ativação</label><input type="text" id="op-ponto-ativacao" placeholder="dd/mm/aaaa" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Pacote</label><input type="text" id="op-ponto-pacote" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Valor</label><input type="text" id="op-ponto-valor" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Canal</label><input type="text" id="op-ponto-canal" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">CA/ID (decoder)</label><input type="text" id="op-ponto-caid" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Nº Contrato</label><input type="text" id="op-ponto-contrato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+      <button onclick="document.getElementById('op-ponto-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
+      <button onclick="salvarPontoOperadora()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar</button>
     </div>
   </div>
 </div>
