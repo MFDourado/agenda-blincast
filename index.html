@@ -1188,7 +1188,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.5';
+const BLINTRACK_VERSAO = 'V4.6';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1387,18 +1387,19 @@ function renderOperadoras(){
     if(aberto){
       corpo='<div style="padding:6px 16px 4px;font-size:11px;color:var(--text-muted);">'+h.pontos.length+' pontos · <span onclick="abrirNovoPontoOperadora(\''+_esc(h.hotel).replace(/'/g,"\\'")+'\')" style="color:var(--c-previsto);cursor:pointer;">+ Adicionar ponto</span></div>'
         +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:640px;"><thead><tr style="background:var(--bg);">'
-        +['Ativação','Pacote','Valor','Canal','Nome do canal','CA/ID (decoder)','Contrato',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+c+'</th>').join('')
+        +['Ativação','Pacote','Valor','Canal cliente','Canal operadora','Nome do canal','CA/ID (decoder)','Contrato',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+c+'</th>').join('')
         +'</tr></thead><tbody>'
         +(h.pontos.length? h.pontos.map(p=>'<tr style="border-bottom:0.5px solid var(--border);">'
             +'<td style="padding:7px 8px;white-space:nowrap;">'+_esc(p.ativacao||'—')+'</td>'
             +'<td style="padding:7px 8px;">'+_esc(p.pacote||'—')+'</td>'
             +'<td style="padding:7px 8px;white-space:nowrap;">'+(p.valor?_esc(p.valor):'—')+'</td>'
-            +'<td style="padding:7px 8px;">'+_esc(p.canal||'—')+'</td>'
+            +'<td style="padding:7px 8px;">'+_esc(p.canalcliente||'—')+'</td>'
+            +'<td style="padding:7px 8px;">'+_esc(p.canaloperadora||'—')+'</td>'
             +'<td style="padding:7px 8px;">'+_esc(p.canalnome||'—')+'</td>'
             +'<td style="padding:7px 8px;font-family:\'DM Mono\',monospace;font-size:11px;white-space:nowrap;">'+_esc(p.caid||'—')+'</td>'
             +'<td style="padding:7px 8px;white-space:nowrap;">'+_esc(p.contrato||'—')+'</td>'
             +'<td style="padding:7px 8px;white-space:nowrap;"><span onclick="abrirEditarPontoOperadora(\''+p.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirPontoOperadora(\''+p.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
-          +'</tr>').join('') : '<tr><td colspan="8" style="padding:12px;text-align:center;color:var(--text-muted);">Nenhum ponto. Clique em "+ Adicionar ponto".</td></tr>')
+          +'</tr>').join('') : '<tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text-muted);">Nenhum ponto. Clique em "+ Adicionar ponto".</td></tr>')
         +'</tbody></table></div>';
     }
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;">'+cab+corpo+'</div>';
@@ -1451,7 +1452,7 @@ function abrirNovoPontoOperadora(hotel){
   document.getElementById('op-ponto-hotel-cnpj').value=h.cnpj;
   document.getElementById('op-ponto-hotel-cidade').value=h.cidade;
   document.getElementById('op-ponto-hotel-uf').value=h.uf;
-  ['op-ponto-ativacao','op-ponto-pacote','op-ponto-valor','op-ponto-canal','op-ponto-canalnome','op-ponto-caid','op-ponto-contrato'].forEach(id=>{document.getElementById(id).value='';});
+  ['op-ponto-ativacao','op-ponto-pacote','op-ponto-valor','op-ponto-canalcliente','op-ponto-canaloperadora','op-ponto-canalnome','op-ponto-caid','op-ponto-contrato'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('op-ponto-modal').style.display='flex';
 }
 function abrirEditarPontoOperadora(id){
@@ -1465,7 +1466,8 @@ function abrirEditarPontoOperadora(id){
   document.getElementById('op-ponto-ativacao').value=p.ativacao||'';
   document.getElementById('op-ponto-pacote').value=p.pacote||'';
   document.getElementById('op-ponto-valor').value=p.valor||'';
-  document.getElementById('op-ponto-canal').value=p.canal||'';
+  document.getElementById('op-ponto-canalcliente').value=p.canalcliente||'';
+  document.getElementById('op-ponto-canaloperadora').value=p.canaloperadora||'';
   document.getElementById('op-ponto-canalnome').value=p.canalnome||'';
   document.getElementById('op-ponto-caid').value=p.caid||'';
   document.getElementById('op-ponto-contrato').value=p.contrato||'';
@@ -1475,7 +1477,7 @@ async function salvarPontoOperadora(){
   const g=id=>document.getElementById(id).value.trim();
   const payload={token:getToken(),action:'saveOperadoraPonto',
     id:_opPontoEdit||'', hotel:g('op-ponto-hotel'),cnpj:g('op-ponto-hotel-cnpj'),cidade:g('op-ponto-hotel-cidade'),uf:g('op-ponto-hotel-uf'),
-    ativacao:g('op-ponto-ativacao'),pacote:g('op-ponto-pacote'),valor:g('op-ponto-valor'),canal:g('op-ponto-canal'),canalnome:g('op-ponto-canalnome'),caid:g('op-ponto-caid'),contrato:g('op-ponto-contrato')};
+    ativacao:g('op-ponto-ativacao'),pacote:g('op-ponto-pacote'),valor:g('op-ponto-valor'),canalcliente:g('op-ponto-canalcliente'),canaloperadora:g('op-ponto-canaloperadora'),canalnome:g('op-ponto-canalnome'),caid:g('op-ponto-caid'),contrato:g('op-ponto-contrato')};
   try{ await fetch(API,{method:'POST',body:JSON.stringify(payload)}); document.getElementById('op-ponto-modal').style.display='none'; await loadOperadoras(); }
   catch(e){ alert('Erro ao salvar.'); }
 }
@@ -11763,7 +11765,8 @@ async function excluirOS(id){
       <div><label style="font-size:12px;color:var(--text-muted);">Data de ativação</label><input type="text" id="op-ponto-ativacao" placeholder="dd/mm/aaaa" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
       <div><label style="font-size:12px;color:var(--text-muted);">Pacote</label><input type="text" id="op-ponto-pacote" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
       <div><label style="font-size:12px;color:var(--text-muted);">Valor</label><input type="text" id="op-ponto-valor" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
-      <div><label style="font-size:12px;color:var(--text-muted);">Canal (nº)</label><input type="text" id="op-ponto-canal" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Canal do cliente</label><input type="text" id="op-ponto-canalcliente" placeholder="ex: 15.1" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div><label style="font-size:12px;color:var(--text-muted);">Canal na operadora</label><input type="text" id="op-ponto-canaloperadora" placeholder="ex: 112" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
       <div><label style="font-size:12px;color:var(--text-muted);">Nome do canal</label><input type="text" id="op-ponto-canalnome" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
       <div><label style="font-size:12px;color:var(--text-muted);">CA/ID (decoder)</label><input type="text" id="op-ponto-caid" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
       <div><label style="font-size:12px;color:var(--text-muted);">Nº Contrato</label><input type="text" id="op-ponto-contrato" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
