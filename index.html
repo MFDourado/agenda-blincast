@@ -1188,7 +1188,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.2';
+const BLINTRACK_VERSAO = 'V4.3';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1341,8 +1341,15 @@ function _opAgrupaHoteis(){
 }
 
 function _opParseValor(v){
-  let s=String(v||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');
-  const n=parseFloat(s); return isNaN(n)?0:n;
+  let s=String(v||'').trim().replace(/[^\d,.-]/g,'');
+  if(!s) return 0;
+  // Se tem vírgula, ela é o separador decimal (formato BR: 1.234,56) -> tira pontos de milhar, vírgula vira ponto
+  if(s.indexOf(',')!==-1){
+    s=s.replace(/\./g,'').replace(',','.');
+  }
+  // Se só tem ponto, ele já é o separador decimal (formato da planilha: 64.9) -> deixa como está
+  const n=parseFloat(s);
+  return isNaN(n)?0:n;
 }
 function _opFmtValor(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
