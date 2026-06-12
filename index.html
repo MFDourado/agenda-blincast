@@ -1188,7 +1188,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.3';
+const BLINTRACK_VERSAO = 'V4.4';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1364,7 +1364,7 @@ function renderOperadoras(){
   const totalValor=operadorasPontos.reduce((s,p)=>s+_opParseValor(p.valor),0);
   document.getElementById('op-kpi-hoteis').textContent=hoteis.length;
   document.getElementById('op-kpi-pontos').textContent=totalPontos.toLocaleString('pt-BR');
-  document.getElementById('op-kpi-valor').textContent=_opFmtValor(totalValor);
+  const _elValor=document.getElementById('op-kpi-valor'); if(_elValor) _elValor.textContent=_opFmtValor(totalValor);
   const sub=document.getElementById('operadoras-sub');
   if(sub) sub.textContent=hoteis.length+' hotéis · '+totalPontos.toLocaleString('pt-BR')+' pontos ativos';
 
@@ -9651,7 +9651,6 @@ async function estEnviarEmail(reg){
   <div style="display:flex;gap:12px;margin:14px 0;flex-wrap:wrap;">
     <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Hotéis</div><div id="op-kpi-hoteis" style="font-size:22px;font-weight:600;">—</div></div>
     <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Pontos ativos</div><div id="op-kpi-pontos" style="font-size:22px;font-weight:600;">—</div></div>
-    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Valor mensal</div><div id="op-kpi-valor" style="font-size:22px;font-weight:600;">—</div></div>
   </div>
   <div id="operadoras-lista"></div>
 </div>
