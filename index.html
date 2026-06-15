@@ -1195,7 +1195,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.1';
+const BLINTRACK_VERSAO = 'V5.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4806,7 +4806,7 @@ function renderImplantacoes(){
       +'<td style="padding:8px;font-size:11px;font-weight:600;color:'+diasColor+';white-space:nowrap;">'+diasStr+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.obs||'')+'">'+( item.obs||'—')+'</td>'
       +'<td style="padding:8px;text-align:center;"><button onclick="editarImplantacao(\''+item.id+'\')" style="padding:2px 7px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button></td>'
-      +'<td style="padding:8px;text-align:center;"><button onclick="removerImplantacaoFront(\''+item.id+'\',(\''+(item.nome||'').replace(/\'/g,"\'")+'\')\'" style="padding:2px 7px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button></td>'
+      +'<td style="padding:8px;text-align:center;"><button onclick="removerImplantacaoFront(\''+item.id+'\',\''+(item.nome||'').replace(/'/g,"\\'")+'\',this)" style="padding:2px 7px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button></td>'
       +'</tr>';
   }).join('');
 
@@ -4945,8 +4945,9 @@ async function importarHistoricoImpl(){
   finally{ if(btn){ btn.textContent='📥 Importar Histórico'; btn.disabled=false; } }
 }
 
-async function removerImplantacaoFront(id, nome){
+async function removerImplantacaoFront(id, nome, btn){
   if(!confirm('Remover "'+nome+'" das implantações? Esta ação não pode ser desfeita.')) return;
+  if(btn){ btn.textContent='Excluindo...'; btn.disabled=true; btn.style.opacity='0.6'; btn.style.width='auto'; }
   try{
     const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerImplantacao',id})});
     const d = await r.json();
@@ -4960,8 +4961,12 @@ async function removerImplantacaoFront(id, nome){
       setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
     } else {
       alert('Erro ao remover: '+(d.error||''));
+      if(btn){ btn.textContent='✕'; btn.disabled=false; btn.style.opacity='1'; }
     }
-  }catch(e){ alert('Erro de conexão'); }
+  }catch(e){
+    alert('Erro de conexão');
+    if(btn){ btn.textContent='✕'; btn.disabled=false; btn.style.opacity='1'; }
+  }
 }
 
 function setImplStatusFiltro(status){
