@@ -1196,7 +1196,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.6';
+const BLINTRACK_VERSAO = 'V5.7';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1494,10 +1494,45 @@ function _itensLocadosDoCliente(c){
 // junta os números de patrimônio dos itens locados de um cliente (pra coluna da tabela)
 function _cliPatrimonios(c){
   try{
+    // fonte única: patrimônio do cliente
+    const unico=patrimonioDoCliente(c.nome, c.cnpj);
+    if(unico) return unico;
+    // fallback: números dos itens locados do cliente
     const itens=(typeof _itensLocadosDoCliente==='function')?_itensLocadosDoCliente(c):[];
     const nums=itens.map(i=>String(i.patrimonio||'').trim()).filter(Boolean);
     return nums.join(', ');
   }catch(e){ return ''; }
+}
+
+// ===== PATRIMÔNIO UNIFICADO (fonte única = item "Patrimônio" do cliente nos Itens Locados) =====
+// lê o patrimônio único de um cliente (por nome ou cnpj)
+function patrimonioDoCliente(nome, cnpj){
+  try{
+    if(!Array.isArray(itensLocados)) return '';
+    const n=String(nome||'').trim().toLowerCase();
+    const cj=String(cnpj||'').replace(/\D/g,'');
+    const it=itensLocados.find(i=>{
+      const itName=String(i.item||'').trim().toLowerCase();
+      if(itName!=='patrimônio' && itName!=='patrimonio') return false;
+      const iN=String(i.cliente||'').trim().toLowerCase();
+      const iC=String(i.cnpj||'').replace(/\D/g,'');
+      return (n && iN===n) || (cj && iC && cj===iC);
+    });
+    return it ? String(it.patrimonio||'') : '';
+  }catch(e){ return ''; }
+}
+// grava o patrimônio único do cliente na fonte única e atualiza a lista local
+async function salvarPatrimonioUnificado(nome, cnpj, valor){
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPatrimonioCliente',cliente:nome,cnpj:cnpj||'',patrimonio:valor})});
+    // atualiza local
+    if(!Array.isArray(itensLocados)) itensLocados=[];
+    const n=String(nome||'').trim().toLowerCase();
+    let it=itensLocados.find(i=>{ const itN=String(i.item||'').trim().toLowerCase(); return (itN==='patrimônio'||itN==='patrimonio') && String(i.cliente||'').trim().toLowerCase()===n; });
+    if(it){ it.patrimonio=valor; }
+    else { itensLocados.push({id:'IL'+Date.now(),cliente:nome,cnpj:cnpj||'',item:'Patrimônio',quantidade:'',patrimonio:valor,obs:'',data_inclusao:'',data_alteracao:''}); }
+    return true;
+  }catch(e){ return false; }
 }
 
 async function loadOperadoras(){
@@ -4759,6 +4794,10 @@ async function loadImplantacoes(){
       }
     }catch(e){ if(typeof montagemDados==='undefined') montagemDados=[]; }
   }
+  // garante itens locados carregados (fonte única do patrimônio)
+  if(typeof itensLocados==='undefined' || !Array.isArray(itensLocados) || !itensLocados.length){
+    try{ const ril=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados'); const dil=await ril.json(); itensLocados=Array.isArray(dil.itens)?dil.itens:[]; }catch(e){ if(typeof itensLocados==='undefined') itensLocados=[]; }
+  }
   try{
     const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getImplantacoes');
     const d = await r.json();
@@ -4869,6 +4908,9 @@ function _implUHs(item){
 // Busca a(s) placa(s) de patrimônio da montagem do mesmo projeto/cliente
 function _implPatrimonio(item){
   try{
+    // 0) fonte única: patrimônio do cliente (Itens Locados)
+    const unico=patrimonioDoCliente(item&&item.nome, item&&item.cnpj);
+    if(unico) return unico;
     // 1) patrimônio salvo direto na implantação
     if(item && item.patrimonio) return String(item.patrimonio);
     // 2) senão, busca na montagem do mesmo projeto
@@ -4960,6 +5002,8 @@ async function salvarPatImpl(){
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPatrimonioImpl',id:item.id,nome:item.nome,patrimonio:valor})});
     item.patrimonio = valor;
+    // grava na FONTE ÚNICA (item "Patrimônio" do cliente)
+    await salvarPatrimonioUnificado(item.nome, item.cnpj, valor);
     // reflete na montagem de rack do mesmo cliente
     if(typeof montagemDados!=='undefined' && Array.isArray(montagemDados)){
       const cnpjI=String(item.cnpj||'').replace(/\D/g,'');
