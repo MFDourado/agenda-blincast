@@ -1195,7 +1195,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.0';
+const BLINTRACK_VERSAO = 'V5.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4552,9 +4552,15 @@ async function loadImplantacoes(){
   if(!Array.isArray(projects) || !projects.length){
     try{ await loadPipeline(); }catch(e){}
   }
-  // garante montagem carregada (origem do patrimônio)
+  // garante montagem carregada (origem do patrimônio) — sem travar as implantações
   if(typeof montagemDados==='undefined' || !Array.isArray(montagemDados) || !montagemDados.length){
-    try{ if(typeof loadMontagem==='function') await loadMontagem(); }catch(e){}
+    try{
+      if(typeof loadMontagem==='function'){
+        const rm=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMontagem');
+        const dm=await rm.json();
+        montagemDados = Array.isArray(dm) ? dm : [];
+      }
+    }catch(e){ if(typeof montagemDados==='undefined') montagemDados=[]; }
   }
   try{
     const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getImplantacoes');
@@ -4665,42 +4671,57 @@ function _implUHs(item){
 
 // Busca a(s) placa(s) de patrimônio da montagem do mesmo projeto/cliente
 function _implPatrimonio(item){
-  if(typeof montagemDados==='undefined' || !Array.isArray(montagemDados)) return '';
-  const cnpjItem = String(item.cnpj||'').replace(/\D/g,'');
-  const nomeItem = String(item.nome||'').trim().toLowerCase();
-  const pats=[];
-  montagemDados.forEach(m=>{
-    if(!m.patrimonio) return;
-    const proj = (typeof projects!=='undefined'?projects:[]).find(p=>p.id===m.projeto_id||p.nome===m.nome);
-    const cnpjM = String((proj&&proj.cnpj)||'').replace(/\D/g,'');
-    const nomeM = String(m.nome||'').trim().toLowerCase();
-    if((cnpjItem && cnpjM && cnpjItem===cnpjM) || (nomeItem && nomeM===nomeItem)){
-      pats.push(m.patrimonio);
-    }
-  });
-  return pats.join('; ');
+  try{
+    // 1) patrimônio salvo direto na implantação
+    if(item && item.patrimonio) return String(item.patrimonio);
+    // 2) senão, busca na montagem do mesmo projeto
+    if(typeof montagemDados==='undefined' || !Array.isArray(montagemDados)) return '';
+    const cnpjItem = String(item.cnpj||'').replace(/\D/g,'');
+    const nomeItem = String(item.nome||'').trim().toLowerCase();
+    const pats=[];
+    montagemDados.forEach(m=>{
+      if(!m || !m.patrimonio) return;
+      const proj = (typeof projects!=='undefined' && Array.isArray(projects)) ? projects.find(p=>p.id===m.projeto_id||p.nome===m.nome) : null;
+      const cnpjM = String((proj&&proj.cnpj)||'').replace(/\D/g,'');
+      const nomeM = String(m.nome||'').trim().toLowerCase();
+      if((cnpjItem && cnpjM && cnpjItem===cnpjM) || (nomeItem && nomeM===nomeItem)){
+        pats.push(m.patrimonio);
+      }
+    });
+    return pats.join('; ');
+  }catch(e){ return ''; }
 }
 
-// Abre o editor de patrimônio a partir das Implantações (acha a montagem de rack do projeto)
-function editarPatrimonioImpl(cnpj, nome){
-  if(typeof montagemDados==='undefined' || !Array.isArray(montagemDados)){ alert('Carregue a aba Montagem primeiro.'); return; }
-  const cnpjI=String(cnpj||'').replace(/\D/g,'');
-  const nomeI=String(nome||'').trim().toLowerCase();
-  // acha montagens de RACK desse projeto
-  const cands=montagemDados.filter(m=>{
-    if(!String(m.tipo||'').toLowerCase().includes('rack')) return false;
-    const proj=(typeof projects!=='undefined'?projects:[]).find(p=>p.id===m.projeto_id||p.nome===m.nome);
-    const cnpjM=String((proj&&proj.cnpj)||'').replace(/\D/g,'');
-    const nomeM=String(m.nome||'').trim().toLowerCase();
-    return (cnpjI && cnpjM && cnpjI===cnpjM) || (nomeI && nomeM===nomeI);
-  });
-  if(!cands.length){ alert('Nenhuma montagem de rack encontrada para este projeto. Cadastre a montagem do rack primeiro na aba Montagem.'); return; }
-  if(cands.length===1){ editarPatrimonio(cands[0].id); return; }
-  // mais de uma: pergunta qual
-  const lista=cands.map((m,i)=>(i+1)+') '+(m.tipo||'')+' — '+(m.patrimonio||'sem patrimônio')).join('\n');
-  const esc=prompt('Há mais de um rack neste projeto. Digite o número do que deseja editar:\n\n'+lista);
-  const idx=parseInt(esc)-1;
-  if(!isNaN(idx) && cands[idx]) editarPatrimonio(cands[idx].id);
+// Insere/edita patrimônio a partir das Implantações (salva na implantação + reflete na montagem se houver)
+async function editarPatrimonioImpl(implId){
+  const item = (typeof implDados!=='undefined'?implDados:[]).find(i=>String(i.id)===String(implId));
+  if(!item){ alert('Registro não encontrado.'); return; }
+  const atual = _implPatrimonio(item);
+  const resp = prompt('Placa(s) de patrimônio de "'+(item.nome||'')+'"\n\nSepare várias placas por ponto-e-vírgula (;):', atual||'');
+  if(resp===null) return;
+  const valor = resp.trim();
+  try{
+    // salva na própria implantação
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPatrimonioImpl',id:item.id,nome:item.nome,patrimonio:valor})});
+    item.patrimonio = valor;
+    // reflete na montagem do mesmo cliente, se houver
+    if(typeof montagemDados!=='undefined' && Array.isArray(montagemDados)){
+      const cnpjI=String(item.cnpj||'').replace(/\D/g,'');
+      const nomeI=String(item.nome||'').trim().toLowerCase();
+      for(const m of montagemDados){
+        if(!String(m.tipo||'').toLowerCase().includes('rack')) continue;
+        const proj=(typeof projects!=='undefined'?projects:[]).find(p=>p.id===m.projeto_id||p.nome===m.nome);
+        const cnpjM=String((proj&&proj.cnpj)||'').replace(/\D/g,'');
+        const nomeM=String(m.nome||'').trim().toLowerCase();
+        if((cnpjI&&cnpjM&&cnpjI===cnpjM)||(nomeI&&nomeM===nomeI)){
+          await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'concluirMontagemPatrimonio',id:m.id,patrimonio:valor,anexos:m.anexos_montagem||''})});
+          m.patrimonio=valor;
+        }
+      }
+    }
+    renderImplantacoes();
+    showToast && showToast('🔖 Patrimônio salvo!');
+  }catch(e){ alert('Erro ao salvar o patrimônio.'); }
 }
 
 function renderImplantacoes(){
@@ -4776,7 +4797,7 @@ function renderImplantacoes(){
       +'<td style="padding:8px;white-space:nowrap;color:var(--text-muted);font-size:11px;">'+(item.cidade||'—')+'<br>'+(item.uf||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+formatCNPJ(item.cnpj||'')+'</td>'
       +'<td style="padding:8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(item.equipamento||'')+'">'+( item.equipamento||'—')+'</td>'
-      +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;cursor:pointer;" title="Clique para inserir/editar a placa de patrimônio" onclick="editarPatrimonioImpl(\''+(item.cnpj||'').replace(/\D/g,'')+'\',\''+(item.nome||'').replace(/'/g,"\\'")+'\')">'+(_implPatrimonio(item)||'<span style="color:var(--c-previsto)">+ inserir</span>')+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--text-muted);white-space:nowrap;cursor:pointer;" title="Clique para inserir/editar a placa de patrimônio" onclick="editarPatrimonioImpl(\''+(item.id||'')+'\')">'+(_implPatrimonio(item)||'<span style="color:var(--c-previsto)">+ inserir</span>')+'</td>'
       +'<td style="padding:8px;font-size:11px;text-align:center;white-space:nowrap;">'+(_implUHs(item)||'—')+'</td>'
       +'<td style="padding:8px;white-space:nowrap;"><span style="font-size:11px;font-weight:600;color:'+sc.c+';background:'+sc.bg+';padding:3px 8px;border-radius:20px;">'+item.status_dinamico+'</span>'+(item.status_op?'<br><span style="font-size:10px;color:#888;font-style:italic;">'+item.status_op+'</span>':'')+'</td>'
       +'<td style="padding:8px;font-size:11px;white-space:nowrap;color:var(--text-muted);">'+fmtDate(item.assinatura)+'</td>'
