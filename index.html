@@ -232,24 +232,31 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 @media print{
   @page{
     size: A4 portrait;
-    margin: 8mm 10mm 8mm 10mm;
+    margin: 6mm 10mm;
   }
-  header,.main-tabs,#page-pipeline,#page-vistoria,#page-agenda,#page-dashboard,#page-comercial,#page-clientes,#page-cronograma,#page-ata,.orc-toolbar,.orc-no-print{display:none!important;}
-  #page-orcamento{display:block!important;max-width:100%!important;padding:0!important;}
-  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  input,textarea,select{border:none!important;outline:none!important;background:transparent!important;}
+  /* esconde TUDO por padrão (abas abertas, header, outras páginas) */
+  body > *{display:none!important;}
+  /* mostra apenas a página de orçamento */
+  body > #page-orcamento, #page-orcamento{display:block!important;max-width:100%!important;padding:0!important;margin:0!important;}
+  .main-tabs,.orc-toolbar,.orc-no-print,header{display:none!important;}
+  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0!important;padding:0!important;}
+  input,textarea,select{border:none!important;outline:none!important;background:transparent!important;color:#111!important;-webkit-text-fill-color:#111!important;}
   #orc-print-area{
     border:none!important;box-shadow:none!important;padding:0!important;
     font-size:9px!important;line-height:1.3!important;
   }
   #orc-print-area table{font-size:9px!important;margin-bottom:4px!important;}
   #orc-print-area td,#orc-print-area th{padding:2px 4px!important;}
-  #orc-print-area input,#orc-print-area textarea,#orc-print-area select{font-size:9px!important;}
+  #orc-print-area input,#orc-print-area textarea,#orc-print-area select{font-size:9px!important;font-family:Arial,sans-serif!important;}
   #orc-print-area textarea{min-height:20px!important;}
   #orc-print-area img{height:28px!important;}
-  /* Tentar caber em uma página */
   html,body{height:auto!important;}
   #orc-print-area{page-break-inside:avoid;break-inside:avoid;}
+  /* uniformiza a fonte dos totais com o restante */
+  #orc-total-final,#orc-total-header,#orc-total-mat{font-size:9px!important;font-family:Arial,sans-serif!important;font-weight:700!important;}
+  #orc-print-area span{font-family:Arial,sans-serif!important;font-size:9px!important;}
+  /* data não corta */
+  #orc-print-area input[type=date]{width:auto!important;}
 }
 /* Scroll horizontal da Ata */
 #page-ata .ata-table-wrap::-webkit-scrollbar{height:6px;}
@@ -1188,7 +1195,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V4.9';
+const BLINTRACK_VERSAO = 'V5.0';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7313,7 +7320,26 @@ function exportarOrçamentoPDF(){
   inputs.forEach(el=>{
     const span=document.createElement('span');
     span.style.cssText='font-size:12px;font-family:Arial,sans-serif;';
-    span.textContent=el.tagName==='SELECT'?el.options[el.selectedIndex]?.text||'':el.value;
+    let texto='';
+    if(el.tagName==='SELECT'){
+      texto=el.options[el.selectedIndex]?.text||'';
+    } else if(el.type==='date'){
+      // formata data ISO -> dd/mm/aaaa pra não cortar
+      const v=el.value;
+      if(v && /^\d{4}-\d{2}-\d{2}$/.test(v)){ const p=v.split('-'); texto=p[2]+'/'+p[1]+'/'+p[0]; }
+      else texto=v||'';
+    } else if(el.type==='number'){
+      // valores numéricos: formata com vírgula decimal e milhar
+      const n=parseFloat(el.value);
+      if(el.value!=='' && !isNaN(n)){
+        // se o campo é de valor monetário (id contém -val-) formata 2 casas; senão mostra número limpo
+        if(/-val-|-c-val-|-m-val-/.test(el.id)) texto=n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+        else texto=String(n).replace('.',',');
+      } else texto='';
+    } else {
+      texto=el.value;
+    }
+    span.textContent=texto;
     el.style.display='none';
     el.parentNode.insertBefore(span,el.nextSibling);
     spans.push({el,span});
