@@ -401,8 +401,12 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     </div>
     <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
     <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
-    <button class="snav-btn" id="mt-operadoras" onclick="switchMainTab('operadoras');closeSidebar()">Operadoras</button>
-    <button class="snav-btn" id="mt-itens-locados" onclick="switchMainTab('itens-locados');closeSidebar()">Itens Locados</button>
+    <button class="snav-btn" id="mt-operadoras-group" onclick="toggleSubMenu('operadoras-sub')">Operadoras <span id="arrow-operadoras-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="operadoras-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-operadoras" onclick="switchMainTab('operadoras');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Operadoras</button>
+      <button class="snav-btn" id="mt-itens-locados" onclick="switchMainTab('itens-locados');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Itens Locados</button>
+      <button class="snav-btn" id="mt-gestao-sky" onclick="switchMainTab('gestao-sky');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Gestão Sky</button>
+    </div>
     <button class="snav-btn" id="mt-estoque-group" onclick="toggleSubMenu('estoque-sub')">Estoque <span id="arrow-estoque-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="estoque-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-arm-cadastro" onclick="switchMainTab('arm-cadastro');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Cadastro</button>
@@ -1007,6 +1011,7 @@ function iniciarApp(){
         setTimeout(sincronizarOperacional,3000);
         setTimeout(verificarNotificacoesFerias,8000);
         setTimeout(verificarEscalasPendentes,9000);
+        setTimeout(checarPopupSky,7000);
         return;
       }
     }
@@ -1043,6 +1048,7 @@ async function fazerLogin(){
       if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
       setTimeout(sincronizarOperacional,3000);
       setTimeout(verificarNotificacoesFerias, 8000);
+      setTimeout(checarPopupSky, 7000);
     } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -1131,7 +1137,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', 'itens-locados':'Itens Locados', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -1196,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.7';
+const BLINTRACK_VERSAO = 'V5.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1533,6 +1539,229 @@ async function salvarPatrimonioUnificado(nome, cnpj, valor){
     else { itensLocados.push({id:'IL'+Date.now(),cliente:nome,cnpj:cnpj||'',item:'Patrimônio',quantidade:'',patrimonio:valor,obs:'',data_inclusao:'',data_alteracao:''}); }
     return true;
   }catch(e){ return false; }
+}
+
+// ═══════════════════════ GESTÃO SKY ═══════════════════════
+let skyContratos = [];
+
+async function loadSky(){
+  const sub=document.getElementById('sky-sub');
+  if(sub) sub.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getSky');
+    const d=await r.json();
+    skyContratos=Array.isArray(d.contratos)?d.contratos:[];
+  }catch(e){ skyContratos=[]; }
+  // garante clientes pro datalist
+  if(typeof clientes==='undefined' || !Array.isArray(clientes) || !clientes.length){
+    try{ const rc=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes'); const dc=await rc.json(); clientes=Array.isArray(dc)?dc:[]; }catch(e){}
+  }
+  renderSky();
+}
+
+// soma N dias corridos a uma data ISO (yyyy-MM-dd) -> retorna Date
+function _skyAddDias(iso, dias){
+  if(!iso) return null;
+  const p=String(iso).slice(0,10).split('-');
+  if(p.length!==3) return null;
+  const d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  d.setDate(d.getDate()+dias);
+  return d;
+}
+// vencimento = recarga + 30 dias
+function _skyVencimento(c){ return _skyAddDias(c.data_recarga, 30); }
+function _skyFmtBR(d){ if(!d) return '—'; return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+// dias restantes até o vencimento (vencimento conta como ativo até o fim do dia)
+function _skyDiasRestantes(c){
+  const v=_skyVencimento(c); if(!v) return null;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const vd=new Date(v); vd.setHours(0,0,0,0);
+  return Math.round((vd-hoje)/86400000);
+}
+// está no alerta? (vence em <=5 dias E ainda não foi marcado como enviado neste ciclo)
+function _skyNoAlerta(c){
+  const dias=_skyDiasRestantes(c);
+  if(dias===null) return false;
+  if(dias>5) return false; // só alerta a 5 dias ou menos
+  // se já enviou o ciclo atual (enviado_ciclo == data_recarga atual), não alerta
+  if(String(c.enviado_ciclo||'').slice(0,10) === String(c.data_recarga||'').slice(0,10) && c.enviado_ciclo) return false;
+  return true;
+}
+function _skyParseValor(v){ const n=parseFloat(String(v||'').replace(',','.')); return isNaN(n)?0:n; }
+function _skyFmtBRL(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function renderSky(){
+  const cont=document.getElementById('sky-lista');
+  if(!cont) return;
+  const busca=(document.getElementById('sky-busca')?.value||'').trim().toLowerCase();
+  let lista=skyContratos.slice();
+  if(busca) lista=lista.filter(c=>String(c.cliente||'').toLowerCase().includes(busca)||String(c.contrato||'').toLowerCase().includes(busca)||String(c.pacote||'').toLowerCase().includes(busca));
+  // KPIs
+  const totalValor=skyContratos.reduce((s,c)=>s+_skyParseValor(c.valor),0);
+  const vencendo=skyContratos.filter(_skyNoAlerta).length;
+  document.getElementById('sky-kpi-total').textContent=skyContratos.length;
+  document.getElementById('sky-kpi-vencendo').textContent=vencendo;
+  document.getElementById('sky-kpi-valor').textContent=_skyFmtBRL(totalValor);
+  const sub=document.getElementById('sky-sub');
+  if(sub) sub.textContent=skyContratos.length+' contrato(s) · '+vencendo+' vencendo';
+  _skyRenderDash();
+  // tabela
+  lista.sort((a,b)=>{ const da=_skyDiasRestantes(a), db=_skyDiasRestantes(b); return (da===null?9999:da)-(db===null?9999:db); });
+  if(!lista.length){ cont.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);">Nenhum contrato Sky.</div>'; return; }
+  cont.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:760px;"><thead><tr style="background:var(--bg);">'
+    +['Cliente','Contrato','Pacote','Valor','Forma','Recarga','Vencimento','Faltam',''].map(h=>'<th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+h+'</th>').join('')
+    +'</tr></thead><tbody>'
+    +lista.map(c=>{
+      const dias=_skyDiasRestantes(c);
+      const venc=_skyVencimento(c);
+      let corDias='var(--text-muted)';
+      if(dias!==null){ if(dias<0) corDias='#e74c3c'; else if(dias<=5) corDias='#e67e22'; else corDias='var(--c-concluido)'; }
+      const txtDias = dias===null?'—':(dias<0?Math.abs(dias)+'d atrás':dias+'d');
+      return '<tr style="border-bottom:0.5px solid var(--border);">'
+        +'<td style="padding:8px;">'+_esc(c.cliente||'—')+'</td>'
+        +'<td style="padding:8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(c.contrato||'—')+'</td>'
+        +'<td style="padding:8px;">'+_esc(c.pacote||'—')+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;">'+_skyFmtBRL(_skyParseValor(c.valor))+'</td>'
+        +'<td style="padding:8px;">'+_esc(c.forma_pgto||'—')+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;">'+(c.data_recarga?_skyFmtBR(_skyAddDias(c.data_recarga,0)):'—')+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;font-weight:600;">'+_skyFmtBR(venc)+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;color:'+corDias+';font-weight:600;">'+txtDias+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;"><span onclick="abrirEditarSky(\''+c.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirSky(\''+c.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div></div>';
+}
+
+function _skyRenderDash(){
+  const total=skyContratos.length||1;
+  // faixa de valor: calcula min/max e divide em 3 faixas
+  const valores=skyContratos.map(c=>_skyParseValor(c.valor)).filter(v=>v>0);
+  let faixaHtml='<div style="font-size:12px;color:var(--text-muted);">Sem dados.</div>';
+  if(valores.length){
+    const mx=Math.max(...valores), mn=Math.min(...valores);
+    const t1=mn+(mx-mn)/3, t2=mn+2*(mx-mn)/3;
+    let baixo=0,medio=0,alto=0;
+    skyContratos.forEach(c=>{ const v=_skyParseValor(c.valor); if(v<=0) return; if(v<=t1)baixo++; else if(v<=t2)medio++; else alto++; });
+    faixaHtml=[['Mais caro',alto,'#e74c3c'],['Médio',medio,'#e67e22'],['Mais baixo',baixo,'#27ae60']].map(([lbl,n,cor])=>{
+      const pct=Math.round(n/total*100);
+      return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>'+lbl+'</span><span style="color:var(--text-muted);">'+n+' ('+pct+'%)</span></div><div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+cor+';"></div></div></div>';
+    }).join('');
+  }
+  document.getElementById('sky-dash-faixa').innerHTML=faixaHtml;
+  // por pacote
+  document.getElementById('sky-dash-pacote').innerHTML=_skyDashAgrupado(c=>c.pacote||'(sem pacote)');
+  // por forma
+  document.getElementById('sky-dash-forma').innerHTML=_skyDashAgrupado(c=>c.forma_pgto||'(sem forma)');
+}
+function _skyDashAgrupado(fn){
+  const total=skyContratos.length||1;
+  const g={};
+  skyContratos.forEach(c=>{ const k=fn(c); g[k]=(g[k]||0)+1; });
+  const cores=['#1B6CF2','#e67e22','#27ae60','#9b59b6','#e74c3c','#16a085'];
+  const keys=Object.keys(g).sort((a,b)=>g[b]-g[a]);
+  if(!keys.length) return '<div style="font-size:12px;color:var(--text-muted);">Sem dados.</div>';
+  return keys.map((k,i)=>{
+    const pct=Math.round(g[k]/total*100);
+    return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>'+_esc(k)+'</span><span style="color:var(--text-muted);">'+g[k]+' ('+pct+'%)</span></div><div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+cores[i%cores.length]+';"></div></div></div>';
+  }).join('');
+}
+
+function _skyPreencheCnpj(){
+  const nome=document.getElementById('sky-cliente').value.trim().toLowerCase();
+  const c=(typeof clientes!=='undefined'?clientes:[]).find(x=>String(x.nome||'').trim().toLowerCase()===nome);
+  document.getElementById('sky-cnpj').value=c?(c.cnpj||''):'';
+}
+function _skyAtualizaPreview(){
+  const rec=document.getElementById('sky-recarga').value;
+  const prev=document.getElementById('sky-venc-preview');
+  if(rec){ const v=_skyAddDias(rec,30); prev.textContent='Vencimento calculado: '+_skyFmtBR(v)+' (recarga + 30 dias)'; }
+  else prev.textContent='';
+}
+function abrirNovoSky(){
+  document.getElementById('sky-titulo').textContent='Novo contrato Sky';
+  ['sky-id','sky-cliente','sky-cnpj','sky-contrato','sky-pacote','sky-valor','sky-recarga','sky-prazo','sky-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('sky-forma').value='PIX';
+  document.getElementById('sky-venc-preview').textContent='';
+  const dl=document.getElementById('sky-clientes-list');
+  if(dl && typeof clientes!=='undefined') dl.innerHTML=clientes.map(c=>'<option value="'+_esc(c.nome||'')+'">').join('');
+  document.getElementById('sky-recarga').oninput=_skyAtualizaPreview;
+  document.getElementById('sky-modal').style.display='flex';
+}
+function abrirEditarSky(id){
+  const c=skyContratos.find(x=>String(x.id)===String(id)); if(!c) return;
+  document.getElementById('sky-titulo').textContent='Editar contrato Sky';
+  document.getElementById('sky-id').value=c.id;
+  document.getElementById('sky-cliente').value=c.cliente||'';
+  document.getElementById('sky-cnpj').value=c.cnpj||'';
+  document.getElementById('sky-contrato').value=c.contrato||'';
+  document.getElementById('sky-pacote').value=c.pacote||'';
+  document.getElementById('sky-valor').value=c.valor||'';
+  document.getElementById('sky-forma').value=c.forma_pgto||'PIX';
+  document.getElementById('sky-recarga').value=(c.data_recarga||'').slice(0,10);
+  document.getElementById('sky-prazo').value=(c.prazo_loterica||'').slice(0,10);
+  document.getElementById('sky-obs').value=c.obs||'';
+  const dl=document.getElementById('sky-clientes-list');
+  if(dl && typeof clientes!=='undefined') dl.innerHTML=clientes.map(x=>'<option value="'+_esc(x.nome||'')+'">').join('');
+  document.getElementById('sky-recarga').oninput=_skyAtualizaPreview;
+  _skyAtualizaPreview();
+  document.getElementById('sky-modal').style.display='flex';
+}
+async function salvarSky(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('sky-cliente')){ alert('Informe o cliente.'); return; }
+  const btn=document.getElementById('sky-salvar-btn');
+  if(btn){ btn.textContent='Salvando...'; btn.disabled=true; }
+  const payload={token:getToken(),action:'saveSky',id:g('sky-id'),cliente:g('sky-cliente'),cnpj:g('sky-cnpj'),contrato:g('sky-contrato'),pacote:g('sky-pacote'),valor:g('sky-valor'),forma_pgto:g('sky-forma'),data_recarga:g('sky-recarga'),prazo_loterica:g('sky-prazo'),obs:g('sky-obs')};
+  try{ await fetch(API,{method:'POST',body:JSON.stringify(payload)}); document.getElementById('sky-modal').style.display='none'; await loadSky(); }
+  catch(e){ alert('Erro ao salvar.'); }
+  if(btn){ btn.textContent='Salvar'; btn.disabled=false; }
+}
+async function excluirSky(id){
+  if(!confirm('Excluir este contrato Sky?')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteSky',id:id})}); await loadSky(); }
+  catch(e){ alert('Erro ao excluir.'); }
+}
+
+// ===== POPUP de vencimentos =====
+async function checarPopupSky(){
+  try{
+    if(typeof skyContratos==='undefined' || !skyContratos.length){
+      const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getSky');
+      const d=await r.json();
+      skyContratos=Array.isArray(d.contratos)?d.contratos:[];
+    }
+  }catch(e){ return; }
+  const alerta=skyContratos.filter(_skyNoAlerta);
+  if(!alerta.length) return;
+  _skyRenderPopup(alerta);
+  document.getElementById('sky-popup').style.display='flex';
+}
+function _skyRenderPopup(alerta){
+  alerta.sort((a,b)=>(_skyDiasRestantes(a)||0)-(_skyDiasRestantes(b)||0));
+  document.getElementById('sky-popup-lista').innerHTML=alerta.map(c=>{
+    const dias=_skyDiasRestantes(c);
+    const venc=_skyVencimento(c);
+    const txt=dias<0?('venceu há '+Math.abs(dias)+' dia(s)'):(dias===0?'vence HOJE':'vence em '+dias+' dia(s)');
+    const cor=dias<0?'#e74c3c':(dias<=2?'#e67e22':'var(--text)');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;">'
+      +'<div><div style="font-size:13px;font-weight:600;">'+_esc(c.cliente||'')+' <span style="font-weight:400;color:var(--text-muted);">· '+_esc(c.pacote||'')+'</span></div>'
+      +'<div style="font-size:11px;color:'+cor+';">Vencimento '+_skyFmtBR(venc)+' — '+txt+' · '+_skyFmtBRL(_skyParseValor(c.valor))+' · '+_esc(c.forma_pgto||'')+'</div></div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap;"><input type="checkbox" onclick="marcarSkyEnviado(\''+c.id+'\',this)"> enviei</label>'
+      +'</div>';
+  }).join('');
+}
+async function marcarSkyEnviado(id, el){
+  const c=skyContratos.find(x=>String(x.id)===String(id)); if(!c) return;
+  if(el) el.disabled=true;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'marcarSkyEnviado',id:id,data_recarga:c.data_recarga||''})});
+    c.enviado_ciclo=c.data_recarga||'';
+    // remove da lista do popup
+    const restantes=skyContratos.filter(_skyNoAlerta);
+    if(!restantes.length){ document.getElementById('sky-popup').style.display='none'; }
+    else _skyRenderPopup(restantes);
+    if(document.getElementById('sky-lista')) renderSky();
+  }catch(e){ alert('Erro ao marcar.'); if(el) el.disabled=false; }
 }
 
 async function loadOperadoras(){
@@ -2330,12 +2559,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -2369,6 +2598,7 @@ function switchMainTab(t){
   if(t==='escala-n2')loadEscala('N2');
   if(t==='operadoras')loadOperadoras();
   if(t==='itens-locados')loadItensLocados();
+  if(t==='gestao-sky')loadSky();
   abrirAba(t);
 }
 
@@ -10186,6 +10416,79 @@ async function estEnviarEmail(reg){
     </div>
   </div>
   <div id="itens-locados-lista" style="margin-top:14px;"></div>
+</div>
+
+<!-- GESTÃO SKY -->
+<div id="page-gestao-sky" class="main" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <h1 style="font-size:22px;font-weight:600;margin:0;">Gestão Sky</h1>
+      <div id="sky-sub" style="font-size:12px;color:var(--text-muted);">Carregando...</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="sky-busca" placeholder="🔍 Buscar cliente/contrato..." oninput="renderSky()" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <button onclick="abrirNovoSky()" style="height:36px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">+ Novo contrato</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div style="display:flex;gap:12px;margin:14px 0;flex-wrap:wrap;">
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Contratos</div><div id="sky-kpi-total" style="font-size:22px;font-weight:600;">—</div></div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Vencendo (≤5 dias)</div><div id="sky-kpi-vencendo" style="font-size:22px;font-weight:600;color:#e67e22;">—</div></div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Total mensal</div><div id="sky-kpi-valor" style="font-size:22px;font-weight:600;">—</div></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;"><div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Por faixa de valor</div><div id="sky-dash-faixa"></div></div>
+    <div style="flex:1;min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;"><div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Por pacote</div><div id="sky-dash-pacote"></div></div>
+    <div style="flex:1;min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;"><div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Por forma de pagamento</div><div id="sky-dash-forma"></div></div>
+  </div>
+
+  <div id="sky-lista"></div>
+</div>
+
+<div id="sky-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="document.getElementById('sky-modal').style.display='none'" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
+    <div id="sky-titulo" style="font-size:16px;font-weight:600;margin-bottom:16px;">Novo contrato Sky</div>
+    <input type="hidden" id="sky-id">
+    <label style="font-size:12px;color:var(--text-muted);">Cliente</label>
+    <input type="text" id="sky-cliente" list="sky-clientes-list" oninput="_skyPreencheCnpj()" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;">
+    <datalist id="sky-clientes-list"></datalist>
+    <input type="hidden" id="sky-cnpj">
+    <div style="display:flex;gap:10px;">
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Nº contrato</label><input type="text" id="sky-contrato" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Pacote</label><input type="text" id="sky-pacote" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Valor (R$)</label><input type="number" id="sky-valor" min="0" step="0.01" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Forma de pgto</label><select id="sky-forma" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"><option value="PIX">PIX</option><option value="Código de barras">Código de barras</option><option value="Boleto">Boleto</option></select></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Data da recarga</label><input type="date" id="sky-recarga" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Prazo lotérica</label><input type="date" id="sky-prazo" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+    </div>
+    <div id="sky-venc-preview" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+    <label style="font-size:12px;color:var(--text-muted);margin-top:12px;display:block;">Observação</label>
+    <textarea id="sky-obs" style="width:100%;min-height:46px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="document.getElementById('sky-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
+      <button id="sky-salvar-btn" onclick="salvarSky()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP DE VENCIMENTOS SKY -->
+<div id="sky-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
+    <div style="font-size:17px;font-weight:600;margin-bottom:4px;">⚠️ Pagamentos Sky a vencer</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Contratos vencendo em até 5 dias. Marque os que já enviou ao financeiro.</div>
+    <div id="sky-popup-lista"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button onclick="document.getElementById('sky-popup').style.display='none'" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <div id="item-locado-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
