@@ -1196,7 +1196,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.4';
+const BLINTRACK_VERSAO = 'V5.6';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1334,6 +1334,10 @@ async function loadItensLocados(){
     const d=await r.json();
     itensLocados=Array.isArray(d.itens)?d.itens:[];
   }catch(e){ itensLocados=[]; }
+  // garante a lista de clientes carregada (pra listar todos)
+  if(typeof clientes==='undefined' || !Array.isArray(clientes) || !clientes.length){
+    try{ const rc=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes'); const dc=await rc.json(); clientes=Array.isArray(dc)?dc:[]; }catch(e){}
+  }
   renderItensLocados();
 }
 
@@ -1347,35 +1351,90 @@ function renderItensLocados(){
   const cont=document.getElementById('itens-locados-lista');
   if(!cont) return;
   const busca=(document.getElementById('itens-locados-busca')?.value||'').trim().toLowerCase();
-  let lista=itensLocados.slice();
-  if(busca) lista=lista.filter(i=>String(i.cliente||'').toLowerCase().includes(busca)||String(i.item||'').toLowerCase().includes(busca)||String(i.patrimonio||'').toLowerCase().includes(busca));
   const sub=document.getElementById('itens-locados-sub');
-  if(sub) sub.textContent=itensLocados.length+' item(ns) locado(s)';
-  if(!lista.length){ cont.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);">Nenhum item locado.</div>'; return; }
-  // agrupa por cliente
-  const grupos={};
-  lista.forEach(i=>{ const k=i.cliente||'(sem cliente)'; (grupos[k]=grupos[k]||[]).push(i); });
-  cont.innerHTML=Object.keys(grupos).sort().map(cli=>{
-    const linhas=grupos[cli].map(i=>'<tr style="border-bottom:0.5px solid var(--border);">'
-      +'<td style="padding:7px 8px;">'+_esc(i.item||'—')+'</td>'
-      +'<td style="padding:7px 8px;text-align:center;">'+_esc(i.quantidade||'—')+'</td>'
-      +'<td style="padding:7px 8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(i.patrimonio||'—')+'</td>'
-      +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);">'+_esc(i.obs||'')+'</td>'
-      +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+_ilFmtData(i.data_inclusao)+(i.data_alteracao?'<br><span style="font-size:10px;">alt: '+_ilFmtData(i.data_alteracao)+'</span>':'')+'</td>'
-      +'<td style="padding:7px 8px;white-space:nowrap;"><span onclick="abrirEditarItemLocado(\''+i.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirItemLocado(\''+i.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
-      +'</tr>').join('');
-    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;">'
-      +'<div style="padding:10px 16px;border-bottom:0.5px solid var(--border);font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;"><span>🏨</span>'+_esc(cli)+' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">· '+grupos[cli].length+' item(ns)</span></div>'
-      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;"><thead><tr style="background:var(--bg);">'
-      +['Item','Qtd','Patrimônio','Obs','Inclusão',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">'+c+'</th>').join('')
-      +'</tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+  if(sub) sub.textContent=(typeof clientes!=='undefined'?clientes.length:0)+' cliente(s) · '+itensLocados.length+' item(ns) locado(s)';
+  // itens por cliente (chave por nome em minúsculas)
+  const porCliente={};
+  itensLocados.forEach(i=>{ const k=String(i.cliente||'').trim().toLowerCase(); (porCliente[k]=porCliente[k]||[]).push(i); });
+  // lista base = todos os clientes; fallback: clientes que só existem em itens
+  let base=(typeof clientes!=='undefined'&&Array.isArray(clientes))?clientes.slice():[];
+  if(!base.length){
+    // sem cadastro de clientes carregado, usa os nomes dos próprios itens
+    base=Object.keys(porCliente).map(k=>({nome:(itensLocados.find(i=>String(i.cliente||'').trim().toLowerCase()===k)||{}).cliente||k}));
+  }
+  // filtro de busca (nome do cliente ou item)
+  let lista=base;
+  if(busca){
+    lista=base.filter(c=>{
+      const nome=String(c.nome||'').toLowerCase();
+      if(nome.includes(busca)) return true;
+      const its=porCliente[nome.trim()]||[];
+      return its.some(i=>String(i.item||'').toLowerCase().includes(busca)||String(i.patrimonio||'').toLowerCase().includes(busca));
+    });
+  }
+  lista=lista.slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||'')));
+  if(!lista.length){ cont.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);">Nenhum cliente encontrado.</div>'; return; }
+  cont.innerHTML=lista.map(c=>{
+    const nomeKey=String(c.nome||'').trim().toLowerCase();
+    const its=porCliente[nomeKey]||[];
+    const aberto=_ilClienteAberto===nomeKey;
+    const cab='<div onclick="toggleClienteItem(\''+nomeKey.replace(/'/g,"\\'")+'\')" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;'+(aberto?'border-bottom:0.5px solid var(--border);':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:10px;"><span>🏨</span>'
+      +'<div><div style="font-size:14px;font-weight:600;color:var(--text);">'+_esc(c.nome||'(sem nome)')+'</div>'
+      +'<div style="font-size:11px;color:var(--text-muted);">'+(c.cidade?_esc(c.cidade)+' · ':'')+its.length+' item(ns) locado(s)</div></div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center;">'
+      +'<button onclick="event.stopPropagation();abrirNovoItemLocadoPara(\''+_esc(c.nome||'').replace(/'/g,"\\'")+'\')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">+ item</button>'
+      +'<span style="color:var(--text-muted);font-size:12px;">'+(aberto?'▲':'▼')+'</span></div></div>';
+    let corpo='';
+    if(aberto){
+      if(its.length){
+        const linhas=its.map(i=>'<tr style="border-bottom:0.5px solid var(--border);">'
+          +'<td style="padding:7px 8px;">'+_esc(i.item||'—')+'</td>'
+          +'<td style="padding:7px 8px;text-align:center;">'+_esc(i.quantidade||'—')+'</td>'
+          +'<td style="padding:7px 8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(i.patrimonio||'—')+'</td>'
+          +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);">'+_esc(i.obs||'')+'</td>'
+          +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+_ilFmtData(i.data_inclusao)+(i.data_alteracao?'<br><span style="font-size:10px;">alt: '+_ilFmtData(i.data_alteracao)+'</span>':'')+'</td>'
+          +'<td style="padding:7px 8px;white-space:nowrap;"><span onclick="abrirEditarItemLocado(\''+i.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirItemLocado(\''+i.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
+          +'</tr>').join('');
+        corpo='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;"><thead><tr style="background:var(--bg);">'
+          +['Item','Qtd','Patrimônio','Obs','Inclusão',''].map(h=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">'+h+'</th>').join('')
+          +'</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+      } else {
+        corpo='<div style="padding:14px 16px;font-size:12px;color:var(--text-muted);">Nenhum item locado. Clique em "+ item" para adicionar.</div>';
+      }
+    }
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:8px;">'+cab+corpo+'</div>';
   }).join('');
+}
+let _ilClienteAberto=null;
+function toggleClienteItem(nomeKey){ _ilClienteAberto=(_ilClienteAberto===nomeKey)?null:nomeKey; renderItensLocados(); }
+function abrirNovoItemLocadoPara(nome){
+  abrirNovoItemLocado();
+  document.getElementById('il-cliente').value=nome;
+  _ilPreencheCnpj();
 }
 
 function _ilPreencheCnpj(){
   const nome=document.getElementById('il-cliente').value.trim().toLowerCase();
   const c=(typeof clientes!=='undefined'?clientes:[]).find(x=>String(x.nome||'').trim().toLowerCase()===nome);
   document.getElementById('il-cnpj').value=c?(c.cnpj||''):'';
+}
+
+// autocomplete do campo Item usando o catálogo de produtos (ORC_PRODUTOS)
+function ilBuscarItem(q){
+  const list=document.getElementById('il-item-ac');
+  if(!list) return;
+  q=(q||'').trim().toLowerCase();
+  if(q.length<2){ list.style.display='none'; return; }
+  const fonte=(typeof ORC_PRODUTOS!=='undefined')?ORC_PRODUTOS:[];
+  const matches=fonte.filter(p=>String(p.desc||'').toLowerCase().includes(q)).slice(0,30);
+  if(!matches.length){ list.style.display='none'; return; }
+  list.innerHTML=matches.map(m=>'<div onclick="ilSelecionarItem(this)" data-desc="'+_esc(m.desc).replace(/"/g,'&quot;')+'" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--border);" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+_esc(m.desc)+'</div>').join('');
+  list.style.display='block';
+}
+function ilSelecionarItem(el){
+  document.getElementById('il-item').value=el.getAttribute('data-desc');
+  document.getElementById('il-item-ac').style.display='none';
 }
 
 function abrirNovoItemLocado(){
@@ -1430,6 +1489,15 @@ function _itensLocadosDoCliente(c){
     const icnpj=String(i.cnpj||'').replace(/\D/g,'');
     return (nome && inome===nome) || (cnpj && icnpj && cnpj===icnpj);
   });
+}
+
+// junta os números de patrimônio dos itens locados de um cliente (pra coluna da tabela)
+function _cliPatrimonios(c){
+  try{
+    const itens=(typeof _itensLocadosDoCliente==='function')?_itensLocadosDoCliente(c):[];
+    const nums=itens.map(i=>String(i.patrimonio||'').trim()).filter(Boolean);
+    return nums.join(', ');
+  }catch(e){ return ''; }
 }
 
 async function loadOperadoras(){
@@ -3540,14 +3608,15 @@ function renderClientes(){
       <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);">${c.cidade||'—'}${uf?' / '+uf:''}</td>
       <td style="padding:9px 12px;font-size:12px;">${c.produto||'—'}${(precisaGrade&&!gradeAnexada)?' <span style="font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(245,184,0,.15);color:#9a6b00;">grade</span>':''}</td>
       <td style="padding:9px 12px;font-size:12px;text-align:right;font-family:'DM Mono',monospace;">${c.uhs||'—'}</td>
+      <td style="padding:9px 12px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_cliPatrimonios(c).replace(/"/g,'')}">${_cliPatrimonios(c)||'—'}</td>
       <td style="padding:9px 12px;text-align:center;"><span class="badge ${ativo?'concluido':'atrasado'}">${ativo?'Ativo':'Inativo'}</span></td>
     </tr>
-    <tr id="cli-det-row-${c.id}" style="display:none;"><td colspan="5" style="padding:0;background:var(--bg);"><div id="cli-det-${c.id}" style="padding:14px 16px;" onclick="event.stopPropagation()"></div></td></tr>`;
+    <tr id="cli-det-row-${c.id}" style="display:none;"><td colspan="6" style="padding:0;background:var(--bg);"><div id="cli-det-${c.id}" style="padding:14px 16px;" onclick="event.stopPropagation()"></div></td></tr>`;
   }).join('');
   list.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:var(--bg);">
-        ${th('nome','Cliente')}${th('cidade','Cidade/UF')}${th('produto','Produto')}${th('uhs','UHs','right')}${th('status','Status','center')}
+        ${th('nome','Cliente')}${th('cidade','Cidade/UF')}${th('produto','Produto')}${th('uhs','UHs','right')}<th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:#888;text-transform:uppercase;white-space:nowrap;">Patrimônio</th>${th('status','Status','center')}
       </tr></thead><tbody>${rows}</tbody>
     </table></div>`;
 }
@@ -9390,10 +9459,6 @@ async function estEnviarEmail(reg){
   <div id="cli-filtros" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center;"></div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
     <div id="cli-contador" style="font-size:12px;color:var(--text-muted);"></div>
-    <div style="display:flex;gap:4px;">
-      <button id="cli-view-tabela" onclick="setCliView('tabela')" style="padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius-sm) 0 0 var(--radius-sm);background:var(--gold);color:#000;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">▦ Tabela</button>
-      <button id="cli-view-cards" onclick="setCliView('cards')" style="padding:5px 12px;border:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">▤ Cards</button>
-    </div>
   </div>
   <div id="cli-list"></div>
 </div>
@@ -10089,7 +10154,7 @@ async function estEnviarEmail(reg){
     <datalist id="il-clientes-list"></datalist>
     <input type="hidden" id="il-cnpj">
     <div style="display:flex;gap:10px;">
-      <div style="flex:2;"><label style="font-size:12px;color:var(--text-muted);">Item</label><input type="text" id="il-item" placeholder="Ex: Receptor, Antena..." style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:2;"><label style="font-size:12px;color:var(--text-muted);">Item</label><div style="position:relative;"><input type="text" id="il-item" autocomplete="off" oninput="ilBuscarItem(this.value)" onblur="setTimeout(()=>{const l=document.getElementById('il-item-ac');if(l)l.style.display='none';},250)" placeholder="Digite para buscar..." style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"><div id="il-item-ac" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm);max-height:200px;overflow-y:auto;z-index:10;"></div></div></div>
       <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Qtd</label><input type="number" id="il-qtd" min="0" placeholder="1" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
     </div>
     <label style="font-size:12px;color:var(--text-muted);margin-top:12px;display:block;">Nº de patrimônio</label>
