@@ -1195,7 +1195,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.2';
+const BLINTRACK_VERSAO = 'V5.3';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4692,19 +4692,78 @@ function _implPatrimonio(item){
   }catch(e){ return ''; }
 }
 
-// Insere/edita patrimônio a partir das Implantações (salva na implantação + reflete na montagem se houver)
-async function editarPatrimonioImpl(implId){
+// Insere/edita patrimônio por equipamento a partir das Implantações
+let _patImplId = null;
+const PATRIMONIO_EQUIPS = ['Rack','Nobreak','Mikrotik'];
+
+function editarPatrimonioImpl(implId){
   const item = (typeof implDados!=='undefined'?implDados:[]).find(i=>String(i.id)===String(implId));
   if(!item){ alert('Registro não encontrado.'); return; }
-  const atual = _implPatrimonio(item);
-  const resp = prompt('Placa(s) de patrimônio de "'+(item.nome||'')+'"\n\nSepare várias placas por ponto-e-vírgula (;):', atual||'');
-  if(resp===null) return;
-  const valor = resp.trim();
+  _patImplId = implId;
+  document.getElementById('patimpl-nome').textContent = item.nome||'';
+  // parseia o patrimônio atual: "Rack: 01175; Nobreak: 01180; Outro X: 999"
+  const atual = String(_implPatrimonio(item)||'');
+  const mapa = {};
+  const extras = [];
+  atual.split(';').forEach(par=>{
+    const idx = par.indexOf(':');
+    if(idx>-1){
+      const eq = par.slice(0,idx).trim();
+      const num = par.slice(idx+1).trim();
+      if(!eq) return;
+      if(PATRIMONIO_EQUIPS.some(e=>e.toLowerCase()===eq.toLowerCase())) mapa[eq.toLowerCase()]=num;
+      else extras.push({eq,num});
+    }
+  });
+  _renderPatImplCampos(mapa, extras);
+  document.getElementById('patimpl-modal').style.display='flex';
+}
+
+function _renderPatImplCampos(mapa, extras){
+  mapa = mapa||{}; extras = extras||[];
+  let html = PATRIMONIO_EQUIPS.map(eq=>(
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
+    +'<label style="width:90px;font-size:13px;color:var(--text);">'+eq+'</label>'
+    +'<input type="text" class="patimpl-fixo" data-eq="'+eq+'" value="'+_esc(mapa[eq.toLowerCase()]||'')+'" placeholder="Nº da placa" style="flex:1;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:\'DM Mono\',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;">'
+    +'</div>'
+  )).join('');
+  // extras (Outro)
+  html += '<div id="patimpl-extras">'+extras.map((x,i)=>_patImplExtraRow(x.eq,x.num,i)).join('')+'</div>';
+  document.getElementById('patimpl-campos').innerHTML = html;
+}
+function _patImplExtraRow(eq,num,i){
+  return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;" class="patimpl-extra-row">'
+    +'<input type="text" class="patimpl-extra-eq" value="'+_esc(eq||'')+'" placeholder="Equipamento" style="width:90px;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:\'DM Sans\',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;">'
+    +'<input type="text" class="patimpl-extra-num" value="'+_esc(num||'')+'" placeholder="Nº da placa" style="flex:1;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:\'DM Mono\',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;">'
+    +'<button onclick="this.parentNode.remove()" style="height:34px;width:34px;border:1px solid #e74c3c44;border-radius:var(--radius-sm);background:none;color:#e74c3c;cursor:pointer;">×</button>'
+    +'</div>';
+}
+function patImplAddOutro(){
+  const box = document.getElementById('patimpl-extras');
+  const div = document.createElement('div');
+  div.innerHTML = _patImplExtraRow('','',Date.now());
+  box.appendChild(div.firstChild);
+}
+function fecharPatImpl(){ document.getElementById('patimpl-modal').style.display='none'; _patImplId=null; }
+
+async function salvarPatImpl(){
+  const item = (typeof implDados!=='undefined'?implDados:[]).find(i=>String(i.id)===String(_patImplId));
+  if(!item) return;
+  const partes = [];
+  document.querySelectorAll('.patimpl-fixo').forEach(inp=>{ const v=inp.value.trim(); if(v) partes.push(inp.dataset.eq+': '+v); });
+  document.querySelectorAll('.patimpl-extra-row').forEach(row=>{
+    const eq=row.querySelector('.patimpl-extra-eq').value.trim();
+    const num=row.querySelector('.patimpl-extra-num').value.trim();
+    if(eq && num) partes.push(eq+': '+num);
+    else if(num) partes.push(num);
+  });
+  const valor = partes.join('; ');
+  const btn=document.getElementById('patimpl-salvar-btn');
+  if(btn){ btn.textContent='Salvando...'; btn.disabled=true; }
   try{
-    // salva na própria implantação
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'salvarPatrimonioImpl',id:item.id,nome:item.nome,patrimonio:valor})});
     item.patrimonio = valor;
-    // reflete na montagem do mesmo cliente, se houver
+    // reflete na montagem de rack do mesmo cliente
     if(typeof montagemDados!=='undefined' && Array.isArray(montagemDados)){
       const cnpjI=String(item.cnpj||'').replace(/\D/g,'');
       const nomeI=String(item.nome||'').trim().toLowerCase();
@@ -4719,9 +4778,14 @@ async function editarPatrimonioImpl(implId){
         }
       }
     }
+    document.getElementById('patimpl-modal').style.display='none';
+    if(btn){ btn.textContent='Salvar'; btn.disabled=false; }
     renderImplantacoes();
     showToast && showToast('🔖 Patrimônio salvo!');
-  }catch(e){ alert('Erro ao salvar o patrimônio.'); }
+  }catch(e){
+    alert('Erro ao salvar o patrimônio.');
+    if(btn){ btn.textContent='Salvar'; btn.disabled=false; }
+  }
 }
 
 function renderImplantacoes(){
@@ -4946,16 +5010,21 @@ async function importarHistoricoImpl(){
 }
 
 async function removerImplantacaoFront(id, nome, btn){
-  if(!confirm('Remover "'+nome+'" das implantações? Esta ação não pode ser desfeita.')) return;
+  const digitado = prompt('Para remover "'+nome+'" das Implantações, digite o nome do cliente exatamente como aparece:\n\n(Isso remove só da lista de Implantações — o cliente continua no Pipeline.)');
+  if(digitado===null) return;
+  if(digitado.trim().toLowerCase() !== String(nome).trim().toLowerCase()){
+    alert('O nome digitado não confere. A remoção foi cancelada.');
+    return;
+  }
   if(btn){ btn.textContent='Excluindo...'; btn.disabled=true; btn.style.opacity='0.6'; btn.style.width='auto'; }
   try{
-    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerImplantacao',id})});
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'ocultarImplantacao',id,nome})});
     const d = await r.json();
     if(d.ok){
       implDados = implDados.filter(i=>i.id!==id);
       renderImplantacoes();
       const toast = document.createElement('div');
-      toast.textContent = '🗑 Removido com sucesso!';
+      toast.textContent = '🗑 Removido das Implantações!';
       toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#e00;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
       document.body.appendChild(toast);
       setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
@@ -11939,6 +12008,19 @@ async function excluirOS(id){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
       <button onclick="_retornosAtaPular()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Pular e exportar</button>
       <button onclick="_retornosAtaSalvarEExportar()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar e exportar</button>
+    </div>
+  </div>
+</div>
+<div id="patimpl-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="fecharPatImpl()" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
+    <div style="font-size:16px;font-weight:600;margin-bottom:2px;">🔖 Placas de patrimônio</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;" id="patimpl-nome"></div>
+    <div id="patimpl-campos"></div>
+    <button onclick="patImplAddOutro()" style="font-size:12px;color:var(--c-previsto);background:none;border:none;cursor:pointer;padding:0;margin-top:2px;">+ Adicionar outro equipamento</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+      <button onclick="fecharPatImpl()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
+      <button id="patimpl-salvar-btn" onclick="salvarPatImpl()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar</button>
     </div>
   </div>
 </div>
