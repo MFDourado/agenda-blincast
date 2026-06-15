@@ -402,6 +402,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
     <button class="snav-btn" id="mt-montagem" onclick="switchMainTab('montagem');closeSidebar()">Montagem</button>
     <button class="snav-btn" id="mt-poc" onclick="switchMainTab('poc');closeSidebar()">PoC</button>
     <button class="snav-btn" id="mt-operadoras" onclick="switchMainTab('operadoras');closeSidebar()">Operadoras</button>
+    <button class="snav-btn" id="mt-itens-locados" onclick="switchMainTab('itens-locados');closeSidebar()">Itens Locados</button>
     <button class="snav-btn" id="mt-estoque-group" onclick="toggleSubMenu('estoque-sub')">Estoque <span id="arrow-estoque-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="estoque-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-arm-cadastro" onclick="switchMainTab('arm-cadastro');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Cadastro</button>
@@ -1130,7 +1131,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', 'itens-locados':'Itens Locados', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -1195,7 +1196,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.3';
+const BLINTRACK_VERSAO = 'V5.4';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1321,6 +1322,115 @@ function escalaEhGestor(){ return usuarioLogado && usuarioLogado.perfil==='admin
 // ═══════════════════════ OPERADORAS ═══════════════════════
 let operadorasPontos = [];
 let operadorasHotelAberto = null;
+
+// ═══════════════════════ ITENS LOCADOS ═══════════════════════
+let itensLocados = [];
+
+async function loadItensLocados(){
+  const sub=document.getElementById('itens-locados-sub');
+  if(sub) sub.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados');
+    const d=await r.json();
+    itensLocados=Array.isArray(d.itens)?d.itens:[];
+  }catch(e){ itensLocados=[]; }
+  renderItensLocados();
+}
+
+function _ilFmtData(d){
+  if(!d) return '';
+  if(/^\d{4}-\d{2}-\d{2}/.test(d)){ const p=d.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  return d;
+}
+
+function renderItensLocados(){
+  const cont=document.getElementById('itens-locados-lista');
+  if(!cont) return;
+  const busca=(document.getElementById('itens-locados-busca')?.value||'').trim().toLowerCase();
+  let lista=itensLocados.slice();
+  if(busca) lista=lista.filter(i=>String(i.cliente||'').toLowerCase().includes(busca)||String(i.item||'').toLowerCase().includes(busca)||String(i.patrimonio||'').toLowerCase().includes(busca));
+  const sub=document.getElementById('itens-locados-sub');
+  if(sub) sub.textContent=itensLocados.length+' item(ns) locado(s)';
+  if(!lista.length){ cont.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);">Nenhum item locado.</div>'; return; }
+  // agrupa por cliente
+  const grupos={};
+  lista.forEach(i=>{ const k=i.cliente||'(sem cliente)'; (grupos[k]=grupos[k]||[]).push(i); });
+  cont.innerHTML=Object.keys(grupos).sort().map(cli=>{
+    const linhas=grupos[cli].map(i=>'<tr style="border-bottom:0.5px solid var(--border);">'
+      +'<td style="padding:7px 8px;">'+_esc(i.item||'—')+'</td>'
+      +'<td style="padding:7px 8px;text-align:center;">'+_esc(i.quantidade||'—')+'</td>'
+      +'<td style="padding:7px 8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(i.patrimonio||'—')+'</td>'
+      +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);">'+_esc(i.obs||'')+'</td>'
+      +'<td style="padding:7px 8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">'+_ilFmtData(i.data_inclusao)+(i.data_alteracao?'<br><span style="font-size:10px;">alt: '+_ilFmtData(i.data_alteracao)+'</span>':'')+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;"><span onclick="abrirEditarItemLocado(\''+i.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirItemLocado(\''+i.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
+      +'</tr>').join('');
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;">'
+      +'<div style="padding:10px 16px;border-bottom:0.5px solid var(--border);font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;"><span>🏨</span>'+_esc(cli)+' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">· '+grupos[cli].length+' item(ns)</span></div>'
+      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;"><thead><tr style="background:var(--bg);">'
+      +['Item','Qtd','Patrimônio','Obs','Inclusão',''].map(c=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">'+c+'</th>').join('')
+      +'</tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+  }).join('');
+}
+
+function _ilPreencheCnpj(){
+  const nome=document.getElementById('il-cliente').value.trim().toLowerCase();
+  const c=(typeof clientes!=='undefined'?clientes:[]).find(x=>String(x.nome||'').trim().toLowerCase()===nome);
+  document.getElementById('il-cnpj').value=c?(c.cnpj||''):'';
+}
+
+function abrirNovoItemLocado(){
+  document.getElementById('il-titulo').textContent='Novo item locado';
+  ['il-id','il-cliente','il-cnpj','il-item','il-qtd','il-patrimonio','il-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // popula datalist de clientes
+  const dl=document.getElementById('il-clientes-list');
+  if(dl && typeof clientes!=='undefined') dl.innerHTML=clientes.map(c=>'<option value="'+_esc(c.nome||'')+'">').join('');
+  document.getElementById('item-locado-modal').style.display='flex';
+}
+function abrirEditarItemLocado(id){
+  const i=itensLocados.find(x=>String(x.id)===String(id)); if(!i) return;
+  document.getElementById('il-titulo').textContent='Editar item locado';
+  document.getElementById('il-id').value=i.id;
+  document.getElementById('il-cliente').value=i.cliente||'';
+  document.getElementById('il-cnpj').value=i.cnpj||'';
+  document.getElementById('il-item').value=i.item||'';
+  document.getElementById('il-qtd').value=i.quantidade||'';
+  document.getElementById('il-patrimonio').value=i.patrimonio||'';
+  document.getElementById('il-obs').value=i.obs||'';
+  const dl=document.getElementById('il-clientes-list');
+  if(dl && typeof clientes!=='undefined') dl.innerHTML=clientes.map(c=>'<option value="'+_esc(c.nome||'')+'">').join('');
+  document.getElementById('item-locado-modal').style.display='flex';
+}
+async function salvarItemLocado(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('il-cliente')){ alert('Informe o cliente.'); return; }
+  if(!g('il-item')){ alert('Informe o item.'); return; }
+  const btn=document.getElementById('il-salvar-btn');
+  if(btn){ btn.textContent='Salvando...'; btn.disabled=true; }
+  const payload={token:getToken(),action:'saveItemLocado',id:g('il-id'),cliente:g('il-cliente'),cnpj:g('il-cnpj'),item:g('il-item'),quantidade:g('il-qtd'),patrimonio:g('il-patrimonio'),obs:g('il-obs')};
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    document.getElementById('item-locado-modal').style.display='none';
+    await loadItensLocados();
+  }catch(e){ alert('Erro ao salvar.'); }
+  if(btn){ btn.textContent='Salvar'; btn.disabled=false; }
+}
+async function excluirItemLocado(id){
+  if(!confirm('Excluir este item locado?')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteItemLocado',id:id})}); await loadItensLocados(); }
+  catch(e){ alert('Erro ao excluir.'); }
+}
+
+// busca itens locados de um cliente (pra exibir no menu Cliente)
+function _itensLocadosDoCliente(c){
+  if(!Array.isArray(itensLocados) || !itensLocados.length) return [];
+  const nome=String(c.nome||'').trim().toLowerCase();
+  const cnpj=String(c.cnpj||'').replace(/\D/g,'');
+  return itensLocados.filter(i=>{
+    const inome=String(i.cliente||'').trim().toLowerCase();
+    const icnpj=String(i.cnpj||'').replace(/\D/g,'');
+    return (nome && inome===nome) || (cnpj && icnpj && cnpj===icnpj);
+  });
+}
 
 async function loadOperadoras(){
   const sub=document.getElementById('operadoras-sub');
@@ -2117,12 +2227,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -2155,6 +2265,7 @@ function switchMainTab(t){
   if(t==='escala-tecnico')loadEscala('Técnico campo');
   if(t==='escala-n2')loadEscala('N2');
   if(t==='operadoras')loadOperadoras();
+  if(t==='itens-locados')loadItensLocados();
   abrirAba(t);
 }
 
@@ -3176,7 +3287,7 @@ const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:f
 
 // ===================== CLIENTES =====================
 let clientes=[],cliSaveTimer=null;
-async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();popularDatalistClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
+async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(typeof itensLocados==='undefined'||!itensLocados.length){try{const ri=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados');const di=await ri.json();itensLocados=Array.isArray(di.itens)?di.itens:[];}catch(e){}}if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();popularDatalistClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
 async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:getToken()})});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
 function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);const chev=document.getElementById('cli-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
 
@@ -3495,6 +3606,23 @@ function cliDetalheHTML(id){
     +`</div>`
     +'</div>';
   info+='</div>';
+  // ---- Itens locados (somente leitura) ----
+  const itensCli=(typeof _itensLocadosDoCliente==='function')?_itensLocadosDoCliente(c):[];
+  if(itensCli.length){
+    info+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">'
+      +'<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📦 Itens locados no cliente</div>'
+      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      +'<thead><tr style="background:var(--surface);">'+['Item','Qtd','Patrimônio','Obs'].map(h=>'<th style="padding:5px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">'+h+'</th>').join('')+'</tr></thead><tbody>'
+      +itensCli.map(i=>'<tr style="border-bottom:0.5px solid var(--border);">'
+        +'<td style="padding:5px 8px;">'+_esc(i.item||'—')+'</td>'
+        +'<td style="padding:5px 8px;">'+_esc(i.quantidade||'—')+'</td>'
+        +'<td style="padding:5px 8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(i.patrimonio||'—')+'</td>'
+        +'<td style="padding:5px 8px;font-size:11px;color:var(--text-muted);">'+_esc(i.obs||'')+'</td>'
+        +'</tr>').join('')
+      +'</tbody></table></div></div>';
+  } else {
+    info+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">📦 Nenhum item locado cadastrado. <span onclick="event.stopPropagation();switchMainTab(\'itens-locados\')" style="color:var(--c-previsto);cursor:pointer;">Cadastrar em Itens Locados →</span></div>';
+  }
   const btns=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
     <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
     ${ativo?`<button onclick="event.stopPropagation();iniciarDistrato('${(c.nome||'').replace(/'/g,"\\'")}','${c.cnpj||''}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
@@ -9934,6 +10062,45 @@ async function estEnviarEmail(reg){
     <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Pontos ativos</div><div id="op-kpi-pontos" style="font-size:22px;font-weight:600;">—</div></div>
   </div>
   <div id="operadoras-lista"></div>
+</div>
+
+<!-- ITENS LOCADOS -->
+<div id="page-itens-locados" class="main" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <h1 style="font-size:22px;font-weight:600;margin:0;">Itens Locados</h1>
+      <div id="itens-locados-sub" style="font-size:12px;color:var(--text-muted);">Carregando...</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="itens-locados-busca" placeholder="🔍 Buscar cliente ou item..." oninput="renderItensLocados()" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:220px;">
+      <button onclick="abrirNovoItemLocado()" style="height:36px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">+ Novo item</button>
+    </div>
+  </div>
+  <div id="itens-locados-lista" style="margin-top:14px;"></div>
+</div>
+
+<div id="item-locado-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:460px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="document.getElementById('item-locado-modal').style.display='none'" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
+    <div id="il-titulo" style="font-size:16px;font-weight:600;margin-bottom:16px;">Novo item locado</div>
+    <input type="hidden" id="il-id">
+    <label style="font-size:12px;color:var(--text-muted);">Cliente</label>
+    <input type="text" id="il-cliente" list="il-clientes-list" placeholder="Nome do cliente" oninput="_ilPreencheCnpj()" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;">
+    <datalist id="il-clientes-list"></datalist>
+    <input type="hidden" id="il-cnpj">
+    <div style="display:flex;gap:10px;">
+      <div style="flex:2;"><label style="font-size:12px;color:var(--text-muted);">Item</label><input type="text" id="il-item" placeholder="Ex: Receptor, Antena..." style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--text-muted);">Qtd</label><input type="number" id="il-qtd" min="0" placeholder="1" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin-top:4px;"></div>
+    </div>
+    <label style="font-size:12px;color:var(--text-muted);margin-top:12px;display:block;">Nº de patrimônio</label>
+    <input type="text" id="il-patrimonio" placeholder="Placa de patrimônio (opcional)" style="width:100%;height:38px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;">
+    <label style="font-size:12px;color:var(--text-muted);">Observação</label>
+    <textarea id="il-obs" placeholder="Observações..." style="width:100%;min-height:50px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);box-sizing:border-box;margin:4px 0 12px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button onclick="document.getElementById('item-locado-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Cancelar</button>
+      <button id="il-salvar-btn" onclick="salvarItemLocado()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ENTREGAS -->
