@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.0';
+const BLINTRACK_VERSAO = 'V6.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -3678,6 +3678,93 @@ const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:f
 
 // ===================== CLIENTES =====================
 let clientes=[],cliSaveTimer=null;
+// ===== ANEXO DE CONTRATOS EM MASSA =====
+let _anexoMassaItens = [];
+
+function abrirAnexoMassaContratos(){
+  if(typeof clientes==='undefined' || !clientes.length){ alert('Carregue os clientes primeiro (entre na aba Clientes).'); return; }
+  _anexoMassaItens=[];
+  document.getElementById('anexo-massa-lista').innerHTML='';
+  document.getElementById('anexo-massa-acoes').style.display='none';
+  document.getElementById('anexo-massa-modal').style.display='flex';
+}
+function anexoMassaDrop(ev){
+  ev.preventDefault();
+  ev.currentTarget.style.background='none';
+  anexoMassaArquivos(ev.dataTransfer.files);
+}
+function _amSoDig(s){ return String(s||'').replace(/\D/g,''); }
+function _amNorm(s){ return String(s||'').toLowerCase().replace(/[áàâã]/g,'a').replace(/[éê]/g,'e').replace(/[íï]/g,'i').replace(/[óôõ]/g,'o').replace(/[úü]/g,'u').replace(/[ç]/g,'c').replace(/[^a-z0-9]/g,''); }
+
+function anexoMassaArquivos(fileList){
+  const files=Array.from(fileList).filter(f=>/pdf$/i.test(f.name)||f.type==='application/pdf');
+  files.forEach(f=>{
+    const nomeArq=f.name.replace(/\.pdf$/i,'');
+    const digArq=_amSoDig(nomeArq);
+    let cli=null;
+    if(digArq.length>=14){
+      cli=clientes.find(c=>{ const cd=_amSoDig(c.cnpj); return cd.length>=14 && digArq.includes(cd); });
+    }
+    if(!cli){
+      const arqN=_amNorm(nomeArq);
+      const cands=clientes.filter(c=>{ const cn=_amNorm(c.nome); return cn.length>=4 && arqN.includes(cn); });
+      cands.sort((a,b)=>_amNorm(b.nome).length-_amNorm(a.nome).length);
+      cli=cands[0]||null;
+    }
+    _anexoMassaItens.push({file:f, cliente:cli, status: cli?'ok':'naoid'});
+  });
+  _anexoMassaRender();
+}
+
+function _anexoMassaRender(){
+  const cont=document.getElementById('anexo-massa-lista');
+  if(!_anexoMassaItens.length){ cont.innerHTML=''; document.getElementById('anexo-massa-acoes').style.display='none'; return; }
+  const idOk=_anexoMassaItens.filter(i=>i.status==='ok'||i.status==='enviado').length;
+  cont.innerHTML='<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">'+_anexoMassaItens.length+' arquivo(s) · '+idOk+' identificado(s)</div>'
+    +'<div style="max-height:340px;overflow-y:auto;">'+_anexoMassaItens.map((it,idx)=>{
+      let badge, cor;
+      if(it.status==='enviado'){ badge='✅ anexado'; cor='var(--c-concluido)'; }
+      else if(it.status==='erro'){ badge='❌ erro'; cor='#e74c3c'; }
+      else if(it.cliente){ badge='→ '+_esc(it.cliente.nome); cor='var(--c-concluido)'; }
+      else { badge='⚠ não identificado'; cor='#e67e22'; }
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:5px;font-size:12px;">'
+        +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📄 '+_esc(it.file.name)+'</span>'
+        +'<span style="color:'+cor+';white-space:nowrap;font-size:11px;">'+badge+'</span>'
+        +(it.status!=='enviado'?'<select onchange="_anexoMassaSetCliente('+idx+',this.value)" style="height:28px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--text);max-width:150px;"><option value="">— escolher —</option>'+clientes.map(c=>'<option value="'+c.id+'"'+(it.cliente&&it.cliente.id===c.id?' selected':'')+'>'+_esc(c.nome)+'</option>').join('')+'</select>':'')
+        +'</div>';
+    }).join('')+'</div>';
+  document.getElementById('anexo-massa-acoes').style.display='flex';
+}
+function _anexoMassaSetCliente(idx, cliId){
+  const it=_anexoMassaItens[idx]; if(!it) return;
+  it.cliente=clientes.find(c=>String(c.id)===String(cliId))||null;
+  it.status=it.cliente?'ok':'naoid';
+  _anexoMassaRender();
+}
+function _amFileB64(file){ return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);}); }
+
+async function anexoMassaEnviar(){
+  const pendentes=_anexoMassaItens.filter(i=>i.cliente && i.status==='ok');
+  if(!pendentes.length){ alert('Nenhum arquivo identificado para anexar. Use o seletor pra associar manualmente.'); return; }
+  const btn=document.getElementById('anexo-massa-enviar-btn');
+  if(btn){ btn.disabled=true; }
+  let ok=0, erro=0;
+  for(const it of pendentes){
+    if(btn) btn.textContent='Anexando '+(ok+erro+1)+'/'+pendentes.length+'...';
+    try{
+      const b64=await _amFileB64(it.file);
+      const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadContrato',id:it.cliente.id,nome:it.cliente.nome,arquivo:b64,nomeArquivo:it.file.name})});
+      const d=await r.json();
+      if(d.ok){ it.status='enviado'; ok++; const c=clientes.find(x=>x.id===it.cliente.id); if(c) c.link_contrato=d.link; }
+      else { it.status='erro'; erro++; }
+    }catch(e){ it.status='erro'; erro++; }
+    _anexoMassaRender();
+  }
+  if(btn){ btn.textContent='Anexar identificados'; btn.disabled=false; }
+  alert('Concluído!\n✅ '+ok+' anexado(s)'+(erro?('\n❌ '+erro+' com erro'):''));
+  if(typeof renderClientes==='function') renderClientes();
+}
+
 async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(typeof itensLocados==='undefined'||!itensLocados.length){try{const ri=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados');const di=await ri.json();itensLocados=Array.isArray(di.itens)?di.itens:[];}catch(e){}}if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();popularDatalistClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
 async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:getToken()})});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
 function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);const chev=document.getElementById('cli-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
@@ -4034,7 +4121,7 @@ function renderClientesCards(listaFiltrada){
 <option value="Repasse" ${c.pagamento_operadora==='Repasse'?'selected':''}>💳 Repasse (Blincast paga)</option>
 <option value="Cliente PG" ${c.pagamento_operadora==='Cliente PG'?'selected':''}>✅ Cliente PG</option>
 <option value="N/A" ${c.pagamento_operadora==='N/A'?'selected':''}>— N/A</option>
-</select></div>${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label>${c.link_contrato ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_contrato+'" data-nome="'+c.nome+'" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum contrato anexado</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button><span id="cli-contrato-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><label style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block">Grade de canais</label>${c.link_grade ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_grade+'" data-nome="'+c.nome+' — Grade" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Ver grade</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhuma grade anexada</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-grade-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button><span id="cli-grade-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+</select></div>${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label>${c.link_contrato ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_contrato+'" data-nome="'+c.nome+'" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum contrato anexado</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button><span id="cli-contrato-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><div style="margin-top:8px"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div><label style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block">Grade de canais</label>${c.link_grade ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_grade+'" data-nome="'+c.nome+' — Grade" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Ver grade</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhuma grade anexada</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-grade-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button><span id="cli-grade-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <div style="display:flex;gap:8px;">
     <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
     ${c.status!=='inativo'?`<button onclick="event.stopPropagation();iniciarDistrato('${c.nome}','${c.cnpj||''}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
@@ -6813,7 +6900,45 @@ async function uploadContratoCli(clienteId, nomeCliente, inputEl){
   reader.readAsDataURL(file);
 }
 
-// Anexar grade pela aba Clientes (operacional)
+// ===== ADITIVOS =====
+function _parseAditivos(c){
+  try{ const l=JSON.parse(c.aditivos_json||'[]'); return Array.isArray(l)?l:[]; }catch(e){ return []; }
+}
+function _renderAditivos(c){
+  const lista=_parseAditivos(c);
+  if(!lista.length) return '<span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum aditivo anexado</span>';
+  return lista.map(a=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
+    +'<button onclick="event.stopPropagation();abrirAnexoNovaAba(\''+a.link+'\',\''+_esc(c.nome)+' — Aditivo '+a.numero+'\')" style="padding:3px 10px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Aditivo '+a.numero+(a.data?' · '+a.data.split('-').reverse().join('/'):'')+'</button>'
+    +'<span onclick="event.stopPropagation();removerAditivoCli(\''+c.id+'\','+a.numero+')" style="cursor:pointer;color:#e74c3c;font-size:12px;" title="Remover aditivo">✕</span>'
+    +'</div>').join('');
+}
+async function uploadAditivoCli(clienteId, nomeCliente, inputEl){
+  const file = inputEl.files[0]; if(!file) return;
+  if(file.type!=='application/pdf'){ alert('Selecione apenas PDF.'); return; }
+  if(file.size>10*1024*1024){ alert('Arquivo muito grande. Máximo 10MB.'); return; }
+  const st=document.getElementById('cli-aditivo-status-'+clienteId);
+  if(st){ st.textContent='⏳ Enviando...'; }
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    const base64=e.target.result.split(',')[1];
+    try{
+      const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadAditivo',id:clienteId,nome:nomeCliente,arquivo:base64,nomeArquivo:file.name})});
+      const d=await r.json();
+      if(d.ok){ if(st) st.textContent='✅ Anexado'; await loadClientes(); alert('✅ Aditivo anexado!'); }
+      else { if(st) st.textContent='❌ Erro'; alert('Erro: '+(d.error||'falha no envio')); }
+    }catch(err){ if(st) st.textContent='❌ Erro'; alert('Erro de conexão ao enviar.'); }
+  };
+  reader.readAsDataURL(file);
+}
+async function removerAditivoCli(clienteId, numero){
+  if(!confirm('Remover o aditivo '+numero+'?')) return;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'removerAditivo',id:clienteId,numero:numero})});
+    const d=await r.json();
+    if(d.ok){ await loadClientes(); }
+    else alert('Erro ao remover.');
+  }catch(e){ alert('Erro de conexão.'); }
+}
 async function uploadGradeCli(clienteId, nomeCliente, inputEl){
   const file = inputEl.files[0]; if(!file) return;
   const ok=['application/pdf','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
@@ -9784,6 +9909,7 @@ async function estEnviarEmail(reg){
         <div id="cli-sugestoes" style="display:none;position:absolute;top:40px;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:280px;overflow-y:auto;z-index:50;"></div>
       </div>
       <button onclick="sincronizarClientes()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar</button>
+      <button onclick="abrirAnexoMassaContratos()" style="padding:7px 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto)">📎 Anexar contratos em massa</button>
       <button class="btn-new-project" onclick="openNovoClienteModal()">+ Novo cliente</button>
     </div>
   </div>
@@ -9793,6 +9919,24 @@ async function estEnviarEmail(reg){
     <div id="cli-contador" style="font-size:12px;color:var(--text-muted);"></div>
   </div>
   <div id="cli-list"></div>
+</div>
+
+<!-- MODAL ANEXO EM MASSA -->
+<div id="anexo-massa-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1300;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:620px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="document.getElementById('anexo-massa-modal').style.display='none'" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
+    <div style="font-size:17px;font-weight:600;margin-bottom:4px;">📎 Anexar contratos em massa</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Arraste os PDFs (ou clique pra escolher). O sistema identifica o cliente pelo CNPJ ou nome no nome do arquivo e anexa como contrato.</div>
+    <div id="anexo-massa-drop" onclick="document.getElementById('anexo-massa-file').click()" ondragover="event.preventDefault();this.style.background='var(--bg)'" ondragleave="this.style.background='none'" ondrop="anexoMassaDrop(event)" style="border:2px dashed var(--border);border-radius:var(--radius);padding:30px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:13px;">
+      📁 Arraste os PDFs aqui ou clique para escolher
+    </div>
+    <input type="file" id="anexo-massa-file" accept="application/pdf" multiple style="display:none" onchange="anexoMassaArquivos(this.files)">
+    <div id="anexo-massa-lista" style="margin-top:14px;"></div>
+    <div id="anexo-massa-acoes" style="display:none;justify-content:flex-end;gap:10px;margin-top:16px;">
+      <button onclick="document.getElementById('anexo-massa-modal').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Fechar</button>
+      <button id="anexo-massa-enviar-btn" onclick="anexoMassaEnviar()" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Anexar identificados</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL NOVO CLIENTE -->
