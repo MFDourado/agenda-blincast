@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.8';
+const BLINTRACK_VERSAO = 'V5.9';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2430,6 +2430,7 @@ function novoRastreio(tipo){
   document.getElementById('rt-tipo').value=tipo;
   ['rt-requisicao','rt-cliente','rt-data-pedido','rt-codigo','rt-nf','rt-cte','rt-valor','rt-previsao','rt-data-entrega','rt-objeto','rt-info'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('rt-situacao').value='Não enviado';
+  ['cte','danfe'].forEach(t=>{ document.getElementById('rt-anexo-'+t).value=''; const st=document.getElementById('rt-anexo-'+t+'-status'); if(st) st.innerHTML=''; });
   rtEventos=[];
   rtRenderEventos();
   _rtAjustarCampos(tipo);
@@ -2441,6 +2442,9 @@ function _rtAjustarCampos(tipo){
   // Correios mostra código de rastreio; Jamef mostra NF + CTe
   document.getElementById('rt-wrap-codigo').style.display = tipo==='correios'?'block':'none';
   document.getElementById('rt-wrap-cte').style.display = tipo==='jamef'?'block':'none';
+  // anexos de CTe/DANFE só na transportadora (Jamef)
+  const wrapAnx=document.getElementById('rt-wrap-anexos');
+  if(wrapAnx) wrapAnx.style.display = tipo==='jamef'?'block':'none';
 }
 
 function editarRastreio(tipo,id){
@@ -2459,6 +2463,12 @@ function editarRastreio(tipo,id){
   document.getElementById('rt-objeto').value=r.objeto||'';
   document.getElementById('rt-info').value=r.info||'';
   document.getElementById('rt-situacao').value=r.situacao||'Não enviado';
+  ['cte','danfe'].forEach(t=>{
+    const link=r['anexo_'+t]||'';
+    document.getElementById('rt-anexo-'+t).value=link;
+    const st=document.getElementById('rt-anexo-'+t+'-status');
+    if(st) st.innerHTML = link ? '<a href="'+link+'" target="_blank" style="color:var(--c-previsto);">📎 ver '+t.toUpperCase()+'</a> <span onclick="rastreioRemoverAnexo(\''+t+'\')" style="cursor:pointer;color:#e74c3c;margin-left:6px;">remover</span>' : '';
+  });
   rtEventos=Array.isArray(r.eventos)?r.eventos.slice():[];
   rtRenderEventos();
   _rtAjustarCampos(tipo);
@@ -2520,6 +2530,8 @@ async function salvarRastreio(){
     data_entrega:document.getElementById('rt-data-entrega').value,
     info:document.getElementById('rt-info').value.trim(),
     situacao:document.getElementById('rt-situacao').value,
+    anexo_cte:document.getElementById('rt-anexo-cte').value,
+    anexo_danfe:document.getElementById('rt-anexo-danfe').value,
     eventos:rtEventos
   };
   try{
@@ -2529,6 +2541,28 @@ async function salvarRastreio(){
     fecharRastreioModal();
     await loadRastreio(tipo);
   }catch(e){ alert('Erro ao salvar envio.'); }
+}
+
+// upload de anexo (CTe/DANFE) reusando uploadComprovante
+async function rastreioUploadAnexo(input, tipo){
+  const f=input.files[0]; if(!f) return;
+  const st=document.getElementById('rt-anexo-'+tipo+'-status');
+  if(st) st.innerHTML='⏳ Enviando...';
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadComprovante',base64:b64,filename:f.name,mimetype:f.type})});
+    const d=await r.json();
+    if(d.ok && d.link){
+      document.getElementById('rt-anexo-'+tipo).value=d.link;
+      if(st) st.innerHTML='<a href="'+d.link+'" target="_blank" style="color:var(--c-previsto);">📎 ver '+tipo.toUpperCase()+'</a> <span onclick="rastreioRemoverAnexo(\''+tipo+'\')" style="cursor:pointer;color:#e74c3c;margin-left:6px;">remover</span>';
+    } else { if(st) st.innerHTML='<span style="color:#e74c3c;">Falha no upload</span>'; }
+  }catch(e){ if(st) st.innerHTML='<span style="color:#e74c3c;">Erro no upload</span>'; }
+  input.value='';
+}
+function rastreioRemoverAnexo(tipo){
+  document.getElementById('rt-anexo-'+tipo).value='';
+  const st=document.getElementById('rt-anexo-'+tipo+'-status');
+  if(st) st.innerHTML='';
 }
 
 async function removerRastreio(tipo,id){
@@ -11414,6 +11448,27 @@ async function estEnviarEmail(reg){
       </div>
       <div class="modal-field" style="grid-column:span 2"><label>Objeto / Peças</label><input type="text" id="rt-objeto" placeholder="Ex: 1 conversor UHF e 1 amplificador"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Informações cliente/parceiro</label><input type="text" id="rt-info" placeholder="Ex: Reposição do material utilizado na OS 14691"></div>
+    </div>
+
+    <!-- ANEXOS: CTE e DANFE (transportadora) -->
+    <div id="rt-wrap-anexos" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-top:14px;background:var(--bg);display:none;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📎 Documentos do envio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);">CTe</label>
+          <input type="hidden" id="rt-anexo-cte">
+          <div id="rt-anexo-cte-status" style="font-size:11px;margin:4px 0;"></div>
+          <input type="file" id="rt-file-cte" accept="image/*,application/pdf" style="display:none" onchange="rastreioUploadAnexo(this,'cte')">
+          <button type="button" onclick="document.getElementById('rt-file-cte').click()" style="height:32px;padding:0 12px;border:1px dashed var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📎 Anexar CTe</button>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);">DANFE</label>
+          <input type="hidden" id="rt-anexo-danfe">
+          <div id="rt-anexo-danfe-status" style="font-size:11px;margin:4px 0;"></div>
+          <input type="file" id="rt-file-danfe" accept="image/*,application/pdf" style="display:none" onchange="rastreioUploadAnexo(this,'danfe')">
+          <button type="button" onclick="document.getElementById('rt-file-danfe').click()" style="height:32px;padding:0 12px;border:1px dashed var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📎 Anexar DANFE</button>
+        </div>
+      </div>
     </div>
 
     <!-- HISTÓRICO DE EVENTOS -->
