@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V5.9';
+const BLINTRACK_VERSAO = 'V6.0';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2055,7 +2055,26 @@ function _escFmtH(h){
 }
 function _escSemanaDoDia(dia){
   const n=parseInt(dia,10); if(!n) return 0;
-  return Math.floor((n-1)/7)+1;  // 1-7 => sem 1, 8-14 => sem 2 ...
+  return Math.floor((n-1)/7)+1;  // fallback antigo (não usado quando há mapa por domingo)
+}
+// normaliza diasem -> true se for domingo
+function _escEhDomingo(diasem){
+  const s=String(diasem||'').trim().toLowerCase().replace(/[áàâã]/g,'a').replace(/[.]/g,'');
+  return s==='dom' || s==='domingo' || s==='d';
+}
+// monta um mapa { numeroDoDia : numeroDaSemana } onde a semana vira a cada DOMINGO
+function _escMapaSemanas(dias){
+  const mapa={}; let sem=1; let viuPrimeiro=false;
+  // ordena por número do dia pra garantir sequência
+  const ord=dias.slice().filter(d=>parseInt(d.dia,10)).sort((a,b)=>parseInt(a.dia,10)-parseInt(b.dia,10));
+  ord.forEach(d=>{
+    if(_escEhDomingo(d.diasem)){
+      if(viuPrimeiro) sem++;   // novo domingo inicia nova semana (exceto o primeiríssimo dia)
+    }
+    mapa[parseInt(d.dia,10)]=sem;
+    viuPrimeiro=true;
+  });
+  return mapa;
 }
 
 function _escalaTabelaHTML(dados){
@@ -2064,12 +2083,17 @@ function _escalaTabelaHTML(dados){
   const maxDias = Math.max(...cols.map(c=>c.dias.length));
   const cor = t => t==='Trabalha'?'c-green':t==='Feriado'?'c-amber':(t==='Férias'||t==='Ferias')?'c-blue':'c-gray';
 
+  // mapa de semanas começando no DOMINGO (usa a sequência de dias do colaborador com mais dias)
+  const baseDias = cols.reduce((a,c)=>c.dias.length>a.length?c.dias:a, cols[0].dias);
+  const mapaSem = _escMapaSemanas(baseDias);
+  const semDoDia = dia => mapaSem[parseInt(dia,10)] || _escSemanaDoDia(dia);
+
   // calcula horas por colaborador: total mês + por semana
   const totMes = cols.map(c=> c.dias.reduce((s,d)=>s+_escHorasDia(d),0));
   const semanas = {};  // semana -> [horas por colaborador]
   cols.forEach((c,ci)=>{
     c.dias.forEach(d=>{
-      const sem=_escSemanaDoDia(d.dia);
+      const sem=semDoDia(d.dia);
       if(!sem) return;
       if(!semanas[sem]) semanas[sem]=cols.map(()=>0);
       semanas[sem][ci]+=_escHorasDia(d);
@@ -2083,7 +2107,7 @@ function _escalaTabelaHTML(dados){
   let semanaAtual=null;
   for(let i=0;i<maxDias;i++){
     const ref = cols[0].dias[i] || {};
-    const sem=_escSemanaDoDia(ref.dia);
+    const sem=semDoDia(ref.dia);
     // ao trocar de semana, insere linha de subtotal da semana anterior
     if(semanaAtual!==null && sem!==semanaAtual && semanas[semanaAtual]){
       linhas += _escLinhaSubtotal('Semana '+semanaAtual, semanas[semanaAtual], cols.length);
