@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.2';
+const BLINTRACK_VERSAO = 'V6.3';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4083,6 +4083,7 @@ function cliDetalheHTML(id){
     +`<input type="file" id="tab-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-grade-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button>`
     +`<span id="cli-contrato-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span><span id="cli-grade-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span>`
     +`</div>`
+    +`<div style="margin:8px 0;padding-top:8px;border-top:0.5px solid var(--border);"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div>`
     +'</div>';
   info+='</div>';
   // ---- Itens locados (somente leitura) ----
