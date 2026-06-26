@@ -5094,6 +5094,18 @@ function implBoardLoad(){
 }
 function implBoardPersist(){
   try{ localStorage.setItem(IMPL_BOARD_KEY, JSON.stringify(implBoard)); }catch(e){}
+  implBoardSync();
+}
+// ===== Sincroniza o quadro com a aba PainelAndamento (lida pelo Painel de TV) =====
+// Fire-and-forget: grava no Apps Script DEDICADO do painel (separado do BlinTrack).
+const PAINEL_SYNC_URL='https://script.google.com/macros/s/AKfycbxMGdceOlemlq9nUldxQzXtGdOxqlkQe482I6zoQdOHDDVPJBYy3rWwt041Q120Hfwn/exec';
+const PAINEL_SYNC_TOKEN='blincast-painel';
+function implBoardSync(){
+  if(!PAINEL_SYNC_URL) return;
+  try{
+    fetch(PAINEL_SYNC_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token:PAINEL_SYNC_TOKEN, itens:implBoard})});
+  }catch(e){}
 }
 function implBoardToggleForm(force){
   const f=document.getElementById('impl-board-form');
@@ -5153,7 +5165,7 @@ function implBoardRender(){
 }
 
 async function loadImplantacoes(){
-  implBoardLoad(); implBoardRender();
+  implBoardLoad(); implBoardRender(); implBoardSync();
   const syncEl = document.getElementById('impl-sync');
   if(syncEl) syncEl.textContent = 'Carregando...';
   // garante que os projetos do Pipeline estejam carregados (origem das UHs)
