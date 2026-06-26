@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.4';
+const BLINTRACK_VERSAO = 'V6.5';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -1580,9 +1580,10 @@ function _skyDiasRestantes(c){
 }
 // está no alerta? (vence em <=5 dias E ainda não foi marcado como enviado neste ciclo)
 function _skyNoAlerta(c){
+  if(String(c.status||'').toLowerCase()==='cancelado') return false; // contrato cancelado não alerta
   const dias=_skyDiasRestantes(c);
   if(dias===null) return false;
-  if(dias>5) return false; // só alerta a 5 dias ou menos
+  if(dias>7) return false; // alerta a 7 dias ou menos (uma semana)
   // se já enviou o ciclo atual (enviado_ciclo == data_recarga atual), não alerta
   if(String(c.enviado_ciclo||'').slice(0,10) === String(c.data_recarga||'').slice(0,10) && c.enviado_ciclo) return false;
   return true;
@@ -1612,21 +1613,27 @@ function renderSky(){
     +['Cliente','Contrato','Pacote','Valor','Forma','Recarga','Vencimento','Faltam',''].map(h=>'<th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+h+'</th>').join('')
     +'</tr></thead><tbody>'
     +lista.map(c=>{
+      const cancelado=String(c.status||'').toLowerCase()==='cancelado';
       const dias=_skyDiasRestantes(c);
       const venc=_skyVencimento(c);
       let corDias='var(--text-muted)';
-      if(dias!==null){ if(dias<0) corDias='#e74c3c'; else if(dias<=5) corDias='#e67e22'; else corDias='var(--c-concluido)'; }
-      const txtDias = dias===null?'—':(dias<0?Math.abs(dias)+'d atrás':dias+'d');
-      return '<tr style="border-bottom:0.5px solid var(--border);">'
-        +'<td style="padding:8px;">'+_esc(c.cliente||'—')+'</td>'
+      if(dias!==null){ if(dias<0) corDias='#e74c3c'; else if(dias<=7) corDias='#e67e22'; else corDias='var(--c-concluido)'; }
+      const txtDias = cancelado?'—':(dias===null?'—':(dias<0?Math.abs(dias)+'d atrás':dias+'d'));
+      const op = cancelado?'opacity:0.5;':'';
+      return '<tr style="border-bottom:0.5px solid var(--border);'+op+'">'
+        +'<td style="padding:8px;">'+_esc(c.cliente||'—')+(cancelado?' <span style="font-size:10px;color:#e74c3c;border:1px solid #e74c3c;border-radius:3px;padding:1px 5px;">CANCELADO</span>':'')+'</td>'
         +'<td style="padding:8px;font-family:\'DM Mono\',monospace;font-size:11px;">'+_esc(c.contrato||'—')+'</td>'
         +'<td style="padding:8px;">'+_esc(c.pacote||'—')+'</td>'
         +'<td style="padding:8px;white-space:nowrap;">'+_skyFmtBRL(_skyParseValor(c.valor))+'</td>'
         +'<td style="padding:8px;">'+_esc(c.forma_pgto||'—')+'</td>'
         +'<td style="padding:8px;white-space:nowrap;">'+(c.data_recarga?_skyFmtBR(_skyAddDias(c.data_recarga,0)):'—')+'</td>'
-        +'<td style="padding:8px;white-space:nowrap;font-weight:600;">'+_skyFmtBR(venc)+'</td>'
+        +'<td style="padding:8px;white-space:nowrap;font-weight:600;">'+(cancelado?'—':_skyFmtBR(venc))+'</td>'
         +'<td style="padding:8px;white-space:nowrap;color:'+corDias+';font-weight:600;">'+txtDias+'</td>'
-        +'<td style="padding:8px;white-space:nowrap;"><span onclick="abrirEditarSky(\''+c.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;">✏️</span><span onclick="excluirSky(\''+c.id+'\')" style="cursor:pointer;color:#e74c3c;">🗑</span></td>'
+        +'<td style="padding:8px;white-space:nowrap;"><span onclick="abrirEditarSky(\''+c.id+'\')" style="cursor:pointer;color:var(--text-muted);margin-right:8px;" title="Editar">✏️</span>'
+        +(cancelado
+            ?'<span onclick="reativarSky(\''+c.id+'\')" style="cursor:pointer;color:var(--c-concluido);margin-right:8px;" title="Reativar">↩️</span>'
+            :'<span onclick="cancelarSkyContrato(\''+c.id+'\')" style="cursor:pointer;color:#e67e22;margin-right:8px;" title="Cancelar contrato">🚫</span>')
+        +'<span onclick="excluirSky(\''+c.id+'\')" style="cursor:pointer;color:#e74c3c;" title="Excluir">🗑</span></td>'
         +'</tr>';
     }).join('')
     +'</tbody></table></div></div>';
@@ -1720,6 +1727,73 @@ async function excluirSky(id){
   if(!confirm('Excluir este contrato Sky?')) return;
   try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteSky',id:id})}); await loadSky(); }
   catch(e){ alert('Erro ao excluir.'); }
+}
+
+async function cancelarSkyContrato(id){
+  const c=skyContratos.find(x=>String(x.id)===String(id)); if(!c) return;
+  if(!confirm('Cancelar o contrato Sky de "'+(c.cliente||'')+'"?\n\nEle sai dos vencimentos e do popup, mas continua no histórico (pode reativar depois).')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'cancelarSky',id:id})});
+    c.status='cancelado';
+    renderSky();
+  }catch(e){ alert('Erro ao cancelar.'); }
+}
+async function reativarSky(id){
+  const c=skyContratos.find(x=>String(x.id)===String(id)); if(!c) return;
+  if(!confirm('Reativar o contrato Sky de "'+(c.cliente||'')+'"?')) return;
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'cancelarSky',id:id,reativar:true})});
+    c.status='ativo';
+    renderSky();
+  }catch(e){ alert('Erro ao reativar.'); }
+}
+
+// ===== IMPORTAÇÃO EM LOTE =====
+function abrirImportarSky(){ document.getElementById('sky-import-file').click(); }
+async function importarSkyArquivo(input){
+  const f=input.files[0]; if(!f) return;
+  if(!/\.json$/i.test(f.name)){ alert('Selecione o arquivo .json de importação.'); input.value=''; return; }
+  let lista;
+  try{ lista=JSON.parse(await f.text()); }catch(e){ alert('Arquivo inválido.'); input.value=''; return; }
+  if(!Array.isArray(lista) || !lista.length){ alert('Nenhum contrato no arquivo.'); input.value=''; return; }
+  const limpar=confirm('Importar '+lista.length+' contratos Sky.\n\nOK = LIMPAR os contratos atuais e importar do zero.\nCancelar = ADICIONAR aos existentes (pode duplicar).');
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'importarSky',contratos:lista,limpar:limpar})});
+    const d=await r.json();
+    if(d.ok){ alert('✅ '+d.importados+' contratos importados!'); await loadSky(); }
+    else alert('Erro: '+(d.error||'falha'));
+  }catch(e){ alert('Erro de conexão na importação.'); }
+  input.value='';
+}
+
+// ===== RELATÓRIO DA SEMANA =====
+function abrirRelatorioSemanaSky(){
+  const ativos=skyContratos.filter(c=>String(c.status||'').toLowerCase()!=='cancelado');
+  // vencendo nos próximos 7 dias (inclui vencidos não tratados)
+  const semana=ativos.filter(c=>{ const d=_skyDiasRestantes(c); return d!==null && d<=7; });
+  semana.sort((a,b)=>(_skyDiasRestantes(a)||0)-(_skyDiasRestantes(b)||0));
+  const totalSemana=semana.reduce((s,c)=>s+_skyParseValor(c.valor),0);
+  const cont=document.getElementById('sky-relatorio-conteudo');
+  if(!semana.length){
+    cont.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);">Nenhum vencimento nos próximos 7 dias. 🎉</div>';
+  } else {
+    cont.innerHTML='<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">'+semana.length+' contrato(s) · total '+_skyFmtBRL(totalSemana)+'</div>'
+      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:620px;"><thead><tr style="background:var(--bg);">'
+      +['Cliente','Pacote','Valor','Forma','Vencimento','Faltam'].map(h=>'<th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;white-space:nowrap;">'+h+'</th>').join('')
+      +'</tr></thead><tbody>'
+      +semana.map(c=>{ const d=_skyDiasRestantes(c); const cor=d<0?'#e74c3c':(d<=2?'#e67e22':'var(--text)');
+        return '<tr style="border-bottom:0.5px solid var(--border);">'
+          +'<td style="padding:7px 8px;">'+_esc(c.cliente||'—')+'</td>'
+          +'<td style="padding:7px 8px;">'+_esc(c.pacote||'—')+'</td>'
+          +'<td style="padding:7px 8px;white-space:nowrap;">'+_skyFmtBRL(_skyParseValor(c.valor))+'</td>'
+          +'<td style="padding:7px 8px;">'+_esc(c.forma_pgto||'—')+'</td>'
+          +'<td style="padding:7px 8px;white-space:nowrap;font-weight:600;">'+_skyFmtBR(_skyVencimento(c))+'</td>'
+          +'<td style="padding:7px 8px;white-space:nowrap;color:'+cor+';font-weight:600;">'+(d<0?Math.abs(d)+'d atrás':(d===0?'hoje':d+'d'))+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div>';
+  }
+  document.getElementById('sky-relatorio-modal').style.display='flex';
 }
 
 // ===== POPUP de vencimentos =====
@@ -10792,6 +10866,9 @@ async function estEnviarEmail(reg){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <input type="text" id="sky-busca" placeholder="🔍 Buscar cliente/contrato..." oninput="renderSky()" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:200px;">
+      <button onclick="abrirRelatorioSemanaSky()" style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Relatório da semana</button>
+      <input type="file" id="sky-import-file" accept=".json" style="display:none" onchange="importarSkyArquivo(this)">
+      <button onclick="abrirImportarSky()" style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">⬆️ Importar</button>
       <button onclick="abrirNovoSky()" style="height:36px;padding:0 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">+ Novo contrato</button>
     </div>
   </div>
@@ -10799,7 +10876,7 @@ async function estEnviarEmail(reg){
   <!-- KPIs -->
   <div style="display:flex;gap:12px;margin:14px 0;flex-wrap:wrap;">
     <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Contratos</div><div id="sky-kpi-total" style="font-size:22px;font-weight:600;">—</div></div>
-    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Vencendo (≤5 dias)</div><div id="sky-kpi-vencendo" style="font-size:22px;font-weight:600;color:#e67e22;">—</div></div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Vencendo (≤7 dias)</div><div id="sky-kpi-vencendo" style="font-size:22px;font-weight:600;color:#e67e22;">—</div></div>
     <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">Total mensal</div><div id="sky-kpi-valor" style="font-size:22px;font-weight:600;">—</div></div>
   </div>
 
@@ -10844,11 +10921,24 @@ async function estEnviarEmail(reg){
   </div>
 </div>
 
+<!-- MODAL RELATÓRIO DA SEMANA SKY -->
+<div id="sky-relatorio-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1300;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
+    <button onclick="document.getElementById('sky-relatorio-modal').style.display='none'" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
+    <div style="font-size:17px;font-weight:600;margin-bottom:4px;">📋 Vencimentos da semana — Sky</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Contratos que vencem nos próximos 7 dias.</div>
+    <div id="sky-relatorio-conteudo"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button onclick="document.getElementById('sky-relatorio-modal').style.display='none'" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- POPUP DE VENCIMENTOS SKY -->
 <div id="sky-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
     <div style="font-size:17px;font-weight:600;margin-bottom:4px;">⚠️ Pagamentos Sky a vencer</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Contratos vencendo em até 5 dias. Marque os que já enviou ao financeiro.</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Contratos vencendo em até 7 dias (uma semana). Marque os que já enviou ao financeiro.</div>
     <div id="sky-popup-lista"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:18px;">
       <button onclick="document.getElementById('sky-popup').style.display='none'" style="padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#111;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;">Fechar</button>
