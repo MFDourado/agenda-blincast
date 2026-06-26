@@ -1202,7 +1202,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.3';
+const BLINTRACK_VERSAO = 'V6.4';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -5094,18 +5094,6 @@ function implBoardLoad(){
 }
 function implBoardPersist(){
   try{ localStorage.setItem(IMPL_BOARD_KEY, JSON.stringify(implBoard)); }catch(e){}
-  implBoardSync();
-}
-// ===== Sincroniza o quadro com a aba PainelAndamento (lida pelo Painel de TV) =====
-// Fire-and-forget: grava no Apps Script DEDICADO do painel (separado do BlinTrack).
-const PAINEL_SYNC_URL='https://script.google.com/macros/s/AKfycbxMGdceOlemlq9nUldxQzXtGdOxqlkQe482I6zoQdOHDDVPJBYy3rWwt041Q120Hfwn/exec';
-const PAINEL_SYNC_TOKEN='blincast-painel';
-function implBoardSync(){
-  if(!PAINEL_SYNC_URL) return;
-  try{
-    fetch(PAINEL_SYNC_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({token:PAINEL_SYNC_TOKEN, itens:implBoard})});
-  }catch(e){}
 }
 function implBoardToggleForm(force){
   const f=document.getElementById('impl-board-form');
@@ -5165,7 +5153,7 @@ function implBoardRender(){
 }
 
 async function loadImplantacoes(){
-  implBoardLoad(); implBoardRender(); implBoardSync();
+  implBoardLoad(); implBoardRender();
   const syncEl = document.getElementById('impl-sync');
   if(syncEl) syncEl.textContent = 'Carregando...';
   // garante que os projetos do Pipeline estejam carregados (origem das UHs)
@@ -7009,9 +6997,171 @@ function forceRefresh(){
   });
 }
 
+// ═══════════════════════ DISTRATO ═══════════════════════
+let distratosDados = [];
+
+async function loadDistrato(){
+  const sync=document.getElementById('distrato-sync');
+  if(sync) sync.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getDistrato');
+    const d=await r.json();
+    distratosDados=Array.isArray(d)?d:[];
+    if(sync) sync.textContent=distratosDados.length+' distrato(s)';
+  }catch(e){ distratosDados=[]; if(sync) sync.textContent='Erro de conexão'; }
+  // garante clientes pro autocomplete
+  if(typeof clientes==='undefined' || !Array.isArray(clientes) || !clientes.length){
+    try{ const rc=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes'); const dc=await rc.json(); clientes=Array.isArray(dc)?dc:[]; }catch(e){}
+  }
+  renderDistrato();
+}
+
+function _dtFmtData(d){
+  if(!d) return '—';
+  if(/^\d{4}-\d{2}-\d{2}/.test(d)){ const p=d.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  return d;
+}
+
+function renderDistrato(){
+  const cont=document.getElementById('distrato-list');
+  if(!cont) return;
+  const busca=(document.getElementById('distrato-busca')?.value||'').trim().toLowerCase();
+  let lista=distratosDados.slice();
+  if(busca) lista=lista.filter(d=>String(d.cliente_nome||'').toLowerCase().includes(busca)||String(d.equipamento||'').toLowerCase().includes(busca)||String(d.os||'').toLowerCase().includes(busca));
+  if(!lista.length){ cont.innerHTML='<div style="padding:2.5rem;text-align:center;color:var(--text-muted);">Nenhum distrato cadastrado. Clique em "+ Novo distrato" para começar.</div>'; return; }
+  // mais recentes primeiro
+  lista.sort((a,b)=>String(b.data_solicitacao||'').localeCompare(String(a.data_solicitacao||'')));
+  cont.innerHTML=lista.map(d=>{
+    const concluido=String(d.status||'')==='concluido';
+    const jur=String(d.juridico)==='true'||String(d.juridico)==='Sim'||d.juridico===true;
+    const cheg=String(d.chegada_equipamento)==='true'||String(d.chegada_equipamento)==='Sim'||d.chegada_equipamento===true;
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:10px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">'
+      +'<div><div style="font-size:15px;font-weight:600;">'+_esc(d.cliente_nome||'—')+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);">'+_esc(d.equipamento||'—')+(d.os?' · OS '+_esc(d.os):'')+(d.cliente_cnpj?' · '+_esc(d.cliente_cnpj):'')+'</div></div>'
+      +'<span class="badge '+(concluido?'concluido':'andamento')+'">'+(concluido?'Concluído':'Em andamento')+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text-muted);">'
+      +'<span>📅 Solicitado: '+_dtFmtData(d.data_solicitacao)+'</span>'
+      +'<span>📦 Retirada: '+_dtFmtData(d.data_retirada)+'</span>'
+      +'<span>🚫 Cancelamento: '+_dtFmtData(d.data_cancelamento)+'</span>'
+      +'<span>'+(jur?'✅':'⬜')+' Jurídico</span>'
+      +'<span>'+(cheg?'✅':'⬜')+' Equipamento recebido</span>'
+      +'</div>'
+      +(d.obs?'<div style="font-size:12px;color:var(--text-muted);margin-top:8px;border-top:0.5px solid var(--border);padding-top:8px;">'+_esc(d.obs)+'</div>':'')
+      +'<div style="display:flex;gap:8px;margin-top:12px;">'
+      +'<button onclick="editarDistrato(\''+d.id+'\')" style="padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>'
+      +(!concluido?'<button onclick="concluirDistrato(\''+d.id+'\')" style="padding:5px 12px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;background:none;color:var(--c-concluido);">✔ Concluir (inativa cliente)</button>':'')
+      +'<button onclick="excluirDistrato(\''+d.id+'\')" style="padding:5px 12px;border:1px solid #e74c3c;border-radius:var(--radius-sm);font-size:12px;font-family:\'DM Sans\',sans-serif;cursor:pointer;background:none;color:#e74c3c;">🗑 Excluir</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function openDistratoModal(){
+  ['dt-cliente-busca','dt-cliente-nome','dt-cliente-cnpj','dt-equipamento','dt-os','dt-data-retirada','dt-data-cancelamento','dt-obs','dt-edit-id'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('dt-data-solicitacao').value=todayStr;
+  document.getElementById('dt-juridico').checked=false;
+  document.getElementById('dt-chegada').checked=false;
+  document.getElementById('distrato-modal-title').textContent='Novo distrato';
+  const lst=document.getElementById('dt-cliente-lista'); if(lst) lst.style.display='none';
+  document.getElementById('distrato-modal').style.display='flex';
+}
+function closeDistratoModal(){ document.getElementById('distrato-modal').style.display='none'; window._distratoRedirect=false; }
+
+function filtrarClientesDistrato(q){
+  const lst=document.getElementById('dt-cliente-lista');
+  if(!lst) return;
+  q=(q||'').trim().toLowerCase();
+  document.getElementById('dt-cliente-nome').value=document.getElementById('dt-cliente-busca').value;
+  if(q.length<2){ lst.style.display='none'; return; }
+  const fonte=(typeof clientes!=='undefined'?clientes:[]);
+  const matches=fonte.filter(c=>String(c.nome||'').toLowerCase().includes(q)).slice(0,20);
+  if(!matches.length){ lst.style.display='none'; return; }
+  lst.innerHTML=matches.map(c=>'<div onclick="selecionarClienteDistrato(\''+_esc(c.nome).replace(/'/g,"\\'")+'\',\''+(c.cnpj||'')+'\')" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--border);color:#111;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'\'">'+_esc(c.nome)+(c.cnpj?' <span style="color:#999;">· '+_esc(c.cnpj)+'</span>':'')+'</div>').join('');
+  lst.style.display='block';
+}
+function selecionarClienteDistrato(nome, cnpj){
+  document.getElementById('dt-cliente-busca').value=nome;
+  document.getElementById('dt-cliente-nome').value=nome;
+  document.getElementById('dt-cliente-cnpj').value=cnpj||'';
+  document.getElementById('dt-cliente-lista').style.display='none';
+}
+
+function editarDistrato(id){
+  const d=distratosDados.find(x=>String(x.id)===String(id)); if(!d) return;
+  document.getElementById('dt-edit-id').value=d.id;
+  document.getElementById('dt-cliente-busca').value=d.cliente_nome||'';
+  document.getElementById('dt-cliente-nome').value=d.cliente_nome||'';
+  document.getElementById('dt-cliente-cnpj').value=d.cliente_cnpj||'';
+  document.getElementById('dt-equipamento').value=d.equipamento||'';
+  document.getElementById('dt-data-solicitacao').value=(d.data_solicitacao||'').slice(0,10);
+  document.getElementById('dt-os').value=d.os||'';
+  document.getElementById('dt-data-retirada').value=(d.data_retirada||'').slice(0,10);
+  document.getElementById('dt-data-cancelamento').value=(d.data_cancelamento||'').slice(0,10);
+  document.getElementById('dt-juridico').checked=(String(d.juridico)==='true'||String(d.juridico)==='Sim');
+  document.getElementById('dt-chegada').checked=(String(d.chegada_equipamento)==='true'||String(d.chegada_equipamento)==='Sim');
+  document.getElementById('dt-obs').value=d.obs||'';
+  document.getElementById('distrato-modal-title').textContent='Editar distrato — '+(d.cliente_nome||'');
+  document.getElementById('distrato-modal').style.display='flex';
+}
+
+async function salvarDistrato(){
+  const nome=document.getElementById('dt-cliente-nome').value.trim()||document.getElementById('dt-cliente-busca').value.trim();
+  const equip=document.getElementById('dt-equipamento').value.trim();
+  if(!nome){ alert('Informe o cliente.'); return; }
+  if(!equip){ alert('Informe o equipamento.'); return; }
+  const editId=document.getElementById('dt-edit-id').value.trim();
+  const payload={
+    token:getToken(),
+    action: editId?'updateDistrato':'addDistrato',
+    id: editId || ('DT'+Date.now()),
+    cliente_nome: nome,
+    cliente_cnpj: document.getElementById('dt-cliente-cnpj').value.trim(),
+    equipamento: equip,
+    data_solicitacao: document.getElementById('dt-data-solicitacao').value,
+    os: document.getElementById('dt-os').value.trim(),
+    data_retirada: document.getElementById('dt-data-retirada').value,
+    data_cancelamento: document.getElementById('dt-data-cancelamento').value,
+    juridico: document.getElementById('dt-juridico').checked,
+    chegada_equipamento: document.getElementById('dt-chegada').checked,
+    obs: document.getElementById('dt-obs').value.trim(),
+    status: 'andamento'
+  };
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    closeDistratoModal();
+    if(window._distratoRedirect){ window._distratoRedirect=false; switchMainTab('distrato'); }
+    else await loadDistrato();
+  }catch(e){ alert('Erro ao salvar distrato.'); }
+}
+
+async function concluirDistrato(id){
+  const d=distratosDados.find(x=>String(x.id)===String(id)); if(!d) return;
+  if(!confirm('Concluir o distrato de "'+(d.cliente_nome||'')+'"? Isso vai INATIVAR o cliente na base.')) return;
+  const payload=Object.assign({}, d, {token:getToken(), action:'updateDistrato', status:'concluido', juridico:(String(d.juridico)==='true'||String(d.juridico)==='Sim'), chegada_equipamento:(String(d.chegada_equipamento)==='true'||String(d.chegada_equipamento)==='Sim')});
+  try{ await fetch(API,{method:'POST',body:JSON.stringify(payload)}); await loadDistrato(); }
+  catch(e){ alert('Erro ao concluir.'); }
+}
+
+async function excluirDistrato(id){
+  if(!confirm('Excluir este distrato?')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateDistrato',id:id,status:'excluido',cliente_nome:'',equipamento:''})}); 
+    // remoção real: marca status excluido e tira da lista local
+    distratosDados=distratosDados.filter(x=>String(x.id)!==String(id));
+    renderDistrato();
+  }catch(e){ alert('Erro ao excluir.'); }
+}
+
 function iniciarDistrato(nome, cnpj){
-  // Pré-preencher o modal de distrato com os dados do cliente
-  document.getElementById('dt-cliente-busca').value = nome;
+  openDistratoModal();
+  document.getElementById('dt-cliente-busca').value=nome;
+  document.getElementById('dt-cliente-nome').value=nome;
+  document.getElementById('dt-cliente-cnpj').value=cnpj||'';
+  document.getElementById('distrato-modal-title').textContent='Novo distrato — '+nome;
+  window._distratoRedirect=true;
+}
+
+function _iniciarDistrato_legado1(nome, cnpj){
   document.getElementById('dt-cliente-nome').value = nome;
   document.getElementById('dt-cliente-cnpj').value = cnpj||'';
   document.getElementById('dt-data-solicitacao').value = todayStr;
@@ -7030,7 +7180,7 @@ function iniciarDistrato(nome, cnpj){
   window._distratoRedirect = true;
 }
 
-function iniciarDistrato(nome, cnpj){
+function _iniciarDistrato_legado2(nome, cnpj){
   // Limpar modal
   ['dt-equipamento','dt-os','dt-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['dt-data-retirada','dt-data-cancelamento'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
