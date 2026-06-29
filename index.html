@@ -903,6 +903,24 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <option value="Rack IP">Rack IP</option>
         </select>
       </div>
+      <div class="modal-field"><label>Manutenção</label>
+        <select class="field-sel" id="at-manutencao">
+          <option value="">—</option>
+          <option value="Corretiva">Corretiva</option>
+          <option value="Preventiva">Preventiva</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>Classificação</label>
+        <select class="field-sel" id="at-classificacao">
+          <option value="">—</option>
+          <option value="Corretiva">Corretiva</option>
+          <option value="Preventiva">Preventiva</option>
+          <option value="Instalação">Instalação</option>
+          <option value="Vistoria">Vistoria</option>
+          <option value="Ampliação">Ampliação</option>
+          <option value="Cancelamento">Cancelamento</option>
+        </select>
+      </div>
       <div class="modal-field" style="grid-column:span 2"><label>Problema *</label><input type="text" id="at-problema" placeholder="Descreva o problema ou serviço"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Observações</label><input type="text" id="at-obs" placeholder="Informações complementares"></div>
       <div class="modal-field"><label>Data prevista do serviço</label><input type="date" id="at-dt-prevista"></div>
@@ -1202,7 +1220,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.5';
+const BLINTRACK_VERSAO = 'V6.6';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7460,6 +7478,7 @@ function renderAta(){
       <td style="padding:3px 4px;white-space:nowrap;vertical-align:middle;">
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
         <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
+        <button onclick="abrirEscalarAta('${r.id}')" title="Escalar (N2 / Campo)" style="padding:2px 5px;border:1px solid #5B9EF5;border-radius:3px;font-size:10px;background:rgba(91,158,245,.12);cursor:pointer;color:#5B9EF5;font-weight:700;">↗</button>
         ${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:2px 5px;border:1px solid #F5B800;border-radius:3px;font-size:10px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;">OS</button>`:''}
       </td>
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
@@ -7625,14 +7644,14 @@ function limparFiltrosAta(){
 }
 
 function openAtaModal(){
-  ['at-no','at-cliente','at-estado','at-no','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao','at-solicitante','at-tel-solicitante'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['at-no','at-cliente','at-estado','at-no','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao','at-solicitante','at-tel-solicitante','at-manutencao','at-classificacao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const aj2El = document.getElementById('at-ajudante2');
   if(aj2El){ aj2El.style.display='none'; }
   const btn2 = document.getElementById('btn-ajudante2');
   if(btn2){ btn2.textContent='+'; btn2.style.color='var(--text-muted)'; }
   document.getElementById('at-dt-abertura').value=todayStr;
   document.getElementById('at-data').value=todayStr;
-  document.getElementById('at-status').value='em_andamento';
+  document.getElementById('at-status').value='planejado';
   const _eqN=document.getElementById('at-equipamento');if(_eqN)_eqN.value='';
   const _fcN=document.getElementById('at-forma-conclusao');if(_fcN)_fcN.value='';
   document.getElementById('at-edit-id').value='';
@@ -7664,6 +7683,8 @@ function editarAta(id){
   }
   document.getElementById('at-problema').value=r.problema||'';
   document.getElementById('at-status').value=r.status||'em_andamento';
+  const _atM=document.getElementById('at-manutencao'); if(_atM)_atM.value=r.manutencao||'';
+  const _atC=document.getElementById('at-classificacao'); if(_atC)_atC.value=r.classificacao||'';
   document.getElementById('at-obs').value=r.obs||'';
   document.getElementById('at-dt-abertura').value=r.dt_abertura||r.data||'';
   const dtPrev=document.getElementById('at-dt-prevista');if(dtPrev)dtPrev.value=r.dt_prevista||'';
@@ -7718,6 +7739,8 @@ async function salvarAta(){
     tecnico:document.getElementById('at-tecnico').value.trim(),
     ajudante: [document.getElementById('at-ajudante').value.trim(), document.getElementById('at-ajudante2')?.value.trim()].filter(Boolean).join(' / '),
     problema,status,
+    manutencao:document.getElementById('at-manutencao')?.value||'',
+    classificacao:document.getElementById('at-classificacao')?.value||'',
     obs:document.getElementById('at-obs').value.trim(),
     solicitante:document.getElementById('at-solicitante').value.trim(),
     tel_solicitante:document.getElementById('at-tel-solicitante').value.trim(),
@@ -7733,10 +7756,13 @@ async function salvarAta(){
     const ataId = editId || uid();
     if(editId){
       await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAta',id:editId,...payload})});
+      const _cliBaseE = (Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===String(payload.cliente||'').trim().toLowerCase());
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:'os-'+editId,cliente:payload.cliente||'',cnpj:_cliBaseE?(_cliBaseE.cnpj||''):'',cidade:payload.estado||'',endereco:_cliBaseE?(_cliBaseE.endereco||''):'',descricao:payload.problema||'',manutencao:payload.manutencao||'',classificacao:payload.classificacao||'',responsavel_nome:payload.solicitante||'',responsavel_tel:payload.tel_solicitante||'',tecnico:payload.tecnico||'',data_prevista:payload.dt_prevista||''})});
     } else {
       await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:ataId,...payload})});
       // Criar OS automaticamente vinculada à ATA
       const osNum = payload.no ? 'OS-'+payload.no : 'OS-ATA-'+ataId.slice(-6).toUpperCase();
+      const _cliBase = (Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===String(payload.cliente||'').trim().toLowerCase());
       const osPayload = {
         token: getToken(),
         action: 'saveOS',
@@ -7745,12 +7771,15 @@ async function salvarAta(){
         data: payload.data || todayStr,
         status: 'Aberta',
         cliente: payload.cliente || '(via ATA)',
-        cnpj: '',
+        cnpj: _cliBase?(_cliBase.cnpj||''):'',
         cidade: payload.estado||'',
-        endereco: '',
-        tipo: payload.problema || '',
+        endereco: _cliBase?(_cliBase.endereco||''):'',
+        tipo: '',
         produto: '',
-        descricao: payload.obs||'',
+        descricao: payload.problema||'',
+        manutencao: payload.manutencao||'',
+        classificacao: payload.classificacao||'',
+        nivel: 'N1',
         responsavel_nome: payload.solicitante||'',
         responsavel_tel: payload.tel_solicitante||'',
         tecnico: payload.tecnico||'',
@@ -7806,9 +7835,11 @@ async function alterarAtaData(id, campo, valor){
 }
 
 async function removerAta(id){
-  if(!confirm('Remover este registro?'))return;
-  try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteAta',id})});await loadAta();}
-  catch(e){setStatus('error','Erro ao remover');}
+  const r=(typeof ataRegistros!=='undefined'?ataRegistros:[]).find(x=>String(x.id)===String(id));
+  confirmarCancelamento('Atendimento', (r&&r.cliente)||id, async (nome,cargo)=>{
+    try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteAta',id,cliente:(r&&r.cliente)||'',resp_nome:nome,resp_cargo:cargo})});await loadAta();}
+    catch(e){setStatus('error','Erro ao remover');}
+  });
 }
 
 // ===== Banner/modal de data de retorno =====
@@ -11981,14 +12012,22 @@ async function estEnviarEmail(reg){
 
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Serviço</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="modal-field"><label>Tipo de serviço</label>
-        <select id="os-tipo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+      <div class="modal-field"><label>Classificação</label>
+        <select id="os-classificacao" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
           <option value="">Selecione...</option>
-          <option>Instalação</option>
-          <option>Manutenção</option>
-          <option>Vistoria</option>
+          <option>Corretiva</option>
           <option>Preventiva</option>
-          <option>Desinstalação</option>
+          <option>Instalação</option>
+          <option>Vistoria</option>
+          <option>Ampliação</option>
+          <option>Cancelamento</option>
+        </select>
+      </div>
+      <div class="modal-field"><label>Manutenção</label>
+        <select id="os-manutencao" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">—</option>
+          <option>Corretiva</option>
+          <option>Preventiva</option>
         </select>
       </div>
       <div class="modal-field"><label>Produto</label>
@@ -12094,7 +12133,7 @@ function renderOS(){
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
             <span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span>
             <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${o.status||'—'}</span>
-            ${o.tipo?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.tipo}</span>`:''}
+            ${o.classificacao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${o.classificacao}</span>`:''}${o.manutencao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,184,0,.12);color:#B8860B;border:1px solid #B8860B44;">${o.manutencao}</span>`:''}
             ${o.produto?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.produto}</span>`:''}
           </div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${o.cliente||'—'}</div>
@@ -12127,7 +12166,8 @@ function abrirNovaOS(){
   renderObsOS();
   bloquearObsOSSeConcluida('');;
   document.getElementById('os-status').value='Aberta';
-  document.getElementById('os-tipo').value='';
+  document.getElementById('os-classificacao').value='';
+  const _om=document.getElementById('os-manutencao'); if(_om)_om.value='';
   document.getElementById('os-produto').value='';
   document.getElementById('os-edit-id').value='';
   popularSelectTecnicosOS();
@@ -12145,7 +12185,8 @@ function editarOS(id){
   set('os-descricao',o.descricao); set('os-obs',o.obs); set('os-materiais',o.materiais);
   set('os-horas',o.horas); set('os-data-prevista',o.data_prevista); set('os-data-conclusao',o.data_conclusao);
   document.getElementById('os-status').value=o.status||'Aberta';
-  document.getElementById('os-tipo').value=o.tipo||'';
+  document.getElementById('os-classificacao').value=o.classificacao||o.tipo||'';
+  const _omE=document.getElementById('os-manutencao'); if(_omE)_omE.value=o.manutencao||'';
   document.getElementById('os-produto').value=o.produto||'';
   document.getElementById('os-edit-id').value=id;
   const _osVwE=document.getElementById('os-vinculo-wrap'); if(_osVwE) _osVwE.innerHTML=htmlVinculoCliente('os');
@@ -12185,7 +12226,10 @@ function filtrarTecnicosPorUFdaOS(cidade){
   if(!sel) return;
   const valAtual = sel.value;
   // Usar lista segmentada por UF com nomes normalizados
-  const lista = TECNICOS_POR_UF_NOMES[uf] || Object.values(TECNICOS_NOMES);
+  const ufU = (uf||'').toUpperCase().trim();
+  const lista = (typeof colabLista!=='undefined'?colabLista:[])
+    .filter(c=>{ const st=String(c.status||'').toLowerCase(); const ativo=st===''||st==='ativo'; const ufC=String(c.uf||'').toUpperCase().trim(); return ativo && (ufU?ufC===ufU:true); })
+    .map(c=>c.nome).filter(Boolean).sort();
   sel.innerHTML = '<option value="">Pool — sem técnico definido</option>' +
     lista.map(t => `<option value="${t}"${t===valAtual?' selected':''}>${t}</option>`).join('');
 }
@@ -12858,7 +12902,7 @@ async function salvarOS(){
     id: osEditId||String(Date.now()),
     numero: g('os-num'), data: g('os-data'), status: g('os-status'),
     cliente: g('os-cliente'), cnpj: g('os-cnpj'), cidade: g('os-cidade'), endereco: g('os-endereco'),
-    tipo: g('os-tipo'), produto: g('os-produto'), descricao: g('os-descricao'),
+    tipo:'', classificacao: g('os-classificacao'), manutencao: g('os-manutencao'), produto: g('os-produto'), descricao: g('os-descricao'),
     tecnico: g('os-tecnico'), data_prevista: g('os-data-prevista'),
     data_conclusao: g('os-data-conclusao'), horas: g('os-horas'),
     obs: osObsBuffer.length ? osObsBuffer.join('\n\n---\n\n') : '', materiais: g('os-materiais'),
@@ -12885,7 +12929,7 @@ async function salvarOS(){
 function notificarTecnicoOS(os){
   if(!os) return;
   const tecnico = os.tecnico||'';
-  const msg = `Nova Ordem de Serviço!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.tipo||'—'}\nEndereço: ${os.endereco||'—'}${os.cidade?' – '+os.cidade:''}\nPrevisto: ${os.data_prevista||'—'}\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
+  const msg = `Nova Ordem de Serviço!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.classificacao||os.tipo||'—'}\nEndereço: ${os.endereco||'—'}${os.cidade?' – '+os.cidade:''}\nPrevisto: ${os.data_prevista||'—'}\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
   
   // Buscar telefone do colaborador
   let telTecnico = '';
@@ -12911,7 +12955,7 @@ function notificarTecnicoOS(os){
         💬 Notificar ${tecnico.split('.')[0]||'técnico'}
       </button></a>`;
   } else {
-    const msgPool = `Nova OS disponível no pool!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.tipo||'—'}\nSem técnico definido — disponível para aceite.\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
+    const msgPool = `Nova OS disponível no pool!\nOS: ${os.numero}\nCliente: ${os.cliente}\nTipo: ${os.classificacao||os.tipo||'—'}\nSem técnico definido — disponível para aceite.\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
     html += `<a href="https://wa.me/${telGrupo}?text=${encodeURIComponent(msgPool)}" target="_blank" style="text-decoration:none;">
       <button style="width:100%;padding:9px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;margin-bottom:6px;">
         💬 Notificar grupo operacional
@@ -12926,12 +12970,79 @@ function notificarTecnicoOS(os){
   setTimeout(()=>{ const el=document.getElementById('os-wpp-notify'); if(el)el.remove(); }, 15000);
 }
 
+function confirmarCancelamento(tipo, ref, onOk){
+  const old=document.getElementById('cancel-ov'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='cancel-ov'; ov.className='modal-overlay'; ov.style.display='flex'; ov.style.zIndex='10010';
+  ov.innerHTML=`<div class="modal" style="max-width:420px;">`+
+    `<h3>Cancelar ${tipo}</h3>`+
+    `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Para cancelar <b>${ref}</b> informe seu nome e cargo. Fica registrado no Log.</div>`+
+    `<div class="modal-field"><label>Nome *</label><input type="text" id="cancel-nome" placeholder="Seu nome"></div>`+
+    `<div class="modal-field" style="margin-top:8px;"><label>Cargo *</label><input type="text" id="cancel-cargo" placeholder="Seu cargo"></div>`+
+    `<div class="modal-actions"><button class="modal-btn" onclick="document.getElementById('cancel-ov').remove()">Voltar</button>`+
+    `<button class="modal-btn primary" id="cancel-ok">Confirmar cancelamento</button></div></div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{const n=document.getElementById('cancel-nome'); if(n)n.focus();},50);
+  document.getElementById('cancel-ok').onclick=async()=>{
+    const nome=(document.getElementById('cancel-nome').value||'').trim();
+    const cargo=(document.getElementById('cancel-cargo').value||'').trim();
+    if(!nome||!cargo){alert('Preencha nome e cargo.');return;}
+    ov.remove();
+    await onOk(nome,cargo);
+  };
+}
+
+function abrirEscalarAta(id){
+  const r=(typeof ataRegistros!=='undefined'?ataRegistros:[]).find(x=>String(x.id)===String(id));
+  const old=document.getElementById('escalar-ov'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='escalar-ov'; ov.className='modal-overlay'; ov.style.display='flex'; ov.style.zIndex='10010';
+  ov.innerHTML=`<div class="modal" style="max-width:460px;">`+
+    `<h3>Escalar atendimento</h3>`+
+    `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${r?('Cliente: <b>'+(r.cliente||'—')+'</b>'):''} · Tratado hoje pelo N1</div>`+
+    `<div class="modal-field"><label>Escalar para</label>`+
+    `<select id="esc-destino" class="field-sel" onchange="_escPopular()"><option value="N2">N2</option><option value="Campo">Técnico de campo</option></select></div>`+
+    `<div class="modal-field" style="margin-top:8px;"><label>Responsável</label><select id="esc-pessoa" class="field-sel"></select></div>`+
+    `<div class="modal-actions"><button class="modal-btn" onclick="document.getElementById('escalar-ov').remove()">Voltar</button>`+
+    `<button class="modal-btn primary" id="esc-ok">Escalar + WhatsApp</button></div></div>`;
+  document.body.appendChild(ov);
+  window._escPopular=function(){
+    const dest=document.getElementById('esc-destino').value;
+    const sel=document.getElementById('esc-pessoa');
+    const base=(typeof colabLista!=='undefined'?colabLista:[]).filter(c=>{const st=String(c.status||'').toLowerCase();return st===''||st==='ativo';});
+    let lista;
+    if(dest==='N2'){ lista=base.filter(c=>/n2/i.test(String(c.setor||'')+' '+String(c.cargo||''))); if(!lista.length) lista=base; }
+    else { lista=base.filter(c=>/t[eé]cnic/i.test(String(c.cargo||'')+' '+String(c.setor||''))); if(!lista.length) lista=base; }
+    sel.innerHTML='<option value="">Selecione...</option>'+lista.map(c=>`<option value="${(c.nome||'').replace(/"/g,'')}" data-tel="${(c.telefone||'').replace(/\D/g,'')}">${c.nome}${c.cargo?(' — '+c.cargo):''}</option>`).join('');
+  };
+  _escPopular();
+  document.getElementById('esc-ok').onclick=async()=>{
+    const dest=document.getElementById('esc-destino').value;
+    const selEl=document.getElementById('esc-pessoa');
+    const pessoa=selEl.value;
+    if(!pessoa){alert('Selecione o responsável.');return;}
+    const tel=selEl.selectedOptions[0]?.getAttribute('data-tel')||'';
+    const nivel = dest==='Campo' ? 'Campo' : 'N2';
+    try{
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id,nivel,tecnico: dest==='Campo'?pessoa:''})});
+    }catch(e){}
+    ov.remove();
+    if(typeof loadAta==='function') loadAta();
+    const cliente=r?(r.cliente||'—'):'—';
+    const problema=r?(r.problema||'—'):'—';
+    const msg=`Atendimento escalado para ${dest==='Campo'?'Técnico de campo':'N2'}!\nCliente: ${cliente}\nMotivo: ${problema}\nResponsável: ${pessoa}`+(dest==='Campo'?`\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`:'');
+    let numero = (tel || '5521971471125').replace(/\D/g,'');
+    if(numero.length<=11) numero='55'+numero;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`,'_blank');
+  };
+}
+
 async function excluirOS(id){
-  if(!confirm('Excluir esta OS?')) return;
-  try{
-    await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id})});
-  }catch(e){alert('Erro ao excluir');return;}
-  loadOS();
+  const o=(typeof osLista!=='undefined'?osLista:[]).find(x=>String(x.id)===String(id));
+  confirmarCancelamento('OS', (o&&o.numero)||id, async (nome,cargo)=>{
+    try{
+      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteOS',id,numero:(o&&o.numero)||'',resp_nome:nome,resp_cargo:cargo})});
+    }catch(e){alert('Erro ao excluir');return;}
+    loadOS();
+  });
 }
 </script>
 
