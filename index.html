@@ -840,7 +840,8 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Cliente</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:3%;">UF</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Equip.</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:18%;">Problema</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">Tipo</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:13%;">Problema</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:11%;">Técnico / Aj.</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Status</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Obs</th>
@@ -848,7 +849,7 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
         </tr>
       </thead>
       <tbody id="ata-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
+        <tr><td colspan="12" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1220,7 +1221,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.6';
+const BLINTRACK_VERSAO = 'V6.6.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7470,7 +7471,7 @@ function renderAta(){
   const filtroForma=document.getElementById('ata-filtro-forma')?.value||'';
   if(filtroForma)lista=lista.filter(r=>String(r.forma_conclusao||'').trim()===filtroForma);
   const tbody=document.getElementById('ata-tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${r.id}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${r.id}')">
@@ -7485,6 +7486,7 @@ function renderAta(){
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
       <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
       <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${r.equipamento||'—'}</td>
+      <td style="padding:3px 4px;text-align:center;white-space:nowrap;">${r.classificacao?`<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${r.classificacao}</span>`:''}${r.manutencao?`<div style="margin-top:2px;"><span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(184,134,11,.12);color:#B8860B;border:1px solid #B8860B44;">${r.manutencao}</span></div>`:''}${(!r.classificacao&&!r.manutencao)?'<span style="color:var(--text-muted);font-size:11px;">—</span>':''}</td>
       <td class="prob-cell" style="padding:3px 5px;">
         <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${r.id}')">${r.problema||'—'}</div>
         <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${r.id}')">▼ ver mais</div>
