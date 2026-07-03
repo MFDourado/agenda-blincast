@@ -1221,7 +1221,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.6.1';
+const BLINTRACK_VERSAO = 'V6.7.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4436,8 +4436,9 @@ function aplicarConfig(){
   const prefixoUser = 'user_'+usuario+'_tab_';
   const temPermissaoPersonalizada = Object.keys(configAtual).some(k=>k.startsWith(prefixoUser));
 
+  const MT_MAP = {implantacoes:'implantacoes-group'};
   TABS_OPERACIONAL.forEach(t => {
-    const el = document.getElementById('mt-'+t.id);
+    const el = document.getElementById('mt-'+(MT_MAP[t.id]||t.id));
     if(!el) return;
     const keyUser  = prefixoUser+t.id;   // sem 'tab_' duplicado
     const keyGeral = 'tab_'+t.id;
@@ -4537,8 +4538,10 @@ async function salvarPermissoesUsuario(){
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveConfiguracoes',config:novaConfig})});
     configAtual = novaConfig;
+    aplicarConfig();
     const toast = document.createElement('div');
     toast.textContent = '✅ Permissões de '+usuarioConfigSelecionado+' salvas!';
+    fecharConfig();
     toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#F5B800;padding:10px 20px;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;transition:opacity .4s';
     document.body.appendChild(toast);
     setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2500);
@@ -4596,6 +4599,13 @@ async function salvarConfig(){
     const el = document.getElementById('cfg-'+t.id);
     if(el) novaConfig['tab_'+t.id] = el.checked ? 'on' : 'off';
   });
+  if(usuarioConfigSelecionado){
+    const pfx='user_'+usuarioConfigSelecionado+'_tab_';
+    [...TABS_OPERACIONAL, ...TABS_COMERCIAL].forEach(t => {
+      const uel=document.getElementById('ucfg-'+usuarioConfigSelecionado+'-'+t.id);
+      if(uel) novaConfig[pfx+t.id] = uel.checked ? 'on' : 'off';
+    });
+  }
   // Botão loading
   const btnSalvar = document.querySelector('#config-modal .modal-btn.primary');
   if(btnSalvar){ btnSalvar.textContent='⏳ Salvando...'; btnSalvar.disabled=true; }
@@ -12082,6 +12092,32 @@ async function estEnviarEmail(reg){
       </div>
     </div>
 
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:4px 0 8px;font-weight:600">Movimentação de estoque</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;background:var(--surface);">
+      <div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr .6fr;gap:8px;align-items:end;">
+        <div class="modal-field"><label>Armazém</label>
+          <select id="os-mov-armazem" onchange="osMovCarregarItens()" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;"></select>
+        </div>
+        <div class="modal-field"><label>Item</label>
+          <input type="text" id="os-mov-item" list="os-mov-itemlist" placeholder="Material..." style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;">
+          <datalist id="os-mov-itemlist"></datalist>
+        </div>
+        <div class="modal-field"><label>Tipo</label>
+          <select id="os-mov-tipo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;">
+            <option value="envio">Envio (saída)</option>
+            <option value="retorno">Retorno (entrada)</option>
+            <option value="reposicao">Reposição (entrada)</option>
+          </select>
+        </div>
+        <div class="modal-field"><label>Qtd</label>
+          <input type="number" id="os-mov-qtd" min="1" value="1" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;text-align:center;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button type="button" onclick="lancarMovOS()" style="padding:6px 14px;background:#5B9EF5;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;">+ Lançar movimento</button>
+      </div>
+      <div id="os-mov-lista" style="margin-top:10px;font-size:12px;color:var(--text-muted);"></div>
+    </div>
     <input type="hidden" id="os-edit-id">
     <div class="modal-actions">
       <button class="modal-btn" onclick="fecharModalOS()">Cancelar</button>
@@ -12149,6 +12185,7 @@ function renderOS(){
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
+          ${(o.fotos&&o.fotos!=='[]'&&o.fotos!=='""')?`<button onclick="verFotosOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.1);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📷 Fotos</button>`:''}
           <button onclick="editarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
           <button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
         </div>
@@ -12158,6 +12195,7 @@ function renderOS(){
 
 function abrirNovaOS(){
   osEditId=null;
+  setTimeout(osMovInit,60);
   document.getElementById('os-modal-title').textContent='Nova Ordem de Serviço';
   document.getElementById('os-num').value='OS-'+String(osLista.length+1).padStart(3,'0');
   document.getElementById('os-data').value=new Date().toISOString().split('T')[0];
@@ -12176,10 +12214,65 @@ function abrirNovaOS(){
   document.getElementById('os-modal').style.display='flex';
 }
 
+async function osMovInit(){
+  const sel=document.getElementById('os-mov-armazem'); if(!sel) return;
+  if(!Array.isArray(window.armazensCache)||!armazensCache.length){ try{await _fetchArmazens();}catch(e){} }
+  const arms=Array.isArray(window.armazensCache)?armazensCache:[];
+  sel.innerHTML='<option value="">Selecione o armazém...</option>'+arms.map(a=>`<option value="${a.id}">${a.nome}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
+  osMovCarregarItens(); carregarMovOS();
+}
+async function osMovCarregarItens(){
+  const arm=document.getElementById('os-mov-armazem').value;
+  const dl=document.getElementById('os-mov-itemlist'); if(dl) dl.innerHTML='';
+  if(!arm) return;
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEstoqueItens&armazem_id='+encodeURIComponent(arm));
+    const d=await r.json(); const itens=Array.isArray(d.itens)?d.itens:[];
+    if(dl) dl.innerHTML=itens.map(it=>`<option value="${(it.item||'').replace(/"/g,'')}">${it.quantidade!==''?('saldo: '+it.quantidade):''}</option>`).join('');
+  }catch(e){}
+}
+async function lancarMovOS(){
+  const arm=document.getElementById('os-mov-armazem').value;
+  const item=document.getElementById('os-mov-item').value.trim();
+  const tipo=document.getElementById('os-mov-tipo').value;
+  const qtd=document.getElementById('os-mov-qtd').value;
+  if(!arm){alert('Selecione o armazém.');return;}
+  if(!item){alert('Informe o item.');return;}
+  const o=(typeof osLista!=='undefined'?osLista:[]).find(x=>String(x.id)===String(osEditId));
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'movimentarEstoque',armazem_id:arm,item,tipo_mov:tipo,quantidade:qtd,os_id:osEditId||'',os_numero:(o&&o.numero)||document.getElementById('os-num').value||''})});
+    const d=await r.json(); if(d.error){alert(d.error);return;}
+  }catch(e){alert('Erro ao lançar movimento.');return;}
+  document.getElementById('os-mov-item').value=''; document.getElementById('os-mov-qtd').value='1';
+  osMovCarregarItens(); carregarMovOS();
+}
+async function carregarMovOS(){
+  const div=document.getElementById('os-mov-lista'); if(!div) return;
+  if(!osEditId){ div.innerHTML='<span style="opacity:.7;">Salve a OS para registrar movimentos vinculados.</span>'; return; }
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMovimentos&os_id='+encodeURIComponent(osEditId));
+    const d=await r.json(); const movs=Array.isArray(d.movimentos)?d.movimentos:[];
+    if(!movs.length){ div.innerHTML='<span style="opacity:.7;">Nenhuma movimentação ainda.</span>'; return; }
+    div.innerHTML=movs.map(m=>{ const ent=m.sentido==='entrada'; const cor=ent?'#2BB673':'#e74c3c'; const sig=ent?'+':'−'; return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>${m.data} · ${m.item} <span style="opacity:.6;">(${m.armazem_nome||'—'})</span></span><span style="color:${cor};font-weight:700;white-space:nowrap;">${sig}${m.quantidade} <span style="opacity:.7;font-weight:400;">${m.tipo_mov}</span></span></div>`; }).join('');
+  }catch(e){ div.innerHTML='<span style="opacity:.7;">Erro ao carregar movimentos.</span>'; }
+}
+function verFotosOS(id){
+  const o=(typeof osLista!=='undefined'?osLista:[]).find(x=>String(x.id)===String(id));
+  let fotos=[]; try{ fotos=JSON.parse((o&&o.fotos)||'[]'); }catch(e){ fotos=[]; }
+  if(!Array.isArray(fotos)||!fotos.length){ alert('Nenhuma foto anexada nesta OS.'); return; }
+  const old=document.getElementById('fotos-ov'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='fotos-ov'; ov.className='modal-overlay'; ov.style.display='flex'; ov.style.zIndex='10010';
+  ov.innerHTML=`<div class="modal" style="max-width:680px;"><h3>Fotos da OS ${(o&&o.numero)||''}</h3>`+
+    `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:60vh;overflow-y:auto;margin:10px 0;">`+
+    fotos.map(f=>{const url=(typeof f==='string')?f:(f.url||''); const thumb=(typeof f==='object'&&f.thumb)?f.thumb:url; return `<a href="${url}" target="_blank" rel="noopener" style="display:block;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><img src="${thumb}" style="width:100%;height:120px;object-fit:cover;display:block;" onerror="this.style.opacity=.3;"></a>`;}).join('')+
+    `</div><div class="modal-actions"><button class="modal-btn" onclick="document.getElementById('fotos-ov').remove()">Fechar</button></div></div>`;
+  document.body.appendChild(ov);
+}
 function editarOS(id){
   const o=osLista.find(x=>String(x.id)===String(id));
   if(!o) return;
   osEditId=id;
+  setTimeout(osMovInit,60);
   document.getElementById('os-modal-title').textContent='Editar Ordem de Serviço';
   const set=(el,val)=>{const e=document.getElementById(el);if(e)e.value=val||'';};
   set('os-num',o.numero); set('os-data',o.data); set('os-cliente',o.cliente);
