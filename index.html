@@ -1004,6 +1004,11 @@ let API_TOKEN_RUNTIME = '';
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(localStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
 const LOGIN_API = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const PERFIS_OPERACIONAL = ['admin','operacional'];
+// Perfil pode ser combinado (ex.: 'operacional/comercial'). Aceita se contiver operacional ou admin.
+function perfilPodeOperacional(perfil){
+  const partes = String(perfil||'').toLowerCase().split(/[\/,;\s]+/).filter(Boolean);
+  return partes.indexOf('admin')>=0 || partes.indexOf('operacional')>=0;
+}
 let usuarioLogado = null;
 
 function iniciarApp(){
@@ -1012,7 +1017,7 @@ function iniciarApp(){
     const sess = localStorage.getItem('blintrack_user');
     if(sess){
       const u = JSON.parse(sess);
-      if(PERFIS_OPERACIONAL.includes(u.perfil)){
+      if(perfilPodeOperacional(u.perfil)){
         usuarioLogado = u;
         if(u.token) API_TOKEN_RUNTIME = u.token;
         document.getElementById('login-overlay').style.display='none';
@@ -1049,7 +1054,7 @@ async function fazerLogin(){
   try{
     const r = await fetch(LOGIN_API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
     const d = await r.json();
-    if(d.ok && PERFIS_OPERACIONAL.includes(d.perfil)){
+    if(d.ok && perfilPodeOperacional(d.perfil)){
       usuarioLogado = d;
       if(d.token) API_TOKEN_RUNTIME = d.token;
       d.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(d));
@@ -1068,7 +1073,7 @@ async function fazerLogin(){
       setTimeout(sincronizarOperacional,3000);
       setTimeout(verificarNotificacoesFerias, 8000);
       setTimeout(checarPopupSky, 7000);
-    } else if(d.ok && !PERFIS_OPERACIONAL.includes(d.perfil)){
+    } else if(d.ok && !perfilPodeOperacional(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
       errEl.textContent = d.erro||'Usuário ou senha incorretos.';
@@ -1221,7 +1226,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.7.1';
+const BLINTRACK_VERSAO = 'V6.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
