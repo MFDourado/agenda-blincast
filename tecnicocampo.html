@@ -328,10 +328,11 @@ input[list].field-inp{margin-bottom:4px;}
 </div>
 
 <script>
+// ⬇️ COLE AQUI A MESMA URL /exec usada no index (se mudar, troque aqui também) ⬇️
 const API='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const NUM_WPP_OPERACIONAL='5521971471125';
 
-const MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MASTRO ANTENA UHF","LNBF KU UNIVERSAL SIMPLES","LNBF KU UNIVERSAL DUPLO","LNBF KU UNIVERSAL QUADRUPLO","LNBF DUPLO KU SKY","LNBF KU NORTH","LNBF KU MULTIPONTO","AMPLIFICADOR 20DB KU","AMPLIFICADOR 23DB KU","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB KU","AMPLIFICADOR 20DB UHF","AMPLIFICADOR 25DB UHF","AMPLIFICADOR 30DB UHF","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB UHF","MINI BOOSTER 26DB","CABO COAXIAL RG11","CABO COAXIAL RG6","DIPLEXER SAT-UHF","CONECTOR RG11","EMENDA CONECTOR COAXIAL","CONECTOR RG06","DIVISOR 1:2 ALTA","DIVISOR 1:4 ALTA","DIVISOR 1:3 ALTA","DIVISOR 1:8 ALTA","DIVISOR 1:2 BAIXA","DIVISOR 1:3 BAIXA","DIVISOR 1:4 BAIXA","DIVISOR 1:8 BAIXA","1S - TAP 06DB","1S - TAP 09DB","1S - TAP 12DB","1S - TAP 16DB","1S - TAP 20DB","1S - TAP 24DB","2S - 06DB TAP","2S - 09DB TAP","2S - 12DB TAP","2S - 16DB TAP","2S - 20DB TAP","2S - 24DB TAP","FITA ISOLANTE","BUCHA S6 PLASTICO","BUCHA S8 PLASTICO","BUCHA S10 PLASTICO","BUCHA S12 PLASTICO","FITA DE AUTO FUSÃO","FIXA FIO RG06","FIXA FIO RG11","PARAFUSO 6MM","PARAFUSO 8MM","PARAFUSO 12MM","CANALETA DE PVC","MODULADOR HD CANAL ZINWELL","MODULADOR SD ELETROSTAMP","RACK 10 CANAIS SD","RACK 10 CANAIS HD","RACK 15 CANAIS SD","RACK 15 CANAIS HD","RACK 20 CANAIS SD","RACK 20 CANAIS HD","RACK 25 CANAIS SD","RACK 25 CANAIS HD","RACK 30 CANAIS SD","RACK 30 CANAIS HD","FONTE 12V X 2A 24W","CABO RCA","CABO HDMI","RECEPTOR SKY HD","FONTE 24V 2A","CONECTOR RG59","MODULADORES HDMI ELETROSTAMP","FILTRO DIGITAL ZINWELL","BISNAGA DE SILICONE","COLA BRANCA","ABRAÇADEIRA 6MM","ABRAÇADEIRA COPO 1 POLEGADA","VELCRO 3MT","FITA ADESIVA TRANSPARENTE","FITA ADESIVA MARROM","PISTOLA DE SILICONE","PARAFUSO AUTO BROCANTE","BROCA SDS 10MM","BROCA SDS PLUS 6MM","BUCHA C/ PARAFUSO 10MM","CABO DROP ÓPTICO ROLO 1.000","CABO OPTICO","CORDÃO OPTICO","PATCH CORD 30CM","SWITCH 8 PORTAS GIGA","CONECTOR RJ45","CONECTOR BNC"];
+let MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MASTRO ANTENA UHF","LNBF KU UNIVERSAL SIMPLES","LNBF KU UNIVERSAL DUPLO","LNBF KU UNIVERSAL QUADRUPLO","LNBF DUPLO KU SKY","LNBF KU NORTH","LNBF KU MULTIPONTO","AMPLIFICADOR 20DB KU","AMPLIFICADOR 23DB KU","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB KU","AMPLIFICADOR 20DB UHF","AMPLIFICADOR 25DB UHF","AMPLIFICADOR 30DB UHF","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB UHF","MINI BOOSTER 26DB","CABO COAXIAL RG11","CABO COAXIAL RG6","DIPLEXER SAT-UHF","CONECTOR RG11","EMENDA CONECTOR COAXIAL","CONECTOR RG06","DIVISOR 1:2 ALTA","DIVISOR 1:4 ALTA","DIVISOR 1:3 ALTA","DIVISOR 1:8 ALTA","DIVISOR 1:2 BAIXA","DIVISOR 1:3 BAIXA","DIVISOR 1:4 BAIXA","DIVISOR 1:8 BAIXA","1S - TAP 06DB","1S - TAP 09DB","1S - TAP 12DB","1S - TAP 16DB","1S - TAP 20DB","1S - TAP 24DB","2S - 06DB TAP","2S - 09DB TAP","2S - 12DB TAP","2S - 16DB TAP","2S - 20DB TAP","2S - 24DB TAP","FITA ISOLANTE","BUCHA S6 PLASTICO","BUCHA S8 PLASTICO","BUCHA S10 PLASTICO","BUCHA S12 PLASTICO","FITA DE AUTO FUSÃO","FIXA FIO RG06","FIXA FIO RG11","PARAFUSO 6MM","PARAFUSO 8MM","PARAFUSO 12MM","CANALETA DE PVC","MODULADOR HD CANAL ZINWELL","MODULADOR SD ELETROSTAMP","RACK 10 CANAIS SD","RACK 10 CANAIS HD","RACK 15 CANAIS SD","RACK 15 CANAIS HD","RACK 20 CANAIS SD","RACK 20 CANAIS HD","RACK 25 CANAIS SD","RACK 25 CANAIS HD","RACK 30 CANAIS SD","RACK 30 CANAIS HD","FONTE 12V X 2A 24W","CABO RCA","CABO HDMI","RECEPTOR SKY HD","FONTE 24V 2A","CONECTOR RG59","MODULADORES HDMI ELETROSTAMP","FILTRO DIGITAL ZINWELL","BISNAGA DE SILICONE","COLA BRANCA","ABRAÇADEIRA 6MM","ABRAÇADEIRA COPO 1 POLEGADA","VELCRO 3MT","FITA ADESIVA TRANSPARENTE","FITA ADESIVA MARROM","PISTOLA DE SILICONE","PARAFUSO AUTO BROCANTE","BROCA SDS 10MM","BROCA SDS PLUS 6MM","BUCHA C/ PARAFUSO 10MM","CABO DROP ÓPTICO ROLO 1.000","CABO OPTICO","CORDÃO OPTICO","PATCH CORD 30CM","SWITCH 8 PORTAS GIGA","CONECTOR RJ45","CONECTOR BNC"];
 
 let usuarioCampo=null;
 let filtroAdminStatus='';
@@ -375,6 +376,7 @@ function iniciarAppCampo(){
   const fadm=document.getElementById('admin-filtros');
   if(fadm) fadm.style.display=isAdmin()?'flex':'none';
   preencherDatalist();
+  carregarMateriaisEstoque();
   carregarOS();
 }
 
@@ -407,6 +409,18 @@ function preencherDatalist(){
   const dl=document.getElementById('mat-list');
   dl.innerHTML='';
   MATERIAIS.forEach(m=>{const o=document.createElement('option');o.value=m;dl.appendChild(o);});
+}
+async function carregarMateriaisEstoque(){
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEstoqueItens');
+    const d=await r.json();
+    const itens=Array.isArray(d.itens)?d.itens:[];
+    const nomes=itens.map(it=>String(it.item||'').trim()).filter(Boolean);
+    const set=new Set(MATERIAIS.map(m=>String(m).toUpperCase()));
+    nomes.forEach(n=>{ if(!set.has(n.toUpperCase())){ MATERIAIS.push(n); set.add(n.toUpperCase()); } });
+    MATERIAIS.sort();
+    preencherDatalist();
+  }catch(e){}
 }
 
 async function sincronizarCampo(){
@@ -800,6 +814,7 @@ function iniciarConfirm(){
 
 function cancelarConfirm(){clearInterval(confirmCountdown);}
 
+function fileToBase64Campo(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); }); }
 async function concluirOS(){
   const _btnOk=document.getElementById('btn-ok-confirmar');
   const _origOk=_btnOk?_btnOk.textContent:null;
@@ -812,12 +827,28 @@ async function concluirOS(){
   const materiais=materiaisSelecionados.map(m=>m.qtd+'x '+m.nome).join(', ');
   const obsCompleta=`Ação: ${acao}${materiais?'\nMateriais: '+materiais:''}\nResponsável: ${nome} (${tel})`;
 
+  let fotosLinks=[];
+  try{
+    const _inp=document.getElementById('fin-fotos');
+    if(_inp && _inp.files && _inp.files.length){
+      for(let i=0;i<_inp.files.length;i++){
+        const _f=_inp.files[i];
+        const _b64=await fileToBase64Campo(_f);
+        const _rr=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadFotoOS',arquivo:_b64,mime:_f.type||'image/jpeg',os_numero:osAtual?.numero||''})});
+        const _dd=await _rr.json();
+        if(_dd && _dd.url) fotosLinks.push({url:_dd.url,thumb:_dd.thumb||_dd.url});
+      }
+    }
+  }catch(e){}
+  let fotosExist=[]; try{ fotosExist=JSON.parse(osAtual?.fotos||'[]'); }catch(e){ fotosExist=[]; }
+  const fotosFinal=(Array.isArray(fotosExist)?fotosExist:[]).concat(fotosLinks);
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(),action:'saveOS',
       id:osAtual.id,status:'Aguardando confirmação',
       data_conclusao:hoje,hora_conclusao:agora,
       obs:obsCompleta,materiais,
+      fotos:JSON.stringify(fotosFinal),
       responsavel_nome:nome,responsavel_tel:tel
     })});
     await fetch(API,{method:'POST',body:JSON.stringify({
