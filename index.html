@@ -1002,7 +1002,10 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(localStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
-const LOGIN_API = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
+// ⬇️⬇️  COLE AQUI A URL /exec DO APPS SCRIPT (a nova, se você reimplantar)  ⬇️⬇️
+const BLINTRACK_API_URL = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
+// ⬆️⬆️  só essa linha precisa mudar quando a URL do backend mudar  ⬆️⬆️
+const LOGIN_API = BLINTRACK_API_URL;
 const PERFIS_OPERACIONAL = ['admin','operacional'];
 // Perfil pode ser combinado (ex.: 'operacional/comercial'). Aceita se contiver operacional ou admin.
 function perfilPodeOperacional(perfil){
@@ -1099,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', function(){
   iniciarApp();
 });
 
-const API='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
+const API=BLINTRACK_API_URL;
 const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const DAYS_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
@@ -1226,7 +1229,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.8';
+const BLINTRACK_VERSAO = 'V6.8.1';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7491,11 +7494,13 @@ function renderAta(){
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
     return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${r.id}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${r.id}')">
       <td style="padding:3px 2px;vertical-align:middle;cursor:grab;" class="ata-drag-handle" draggable="true" title="Arrastar para reordenar">⠿</td>
-      <td style="padding:3px 4px;white-space:nowrap;vertical-align:middle;">
+      <td style="padding:3px 4px;vertical-align:middle;">
+        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
         <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
         <button onclick="abrirEscalarAta('${r.id}')" title="Escalar (N2 / Campo)" style="padding:2px 5px;border:1px solid #5B9EF5;border-radius:3px;font-size:10px;background:rgba(91,158,245,.12);cursor:pointer;color:#5B9EF5;font-weight:700;">↗</button>
         ${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:2px 5px;border:1px solid #F5B800;border-radius:3px;font-size:10px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;">OS</button>`:''}
+        </div>
       </td>
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
