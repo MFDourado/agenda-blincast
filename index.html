@@ -835,17 +835,17 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
       <thead>
         <tr style="background:var(--black);">
           <th style="padding:8px 2px;width:2%;"></th>
-          <th style="padding:8px 2px;width:4%;"></th>
+          <th style="padding:8px 2px;width:9%;"></th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">No OS</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Cliente</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:11%;">Cliente</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:3%;">UF</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Equip.</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:9%;">Tipo</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:13%;">Problema</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:12%;">Problema</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:11%;">Técnico / Aj.</th>
           <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Status</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:10%;">Obs</th>
-          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Datas</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:8%;">Obs</th>
+          <th style="font-size:10px;font-weight:600;color:#888;padding:8px 5px;text-transform:uppercase;text-align:left;white-space:nowrap;width:7%;">Datas</th>
         </tr>
       </thead>
       <tbody id="ata-tbody">
@@ -1229,7 +1229,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.8.1';
+const BLINTRACK_VERSAO = 'V6.8.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7499,10 +7499,9 @@ function renderAta(){
         <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
         <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
         <button onclick="abrirEscalarAta('${r.id}')" title="Escalar (N2 / Campo)" style="padding:2px 5px;border:1px solid #5B9EF5;border-radius:3px;font-size:10px;background:rgba(91,158,245,.12);cursor:pointer;color:#5B9EF5;font-weight:700;">↗</button>
-        ${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:2px 5px;border:1px solid #F5B800;border-radius:3px;font-size:10px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;">OS</button>`:''}
         </div>
       </td>
-      <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.no||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:5px;">${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:1px 5px;border:1px solid #F5B800;border-radius:3px;font-size:9px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;font-family:'DM Sans',sans-serif;">OS</button>`:''}<span style="overflow:hidden;text-overflow:ellipsis;">${r.no||'—'}</span></span></td>
       <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
       <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
       <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${r.equipamento||'—'}</td>
