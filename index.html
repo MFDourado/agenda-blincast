@@ -1251,7 +1251,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.1';
+const BLINTRACK_VERSAO = 'V6.9.2';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7715,7 +7715,9 @@ function editarAta(id){
   document.getElementById('at-data').value=r.data||todayStr;
   document.getElementById('at-cliente').value=r.cliente||'';
   document.getElementById('at-estado').value=r.estado||'';
-  document.getElementById('at-tecnico').value=r.tecnico||'';
+  filtrarTecnicosPorUF(r.estado||'', 'at-tecnico');
+  const _tsel=document.getElementById('at-tecnico');
+  if(_tsel){ if(r.tecnico && ![..._tsel.options].some(o=>o.value===r.tecnico)){ const _o=document.createElement('option'); _o.value=r.tecnico; _o.textContent=r.tecnico; _tsel.appendChild(_o); } _tsel.value=r.tecnico||''; }
   const ajParts = (r.ajudante||'').split('/').map(s=>s.trim());
   document.getElementById('at-ajudante').value = ajParts[0]||'';
   if(ajParts[1]){
