@@ -1196,7 +1196,7 @@ const TAB_LABELS = {
   'rastreio-correios':'Rastreio · Correios', 'rastreio-jamef':'Rastreio · Jamef',
   'os-relatorio':'Relatório OS', colaboradores:'Colaboradores',
   'escala-sac':'Escala · SAC', 'escala-tecnico':'Escala · Técnico campo', 'escala-n2':'Escala · N2',
-  'consulta-cnpj':'Consultar CNPJ'
+  'consulta-cnpj':'Consultar CNPJ', frota:'Frota / Veículos'
 };
 let abasAbertas = [];     // ordem das abas (ids)
 let abaAtiva = null;
@@ -1252,7 +1252,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.8';
+const BLINTRACK_VERSAO = 'V6.9.9';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2804,7 +2804,7 @@ function renderVeiculos(){
   tb.innerHTML=veiculosLista.map(v=>{
     const inativo=(String(v.ativo||'').toLowerCase()==='não'||String(v.ativo||'').toLowerCase()==='nao');
     return '<tr>'+
-      '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;">'+(v.placa||'—')+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;">'+(String(v.placa||'').toUpperCase()||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.modelo||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.cor||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.tecnico||'—')+'</td>'+
@@ -2820,7 +2820,7 @@ function novoVeiculo(){ veicEditId=null; ['fv-placa','fv-modelo','fv-cor','fv-te
 function editarVeiculo(id){ const v=veiculosLista.find(x=>String(x.id)===String(id)); if(!v)return; veicEditId=v.id; const set=(i,val)=>{const e=document.getElementById(i);if(e)e.value=val||'';}; set('fv-placa',v.placa);set('fv-modelo',v.modelo);set('fv-cor',v.cor);{const _ts=document.getElementById('fv-tecnico');if(_ts){if(v.tecnico&&![..._ts.options].some(o=>o.value===v.tecnico)){const _o=document.createElement('option');_o.value=v.tecnico;_o.textContent=v.tecnico;_ts.appendChild(_o);}_ts.value=v.tecnico||'';}}set('fv-ano',v.ano);set('fv-renavam',v.renavam);set('fv-obs',v.obs); const a=document.getElementById('fv-ativo');if(a)a.value=(String(v.ativo||'').toLowerCase().charAt(0)==='n'?'Não':'Sim'); const t=document.getElementById('fv-titulo');if(t)t.textContent='Editar veículo'; const pg=document.getElementById('page-frota'); if(pg)pg.scrollIntoView({behavior:'smooth'}); }
 async function salvarVeiculoOp(){
   const g=i=>document.getElementById(i)?.value||'';
-  const payload={token:getToken(),action:'saveVeiculo',placa:g('fv-placa'),modelo:g('fv-modelo'),cor:g('fv-cor'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim'};
+  const payload={token:getToken(),action:'saveVeiculo',placa:(g('fv-placa')||'').toUpperCase(),modelo:g('fv-modelo'),cor:g('fv-cor'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim'};
   if(!payload.placa){ alert('Informe a placa.'); return; }
   if(veicEditId) payload.id=veicEditId;
   try{ const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)}); const d=await r.json(); if(d.ok){ showToast('Veículo salvo.'); novoVeiculo(); await carregarVeiculos(); } else alert('Erro: '+(d.error||'')); }catch(e){ alert('Erro de conexão.'); }
