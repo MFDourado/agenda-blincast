@@ -1252,7 +1252,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.4';
+const BLINTRACK_VERSAO = 'V6.9.6';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2788,24 +2788,25 @@ function switchMainTab(t){
 // ===================== FROTA (Veículos + Vistorias) =====================
 let veiculosLista=[], vistoriasLista=[], veicEditId=null;
 async function loadFrota(){
-  try{ if(typeof carregarColaboradores==='function' && (typeof colabLista==='undefined' || !colabLista || !colabLista.length)) await carregarColaboradores(); }catch(e){}
-  const dl=document.getElementById('frota-tec-list');
-  if(dl && typeof colabLista!=='undefined' && colabLista) dl.innerHTML=(colabLista||[]).map(c=>'<option value="'+(c.nome||'')+'">').join('');
+  try{ if(typeof loadColaboradores==='function' && (typeof colabLista==='undefined' || !colabLista || !colabLista.length)) await loadColaboradores(); }catch(e){}
+  const sel=document.getElementById('fv-tecnico');
+  if(sel){ const atual=sel.value; const nomes=(colabLista||[]).map(c=>c&&c.nome).filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b))); sel.innerHTML='<option value="">Selecione...</option>'+nomes.map(n=>'<option value="'+n+'">'+n+'</option>').join(''); if(atual)sel.value=atual; }
   await carregarVeiculos();
   await carregarVistoriasOp();
 }
 async function carregarVeiculos(){
   try{ const r=await fetch(API+'?action=getVeiculos&token='+encodeURIComponent(getToken())); const d=await r.json(); veiculosLista=(d&&d.veiculos)?d.veiculos:[]; renderVeiculos(); }
-  catch(e){ const el=document.getElementById('frota-veic-lista'); if(el)el.innerHTML='<tr><td colspan="6" style="padding:10px;color:var(--text-muted);">Erro ao carregar.</td></tr>'; }
+  catch(e){ const el=document.getElementById('frota-veic-lista'); if(el)el.innerHTML='<tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Erro ao carregar.</td></tr>'; }
 }
 function renderVeiculos(){
   const tb=document.getElementById('frota-veic-lista'); if(!tb) return;
-  if(!veiculosLista.length){ tb.innerHTML='<tr><td colspan="6" style="padding:10px;color:var(--text-muted);">Nenhum veículo cadastrado.</td></tr>'; return; }
+  if(!veiculosLista.length){ tb.innerHTML='<tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Nenhum veículo cadastrado.</td></tr>'; return; }
   tb.innerHTML=veiculosLista.map(v=>{
     const inativo=(String(v.ativo||'').toLowerCase()==='não'||String(v.ativo||'').toLowerCase()==='nao');
     return '<tr>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;">'+(v.placa||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.modelo||'—')+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.cor||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.tecnico||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.ano||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(inativo?'<span style="color:#c0392b">Inativo</span>':'<span style="color:#2BB673">Ativo</span>')+'</td>'+
@@ -2815,11 +2816,11 @@ function renderVeiculos(){
       '</td></tr>';
   }).join('');
 }
-function novoVeiculo(){ veicEditId=null; ['fv-placa','fv-modelo','fv-tecnico','fv-ano','fv-renavam','fv-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); const a=document.getElementById('fv-ativo');if(a)a.value='Sim'; const t=document.getElementById('fv-titulo');if(t)t.textContent='Novo veículo'; }
-function editarVeiculo(id){ const v=veiculosLista.find(x=>String(x.id)===String(id)); if(!v)return; veicEditId=v.id; const set=(i,val)=>{const e=document.getElementById(i);if(e)e.value=val||'';}; set('fv-placa',v.placa);set('fv-modelo',v.modelo);set('fv-tecnico',v.tecnico);set('fv-ano',v.ano);set('fv-renavam',v.renavam);set('fv-obs',v.obs); const a=document.getElementById('fv-ativo');if(a)a.value=(String(v.ativo||'').toLowerCase().charAt(0)==='n'?'Não':'Sim'); const t=document.getElementById('fv-titulo');if(t)t.textContent='Editar veículo'; const pg=document.getElementById('page-frota'); if(pg)pg.scrollIntoView({behavior:'smooth'}); }
+function novoVeiculo(){ veicEditId=null; ['fv-placa','fv-modelo','fv-cor','fv-tecnico','fv-ano','fv-renavam','fv-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); const a=document.getElementById('fv-ativo');if(a)a.value='Sim'; const t=document.getElementById('fv-titulo');if(t)t.textContent='Novo veículo'; }
+function editarVeiculo(id){ const v=veiculosLista.find(x=>String(x.id)===String(id)); if(!v)return; veicEditId=v.id; const set=(i,val)=>{const e=document.getElementById(i);if(e)e.value=val||'';}; set('fv-placa',v.placa);set('fv-modelo',v.modelo);set('fv-cor',v.cor);{const _ts=document.getElementById('fv-tecnico');if(_ts){if(v.tecnico&&![..._ts.options].some(o=>o.value===v.tecnico)){const _o=document.createElement('option');_o.value=v.tecnico;_o.textContent=v.tecnico;_ts.appendChild(_o);}_ts.value=v.tecnico||'';}}set('fv-ano',v.ano);set('fv-renavam',v.renavam);set('fv-obs',v.obs); const a=document.getElementById('fv-ativo');if(a)a.value=(String(v.ativo||'').toLowerCase().charAt(0)==='n'?'Não':'Sim'); const t=document.getElementById('fv-titulo');if(t)t.textContent='Editar veículo'; const pg=document.getElementById('page-frota'); if(pg)pg.scrollIntoView({behavior:'smooth'}); }
 async function salvarVeiculoOp(){
   const g=i=>document.getElementById(i)?.value||'';
-  const payload={token:getToken(),action:'saveVeiculo',placa:g('fv-placa'),modelo:g('fv-modelo'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim'};
+  const payload={token:getToken(),action:'saveVeiculo',placa:g('fv-placa'),modelo:g('fv-modelo'),cor:g('fv-cor'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim'};
   if(!payload.placa){ alert('Informe a placa.'); return; }
   if(veicEditId) payload.id=veicEditId;
   try{ const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)}); const d=await r.json(); if(d.ok){ showToast('Veículo salvo.'); novoVeiculo(); await carregarVeiculos(); } else alert('Erro: '+(d.error||'')); }catch(e){ alert('Erro de conexão.'); }
@@ -10489,7 +10490,8 @@ async function estEnviarEmail(reg){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
       <div><label style="font-size:11px;color:var(--text-muted);">Placa *</label><input id="fv-placa" placeholder="RIO-2B34" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;text-transform:uppercase;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Modelo</label><input id="fv-modelo" placeholder="Fiat Fiorino" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">Técnico responsável</label><input id="fv-tecnico" list="frota-tec-list" placeholder="Nome do técnico" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"><datalist id="frota-tec-list"></datalist></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">Cor</label><input id="fv-cor" placeholder="Branco" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">Técnico responsável</label><select id="fv-tecnico" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 8px;font-size:13px;outline:none;"><option value="">Selecione...</option></select></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Ano</label><input id="fv-ano" placeholder="2022" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Renavam</label><input id="fv-renavam" placeholder="00000000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Situação</label><select id="fv-ativo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 8px;font-size:13px;outline:none;"><option value="Sim">Ativo</option><option value="Não">Inativo</option></select></div>
@@ -10501,8 +10503,8 @@ async function estEnviarEmail(reg){
     </div>
     <div style="overflow-x:auto;margin-top:16px;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;"><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Placa</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Modelo</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Técnico</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ano</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ações</th></tr></thead>
-        <tbody id="frota-veic-lista"><tr><td colspan="6" style="padding:10px;color:var(--text-muted);">Carregando...</td></tr></tbody>
+        <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;"><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Placa</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Modelo</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Cor</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Técnico</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ano</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ações</th></tr></thead>
+        <tbody id="frota-veic-lista"><tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
