@@ -119,6 +119,7 @@ input[list].field-inp{margin-bottom:4px;}
       <div id="c-user-pill" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
     </div>
     <div class="topbar-right">
+      <button id="btn-vistoria-veic" onclick="abrirVistoriaVeic()" style="display:none;height:30px;padding:0 12px;border:1px solid #5B9EF5;border-radius:6px;background:rgba(91,158,245,.12);color:#5B9EF5;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;margin-right:6px;">🚗 Vistoria</button>
       <button id="btn-sync" onclick="sincronizarCampo()" style="height:30px;padding:0 12px;border:1px solid var(--gold);border-radius:6px;background:none;color:var(--gold);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">↻ Sync</button>
       <button onclick="fazerLogoutCampo()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Sair</button>
     </div>
@@ -147,6 +148,38 @@ input[list].field-inp{margin-bottom:4px;}
       <div id="lista-minhas"></div>
       <div id="lista-pool" style="display:none"></div>
       <div id="lista-conc" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA VISTORIA VEÍCULO -->
+  <div id="page-vistoria-veic" class="page">
+    <div class="content" style="padding:14px;">
+      <div style="font-size:17px;font-weight:700;margin-bottom:2px;">Vistoria do veículo</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Fim de expediente — registro obrigatório com as 4 fotos.</div>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Veículo</label>
+      <select id="vv-veiculo" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px;font-size:14px;outline:none;margin-bottom:12px;"></select>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">KM do odômetro</label>
+      <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:14px;">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Fotos obrigatórias</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <label id="vslot-odometro" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('odometro',this)"><span style="font-size:22px;">🔢</span><span>Odômetro</span><span id="vreq-odometro" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+        <label id="vslot-frente" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('frente',this)"><span style="font-size:22px;">🚗</span><span>Frente</span><span id="vreq-frente" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+        <label id="vslot-lateral" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('lateral',this)"><span style="font-size:22px;">🚙</span><span>Lateral</span><span id="vreq-lateral" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+        <label id="vslot-traseira" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('traseira',this)"><span style="font-size:22px;">🚐</span><span>Traseira</span><span id="vreq-traseira" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+      </div>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Nível de combustível</label>
+      <div id="vv-fuel" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+        <button type="button" onclick="setFuelVist('Reserva')" data-fuel="Reserva" style="flex:1;min-width:56px;padding:8px 0;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Reserva</button><button type="button" onclick="setFuelVist('¼')" data-fuel="¼" style="flex:1;min-width:56px;padding:8px 0;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">¼</button><button type="button" onclick="setFuelVist('½')" data-fuel="½" style="flex:1;min-width:56px;padding:8px 0;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">½</button><button type="button" onclick="setFuelVist('¾')" data-fuel="¾" style="flex:1;min-width:56px;padding:8px 0;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">¾</button><button type="button" onclick="setFuelVist('Cheio')" data-fuel="Cheio" style="flex:1;min-width:56px;padding:8px 0;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Cheio</button>
+      </div>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Avarias (marque se houver)</label>
+      <div id="vv-avarias" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button type="button" onclick="toggleAvariaVist(this,'Riscos')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Riscos</button><button type="button" onclick="toggleAvariaVist(this,'Amassado')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Amassado</button><button type="button" onclick="toggleAvariaVist(this,'Pneu')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Pneu</button><button type="button" onclick="toggleAvariaVist(this,'Farol')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Farol</button><button type="button" onclick="toggleAvariaVist(this,'Vidro')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Vidro</button><button type="button" onclick="toggleAvariaVist(this,'Limpeza')" style="padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer;">Limpeza</button>
+      </div>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Observações</label>
+      <textarea id="vv-obs" placeholder="Opcional..." style="width:100%;height:60px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:14px;outline:none;resize:none;margin-bottom:14px;font-family:inherit;"></textarea>
+      <button id="vv-enviar" onclick="enviarVistoria()" disabled style="width:100%;height:48px;border:none;border-radius:12px;background:#2c2c30;color:#666;font-weight:800;font-size:15px;cursor:not-allowed;font-family:inherit;">Registrar vistoria</button>
+      <div id="vv-msg" style="font-size:12px;text-align:center;color:#c0392b;margin-top:8px;"></div>
+      <button onclick="goPage('lista')" style="width:100%;height:40px;margin-top:10px;border:1px solid var(--border);border-radius:10px;background:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;">Voltar</button>
     </div>
   </div>
 
@@ -372,6 +405,7 @@ function iniciarAppCampo(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
   document.getElementById('c-user-pill').textContent='👤 '+(usuarioCampo.nome||usuarioCampo.usuario);
+  verificarElegivelVistoria();
   // Mostrar filtros de status apenas para admin
   const fadm=document.getElementById('admin-filtros');
   if(fadm) fadm.style.display=isAdmin()?'flex':'none';
@@ -815,6 +849,108 @@ function iniciarConfirm(){
 function cancelarConfirm(){clearInterval(confirmCountdown);}
 
 function fileToBase64Campo(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); }); }
+
+// ===== Vistoria de veículo (campo) =====
+let vistFotos={}; let vistCombustivel=''; let vistAvarias=[]; let veiculosCampo=[];
+async function verificarElegivelVistoria(){
+  try{
+    const nome=usuarioCampo?.nome||usuarioCampo?.usuario||'';
+    const r=await fetch(API+'?action=vistoriaElegivel&token='+encodeURIComponent(getToken())+'&tecnico='+encodeURIComponent(nome));
+    const d=await r.json();
+    const btn=document.getElementById('btn-vistoria-veic');
+    if(btn) btn.style.display=(d && d.elegivel)?'':'none';
+  }catch(e){}
+}
+async function abrirVistoriaVeic(){
+  vistFotos={}; vistCombustivel=''; vistAvarias=[];
+  ['odometro','frente','lateral','traseira'].forEach(k=>{ const el=document.getElementById('vslot-'+k); if(el){ el.style.borderStyle='dashed'; el.style.borderColor='var(--border)'; el.style.background='var(--surface)'; const im=el.querySelector('img'); if(im)im.remove(); const rq=document.getElementById('vreq-'+k); if(rq)rq.style.display=''; } });
+  const km=document.getElementById('vv-km'); if(km)km.value='';
+  const obs=document.getElementById('vv-obs'); if(obs)obs.value='';
+  document.querySelectorAll('#vv-fuel button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
+  document.querySelectorAll('#vv-avarias button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
+  const msg=document.getElementById('vv-msg'); if(msg)msg.textContent='';
+  await carregarVeiculosCampo();
+  atualizarBotaoVist();
+  goPage('vistoria-veic');
+}
+async function carregarVeiculosCampo(){
+  const sel=document.getElementById('vv-veiculo'); if(!sel)return;
+  try{
+    const r=await fetch(API+'?action=getVeiculos&ativos=1&token='+encodeURIComponent(getToken()));
+    const d=await r.json();
+    veiculosCampo=(d&&d.veiculos)?d.veiculos:[];
+    sel.innerHTML='<option value="">Selecione o veículo...</option>'+veiculosCampo.map(v=>'<option value="'+v.id+'">'+(v.placa||'')+(v.modelo?(' — '+v.modelo):'')+'</option>').join('');
+  }catch(e){ sel.innerHTML='<option value="">Erro ao carregar</option>'; }
+  sel.onchange=atualizarBotaoVist;
+}
+async function capturarFotoVist(slot,inp){
+  if(!inp.files||!inp.files.length)return;
+  const f=inp.files[0];
+  try{
+    const b64=await fileToBase64Campo(f);
+    vistFotos[slot]={b64:b64,mime:f.type||'image/jpeg'};
+    const box=document.getElementById('vslot-'+slot);
+    if(box){
+      box.style.borderStyle='solid'; box.style.borderColor='#2BB673';
+      let img=box.querySelector('img');
+      if(!img){ img=document.createElement('img'); img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'; box.appendChild(img); }
+      img.src='data:'+(f.type||'image/jpeg')+';base64,'+b64;
+      const rq=document.getElementById('vreq-'+slot); if(rq)rq.style.display='none';
+    }
+  }catch(e){}
+  atualizarBotaoVist();
+}
+function setFuelVist(f){
+  vistCombustivel=f;
+  document.querySelectorAll('#vv-fuel button').forEach(b=>{ const on=b.getAttribute('data-fuel')===f; b.style.borderColor=on?'var(--gold)':'var(--border)'; b.style.color=on?'var(--gold)':'var(--muted)'; b.style.background=on?'rgba(245,184,0,.12)':'var(--surface)'; });
+}
+function toggleAvariaVist(btn,a){
+  const i=vistAvarias.indexOf(a);
+  if(i>=0){ vistAvarias.splice(i,1); btn.style.borderColor='var(--border)'; btn.style.color='var(--muted)'; btn.style.background='var(--surface)'; }
+  else { vistAvarias.push(a); btn.style.borderColor='#c0392b'; btn.style.color='#ff8a7a'; btn.style.background='rgba(192,57,43,.12)'; }
+}
+function atualizarBotaoVist(){
+  const km=(document.getElementById('vv-km')?.value||'').trim();
+  const veic=document.getElementById('vv-veiculo')?.value||'';
+  const temFotos=['odometro','frente','lateral','traseira'].every(k=>vistFotos[k]&&vistFotos[k].b64);
+  const ok=temFotos&&km&&veic;
+  const btn=document.getElementById('vv-enviar');
+  if(btn){ btn.disabled=!ok; btn.style.background=ok?'var(--gold)':'#2c2c30'; btn.style.color=ok?'#111':'#666'; btn.style.cursor=ok?'pointer':'not-allowed'; }
+  const msg=document.getElementById('vv-msg');
+  if(msg && !ok){ const faltam=['odometro','frente','lateral','traseira'].filter(k=>!(vistFotos[k]&&vistFotos[k].b64)); msg.style.color='var(--muted)'; msg.textContent=faltam.length?('Faltam fotos: '+faltam.length):(!veic?'Selecione o veículo':(!km?'Informe o KM':'')); }
+  else if(msg){ msg.textContent=''; }
+}
+async function enviarVistoria(){
+  const btn=document.getElementById('vv-enviar'); const msg=document.getElementById('vv-msg');
+  const veicId=document.getElementById('vv-veiculo').value;
+  const veic=veiculosCampo.find(v=>String(v.id)===String(veicId))||{};
+  const km=document.getElementById('vv-km').value.trim();
+  const hojeIso=new Date().toISOString().slice(0,10);
+  if(btn){ btn.disabled=true; btn.textContent='Enviando fotos...'; }
+  if(msg){ msg.style.color='var(--muted)'; msg.textContent='Enviando fotos...'; }
+  const nome=usuarioCampo?.nome||usuarioCampo?.usuario||'';
+  const fotos={};
+  try{
+    for(const k of ['odometro','frente','lateral','traseira']){
+      const fo=vistFotos[k];
+      const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadFotoOS',arquivo:fo.b64,mime:fo.mime,os_numero:'VIST-'+(veic.placa||'')})});
+      const d=await r.json();
+      if(d&&d.url) fotos[k]={url:d.url,thumb:d.thumb||d.url};
+    }
+    if(msg) msg.textContent='Salvando vistoria...';
+    const r2=await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'saveVistoria',
+      tecnico:nome, data:hojeIso,
+      veiculo_id:veicId, veiculo_placa:veic.placa||'', veiculo_modelo:veic.modelo||'',
+      km:km, combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
+      fotos:JSON.stringify(fotos)
+    })});
+    const d2=await r2.json();
+    if(d2&&d2.ok){ if(msg){msg.style.color='#2BB673';msg.textContent='Vistoria registrada!';} setTimeout(()=>goPage('lista'),900); }
+    else { if(msg){msg.style.color='#c0392b';msg.textContent='Erro: '+((d2&&d2.error)||'');} if(btn){btn.disabled=false;btn.textContent='Registrar vistoria';} }
+  }catch(e){ if(msg){msg.style.color='#c0392b';msg.textContent='Erro de conexão.';} if(btn){btn.disabled=false;btn.textContent='Registrar vistoria';} }
+}
+
 async function concluirOS(){
   const _btnOk=document.getElementById('btn-ok-confirmar');
   const _origOk=_btnOk?_btnOk.textContent:null;
