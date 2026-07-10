@@ -164,7 +164,8 @@ input[list].field-inp{margin-bottom:4px;}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
         <label id="vslot-odometro" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('odometro',this)"><span style="font-size:22px;">🔢</span><span>Odômetro</span><span id="vreq-odometro" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
         <label id="vslot-frente" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('frente',this)"><span style="font-size:22px;">🚗</span><span>Frente</span><span id="vreq-frente" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
-        <label id="vslot-lateral" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('lateral',this)"><span style="font-size:22px;">🚙</span><span>Lateral</span><span id="vreq-lateral" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+        <label id="vslot-lateral_esq" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('lateral_esq',this)"><span style="font-size:22px;">🚙</span><span>Lateral esq.</span><span id="vreq-lateral_esq" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
+        <label id="vslot-lateral_dir" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('lateral_dir',this)"><span style="font-size:22px;">🚙</span><span>Lateral dir.</span><span id="vreq-lateral_dir" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
         <label id="vslot-traseira" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('traseira',this)"><span style="font-size:22px;">🚐</span><span>Traseira</span><span id="vreq-traseira" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
       </div>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Nível de combustível</label>
@@ -863,7 +864,7 @@ async function verificarElegivelVistoria(){
 }
 async function abrirVistoriaVeic(){
   vistFotos={}; vistCombustivel=''; vistAvarias=[];
-  ['odometro','frente','lateral','traseira'].forEach(k=>{ const el=document.getElementById('vslot-'+k); if(el){ el.style.borderStyle='dashed'; el.style.borderColor='var(--border)'; el.style.background='var(--surface)'; const im=el.querySelector('img'); if(im)im.remove(); const rq=document.getElementById('vreq-'+k); if(rq)rq.style.display=''; } });
+  ['odometro','frente','lateral_esq','lateral_dir','traseira'].forEach(k=>{ const el=document.getElementById('vslot-'+k); if(el){ el.style.borderStyle='dashed'; el.style.borderColor='var(--border)'; el.style.background='var(--surface)'; const im=el.querySelector('img'); if(im)im.remove(); const rq=document.getElementById('vreq-'+k); if(rq)rq.style.display=''; } });
   const km=document.getElementById('vv-km'); if(km)km.value='';
   const obs=document.getElementById('vv-obs'); if(obs)obs.value='';
   document.querySelectorAll('#vv-fuel button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
@@ -912,12 +913,12 @@ function toggleAvariaVist(btn,a){
 function atualizarBotaoVist(){
   const km=(document.getElementById('vv-km')?.value||'').trim();
   const veic=document.getElementById('vv-veiculo')?.value||'';
-  const temFotos=['odometro','frente','lateral','traseira'].every(k=>vistFotos[k]&&vistFotos[k].b64);
+  const temFotos=['odometro','frente','lateral_esq','lateral_dir','traseira'].every(k=>vistFotos[k]&&vistFotos[k].b64);
   const ok=temFotos&&km&&veic;
   const btn=document.getElementById('vv-enviar');
   if(btn){ btn.disabled=!ok; btn.style.background=ok?'var(--gold)':'#2c2c30'; btn.style.color=ok?'#111':'#666'; btn.style.cursor=ok?'pointer':'not-allowed'; }
   const msg=document.getElementById('vv-msg');
-  if(msg && !ok){ const faltam=['odometro','frente','lateral','traseira'].filter(k=>!(vistFotos[k]&&vistFotos[k].b64)); msg.style.color='var(--muted)'; msg.textContent=faltam.length?('Faltam fotos: '+faltam.length):(!veic?'Selecione o veículo':(!km?'Informe o KM':'')); }
+  if(msg && !ok){ const faltam=['odometro','frente','lateral_esq','lateral_dir','traseira'].filter(k=>!(vistFotos[k]&&vistFotos[k].b64)); msg.style.color='var(--muted)'; msg.textContent=faltam.length?('Faltam fotos: '+faltam.length):(!veic?'Selecione o veículo':(!km?'Informe o KM':'')); }
   else if(msg){ msg.textContent=''; }
 }
 async function enviarVistoria(){
@@ -931,7 +932,7 @@ async function enviarVistoria(){
   const nome=usuarioCampo?.nome||usuarioCampo?.usuario||'';
   const fotos={};
   try{
-    for(const k of ['odometro','frente','lateral','traseira']){
+    for(const k of ['odometro','frente','lateral_esq','lateral_dir','traseira']){
       const fo=vistFotos[k];
       const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadFotoOS',arquivo:fo.b64,mime:fo.mime,os_numero:'VIST-'+(veic.placa||'')})});
       const d=await r.json();
@@ -939,7 +940,7 @@ async function enviarVistoria(){
     }
     if(msg) msg.textContent='Salvando vistoria...';
     const r2=await fetch(API,{method:'POST',body:JSON.stringify({
-      token:getToken(),action:'saveVistoria',
+      token:getToken(),action:'saveVistoriaVeic',
       tecnico:nome, data:hojeIso,
       veiculo_id:veicId, veiculo_placa:veic.placa||'', veiculo_modelo:veic.modelo||'',
       km:km, combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
