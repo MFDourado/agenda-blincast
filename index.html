@@ -1252,7 +1252,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.6';
+const BLINTRACK_VERSAO = 'V6.9.8';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -2833,6 +2833,7 @@ async function carregarVistoriasOp(){
   try{ const r=await fetch(url); const d=await r.json(); vistoriasLista=(d&&d.vistorias)?d.vistorias:[]; renderVistoriasOp(); }
   catch(e){ const el=document.getElementById('frota-vist-lista'); if(el)el.innerHTML='<div style="color:var(--text-muted)">Erro ao carregar.</div>'; }
 }
+async function excluirVistoriaOp(id){ if(!confirm('Excluir esta vistoria? Não dá pra desfazer.'))return; try{ const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'excluirVistoria',id:id})}); const d=await r.json(); if(d.ok){ await carregarVistoriasOp(); } else alert('Erro: '+(d.error||'')); }catch(e){ alert('Erro de conexão.'); } }
 function _vfotos(j){ try{ return JSON.parse(j||'{}'); }catch(e){ return {}; } }
 function renderVistoriasOp(){
   const el=document.getElementById('frota-vist-lista'); if(!el)return;
@@ -2840,7 +2841,7 @@ function renderVistoriasOp(){
   let lista=vistoriasLista.slice().reverse();
   if(q) lista=lista.filter(v=>String(v.tecnico||'').toLowerCase().includes(q)||String(v.veiculo_placa||'').toLowerCase().includes(q));
   if(!lista.length){ el.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhuma vistoria no filtro.</div>'; return; }
-  const slots=[['odometro','Odômetro'],['frente','Frente'],['lateral','Lateral'],['traseira','Traseira']];
+  const slots=[['odometro','Odômetro'],['frente','Frente'],['lateral_esq','Lateral esq.'],['lateral_dir','Lateral dir.'],['traseira','Traseira']];
   el.innerHTML=lista.map(v=>{
     const f=_vfotos(v.fotos);
     const thumbs=slots.map(pair=>{ const k=pair[0], lab=pair[1]; const o=f[k];
@@ -2850,8 +2851,9 @@ function renderVistoriasOp(){
     let avarias='nenhuma'; try{ const a=JSON.parse(v.avarias||'[]'); avarias=(a&&a.length)?a.join(', '):'nenhuma'; }catch(e){ avarias=v.avarias||'nenhuma'; }
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">'+
-        '<div><div style="font-weight:700;">'+(v.tecnico||'—')+'</div><div style="font-size:12px;color:var(--text-muted);">'+(v.veiculo_placa||'')+' '+(v.veiculo_modelo?('· '+v.veiculo_modelo):'')+' · '+(v.data||'')+'</div></div>'+
-        '<div style="font-family:\'DM Mono\',monospace;background:#1F2127;color:#F5C518;font-size:12px;padding:3px 10px;border-radius:6px;">'+(v.km?(v.km+' km'):'— km')+'</div>'+
+        '<div><div style="font-weight:700;">'+(v.tecnico||'—')+'</div><div style="font-size:12px;color:var(--text-muted);">'+(v.veiculo_placa||'')+' '+(v.veiculo_modelo?('· '+v.veiculo_modelo):'')+' · '+(v.data_hora||v.data||'')+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;"><div style="font-family:\'DM Mono\',monospace;background:#1F2127;color:#F5C518;font-size:12px;padding:3px 10px;border-radius:6px;">'+(v.km?(v.km+' km'):'— km')+'</div>'+
+      '<button onclick="excluirVistoriaOp(\''+v.id+'\')" title="Excluir vistoria" style="font-size:11px;padding:3px 9px;border:1px solid #c0392b;color:#c0392b;background:rgba(192,57,43,.1);border-radius:6px;cursor:pointer;">Excluir</button></div>'+
       '</div>'+
       '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Combustível: <b style="color:var(--text)">'+(v.combustivel||'—')+'</b> · Avarias: <span style="color:'+(avarias==='nenhuma'?'#2BB673':'#e08a7a')+'">'+avarias+'</span>'+(v.obs?(' · '+v.obs):'')+'</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+thumbs+'</div>'+
