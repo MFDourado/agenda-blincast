@@ -482,6 +482,7 @@ async function carregarOS(){
     osList=Array.isArray(d.os)?d.os:[];
     if(s)s.textContent='Atualizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){if(s)s.textContent='Erro de conexão';}
+  preencherSugestoesBusca();
   renderListas();
 }
 
@@ -620,13 +621,15 @@ function preencherSugestoesBusca(){
   const nums=[...new Set(visiveis.map(o=>o.numero).filter(Boolean))];
   const tecs=[...new Set(visiveis.map(o=>o.tecnico).filter(Boolean).map(t=>normalizarNomeTecnicoCampo(t)))].sort();
   const cli=[...new Set(visiveis.map(o=>o.cliente).filter(Boolean))].sort();
-  const opts=[...nums, ...tecs, ...cli];
+  const opts=[...nums, ...tecs, ...cli].slice(0,400);
   dl.innerHTML=opts.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}"></option>`).join('');
 }
 
+let _buscaTimer=null;
 function setBuscaCampo(v){
   buscaCampo=v||'';
-  renderListas();
+  if(_buscaTimer) clearTimeout(_buscaTimer);
+  _buscaTimer=setTimeout(renderListas, 250);
 }
 
 function renderListas(){
@@ -676,7 +679,6 @@ function renderListas(){
   renderListaOS('lista-minhas',minhas,'minha');
   renderListaOS('lista-pool',pool,'pool');
   renderListaOS('lista-conc',conc,'concluida');
-  preencherSugestoesBusca();
 }
 
 function renderListaOS(elId,lista,tipo){
