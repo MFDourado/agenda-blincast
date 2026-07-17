@@ -13837,6 +13837,10 @@ async function excluirOS(id){
           <option value="Afastado">Afastado</option>
         </select>
       </div>
+      <div class="modal-field" style="grid-column:span 2;display:flex;align-items:center;gap:8px;margin-top:4px">
+        <input type="checkbox" id="colab-pode-dirigir" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+        <label for="colab-pode-dirigir" style="margin:0;cursor:pointer">Pode dirigir veículos (habilita para vistoria veicular no BlinTrack Campo)</label>
+      </div>
     </div>
 
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Dados Bancários</div>
@@ -13980,6 +13984,7 @@ function abrirNovoColab(){
   document.getElementById('colab-sexo').value='';
   document.getElementById('colab-status').value='Ativo';
   document.getElementById('colab-tipo-conta').value='';
+  const _pdNovo=document.getElementById('colab-pode-dirigir'); if(_pdNovo)_pdNovo.checked=false;
   document.getElementById('colab-nascimento').value='';
   document.getElementById('colab-admissao').value='';
   document.getElementById('colab-edit-id').value='';
@@ -14000,6 +14005,7 @@ function editarColab(id){
   document.getElementById('colab-sexo').value=c.sexo||'';
   document.getElementById('colab-status').value=c.status||'Ativo';
   document.getElementById('colab-tipo-conta').value=c.tipoConta||'';
+  const _pdEdit=document.getElementById('colab-pode-dirigir'); if(_pdEdit){ const v=String(c.pode_dirigir||'').trim().toLowerCase(); _pdEdit.checked=(v==='sim'||v==='true'||v==='1'||v==='x'||v==='verdadeiro'); }
   document.getElementById('colab-edit-id').value=id;
   document.getElementById('colab-modal').style.display='flex';
 }
@@ -14019,6 +14025,7 @@ async function salvarColab(){
     status:g('colab-status'),
     banco:g('colab-banco'), agencia:g('colab-agencia'), conta:g('colab-conta'),
     tipoConta:g('colab-tipo-conta'), pix:g('colab-pix'),
+    pode_dirigir: (document.getElementById('colab-pode-dirigir')?.checked ? 'Sim' : ''),
   };
   if(!c.nome){
     if(_btn2){_btn2.textContent='Salvar';_btn2.disabled=false;}
