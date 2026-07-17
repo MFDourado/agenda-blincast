@@ -158,6 +158,8 @@ input[list].field-inp{margin-bottom:4px;}
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Fim de expediente — registro obrigatório com as 4 fotos.</div>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Veículo</label>
       <select id="vv-veiculo" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px;font-size:14px;outline:none;margin-bottom:12px;"></select>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Condutor</label>
+      <select id="vv-condutor" onchange="atualizarBotaoVist()" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px;font-size:14px;outline:none;margin-bottom:12px;"></select>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">KM do odômetro</label>
       <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:14px;">
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Fotos obrigatórias</label>
@@ -895,6 +897,7 @@ async function abrirVistoriaVeic(){
   document.querySelectorAll('#vv-avarias button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
   const msg=document.getElementById('vv-msg'); if(msg)msg.textContent='';
   await carregarVeiculosCampo();
+  await carregarCondutoresCampo();
   atualizarBotaoVist();
   goPage('vistoria-veic');
 }
@@ -905,6 +908,22 @@ async function carregarVeiculosCampo(){
     const d=await r.json();
     veiculosCampo=(d&&d.veiculos)?d.veiculos:[];
     sel.innerHTML='<option value="">Selecione o veículo...</option>'+veiculosCampo.map(v=>'<option value="'+v.id+'">'+(v.placa||'')+(v.modelo?(' — '+v.modelo):'')+'</option>').join('');
+  }catch(e){ sel.innerHTML='<option value="">Erro ao carregar</option>'; }
+  sel.onchange=atualizarBotaoVist;
+}
+async function carregarCondutoresCampo(){
+  const sel=document.getElementById('vv-condutor'); if(!sel)return;
+  const eu=(usuarioCampo?.nome||usuarioCampo?.usuario||'').trim();
+  try{
+    const r=await fetch(API+'?action=getCondutores&token='+encodeURIComponent(getToken()));
+    const d=await r.json();
+    const lista=(d&&d.condutores)?d.condutores:[];
+    let opts='<option value="">Selecione o condutor...</option>';
+    lista.forEach(c=>{ const n=(c.nome||'').trim(); if(n) opts+='<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>'; });
+    sel.innerHTML=opts;
+    // default: técnico logado, se estiver entre os condutores habilitados
+    const match=lista.find(c=>(c.nome||'').trim().toLowerCase()===eu.toLowerCase());
+    if(match) sel.value=match.nome.trim();
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar</option>'; }
   sel.onchange=atualizarBotaoVist;
 }
@@ -937,12 +956,13 @@ function toggleAvariaVist(btn,a){
 function atualizarBotaoVist(){
   const km=(document.getElementById('vv-km')?.value||'').trim();
   const veic=document.getElementById('vv-veiculo')?.value||'';
+  const cond=(document.getElementById('vv-condutor')?.value||'').trim();
   const temFotos=['odometro','frente','lateral_esq','lateral_dir','traseira'].every(k=>vistFotos[k]&&vistFotos[k].b64);
-  const ok=temFotos&&km&&veic;
+  const ok=temFotos&&km&&veic&&cond;
   const btn=document.getElementById('vv-enviar');
   if(btn){ btn.disabled=!ok; btn.style.background=ok?'var(--gold)':'#2c2c30'; btn.style.color=ok?'#111':'#666'; btn.style.cursor=ok?'pointer':'not-allowed'; }
   const msg=document.getElementById('vv-msg');
-  if(msg && !ok){ const faltam=['odometro','frente','lateral_esq','lateral_dir','traseira'].filter(k=>!(vistFotos[k]&&vistFotos[k].b64)); msg.style.color='var(--muted)'; msg.textContent=faltam.length?('Faltam fotos: '+faltam.length):(!veic?'Selecione o veículo':(!km?'Informe o KM':'')); }
+  if(msg && !ok){ const faltam=['odometro','frente','lateral_esq','lateral_dir','traseira'].filter(k=>!(vistFotos[k]&&vistFotos[k].b64)); msg.style.color='var(--muted)'; msg.textContent=faltam.length?('Faltam fotos: '+faltam.length):(!veic?'Selecione o veículo':(!cond?'Selecione o condutor':(!km?'Informe o KM':''))); }
   else if(msg){ msg.textContent=''; }
 }
 async function enviarVistoria(){
@@ -950,6 +970,7 @@ async function enviarVistoria(){
   const veicId=document.getElementById('vv-veiculo').value;
   const veic=veiculosCampo.find(v=>String(v.id)===String(veicId))||{};
   const km=document.getElementById('vv-km').value.trim();
+  const cond=(document.getElementById('vv-condutor')?.value||'').trim();
   const hojeIso=new Date().toISOString().slice(0,10);
   if(btn){ btn.disabled=true; btn.textContent='Enviando fotos...'; }
   if(msg){ msg.style.color='var(--muted)'; msg.textContent='Enviando fotos...'; }
@@ -965,7 +986,7 @@ async function enviarVistoria(){
     if(msg) msg.textContent='Salvando vistoria...';
     const r2=await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(),action:'saveVistoriaVeic',
-      tecnico:nome, data:hojeIso,
+      tecnico:nome, condutor:cond, data:hojeIso,
       veiculo_id:veicId, veiculo_placa:veic.placa||'', veiculo_modelo:veic.modelo||'',
       km:km, combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
       fotos:JSON.stringify(fotos)
