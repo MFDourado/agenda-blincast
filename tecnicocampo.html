@@ -133,6 +133,11 @@ input[list].field-inp{margin-bottom:4px;}
       <div class="tab" id="tab-conc" onclick="switchTab('conc')">Concluídas</div>
     </div>
     <div class="sync-bar" id="c-sync">Sincronizando...</div>
+    <div style="padding:8px 14px 0;">
+      <input id="c-busca" type="search" inputmode="search" autocomplete="off" list="c-busca-sugestoes" oninput="setBuscaCampo(this.value)" placeholder="Buscar por nº da O.S., técnico ou cliente"
+        style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      <datalist id="c-busca-sugestoes"></datalist>
+    </div>
   <div id="admin-filtros" style="display:none;padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap;">
     <button onclick="setFiltroAdmin('')" id="fadm-todos" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--gold);background:rgba(245,184,0,.15);color:var(--gold);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">Todos</button>
     <button onclick="setFiltroAdmin('Aberta')" id="fadm-aberta" class="fadm-btn" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Aberta</button>
@@ -374,6 +379,7 @@ let usuarioCampo=null;
 let filtroAdminStatus='';
 let filtroAdminTecnico='';
 let filtroAdminUF='';
+let buscaCampo='';
 let osList=[];
 let osAtual=null;
 let horaInicio=null;
@@ -595,26 +601,57 @@ function isAdmin(){
   return (usuarioCampo?.perfil||'').toLowerCase()==='admin';
 }
 
+function _bnormBusca(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
+function matchBusca(o){
+  const q=_bnormBusca(buscaCampo);
+  if(!q) return true;
+  return _bnormBusca(o.numero).includes(q)
+      || _bnormBusca(o.tecnico).includes(q)
+      || _bnormBusca(o.cliente).includes(q);
+}
+function preencherSugestoesBusca(){
+  const dl=document.getElementById('c-busca-sugestoes');
+  if(!dl) return;
+  const admin=isAdmin();
+  const visiveis = admin ? osList
+    : osList.filter(o=> isMeu(o.tecnico) || !o.tecnico || !o.tecnico.trim() || o.tecnico.trim()==='Disponível para qualquer técnico');
+  const nums=[...new Set(visiveis.map(o=>o.numero).filter(Boolean))];
+  const tecs=[...new Set(visiveis.map(o=>o.tecnico).filter(Boolean).map(t=>normalizarNomeTecnicoCampo(t)))].sort();
+  const cli=[...new Set(visiveis.map(o=>o.cliente).filter(Boolean))].sort();
+  const opts=[...nums, ...tecs, ...cli];
+  dl.innerHTML=opts.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}"></option>`).join('');
+}
+
+function setBuscaCampo(v){
+  buscaCampo=v||'';
+  renderListas();
+}
+
 function renderListas(){
   const admin = isAdmin();
 
   // Admin vê tudo; técnico vê apenas as suas
-  const minhas = admin
+  const minhas = (admin
     ? osList.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada'
         &&(filtroAdminStatus===''||o.status===filtroAdminStatus)
         &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico))
         &&passaFiltroUF(o))
-    : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada');
+    : osList.filter(o=>isMeu(o.tecnico)&&o.status!=='Concluída'&&o.status!=='Cancelada')
+  ).filter(matchBusca);
 
-  const pool = admin
+  const pool = (admin
     ? [] // admin já vê tudo em "Todas as OS"
-    : osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada');
+    : osList.filter(o=>(!o.tecnico||!o.tecnico.trim()||o.tecnico.trim()==='Disponível para qualquer técnico')&&o.status!=='Concluída'&&o.status!=='Cancelada')
+  ).filter(matchBusca);
 
-  const conc = admin
+  const conc = (admin
     ? osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')
         &&(filtroAdminTecnico===''||normalizar(o.tecnico||'')==normalizar(filtroAdminTecnico))
         &&passaFiltroUF(o))
-    : osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico));
+    : osList.filter(o=>(o.status==='Concluída'||o.status==='Cancelada')&&isMeu(o.tecnico))
+  ).filter(matchBusca);
 
   // Popular select de técnicos
   if(admin){
@@ -639,6 +676,7 @@ function renderListas(){
   renderListaOS('lista-minhas',minhas,'minha');
   renderListaOS('lista-pool',pool,'pool');
   renderListaOS('lista-conc',conc,'concluida');
+  preencherSugestoesBusca();
 }
 
 function renderListaOS(elId,lista,tipo){
