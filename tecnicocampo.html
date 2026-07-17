@@ -850,6 +850,30 @@ function iniciarConfirm(){
 function cancelarConfirm(){clearInterval(confirmCountdown);}
 
 function fileToBase64Campo(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); }); }
+// Comprime a imagem (max 2048px / qualidade 0.8) e devolve base64 SEM prefixo, sempre JPEG.
+// Libera o bitmap e o canvas na hora pra não acumular memória no celular.
+async function comprimirImagemCampo(file, maxSide=2048, quality=0.8){
+  try{
+    let src=null, revoke=null;
+    if(window.createImageBitmap){
+      src=await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>createImageBitmap(file));
+    }
+    if(!src){
+      const url=URL.createObjectURL(file); revoke=url;
+      src=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+    }
+    const w=src.width||src.naturalWidth, h=src.height||src.naturalHeight;
+    const escala=Math.min(1, maxSide/Math.max(w,h));
+    const nw=Math.max(1,Math.round(w*escala)), nh=Math.max(1,Math.round(h*escala));
+    const cv=document.createElement('canvas'); cv.width=nw; cv.height=nh;
+    cv.getContext('2d').drawImage(src,0,0,nw,nh);
+    if(src.close) src.close();
+    if(revoke) URL.revokeObjectURL(revoke);
+    const dataUrl=cv.toDataURL('image/jpeg', quality);
+    cv.width=cv.height=0;
+    return dataUrl.split(',')[1];
+  }catch(e){ return await fileToBase64Campo(file); }
+}
 
 // ===== Vistoria de veículo (campo) =====
 let vistFotos={}; let vistCombustivel=''; let vistAvarias=[]; let veiculosCampo=[];
@@ -888,14 +912,14 @@ async function capturarFotoVist(slot,inp){
   if(!inp.files||!inp.files.length)return;
   const f=inp.files[0];
   try{
-    const b64=await fileToBase64Campo(f);
-    vistFotos[slot]={b64:b64,mime:f.type||'image/jpeg'};
+    const b64=await comprimirImagemCampo(f);
+    vistFotos[slot]={b64:b64,mime:'image/jpeg'};
     const box=document.getElementById('vslot-'+slot);
     if(box){
       box.style.borderStyle='solid'; box.style.borderColor='#2BB673';
       let img=box.querySelector('img');
       if(!img){ img=document.createElement('img'); img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'; box.appendChild(img); }
-      img.src='data:'+(f.type||'image/jpeg')+';base64,'+b64;
+      img.src='data:image/jpeg;base64,'+b64;
       const rq=document.getElementById('vreq-'+slot); if(rq)rq.style.display='none';
     }
   }catch(e){}
@@ -970,8 +994,8 @@ async function concluirOS(){
     if(_inp && _inp.files && _inp.files.length){
       for(let i=0;i<_inp.files.length;i++){
         const _f=_inp.files[i];
-        const _b64=await fileToBase64Campo(_f);
-        const _rr=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadFotoOS',arquivo:_b64,mime:_f.type||'image/jpeg',os_numero:osAtual?.numero||''})});
+        const _b64=await comprimirImagemCampo(_f);
+        const _rr=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadFotoOS',arquivo:_b64,mime:'image/jpeg',os_numero:osAtual?.numero||''})});
         const _dd=await _rr.json();
         if(_dd && _dd.url) fotosLinks.push({url:_dd.url,thumb:_dd.thumb||_dd.url});
       }
