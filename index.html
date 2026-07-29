@@ -804,7 +804,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
     <input type="date" id="ata-filtro-data" onchange="window._ataFiltroHoje=false;document.getElementById('ata-btn-hoje').style.background='none';document.getElementById('ata-btn-hoje').style.color='var(--c-previsto)';renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" title="Filtrar por abertura, prevista ou conclusão">
     <input type="hidden" id="ata-filtro-prevista">
-    <button id="ata-btn-hoje" onclick="filtrarAtaHoje()" style="height:32px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);font-weight:600;" title="Mostrar apenas previstos para hoje">📅 Hoje</button>
+    <button id="ata-btn-hoje" onclick="filtrarAtaHoje()" style="height:32px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);font-weight:600;" title="Mostrar apenas o planejado do dia: status Planejado com data prevista de hoje">📅 Hoje</button>
     <!-- Dropdown multi-select de status -->
     <div style="position:relative;" id="ata-status-wrap">
       <button onclick="toggleAtaStatusMenu()" id="ata-status-btn" style="height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px;">
@@ -1058,6 +1058,16 @@ const CONSULTA_MENU_OCULTO = ['mt-orcamento','mt-distrato','mt-ferias','mt-viage
 // Sincronizar, Refresh, Fechar, Cancelar e Sair ficam liberados de proposito.
 const CONSULTA_RE_ACAO = /(?:^|[^a-zA-Zà-úÀ-Ú])(salvar|gravar|excluir|deletar|remover|apagar|novo|nova|adicionar|editar|alterar|finalizar|concluir|aprovar|reprovar|recusar|importar|converter|criar|cadastrar|confirmar|anexar|assinar|escalar|solicitar|lancar|lançar|enviar|movimentar)/i;
 
+// Exportacoes: nao funcionam em WebView de box (window.print e blob: nao
+// existem la) e o perfil Consulta e painel de leitura em tela. Escondidas.
+const CONSULTA_RE_EXPORT = /(exportar|baixar|download|imprimir|excel|xlsx|csv|\bpdf\b)/i;
+
+function consultaBloqueia(txt){
+  var t = String(txt||'').trim();
+  if(!t) return false;
+  return CONSULTA_RE_ACAO.test(t) || CONSULTA_RE_EXPORT.test(t);
+}
+
 function aplicarModoConsulta(){
   if(MODO_CONSULTA) return;
   MODO_CONSULTA = true;
@@ -1089,7 +1099,7 @@ function aplicarModoConsulta(){
     var alvo = ev.target.closest('button,a,[onclick]');
     if(!alvo) return;
     if(alvo.getAttribute('data-consulta-ok') === '1') return;
-    if(!CONSULTA_RE_ACAO.test((alvo.textContent||'').trim())) return;
+    if(!consultaBloqueia(alvo.textContent)) return;
     ev.preventDefault();
     ev.stopPropagation();
     if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
@@ -1114,7 +1124,7 @@ function varrerConsulta(){
     b.setAttribute('data-consulta-visto','1');
     var t = (b.textContent||'').trim();
     if(!t) return;
-    if(CONSULTA_RE_ACAO.test(t)) b.classList.add('consulta-oculto');
+    if(consultaBloqueia(t)) b.classList.add('consulta-oculto');
   });
 }
 
@@ -1350,7 +1360,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.11';
+const BLINTRACK_VERSAO = 'V6.9.14';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7626,7 +7636,8 @@ function renderAta(){
   // Atualizar label do botão
   const btn=document.getElementById('ata-status-label');
   if(btn){
-    if(statusSelecionados.length>0) btn.textContent='Status: '+statusSelecionados.length+' selecionado(s)';
+    if(window._ataFiltroHoje) btn.textContent='Planejado de hoje';
+    else if(statusSelecionados.length>0) btn.textContent='Status: '+statusSelecionados.length+' selecionado(s)';
     else if(excluirFeito) btn.textContent='Ocultar: Feito';
     else btn.textContent='Todos os status';
   }
@@ -7667,8 +7678,12 @@ function renderAta(){
     return normD(r.dt_abertura)===filtroData || normD(r.dt_prevista)===filtroData || normD(r.dt_conclusao)===filtroData;
   });
   if(window._ataFiltroHoje){
+    // "Hoje" = o planejado do dia: status Planejado com data prevista de hoje.
     const hoje = todayStr;
-    lista=lista.filter(r=> normD(r.dt_abertura)===hoje || normD(r.dt_prevista)===hoje || normD(r.dt_conclusao)===hoje);
+    lista=lista.filter(r=>
+      String(r.status||'').trim().toLowerCase()==='planejado' &&
+      normD(r.dt_prevista)===hoje
+    );
   } else if(filtroPrevista)lista=lista.filter(r=>{
     const d = String(r.dt_prevista||'').trim();
     // Normalizar dd/MM/yyyy → yyyy-MM-dd se necessário
@@ -7676,7 +7691,10 @@ function renderAta(){
     return norm === filtroPrevista;
   });
   // Se há status selecionados no multi-select, filtrar por eles
-  if(statusSelecionados.length>0){
+  if(window._ataFiltroHoje){
+    // O filtro Hoje ja fixou o status em Planejado; ignora o multi-select
+    // para nao cruzar dois filtros de status e devolver lista vazia.
+  } else if(statusSelecionados.length>0){
     lista=lista.filter(r=>statusSelecionados.includes(String(r.status||'').trim()));
   } else if(excluirFeito){
     // Padrão: ocultar feito
@@ -7843,6 +7861,9 @@ function filtrarAtaHoje(){
     // Limpar outros filtros de data para não conflitar
     const fp=document.getElementById('ata-filtro-prevista'); if(fp) fp.value='';
     const fd=document.getElementById('ata-filtro-data'); if(fd) fd.value='';
+    // Limpar o multi-select de status: com Hoje ligado ele é ignorado, e deixar
+    // marcado daria a impressão de estar filtrando algo que não filtra.
+    document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
   }
   renderAta();
 }
@@ -8066,11 +8087,21 @@ async function removerAta(id){
 
 // ===== Banner/modal de data de retorno =====
 let _retornoAtaId = null;
-function abrirModalRetorno(id){
+function abrirModalRetorno(id, statusOrigem){
   _retornoAtaId = id;
   const reg = ataRegistros.find(r=>String(r.id)===String(id));
   const inp = document.getElementById('retorno-data-input');
   if(inp) inp.value = (reg && reg.dt_prevista) ? ataAnoFix(reg.dt_prevista) : '';
+
+  // Titulo e subtitulo conforme o status que abriu o banner
+  const ehPendente = String(statusOrigem||'').toLowerCase()==='pendente';
+  const tit = document.getElementById('retorno-modal-titulo');
+  const sub = document.getElementById('retorno-modal-sub');
+  if(tit) tit.textContent = ehPendente ? '⏳ Atendimento pendente' : '↩️ Retorno do atendimento';
+  if(sub) sub.textContent = ehPendente
+    ? 'Quer definir a data prevista para retomar este atendimento agora, ou deixar em aberto?'
+    : 'Quer definir a data prevista de retorno agora, ou deixar em aberto pra definir depois?';
+
   document.getElementById('retorno-modal').style.display='flex';
 }
 async function _retornoSalvarData(){
@@ -8097,9 +8128,10 @@ async function alterarAtaStatus(id, novoStatus, selEl){
   selEl.style.borderColor=sc.c;
   const reg=ataRegistros.find(r=>String(r.id)===String(id));
   if(reg) reg.status=novoStatus;
-  // Banner ao marcar "Retornar": oferece preencher data prevista de retorno ou deixar em aberto
-  if(novoStatus==='retornar'){
-    abrirModalRetorno(id);
+  // Banner ao marcar "Retornar" ou "Pendente": oferece preencher a data
+  // prevista de retorno ou deixar em aberto
+  if(novoStatus==='retornar' || novoStatus==='pendente'){
+    abrirModalRetorno(id, novoStatus);
   }
   try{
     await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAtaStatus',id,status:novoStatus})});
@@ -8172,10 +8204,14 @@ function _ataDiaConfirmar(){
   const tec20h=txt.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
   document.getElementById('ata-dia-modal').style.display='none';
   _ataExportPendente = { iso:iso, tec20h:tec20h, formato:_ataDiaFormato };
-  // Se houver "Retornar" no dia, abre o banner de datas de retorno antes de gerar
+  // Se houver "Retornar" ou "Pendente" no dia, cobra a data prevista antes de gerar
   const {grupos} = _ataDiaDados(iso);
-  if(grupos.retornar && grupos.retornar.length){
-    _abrirBannerRetornosAta(grupos.retornar, iso);
+  const _retornar  = grupos.retornar || [];
+  const _pendentes = (grupos.naofeito || [])
+    .filter(r => String(r.status||'').trim().toLowerCase()==='pendente');
+  const _cobrar = _retornar.concat(_pendentes);
+  if(_cobrar.length){
+    _abrirBannerRetornosAta(_cobrar, iso);
   } else {
     _ataExportarAgora();
   }
@@ -13738,8 +13774,8 @@ async function excluirOS(id){
 <input type="file" id="prestacao-file-input" accept="image/*,application/pdf" style="display:none">
 <div id="retorno-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:400px;width:100%;padding:24px;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Retorno do atendimento</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Quer definir a data prevista de retorno agora, ou deixar em aberto pra definir depois?</div>
+    <div id="retorno-modal-titulo" style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Retorno do atendimento</div>
+    <div id="retorno-modal-sub" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Quer definir a data prevista de retorno agora, ou deixar em aberto pra definir depois?</div>
     <label style="font-size:12px;color:var(--text-muted);">Data prevista de retorno</label>
     <input type="date" id="retorno-data-input" style="width:100%;height:40px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);padding:0 12px;font-size:14px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;box-sizing:border-box;margin-top:4px;">
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
@@ -13751,8 +13787,8 @@ async function excluirOS(id){
 <div id="retornos-ata-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:540px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;position:relative;">
     <button onclick="_retornosAtaFechar()" aria-label="Fechar" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);">×</button>
-    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Datas de retorno</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Há atendimentos marcados como "Retornar" neste dia. Defina ou confira a data prevista de retorno de cada um antes de exportar. As datas serão salvas no atendimento.</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">↩️ Datas previstas</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Há atendimentos marcados como "Retornar" ou "Pendente" neste dia. Defina ou confira a data prevista de cada um antes de exportar. As datas serão salvas no atendimento.</div>
     <div id="retornos-ata-lista"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
       <button onclick="_retornosAtaPular()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;">Pular e exportar</button>
