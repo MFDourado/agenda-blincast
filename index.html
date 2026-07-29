@@ -1350,7 +1350,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.10';
+const BLINTRACK_VERSAO = 'V6.9.11';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -4856,6 +4856,7 @@ function verificarSessaoExpirada() {
 
 // Verificar a cada 5 minutos
 setInterval(() => {
+  if (MODO_CONSULTA) return;   // painel somente leitura nao expira sessao
   if (verificarSessaoExpirada()) {
     fazerLogout();
   }
