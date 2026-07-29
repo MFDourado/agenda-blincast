@@ -1360,7 +1360,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.14';
+const BLINTRACK_VERSAO = 'V6.9.15';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7636,8 +7636,7 @@ function renderAta(){
   // Atualizar label do botão
   const btn=document.getElementById('ata-status-label');
   if(btn){
-    if(window._ataFiltroHoje) btn.textContent='Planejado de hoje';
-    else if(statusSelecionados.length>0) btn.textContent='Status: '+statusSelecionados.length+' selecionado(s)';
+    if(statusSelecionados.length>0) btn.textContent='Status: '+statusSelecionados.length+' selecionado(s)';
     else if(excluirFeito) btn.textContent='Ocultar: Feito';
     else btn.textContent='Todos os status';
   }
@@ -7678,12 +7677,10 @@ function renderAta(){
     return normD(r.dt_abertura)===filtroData || normD(r.dt_prevista)===filtroData || normD(r.dt_conclusao)===filtroData;
   });
   if(window._ataFiltroHoje){
-    // "Hoje" = o planejado do dia: status Planejado com data prevista de hoje.
+    // "Hoje" restringe apenas a DATA. O status quem define e o multi-select,
+    // que o botao pre-marca em "Planejado" — assim continua reversivel.
     const hoje = todayStr;
-    lista=lista.filter(r=>
-      String(r.status||'').trim().toLowerCase()==='planejado' &&
-      normD(r.dt_prevista)===hoje
-    );
+    lista=lista.filter(r=> normD(r.dt_abertura)===hoje || normD(r.dt_prevista)===hoje || normD(r.dt_conclusao)===hoje);
   } else if(filtroPrevista)lista=lista.filter(r=>{
     const d = String(r.dt_prevista||'').trim();
     // Normalizar dd/MM/yyyy → yyyy-MM-dd se necessário
@@ -7691,10 +7688,7 @@ function renderAta(){
     return norm === filtroPrevista;
   });
   // Se há status selecionados no multi-select, filtrar por eles
-  if(window._ataFiltroHoje){
-    // O filtro Hoje ja fixou o status em Planejado; ignora o multi-select
-    // para nao cruzar dois filtros de status e devolver lista vazia.
-  } else if(statusSelecionados.length>0){
+  if(statusSelecionados.length>0){
     lista=lista.filter(r=>statusSelecionados.includes(String(r.status||'').trim()));
   } else if(excluirFeito){
     // Padrão: ocultar feito
@@ -7855,15 +7849,20 @@ function filtrarAtaHoje(){
   if(window._ataFiltroHoje){
     window._ataFiltroHoje = false;
     if(btn){ btn.style.background='none'; btn.style.color='var(--c-previsto)'; }
+    // Desfaz a pré-marcação que o próprio botão fez
+    const chkP=document.querySelector('.ata-status-chk[value="planejado"]');
+    if(chkP) chkP.checked=false;
   } else {
     window._ataFiltroHoje = true;
     if(btn){ btn.style.background='var(--c-previsto)'; btn.style.color='#fff'; }
     // Limpar outros filtros de data para não conflitar
     const fp=document.getElementById('ata-filtro-prevista'); if(fp) fp.value='';
     const fd=document.getElementById('ata-filtro-data'); if(fd) fd.value='';
-    // Limpar o multi-select de status: com Hoje ligado ele é ignorado, e deixar
-    // marcado daria a impressão de estar filtrando algo que não filtra.
-    document.querySelectorAll('.ata-status-chk').forEach(c=>c.checked=false);
+    // Pre-marca "Planejado": é o padrão do dia, mas fica visível no filtro e
+    // você pode desmarcar para ver o resto (inclusive o que já foi feito hoje).
+    document.querySelectorAll('.ata-status-chk').forEach(c=>{
+      c.checked = (c.value==='planejado');
+    });
   }
   renderAta();
 }
