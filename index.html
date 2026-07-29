@@ -339,6 +339,19 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .v2-text-title{font-size:13px;font-weight:600;color:#F0F0F0;margin-bottom:2px;}
 .v2-text-desc{font-size:12px;color:#666;line-height:1.5;}
 .v2-btn{width:100%;margin-top:24px;padding:11px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;}
+/* ── MODO CONSULTA (perfil somente leitura) ───────────────────────────────── */
+body.modo-consulta .consulta-oculto{display:none !important;}
+body.modo-consulta .modal input:not([type=checkbox]):not([type=radio]),
+body.modo-consulta .modal select,
+body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
+#selo-consulta{display:inline-block;margin-left:12px;padding:2px 8px;border:1px solid #F5B800;
+  border-radius:20px;background:rgba(245,184,0,.10);color:#F5B800;font-size:10px;font-weight:700;
+  letter-spacing:.7px;font-family:'DM Mono',monospace;white-space:nowrap;}
+#toast-consulta{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px);
+  background:#18191D;border:1px solid #F5B800;border-radius:8px;padding:11px 20px;color:#F0F0F0;
+  font-size:13px;font-family:'DM Sans',sans-serif;z-index:99999;opacity:0;pointer-events:none;
+  transition:opacity .18s ease,transform .18s ease;box-shadow:0 8px 28px rgba(0,0,0,.55);}
+#toast-consulta.ver{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -1033,8 +1046,91 @@ const PERFIS_OPERACIONAL = ['admin','operacional'];
 // Perfil pode ser combinado (ex.: 'operacional/comercial'). Aceita se contiver operacional ou admin.
 function perfilPodeOperacional(perfil){
   const partes = String(perfil||'').toLowerCase().split(/[\/,;\s]+/).filter(Boolean);
-  return partes.indexOf('admin')>=0 || partes.indexOf('operacional')>=0;
+  return partes.indexOf('admin')>=0 || partes.indexOf('operacional')>=0 || partes.indexOf('consulta')>=0;
 }
+/* ── MODO CONSULTA (perfil somente leitura) ───────────────────────────────── */
+let MODO_CONSULTA = false;
+
+// Modulos de RH e financeiro escondidos no perfil Consulta.
+const CONSULTA_MENU_OCULTO = ['mt-orcamento','mt-distrato','mt-ferias','mt-viagem','mt-colaboradores'];
+
+// Casa o texto visivel dos botoes de acao. Filtros, buscas, abas, exportacoes,
+// Sincronizar, Refresh, Fechar, Cancelar e Sair ficam liberados de proposito.
+const CONSULTA_RE_ACAO = /(?:^|[^a-zA-Zà-úÀ-Ú])(salvar|gravar|excluir|deletar|remover|apagar|novo|nova|adicionar|editar|alterar|finalizar|concluir|aprovar|reprovar|recusar|importar|converter|criar|cadastrar|confirmar|anexar|assinar|escalar|solicitar|lancar|lançar|enviar|movimentar)/i;
+
+function aplicarModoConsulta(){
+  if(MODO_CONSULTA) return;
+  MODO_CONSULTA = true;
+  document.body.classList.add('modo-consulta');
+
+  // Esconde os modulos de RH e financeiro
+  CONSULTA_MENU_OCULTO.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  // A secao "Financeiro" ficou sem itens, esconde o rotulo tambem
+  Array.prototype.forEach.call(document.querySelectorAll('#sidebar div'), function(d){
+    if(d.children.length === 0 && d.textContent.trim() === 'Financeiro') d.style.display = 'none';
+  });
+
+  // Selo no header
+  var hu = document.getElementById('header-user');
+  if(hu && !document.getElementById('selo-consulta')){
+    var s = document.createElement('span');
+    s.id = 'selo-consulta';
+    s.textContent = 'SOMENTE CONSULTA';
+    hu.parentNode.insertBefore(s, hu);
+  }
+
+  // Rede de seguranca: intercepta o clique antes de qualquer handler da pagina
+  document.addEventListener('click', function(ev){
+    if(!MODO_CONSULTA) return;
+    if(!ev.target || !ev.target.closest) return;
+    var alvo = ev.target.closest('button,a,[onclick]');
+    if(!alvo) return;
+    if(alvo.getAttribute('data-consulta-ok') === '1') return;
+    if(!CONSULTA_RE_ACAO.test((alvo.textContent||'').trim())) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    avisoConsulta();
+  }, true);
+
+  // Esconde os botoes de acao conforme as telas vao sendo montadas
+  varrerConsulta();
+  try{
+    var obs = new MutationObserver(function(){
+      clearTimeout(window._consultaTmr);
+      window._consultaTmr = setTimeout(varrerConsulta, 200);
+    });
+    obs.observe(document.body, {childList:true, subtree:true});
+  }catch(e){}
+}
+
+function varrerConsulta(){
+  if(!MODO_CONSULTA) return;
+  var btns = document.querySelectorAll('button:not([data-consulta-visto])');
+  Array.prototype.forEach.call(btns, function(b){
+    b.setAttribute('data-consulta-visto','1');
+    var t = (b.textContent||'').trim();
+    if(!t) return;
+    if(CONSULTA_RE_ACAO.test(t)) b.classList.add('consulta-oculto');
+  });
+}
+
+function avisoConsulta(){
+  var d = document.getElementById('toast-consulta');
+  if(!d){
+    d = document.createElement('div');
+    d.id = 'toast-consulta';
+    document.body.appendChild(d);
+  }
+  d.textContent = 'Perfil somente consulta \u2014 acao nao permitida';
+  d.classList.add('ver');
+  clearTimeout(window._toastConsultaTmr);
+  window._toastConsultaTmr = setTimeout(function(){ d.classList.remove('ver'); }, 2200);
+}
+
 let usuarioLogado = null;
 
 function iniciarApp(){
@@ -1054,6 +1150,7 @@ function iniciarApp(){
         const hUser = document.getElementById('header-user');
         if(hUser) hUser.textContent = '👤 '+u.nome;
         if(u.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display='';const mf=document.getElementById('mt-frota');if(mf)mf.style.display=''; }
+        if(String(u.perfil||'').toLowerCase()==='consulta') aplicarModoConsulta();
         carregarConfig();
         switchMainTab('pipeline');
         verificarV2Popup();
@@ -1092,6 +1189,7 @@ async function fazerLogin(){
       const hUser = document.getElementById('header-user');
       if(hUser) hUser.textContent = '👤 '+d.nome;
       if(d.perfil==='admin'){ const bc=document.getElementById('btn-config-admin');if(bc)bc.style.display='';const mf=document.getElementById('mt-frota');if(mf)mf.style.display=''; }
+      if(String(d.perfil||'').toLowerCase()==='consulta') aplicarModoConsulta();
       carregarConfig();
       switchMainTab('pipeline');
       verificarV2Popup();
@@ -1252,7 +1350,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.9';
+const BLINTRACK_VERSAO = 'V6.9.10';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
