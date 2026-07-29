@@ -808,9 +808,10 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;position:relative;">
     <input type="text" id="ata-filtro-os" placeholder="🔍 Buscar OS..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:120px;">
     <input type="text" id="ata-filtro-cliente" placeholder="🔍 Buscar cliente..." oninput="renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:180px;">
-    <input type="date" id="ata-filtro-data" onchange="window._ataFiltroHoje=false;document.getElementById('ata-btn-hoje').style.background='none';document.getElementById('ata-btn-hoje').style.color='var(--c-previsto)';renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" title="Filtrar por abertura, prevista ou conclusão">
+    <input type="date" id="ata-filtro-data" onchange="_ataLimparBotoesDia();renderAta()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;" title="Filtrar por abertura, prevista ou conclusão">
     <input type="hidden" id="ata-filtro-prevista">
     <button id="ata-btn-hoje" onclick="filtrarAtaHoje()" style="height:32px;padding:0 14px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);font-weight:600;" title="Mostrar apenas o planejado do dia: status Planejado com data prevista de hoje">📅 Hoje</button>
+    <button id="ata-btn-feito-hoje" onclick="filtrarAtaDia('feito')" style="height:32px;padding:0 14px;border:1px solid var(--c-concluido);border-radius:var(--radius-sm);background:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-concluido);font-weight:600;" title="Mostrar o que foi concluído hoje: status Feito ou Concluído pelo técnico com data de conclusão de hoje">✅ Feito hoje</button>
     <!-- Dropdown multi-select de status -->
     <div style="position:relative;" id="ata-status-wrap">
       <button onclick="toggleAtaStatusMenu()" id="ata-status-btn" style="height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px;">
@@ -1258,7 +1259,12 @@ const STEPS=[
   {id:10,title:'Instalação no local',resp:'Tecnico de campo'},
   {id:11,title:'Testes e conclusão',resp:'Tecnico de campo - Joyce Maciel'},
 ];
-const todayStr=new Date().toISOString().slice(0,10);
+const todayStr=(function(){
+  // Data LOCAL. Nao usar toISOString(): ele converte para UTC e, no Brasil,
+  // a partir das 21h ja devolve a data de amanha.
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+})();
 let cur={y:new Date().getFullYear(),m:new Date().getMonth()};
 let selectedDate=todayStr,activeTab='mes',events=[],activeFilter='todos',projects=[],saveTimer=null;
 let chartPizza=null,chartBarras=null;
@@ -1366,7 +1372,7 @@ function fecharAba(id){
 }
 
 // ---------- Relógio na tela vazia ----------
-const BLINTRACK_VERSAO = 'V6.9.16';
+const BLINTRACK_VERSAO = 'V6.9.18';
 let _clockInterval = null;
 function _tickClock(){
   const el = document.getElementById('clock-time');
@@ -7683,10 +7689,14 @@ function renderAta(){
     return normD(r.dt_abertura)===filtroData || normD(r.dt_prevista)===filtroData || normD(r.dt_conclusao)===filtroData;
   });
   if(window._ataFiltroHoje){
-    // "Hoje" restringe apenas a DATA. O status quem define e o multi-select,
-    // que o botao pre-marca em "Planejado" — assim continua reversivel.
+    // Cada modo olha uma data só. Nada de "qualquer uma das três", que era o
+    // que trazia planejado aberto hoje mas previsto para outro dia.
     const hoje = todayStr;
-    lista=lista.filter(r=> normD(r.dt_abertura)===hoje || normD(r.dt_prevista)===hoje || normD(r.dt_conclusao)===hoje);
+    if(window._ataFiltroHoje==='feito'){
+      lista=lista.filter(r=> normD(r.dt_conclusao)===hoje);
+    } else {
+      lista=lista.filter(r=> normD(r.dt_prevista)===hoje);
+    }
   } else if(filtroPrevista)lista=lista.filter(r=>{
     const d = String(r.dt_prevista||'').trim();
     // Normalizar dd/MM/yyyy → yyyy-MM-dd se necessário
@@ -7848,38 +7858,65 @@ async function importarDatasAta(){
   finally{ if(btn){ btn.textContent='📅 Importar datas'; btn.disabled=false; } }
 }
 
-function filtrarAtaHoje(){
-  const hoje = todayStr;
-  const btn = document.getElementById('ata-btn-hoje');
-  // Toggle
+// ── FILTROS DO DIA ───────────────────────────────────────────────────────────
+// window._ataFiltroHoje: false | 'planejado' | 'feito'
+//   'planejado' → data PREVISTA de hoje, pré-marca o status Planejado
+//   'feito'     → data de CONCLUSÃO de hoje, pré-marca Feito e Concluído pelo técnico
+// Os dois são mutuamente exclusivos. A pré-marcação usa os checkboxes reais,
+// então continua visível e reversível: desmarque para ampliar a lista.
+const ATA_DIA_STATUS = {
+  planejado: ['planejado'],
+  feito:     ['feito','concluido_tecnico']
+};
+
+function _ataPintarBotoesDia(){
+  const cfg = [
+    ['ata-btn-hoje',       'planejado', 'var(--c-previsto)'],
+    ['ata-btn-feito-hoje', 'feito',     'var(--c-concluido)']
+  ];
+  cfg.forEach(function(c){
+    const el = document.getElementById(c[0]);
+    if(!el) return;
+    const ativo = (window._ataFiltroHoje === c[1]);
+    el.style.background = ativo ? c[2] : 'none';
+    el.style.color      = ativo ? '#fff' : c[2];
+  });
+}
+
+// Desliga os dois botões sem re-renderizar (usado por outros filtros de data)
+function _ataLimparBotoesDia(){
+  window._ataFiltroHoje = false;
+  _ataPintarBotoesDia();
+}
+
+function filtrarAtaDia(modo){
+  const ligando = (window._ataFiltroHoje !== modo);
+  window._ataFiltroHoje = ligando ? modo : false;
+  _ataPintarBotoesDia();
+
   if(window._ataFiltroHoje){
-    window._ataFiltroHoje = false;
-    if(btn){ btn.style.background='none'; btn.style.color='var(--c-previsto)'; }
-    // Desfaz a pré-marcação que o próprio botão fez
-    const chkP=document.querySelector('.ata-status-chk[value="planejado"]');
-    if(chkP) chkP.checked=false;
-  } else {
-    window._ataFiltroHoje = true;
-    if(btn){ btn.style.background='var(--c-previsto)'; btn.style.color='#fff'; }
-    // Limpar outros filtros de data para não conflitar
+    // Limpar os outros filtros de data para não conflitar
     const fp=document.getElementById('ata-filtro-prevista'); if(fp) fp.value='';
     const fd=document.getElementById('ata-filtro-data'); if(fd) fd.value='';
-    // Pre-marca "Planejado": é o padrão do dia, mas fica visível no filtro e
-    // você pode desmarcar para ver o resto (inclusive o que já foi feito hoje).
-    document.querySelectorAll('.ata-status-chk').forEach(c=>{
-      c.checked = (c.value==='planejado');
+    const alvo = ATA_DIA_STATUS[modo] || [];
+    document.querySelectorAll('.ata-status-chk').forEach(function(c){
+      c.checked = (alvo.indexOf(c.value) >= 0);
     });
+  } else {
+    document.querySelectorAll('.ata-status-chk').forEach(function(c){ c.checked=false; });
   }
   renderAta();
 }
+
+// Mantido pelo nome antigo: o onclick do botão 📅 Hoje continua chamando este
+function filtrarAtaHoje(){ filtrarAtaDia('planejado'); }
 
 function limparFiltrosAta(){
   const fo=document.getElementById('ata-filtro-os');if(fo)fo.value='';
   const fc=document.getElementById('ata-filtro-cliente');if(fc)fc.value='';
   document.getElementById('ata-filtro-data').value='';
   const fp=document.getElementById('ata-filtro-prevista');if(fp)fp.value='';
-  window._ataFiltroHoje = false;
-  const btnH=document.getElementById('ata-btn-hoje');if(btnH){btnH.style.background='none';btnH.style.color='var(--c-previsto)';}
+  _ataLimparBotoesDia();
   document.getElementById('ata-filtro-tecnico').value='';
   const fe=document.getElementById('ata-filtro-equipamento');if(fe)fe.value='';
   const ff=document.getElementById('ata-filtro-forma');if(ff)ff.value='';
