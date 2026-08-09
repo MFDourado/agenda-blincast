@@ -1027,6 +1027,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       </div>
       <div style="font-size:12px;color:var(--text-muted);">Nº <span id="orc-numero-preview" style="color:var(--text);font-family:'DM Mono',monospace;">— será gerado ao salvar —</span></div>
       <div id="orc-status-badge" style="font-size:11px;padding:2px 10px;border-radius:20px;background:rgba(230,126,34,.14);color:#e67e22;border:1px solid #e67e2255;">Novo</div>
+      <div id="orc-cliente-vinculo" style="font-size:11px;color:var(--text-muted);"></div>
     </div>
   </div>
   <div class="orc-no-print" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:1.2rem;">
@@ -1049,7 +1050,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;width:180px;white-space:nowrap">NOME DO CLIENTE:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-cliente" type="text" oninput="orcAtualizarSiglaAuto()" placeholder="Nome do cliente" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;width:180px;white-space:nowrap">NOME DO CLIENTE:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-cliente" type="text" list="clientes-datalist" oninput="orcClienteDigitado()" placeholder="Nome do cliente" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">CLIENTE BLINCAST?:</td><td style="border:1px solid #999;padding:2px 6px;width:100px;"><select id="orc-blincast" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:100%;"><option>SIM</option><option>NÃO</option></select></td><td style="border:1px solid #999;padding:4px 8px;font-weight:600;white-space:nowrap">CNPJ OU CODIGO SISTEMA:</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-cnpj" type="text" placeholder="CNPJ ou código" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">ENDEREÇO DO SERVIÇO:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="orc-endereco" type="text" placeholder="Endereço completo" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
       <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">CIDADE:</td><td style="border:1px solid #999;padding:2px 6px;"><input id="orc-cidade" type="text" placeholder="Cidade" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">UF:</td><td style="border:1px solid #999;padding:2px 6px;width:60px;"><input id="orc-uf" type="text" placeholder="UF" maxlength="2" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;"></td></tr>
@@ -8683,6 +8684,9 @@ let orcMatLinhas=6;
 let orcIniciado=false;
 function initOrçamento(){
   if(orcIniciado)return;orcIniciado=true;
+  // alimenta o autocomplete de cliente (mesmo padrao dos outros modulos)
+  if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); }
+  else { popularDatalistClientes(); }
   orcMatLinhas=6;
   buildOrcTables();
   document.getElementById('orc-data-orcamento').value=todayStr;
@@ -8933,6 +8937,8 @@ function carregarOrcamento(id){
   calcOrçamento();
   const n1=document.getElementById('orc-numero-preview'); if(n1)n1.textContent=o.numero||'—';
   const n2=document.getElementById('orc-numero-doc'); if(n2)n2.textContent=o.numero||'—';
+  orcClienteVinculado=String(o.cliente||'');   // dados ja vieram salvos: nao sobrescrever
+  orcAtualizarVinculoCliente();
   orcSetStatusUI(o.status||'rascunho');
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -8967,6 +8973,8 @@ function novoOrcamento(){
   limparOrçamentoSilencioso();
   const n1=document.getElementById('orc-numero-preview'); if(n1)n1.textContent='— será gerado ao salvar —';
   const n2=document.getElementById('orc-numero-doc'); if(n2)n2.textContent='—';
+  orcClienteVinculado='';
+  orcAtualizarVinculoCliente();
   orcSetStatusUI('rascunho');
 }
 
@@ -9056,6 +9064,40 @@ async function exportarOrçamentoPDF(){
     restaurar();
     if(btnPdf){ btnPdf.disabled=false; btnPdf.textContent=txtBtn; }
   }
+}
+
+// ============ CLIENTE DO ORÇAMENTO (autocomplete) ============
+// O campo usa <datalist>: sugere os clientes da base, mas continua aceitando
+// digitacao livre -- da pra orcar para quem ainda nao esta cadastrado.
+let orcClienteVinculado = '';
+function _orcAchaCliente(nome){
+  const n=String(nome||'').trim().toLowerCase();
+  if(!n || !Array.isArray(clientes)) return null;
+  return clientes.find(c=>String(c.nome||'').trim().toLowerCase()===n) || null;
+}
+// Apenas o aviso visual. Nao altera nenhum campo -- serve para quando o
+// orcamento e carregado da lista e os dados ja vieram salvos.
+function orcAtualizarVinculoCliente(){
+  const av=document.getElementById('orc-cliente-vinculo'); if(!av) return;
+  const nome=(document.getElementById('orc-cliente')?.value||'').trim();
+  if(!nome){ av.textContent=''; return; }
+  if(_orcAchaCliente(nome)){ av.textContent='✓ cliente da base'; av.style.color='#2BB673'; }
+  else { av.textContent='cliente avulso — não está na base'; av.style.color='var(--text-muted)'; }
+}
+function orcClienteDigitado(){
+  orcAtualizarSiglaAuto();   // comportamento antigo, preservado
+  const nome=(document.getElementById('orc-cliente')?.value||'').trim();
+  const cli=_orcAchaCliente(nome);
+  // So preenche quando o cliente MUDA: nao atropela correcao manual.
+  if(cli && orcClienteVinculado!==String(cli.nome||'')){
+    orcClienteVinculado=String(cli.nome||'');
+    const set=(id,v)=>{ const e=document.getElementById(id); if(e && v) e.value=v; };
+    set('orc-cnpj',cli.cnpj);
+    set('orc-endereco',cli.endereco);
+    set('orc-cidade',cli.cidade);
+  }
+  if(!cli) orcClienteVinculado='';
+  orcAtualizarVinculoCliente();
 }
 
 // ============ ORÇAMENTOS SALVOS (tela propria) ============
