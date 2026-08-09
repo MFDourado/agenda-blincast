@@ -1171,17 +1171,103 @@ function iniciarApp(){
         carregarConfig();
         switchMainTab('pipeline');
         verificarV2Popup();
-        if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
-        setTimeout(sincronizarOperacional,3000);
-        setTimeout(verificarNotificacoesFerias,8000);
-        setTimeout(verificarEscalasPendentes,9000);
-        setTimeout(checarPopupSky,7000);
+        cargaInicialEmFila(true);
         return;
       }
     }
   }catch(e){}
   document.getElementById('login-overlay').style.display='flex';
 }
+
+// ── OTIMIZACAO DE CARGA ──────────────────────────────────────────────────────
+// Dois problemas resolvidos aqui:
+//   (a) LOGIN: disparava ~10 requisicoes ao mesmo tempo, e getPipeline 3x
+//       (switchMainTab + setTimeout + sincronizarOperacional). O Apps Script
+//       atende uma por vez e o limite e de 30 execucoes simultaneas por conta,
+//       entao as ultimas estouravam -> "Aguardando... / Reconectando...".
+//   (b) TROCA DE ABA: cada clique refazia a busca completa no servidor, mesmo
+//       voltando para uma aba aberta segundos antes.
+const SYNC_INTERVALO_MS = 120000;   // sincronismo de fundo: era 30000 (30s)
+const ABA_TTL_MS        = 90000;    // padrao: reaproveita a aba por 90s
+// Abas que mudam o tempo todo e precisam de dado mais fresco:
+const ABA_TTL_CURTO     = { 'ata': 30000, 'os': 30000 };
+
+// --- (a) carga inicial em fila -----------------------------------------------
+async function _cargaPasso(nome, fn){
+  try { await fn(); }
+  catch(err){ console.warn('[carga inicial] falhou: ' + nome, err); }
+}
+async function cargaInicialEmFila(comEscalas){
+  if(window._cargaIniciada) return;
+  window._cargaIniciada = true;
+
+  // Entrar no sistema faz UMA busca so: a da aba que abriu (switchMainTab).
+  // Todo o resto passa a buscar quando o modulo for clicado.
+  setStatus('online','Pronto - ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+
+  sVerificar();   // so mexe em localStorage, nao vai ao servidor
+
+  // Avisos (ferias / escalas / Sky) saem da frente do login: rodam 25s depois,
+  // uma unica vez por dia por usuario. Antes custavam 5-6 buscas a cada F5.
+  setTimeout(function(){ avisosDoDia(comEscalas); }, 25000);
+
+  if(!window._syncStarted){
+    window._syncStarted = true;
+    window._syncInterval = setInterval(sincronizarFundo, SYNC_INTERVALO_MS);
+  }
+}
+
+// Avisos uma vez por dia: recarregar a pagina nao repete as buscas.
+async function avisosDoDia(comEscalas){
+  try{
+    var hoje = new Date().toISOString().slice(0,10);
+    if(localStorage.getItem('blintrack_avisos') === hoje) return;
+    localStorage.setItem('blintrack_avisos', hoje);
+  }catch(e){}
+  await _cargaPasso('ferias', verificarNotificacoesFerias);
+  if(comEscalas) await _cargaPasso('escalas', verificarEscalasPendentes);
+  await _cargaPasso('sky', checarPopupSky);
+}
+
+// Sincronismo de fundo: so busca a agenda se a agenda estiver aberta na tela.
+// Caso contrario apenas renova a sessao localmente, sem tocar no servidor.
+function sincronizarFundo(){
+  if(document.visibilityState !== 'visible') return;
+  var ag = document.getElementById('page-agenda');
+  if(ag && ag.style.display !== 'none'){ apiGet(); return; }
+  try{
+    var u = JSON.parse(localStorage.getItem('blintrack_user') || '{}');
+    if(u && u.login_ts){ u.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(u)); }
+  }catch(e){}
+}
+
+// --- (b) memoria por aba ------------------------------------------------------
+// Se a aba foi carregada ha menos de ABA_TTL_MS, nao rebusca: mostra o que ja
+// esta na tela. O botao "Refresh" e qualquer gravacao continuam trazendo dado
+// novo, entao o atraso maximo e o proprio TTL.
+window._abaCache = {};
+function _cargaAba(chave, fn){
+  var agora = Date.now();
+  var ttl   = Object.prototype.hasOwnProperty.call(ABA_TTL_CURTO, chave)
+                ? ABA_TTL_CURTO[chave] : ABA_TTL_MS;
+  if (agora - (window._abaCache[chave] || 0) < ttl) return;
+  window._abaCache[chave] = agora;
+  // Se a carga falhar (erro direto OU promessa rejeitada), zera o carimbo:
+  // assim o proximo clique tenta de novo em vez de ficar preso ate o TTL.
+  try {
+    var p = fn();
+    if (p && typeof p.catch === 'function') {
+      p.catch(function(err){
+        window._abaCache[chave] = 0;
+        console.warn('[aba] ' + chave, err);
+      });
+    }
+  } catch(err){
+    window._abaCache[chave] = 0;
+    console.warn('[aba] ' + chave, err);
+  }
+}
+function limparCacheAbas(){ window._abaCache = {}; }
 
 async function fazerLogin(){
   const usuario = document.getElementById('login-usuario').value.trim();
@@ -1210,10 +1296,7 @@ async function fazerLogin(){
       carregarConfig();
       switchMainTab('pipeline');
       verificarV2Popup();
-      if(!window._syncStarted){window._syncStarted=true;apiGet();window._syncInterval=setInterval(()=>{if(document.visibilityState==='visible')apiGet();},30000);}setTimeout(loadPipeline,3000);setTimeout(sVerificar,5000);
-      setTimeout(sincronizarOperacional,3000);
-      setTimeout(verificarNotificacoesFerias, 8000);
-      setTimeout(checarPopupSky, 7000);
+      cargaInicialEmFila(true);
     } else if(d.ok && !perfilPodeOperacional(d.perfil)){
       errEl.textContent='Seu perfil não tem acesso ao Operacional.';
     } else {
@@ -2870,38 +2953,39 @@ function switchMainTab(t){
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
-  if(ehVistoria){ loadVistoria(); filtrarVistoriaTipo(vistoriaFiltroTipo); }
-  if(t==='pipeline')loadPipeline();
+  if(ehVistoria){ _cargaAba('vistoria',loadVistoria); filtrarVistoriaTipo(vistoriaFiltroTipo); }
+  if(t==='pipeline')_cargaAba('pipeline',loadPipeline);
+  if(t==='agenda')_cargaAba('agenda',apiGet);   // a Agenda vive do getAll
   if(t==='dashboard')renderDashboard();
-  if(t==='comercial')loadComercial();
-  if(t==='clientes')loadClientes();
-  if(t==='cronograma')loadCronogramas();
-  if(t==='ata')loadAta();
+  if(t==='comercial')_cargaAba('comercial',loadComercial);
+  if(t==='clientes')_cargaAba('clientes',loadClientes);
+  if(t==='cronograma')_cargaAba('cronograma',loadCronogramas);
+  if(t==='ata')_cargaAba('ata',loadAta);
   if(t==='orcamento')initOrçamento();
-  if(t==='distrato')loadDistrato();
-  if(t==='poc')loadPocOperacional();
-  if(t==='montagem')loadMontagem();
+  if(t==='distrato')_cargaAba('distrato',loadDistrato);
+  if(t==='poc')_cargaAba('poc',loadPocOperacional);
+  if(t==='montagem')_cargaAba('montagem',loadMontagem);
   if(t==='requisicoes')renderRequisicoes();
   if(t==='ferias')iniciarFerias();
   if(t==='viagem')iniciarViagem();
-  if(t==='implantacoes')loadImplantacoes();
+  if(t==='implantacoes')_cargaAba('implantacoes',loadImplantacoes);
   if(t==='estoque')iniciarEstoque();
-  if(t==='arm-cadastro')loadArmCadastro();
-  if(t==='arm-interno')loadArmazens('interno');
-  if(t==='arm-externo')loadArmazens('externo');
-  if(t==='rastreio-correios')loadRastreio('correios');
-  if(t==='rastreio-jamef')loadRastreio('jamef');
-  if(t==='os-relatorio')loadOsRelatorio();
-  if(t==='os')loadOS();
-  if(t==='checklist-impl')loadChecklistImpl();
-  if(t==='colaboradores')loadColaboradores();
-  if(t==='escala-sac')loadEscala('SAC');
-  if(t==='escala-tecnico')loadEscala('Técnico campo');
-  if(t==='escala-n2')loadEscala('N2');
-  if(t==='operadoras')loadOperadoras();
-  if(t==='itens-locados')loadItensLocados();
-  if(t==='gestao-sky')loadSky();
-  if(t==='frota')loadFrota();
+  if(t==='arm-cadastro')_cargaAba('arm-cadastro',loadArmCadastro);
+  if(t==='arm-interno')_cargaAba('arm-interno',function(){loadArmazens('interno');});
+  if(t==='arm-externo')_cargaAba('arm-externo',function(){loadArmazens('externo');});
+  if(t==='rastreio-correios')_cargaAba('rast-correios',function(){loadRastreio('correios');});
+  if(t==='rastreio-jamef')_cargaAba('rast-jamef',function(){loadRastreio('jamef');});
+  if(t==='os-relatorio')_cargaAba('os-relatorio',loadOsRelatorio);
+  if(t==='os')_cargaAba('os',loadOS);
+  if(t==='checklist-impl')_cargaAba('checklist-impl',loadChecklistImpl);
+  if(t==='colaboradores')_cargaAba('colaboradores',loadColaboradores);
+  if(t==='escala-sac')_cargaAba('escala-sac',function(){loadEscala('SAC');});
+  if(t==='escala-tecnico')_cargaAba('escala-tec',function(){loadEscala('Técnico campo');});
+  if(t==='escala-n2')_cargaAba('escala-n2',function(){loadEscala('N2');});
+  if(t==='operadoras')_cargaAba('operadoras',loadOperadoras);
+  if(t==='itens-locados')_cargaAba('itens-locados',loadItensLocados);
+  if(t==='gestao-sky')_cargaAba('gestao-sky',loadSky);
+  if(t==='frota')_cargaAba('frota',loadFrota);
   abrirAba(t);
 }
 
@@ -7309,6 +7393,8 @@ function fecharContratoModal(){
 
 function fazerLogout(){
   localStorage.removeItem('blintrack_user');
+  window._cargaIniciada = false;   // libera a carga inicial do proximo login
+  limparCacheAbas();
   usuarioLogado = null;
   document.getElementById('login-overlay').style.display='flex';
   document.querySelector('header').style.display='none';
@@ -7320,6 +7406,7 @@ function fazerLogout(){
 
 function forceRefresh(){
   window._pipelineRetry=false;
+  limparCacheAbas();          // o Refresh sempre traz dado novo do servidor
   setStatus('loading','Atualizando...');
   apiGet().then(()=>{
     // Recarregar o módulo atual
