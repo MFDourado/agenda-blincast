@@ -632,7 +632,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <div class="form-label"><span class="gold-dot"></span> Adicionar evento</div>
     <div class="form-row">
       <div class="field"><label>Cliente</label><input type="text" id="f-cliente" placeholder="Nome do cliente"></div>
-      <div class="field"><label>Data</label><input type="date" id="f-data"></div>
+      <div class="field"><label>Data</label><input type="date" id="f-data" onfocus="this.scrollIntoView({block:'center'})"></div>
       <div class="field"><label>Status</label>
         <select class="field-sel" id="f-status">
           <option value="previsto">Previsto</option>
@@ -645,6 +645,8 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       <button class="add-btn" id="add-btn" onclick="addEvt()">+ Adicionar</button>
     </div>
   </div>
+  <!-- respiro: garante espaco abaixo do formulario para o seletor de data abrir -->
+  <div style="height:300px"></div>
 </div>
 
 <!-- DASHBOARD -->
