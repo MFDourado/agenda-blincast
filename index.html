@@ -3097,7 +3097,20 @@ async function apiGet(tentativa=1){
 }
 async function apiPost(body){
   setStatus('loading','Salvando...');
-  try{await fetch(API,{method:'POST',body:JSON.stringify(body)});await apiGet();}
+  try{
+    // O backend recusa qualquer gravacao sem token. Este apiPost enviava o
+    // corpo sem token e ninguem lia a resposta, entao adicionar evento, mudar
+    // status, salvar obs, excluir e alterar data falhavam EM SILENCIO.
+    const r = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(), ...body})});
+    let d=null;
+    try{ d = await r.json(); }catch(err){ d=null; }
+    if(d && d.error){
+      setStatus('error','Erro ao salvar');
+      alert('Não foi possível salvar: '+d.error);
+      return;
+    }
+    await apiGet();
+  }
   catch(e){setStatus('error','Erro ao salvar');}
 }
 function setFilter(f){
@@ -3199,27 +3212,16 @@ async function loadPipeline(forceRender){
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getPipeline',{signal:ctrl2.signal});
     const d=await r.json();
     projects=Array.isArray(d)?d.map(p=>({...p,uhs:parseInt(p.uhs)||0,steps:Array.isArray(p.steps)?p.steps:STEPS.map(s=>({id:s.id,done:false,date:''}))})):[];
-    // herdar link_grade / link_contrato do cliente correspondente (esses campos vivem na aba Clientes)
-    try{
-      if(!Array.isArray(clientes) || !clientes.length){ await loadClientes(); }
-      if(Array.isArray(clientes) && clientes.length){
-        projects.forEach(p=>{
-          const cnpjP=String(p.cnpj||'').replace(/\D/g,'');
-          const nomeP=String(p.nome||'').trim().toLowerCase();
-          let cli=null;
-          if(cnpjP) cli=clientes.find(c=>String(c.cnpj||'').replace(/\D/g,'')===cnpjP);
-          if(!cli && nomeP) cli=clientes.find(c=>String(c.nome||'').trim().toLowerCase()===nomeP);
-          if(cli){
-            if(!p.link_grade && cli.link_grade) p.link_grade=cli.link_grade;
-            if(!p.link_contrato && cli.link_contrato) p.link_contrato=cli.link_contrato;
-          }
-        });
-      }
-    }catch(e){}
+    // Desenha o pipeline JA. Antes, esperava a aba Clientes inteira (226 KB,
+    // ~1,2s) so para herdar os links de grade/contrato -- isso dobrava o tempo
+    // de espera na entrada do sistema.
     document.getElementById('pipeline-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const algumAberto=document.querySelectorAll('.project-body[style*="display: block"],.project-body[style*="display:block"]').length>0;
     if(!algumAberto||forceRender)renderPipeline();
     else document.getElementById('pipeline-sync').textContent='Sincronizado (card aberto) - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    // Os links vivem na aba Clientes: busca em segundo plano e so redesenha se
+    // algum card realmente mudar. Nao trava mais a exibicao.
+    _completarLinksPipeline(algumAberto, forceRender);
   }catch(e){
     window._pipeRetries = (window._pipeRetries||0) + 1;
     if(window._pipeRetries < 4){
@@ -3232,6 +3234,28 @@ async function loadPipeline(forceRender){
     }
   }
 }
+// Completa link_grade / link_contrato a partir da aba Clientes, em segundo
+// plano. Se nada mudar, nao redesenha (evita piscar a tela do usuario).
+async function _completarLinksPipeline(algumAberto, forceRender){
+  try{
+    if(!Array.isArray(clientes) || !clientes.length){ await loadClientes(); }
+    if(!Array.isArray(clientes) || !clientes.length) return;
+    let mudou=false;
+    projects.forEach(p=>{
+      const cnpjP=String(p.cnpj||'').replace(/\D/g,'');
+      const nomeP=String(p.nome||'').trim().toLowerCase();
+      let cli=null;
+      if(cnpjP) cli=clientes.find(c=>String(c.cnpj||'').replace(/\D/g,'')===cnpjP);
+      if(!cli && nomeP) cli=clientes.find(c=>String(c.nome||'').trim().toLowerCase()===nomeP);
+      if(cli){
+        if(!p.link_grade && cli.link_grade){ p.link_grade=cli.link_grade; mudou=true; }
+        if(!p.link_contrato && cli.link_contrato){ p.link_contrato=cli.link_contrato; mudou=true; }
+      }
+    });
+    if(mudou && (!algumAberto || forceRender)) renderPipeline();
+  }catch(e){}
+}
+
 async function savePipelineProject(proj){
   try{
     const payload={action:'savePipeline',id:proj.id,nome:proj.nome,uhs:proj.uhs,inicio:proj.inicio,steps:proj.steps};
