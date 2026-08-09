@@ -449,6 +449,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Financeiro</div>
     <button class="snav-btn" id="mt-orcamento" onclick="switchMainTab('orcamento');closeSidebar()">Orçamento</button>
+    <button class="snav-btn" id="mt-orcamentos-salvos" onclick="switchMainTab('orcamentos-salvos');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Orçamentos salvos</button>
     <button class="snav-btn" id="mt-distrato" onclick="switchMainTab('distrato');closeSidebar()">Distrato</button>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Equipe</div>
@@ -650,6 +651,41 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
   </div>
   <!-- respiro: garante espaco abaixo do formulario para o seletor de data abrir -->
   <div style="height:300px"></div>
+</div>
+
+<!-- ORÇAMENTOS SALVOS -->
+<div id="page-orcamentos-salvos" class="main" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <div>
+      <h2 style="margin:0;font-size:20px;">Orçamentos salvos</h2>
+      <div id="orcs-sub" style="font-size:12px;color:var(--text-muted);margin-top:2px;">Carregando...</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input id="orcs-busca" oninput="renderOrcamentosSalvos()" placeholder="🔍 cliente, nº ou orçamentista" style="width:280px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);padding:0 10px;font-size:12px;outline:none;">
+      <select id="orcs-status" onchange="renderOrcamentosSalvos()" style="height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);padding:0 8px;font-size:12px;outline:none;">
+        <option value="">Todos</option>
+        <option value="aprovado">Aprovados</option>
+        <option value="rascunho">Rascunhos</option>
+      </select>
+      <button onclick="limparCacheAbas();carregarOrcamentosSalvos()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">↻ Atualizar</button>
+    </div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--black);color:var(--gold);text-align:left;">
+          <th style="padding:8px 10px;font-weight:600;white-space:nowrap;">Nº</th>
+          <th style="padding:8px 10px;font-weight:600;">Cliente</th>
+          <th style="padding:8px 10px;font-weight:600;white-space:nowrap;">Data</th>
+          <th style="padding:8px 10px;font-weight:600;">Orçamentista</th>
+          <th style="padding:8px 10px;font-weight:600;text-align:right;white-space:nowrap;">Total</th>
+          <th style="padding:8px 10px;font-weight:600;white-space:nowrap;">Status</th>
+          <th style="padding:8px 10px;font-weight:600;white-space:nowrap;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="orcs-tbody"><tr><td colspan="7" style="padding:14px;color:var(--text-muted);">Carregando...</td></tr></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -2954,12 +2990,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -2972,6 +3008,7 @@ function switchMainTab(t){
   if(t==='cronograma')_cargaAba('cronograma',loadCronogramas);
   if(t==='ata')_cargaAba('ata',loadAta);
   if(t==='orcamento')initOrçamento();
+  if(t==='orcamentos-salvos')_cargaAba('orc-salvos',carregarOrcamentosSalvos);
   if(t==='distrato')_cargaAba('distrato',loadDistrato);
   if(t==='poc')_cargaAba('poc',loadPocOperacional);
   if(t==='montagem')_cargaAba('montagem',loadMontagem);
@@ -9019,6 +9056,77 @@ async function exportarOrçamentoPDF(){
     restaurar();
     if(btnPdf){ btnPdf.disabled=false; btnPdf.textContent=txtBtn; }
   }
+}
+
+// ============ ORÇAMENTOS SALVOS (tela propria) ============
+// Reaproveita a mesma fonte da lista que ja existia dentro do Orcamento.
+// Nao guarda PDF: o PDF e gerado do orcamento salvo, entao sai sempre atual.
+async function carregarOrcamentosSalvos(){
+  const sub=document.getElementById('orcs-sub');
+  if(sub) sub.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?action=getOrcamentos&token='+encodeURIComponent(getToken()));
+    const d=await r.json();
+    orcamentosLista=(d && d.orcamentos)?d.orcamentos:[];
+    renderOrcamentosSalvos();
+  }catch(e){
+    const tb=document.getElementById('orcs-tbody');
+    if(tb) tb.innerHTML='<tr><td colspan="7" style="padding:14px;color:#c0392b;">Não foi possível carregar.</td></tr>';
+    if(sub) sub.textContent='Erro ao carregar';
+  }
+}
+function _orcsData(o){
+  const v=o.data_orcamento||o.criado_em||'';
+  if(!v) return '—';
+  const iso=String(v).slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(iso)){ const p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  try{ return new Date(v).toLocaleDateString('pt-BR'); }catch(e){ return String(v); }
+}
+function renderOrcamentosSalvos(){
+  const tb=document.getElementById('orcs-tbody'); if(!tb) return;
+  const q=(document.getElementById('orcs-busca')?.value||'').toLowerCase().trim();
+  const st=document.getElementById('orcs-status')?.value||'';
+  let lista=(orcamentosLista||[]).slice().reverse();
+  if(st==='aprovado') lista=lista.filter(o=>String(o.status||'')==='aprovado');
+  if(st==='rascunho') lista=lista.filter(o=>String(o.status||'')!=='aprovado');
+  if(q) lista=lista.filter(o=>
+    String(o.cliente||'').toLowerCase().includes(q) ||
+    String(o.numero||'').toLowerCase().includes(q) ||
+    String(o.orcamentista||'').toLowerCase().includes(q));
+
+  const sub=document.getElementById('orcs-sub');
+  if(sub) sub.textContent=lista.length+' orçamento(s)'+(q||st?' no filtro':'')+' · total de '+(orcamentosLista||[]).length;
+
+  if(!lista.length){ tb.innerHTML='<tr><td colspan="7" style="padding:14px;color:var(--text-muted);">Nenhum orçamento encontrado.</td></tr>'; return; }
+
+  tb.innerHTML=lista.map(o=>{
+    const aprov=String(o.status||'')==='aprovado';
+    const badge=aprov
+      ? '<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:rgba(43,182,115,.14);color:#2BB673;border:1px solid #2BB67355;white-space:nowrap;">Aprovado</span>'
+      : '<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:rgba(230,126,34,.14);color:#e67e22;border:1px solid #e67e2255;white-space:nowrap;">Rascunho</span>';
+    return '<tr style="border-top:1px solid var(--border);">'+
+      '<td style="padding:7px 10px;font-family:\'DM Mono\',monospace;font-size:11px;white-space:nowrap;">'+(o.numero||'—')+'</td>'+
+      '<td style="padding:7px 10px;font-weight:600;">'+(o.cliente||'—')+'</td>'+
+      '<td style="padding:7px 10px;white-space:nowrap;color:var(--text-muted);">'+_orcsData(o)+'</td>'+
+      '<td style="padding:7px 10px;color:var(--text-muted);">'+(o.orcamentista||'—')+'</td>'+
+      '<td style="padding:7px 10px;text-align:right;font-family:\'DM Mono\',monospace;white-space:nowrap;">'+(o.total||'R$ 0,00')+'</td>'+
+      '<td style="padding:7px 10px;">'+badge+'</td>'+
+      '<td style="padding:7px 10px;white-space:nowrap;">'+
+        '<button onclick="abrirOrcamentoSalvo(\''+o.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #5B9EF5;color:#5B9EF5;background:rgba(91,158,245,.1);cursor:pointer;margin-right:5px;">Abrir</button>'+
+        '<button onclick="pdfOrcamentoSalvo(\''+o.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--gold);color:var(--gold);background:rgba(245,184,0,.1);cursor:pointer;">PDF</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+async function abrirOrcamentoSalvo(id){
+  switchMainTab('orcamento');
+  await carregarOrcamento(id);
+}
+async function pdfOrcamentoSalvo(id){
+  switchMainTab('orcamento');
+  await carregarOrcamento(id);
+  // pequena pausa para a tela terminar de montar antes de fotografar
+  setTimeout(()=>{ exportarOrçamentoPDF(); }, 400);
 }
 
 // ===================== SINCRONIZAÇÕES =====================
