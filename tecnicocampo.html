@@ -166,7 +166,10 @@ input[list].field-inp{margin-bottom:4px;}
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Condutor</label>
       <select id="vv-condutor" onchange="atualizarBotaoVist()" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px;font-size:14px;outline:none;margin-bottom:12px;"></select>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">KM do odômetro</label>
-      <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:14px;">
+      <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:6px;">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Km da última vistoria (revisão)</label>
+      <input type="number" id="vv-km-ultima" placeholder="Ex.: 12356" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:4px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Só altere se hoje o carro passou por uma revisão/vistoria. A próxima é calculada a cada 10.000 km a partir daqui.</div>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Fotos obrigatórias</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
         <label id="vslot-odometro" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('odometro',this)"><span style="font-size:22px;">🔢</span><span>Odômetro</span><span id="vreq-odometro" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
@@ -932,6 +935,7 @@ async function abrirVistoriaVeic(){
   vistFotos={}; vistCombustivel=''; vistAvarias=[];
   ['odometro','frente','lateral_esq','lateral_dir','traseira'].forEach(k=>{ const el=document.getElementById('vslot-'+k); if(el){ el.style.borderStyle='dashed'; el.style.borderColor='var(--border)'; el.style.background='var(--surface)'; const im=el.querySelector('img'); if(im)im.remove(); const rq=document.getElementById('vreq-'+k); if(rq)rq.style.display=''; } });
   const km=document.getElementById('vv-km'); if(km)km.value='';
+  const kmUlt=document.getElementById('vv-km-ultima'); if(kmUlt)kmUlt.value='';
   const obs=document.getElementById('vv-obs'); if(obs)obs.value='';
   document.querySelectorAll('#vv-fuel button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
   document.querySelectorAll('#vv-avarias button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
@@ -949,7 +953,13 @@ async function carregarVeiculosCampo(){
     veiculosCampo=(d&&d.veiculos)?d.veiculos:[];
     sel.innerHTML='<option value="">Selecione o veículo...</option>'+veiculosCampo.map(v=>'<option value="'+v.id+'">'+(v.placa||'')+(v.modelo?(' — '+v.modelo):'')+'</option>').join('');
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar</option>'; }
-  sel.onchange=atualizarBotaoVist;
+  sel.onchange=function(){ preencherKmUltimaVistoria(); atualizarBotaoVist(); };
+}
+function preencherKmUltimaVistoria(){
+  const veicId=document.getElementById('vv-veiculo')?.value||'';
+  const veic=veiculosCampo.find(v=>String(v.id)===String(veicId));
+  const campo=document.getElementById('vv-km-ultima');
+  if(campo) campo.value=(veic&&veic.km_ultima_vistoria)?veic.km_ultima_vistoria:'';
 }
 async function carregarCondutoresCampo(){
   const sel=document.getElementById('vv-condutor'); if(!sel)return;
@@ -1028,7 +1038,7 @@ async function enviarVistoria(){
       token:getToken(),action:'saveVistoriaVeic',
       tecnico:nome, condutor:cond, data:hojeIso,
       veiculo_id:veicId, veiculo_placa:veic.placa||'', veiculo_modelo:veic.modelo||'',
-      km:km, combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
+      km:km, km_ultima_vistoria:(document.getElementById('vv-km-ultima').value||'').trim(), combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
       fotos:JSON.stringify(fotos)
     })});
     const d2=await r2.json();
