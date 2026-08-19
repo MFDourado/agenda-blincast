@@ -3048,13 +3048,37 @@ async function loadFrota(){
 }
 async function carregarVeiculos(){
   try{ const r=await fetch(API+'?action=getVeiculos&token='+encodeURIComponent(getToken())); const d=await r.json(); veiculosLista=(d&&d.veiculos)?d.veiculos:[]; renderVeiculos(); }
-  catch(e){ const el=document.getElementById('frota-veic-lista'); if(el)el.innerHTML='<tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Erro ao carregar.</td></tr>'; }
+  catch(e){ const el=document.getElementById('frota-veic-lista'); if(el)el.innerHTML='<tr><td colspan="8" style="padding:10px;color:var(--text-muted);">Erro ao carregar.</td></tr>'; }
+}
+function _kmAtualVeiculo(veicId){
+  // pega o KM mais recente registrado nas vistorias diárias desse veículo
+  let atual=0, maisRecente=null;
+  (vistoriasLista||[]).forEach(v=>{
+    if(String(v.veiculo_id)!==String(veicId) || !v.km) return;
+    const d=new Date(v.criado_em||v.data_hora||v.data||0);
+    if(!maisRecente || d>maisRecente){ maisRecente=d; atual=parseFloat(v.km)||0; }
+  });
+  return {atual, temDado:!!maisRecente};
+}
+function alertaProximaVistoria(v){
+  const kmUlt=parseFloat(v.km_ultima_vistoria);
+  if(!kmUlt){ return {texto:'Sem dado',cor:'#666',bg:'rgba(255,255,255,.05)'}; }
+  const proxima=kmUlt+10000;
+  const {atual,temDado}=_kmAtualVeiculo(v.id);
+  const kmRef=temDado?atual:kmUlt;
+  const faltam=proxima-kmRef;
+  if(faltam<=0) return {texto:'IMEDIATA — vencida há '+Math.abs(Math.round(faltam))+' km',cor:'#fff',bg:'#c0392b'};
+  if(faltam<=200) return {texto:'Urgente — faltam '+Math.round(faltam)+' km',cor:'#fff',bg:'#e05b3a'};
+  if(faltam<=500) return {texto:'Atenção — faltam '+Math.round(faltam)+' km',cor:'#1F2127',bg:'#F5A623'};
+  if(faltam<=1000) return {texto:'Atenção — faltam '+Math.round(faltam)+' km',cor:'#1F2127',bg:'#F5C518'};
+  return {texto:'Em dia ('+Math.round(faltam)+' km)',cor:'#fff',bg:'#2BB673'};
 }
 function renderVeiculos(){
   const tb=document.getElementById('frota-veic-lista'); if(!tb) return;
-  if(!veiculosLista.length){ tb.innerHTML='<tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Nenhum veículo cadastrado.</td></tr>'; return; }
+  if(!veiculosLista.length){ tb.innerHTML='<tr><td colspan="8" style="padding:10px;color:var(--text-muted);">Nenhum veículo cadastrado.</td></tr>'; return; }
   tb.innerHTML=veiculosLista.map(v=>{
     const inativo=(String(v.ativo||'').toLowerCase()==='não'||String(v.ativo||'').toLowerCase()==='nao');
+    const al=alertaProximaVistoria(v);
     return '<tr>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;">'+(String(v.placa||'').toUpperCase()||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.modelo||'—')+'</td>'+
@@ -3062,17 +3086,18 @@ function renderVeiculos(){
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.tecnico||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(v.ano||'—')+'</td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);">'+(inativo?'<span style="color:#c0392b">Inativo</span>':'<span style="color:#2BB673">Ativo</span>')+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border);"><span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;background:'+al.bg+';color:'+al.cor+';">'+al.texto+'</span></td>'+
       '<td style="padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;">'+
         '<button onclick="editarVeiculo(\''+v.id+'\')" style="font-size:11px;padding:3px 8px;border:1px solid #5B9EF5;color:#5B9EF5;background:rgba(91,158,245,.1);border-radius:5px;cursor:pointer;margin-right:4px;">Editar</button>'+
         '<button onclick="excluirVeiculoOp(\''+v.id+'\')" style="font-size:11px;padding:3px 8px;border:1px solid #c0392b;color:#c0392b;background:rgba(192,57,43,.1);border-radius:5px;cursor:pointer;">Excluir</button>'+
       '</td></tr>';
   }).join('');
 }
-function novoVeiculo(){ veicEditId=null; ['fv-placa','fv-modelo','fv-cor','fv-tecnico','fv-ano','fv-renavam','fv-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); const a=document.getElementById('fv-ativo');if(a)a.value='Sim'; const t=document.getElementById('fv-titulo');if(t)t.textContent='Novo veículo'; }
-function editarVeiculo(id){ const v=veiculosLista.find(x=>String(x.id)===String(id)); if(!v)return; veicEditId=v.id; const set=(i,val)=>{const e=document.getElementById(i);if(e)e.value=val||'';}; set('fv-placa',v.placa);set('fv-modelo',v.modelo);set('fv-cor',v.cor);{const _ts=document.getElementById('fv-tecnico');if(_ts){if(v.tecnico&&![..._ts.options].some(o=>o.value===v.tecnico)){const _o=document.createElement('option');_o.value=v.tecnico;_o.textContent=v.tecnico;_ts.appendChild(_o);}_ts.value=v.tecnico||'';}}set('fv-ano',v.ano);set('fv-renavam',v.renavam);set('fv-obs',v.obs); const a=document.getElementById('fv-ativo');if(a)a.value=(String(v.ativo||'').toLowerCase().charAt(0)==='n'?'Não':'Sim'); const t=document.getElementById('fv-titulo');if(t)t.textContent='Editar veículo'; const pg=document.getElementById('page-frota'); if(pg)pg.scrollIntoView({behavior:'smooth'}); }
+function novoVeiculo(){ veicEditId=null; ['fv-placa','fv-modelo','fv-cor','fv-tecnico','fv-ano','fv-renavam','fv-obs','fv-km-ultima-vistoria'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); const a=document.getElementById('fv-ativo');if(a)a.value='Sim'; const t=document.getElementById('fv-titulo');if(t)t.textContent='Novo veículo'; }
+function editarVeiculo(id){ const v=veiculosLista.find(x=>String(x.id)===String(id)); if(!v)return; veicEditId=v.id; const set=(i,val)=>{const e=document.getElementById(i);if(e)e.value=val||'';}; set('fv-placa',v.placa);set('fv-modelo',v.modelo);set('fv-cor',v.cor);{const _ts=document.getElementById('fv-tecnico');if(_ts){if(v.tecnico&&![..._ts.options].some(o=>o.value===v.tecnico)){const _o=document.createElement('option');_o.value=v.tecnico;_o.textContent=v.tecnico;_ts.appendChild(_o);}_ts.value=v.tecnico||'';}}set('fv-ano',v.ano);set('fv-renavam',v.renavam);set('fv-obs',v.obs);set('fv-km-ultima-vistoria',v.km_ultima_vistoria); const a=document.getElementById('fv-ativo');if(a)a.value=(String(v.ativo||'').toLowerCase().charAt(0)==='n'?'Não':'Sim'); const t=document.getElementById('fv-titulo');if(t)t.textContent='Editar veículo'; const pg=document.getElementById('page-frota'); if(pg)pg.scrollIntoView({behavior:'smooth'}); }
 async function salvarVeiculoOp(){
   const g=i=>document.getElementById(i)?.value||'';
-  const payload={token:getToken(),action:'saveVeiculo',placa:(g('fv-placa')||'').toUpperCase(),modelo:g('fv-modelo'),cor:g('fv-cor'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim'};
+  const payload={token:getToken(),action:'saveVeiculo',placa:(g('fv-placa')||'').toUpperCase(),modelo:g('fv-modelo'),cor:g('fv-cor'),tecnico:g('fv-tecnico'),ano:g('fv-ano'),renavam:g('fv-renavam'),obs:g('fv-obs'),ativo:g('fv-ativo')||'Sim',km_ultima_vistoria:g('fv-km-ultima-vistoria')};
   if(!payload.placa){ alert('Informe a placa.'); return; }
   if(veicEditId) payload.id=veicEditId;
   try{ const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)}); const d=await r.json(); if(d.ok){ showToast('Veículo salvo.'); novoVeiculo(); await carregarVeiculos(); } else alert('Erro: '+(d.error||'')); }catch(e){ alert('Erro de conexão.'); }
@@ -3082,7 +3107,7 @@ async function carregarVistoriasOp(){
   const dia=document.getElementById('fvist-data')?.value||'';
   let url=API+'?action=getVistorias&token='+encodeURIComponent(getToken());
   if(dia) url+='&data='+encodeURIComponent(dia);
-  try{ const r=await fetch(url); const d=await r.json(); vistoriasLista=(d&&d.vistorias)?d.vistorias:[]; renderVistoriasOp(); }
+  try{ const r=await fetch(url); const d=await r.json(); vistoriasLista=(d&&d.vistorias)?d.vistorias:[]; renderVistoriasOp(); renderVeiculos(); }
   catch(e){ const el=document.getElementById('frota-vist-lista'); if(el)el.innerHTML='<div style="color:var(--text-muted)">Erro ao carregar.</div>'; }
 }
 async function excluirVistoriaOp(id){ if(!confirm('Excluir esta vistoria? Não dá pra desfazer.'))return; try{ const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'excluirVistoria',id:id})}); const d=await r.json(); if(d.ok){ await carregarVistoriasOp(); } else alert('Erro: '+(d.error||'')); }catch(e){ alert('Erro de conexão.'); } }
@@ -10990,6 +11015,7 @@ async function estEnviarEmail(reg){
       <div><label style="font-size:11px;color:var(--text-muted);">Ano</label><input id="fv-ano" placeholder="2022" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Renavam</label><input id="fv-renavam" placeholder="00000000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
       <div><label style="font-size:11px;color:var(--text-muted);">Situação</label><select id="fv-ativo" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 8px;font-size:13px;outline:none;"><option value="Sim">Ativo</option><option value="Não">Inativo</option></select></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">Km da última vistoria</label><input type="number" id="fv-km-ultima-vistoria" placeholder="Ex.: 12356" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
       <div style="grid-column:span 3;"><label style="font-size:11px;color:var(--text-muted);">Observações</label><input id="fv-obs" placeholder="Opcional" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;outline:none;"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;">
@@ -10998,8 +11024,8 @@ async function estEnviarEmail(reg){
     </div>
     <div style="overflow-x:auto;margin-top:16px;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;"><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Placa</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Modelo</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Cor</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Técnico</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ano</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ações</th></tr></thead>
-        <tbody id="frota-veic-lista"><tr><td colspan="7" style="padding:10px;color:var(--text-muted);">Carregando...</td></tr></tbody>
+        <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;"><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Placa</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Modelo</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Cor</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Técnico</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ano</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Próxima vistoria</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);">Ações</th></tr></thead>
+        <tbody id="frota-veic-lista"><tr><td colspan="8" style="padding:10px;color:var(--text-muted);">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
