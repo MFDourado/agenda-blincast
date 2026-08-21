@@ -12991,6 +12991,28 @@ async function estEnviarEmail(reg){
     </div>
   </div>
 </div>
+
+<!-- MODAL REABRIR OS -->
+<div class="modal-overlay" id="reabrir-os-modal" style="display:none" onclick="if(event.target===this)fecharReabrirOSModal()">
+  <div class="modal">
+    <h3>🔁 Reabrir Ordem de Serviço</h3>
+    <div id="reabrir-os-info" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;"></div>
+    <div class="modal-field">
+      <label>Encaminhar para</label>
+      <select id="reabrir-os-tecnico" style="width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;"></select>
+    </div>
+    <div class="modal-field">
+      <label>Motivo da reabertura</label>
+      <textarea id="reabrir-os-motivo" rows="3" placeholder="Ex: cliente reportou que o problema voltou..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;font-family:'DM Sans',sans-serif;resize:vertical;"></textarea>
+    </div>
+    <input type="hidden" id="reabrir-os-id">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharReabrirOSModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarReabrirOS()">Reabrir OS</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let osLista=[],osEditId=null;
 let osFotosBuffer=[];
@@ -13052,6 +13074,7 @@ function renderOS(){
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
+          ${o.status==='Concluída'?`<button onclick="abrirReabrirOSModal('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #F5B800;border-radius:5px;background:rgba(245,184,0,.1);color:#F5B800;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">🔁 Reabrir</button>`:''}
           ${(o.fotos&&o.fotos!=='[]'&&o.fotos!=='""')?`<button onclick="verFotosOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.1);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📷 Fotos</button>`:''}
           <button onclick="editarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
           <button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
@@ -13060,6 +13083,58 @@ function renderOS(){
     </div>`).join('');
 }
 
+// ── REABRIR OS ─────────────────────────────────────────────────────────────
+function abrirReabrirOSModal(id){
+  const o=osLista.find(x=>String(x.id)===String(id));
+  if(!o) return;
+  document.getElementById('reabrir-os-id').value=id;
+  document.getElementById('reabrir-os-info').innerHTML=
+    '<b style="color:var(--text)">'+(o.numero||'—')+'</b> — '+(o.cliente||'—')
+    +'<br>Técnico atual: '+(o.tecnico?normalizarNomeTecnico(o.tecnico):'<span style="color:#F5B800">(sem técnico)</span>');
+  document.getElementById('reabrir-os-motivo').value='';
+  const sel=document.getElementById('reabrir-os-tecnico');
+  sel.innerHTML='';
+  const tecAtual=o.tecnico||'';
+  const optAtual=document.createElement('option');
+  optAtual.value=tecAtual;
+  optAtual.textContent=(tecAtual?normalizarNomeTecnico(tecAtual):'(manter sem técnico)')+' — reencaminhar pro mesmo';
+  sel.appendChild(optAtual);
+  if(typeof colabLista!=='undefined'){
+    colabLista.filter(c=>c.status==='Ativo').forEach(c=>{
+      const val=c.usuario||c.nome;
+      if(String(val).trim()===String(tecAtual).trim()) return; // já está na opção "atual"
+      const opt=document.createElement('option');
+      opt.value=val;
+      opt.textContent=c.nome+(c.cargo?' — '+c.cargo:'');
+      sel.appendChild(opt);
+    });
+  }
+  document.getElementById('reabrir-os-modal').style.display='flex';
+}
+function fecharReabrirOSModal(){
+  document.getElementById('reabrir-os-modal').style.display='none';
+}
+async function confirmarReabrirOS(){
+  const id=document.getElementById('reabrir-os-id').value;
+  const novoTecnico=document.getElementById('reabrir-os-tecnico').value;
+  const motivo=document.getElementById('reabrir-os-motivo').value.trim();
+  if(!id) return;
+  const btn=document.querySelector('#reabrir-os-modal .modal-btn.primary');
+  const orig=btn?btn.textContent:null;
+  if(btn){btn.disabled=true;btn.textContent='Reabrindo...';}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'reabrirOS',id,
+      novo_tecnico:novoTecnico,motivo,
+      reaberto_por:(usuarioLogado&&usuarioLogado.nome)||'Operacional'
+    })});
+    const d=await r.json();
+    if(d.error){alert(d.error);if(btn){btn.disabled=false;btn.textContent=orig;}return;}
+  }catch(e){alert('Erro ao reabrir a OS.');if(btn){btn.disabled=false;btn.textContent=orig;}return;}
+  if(btn){btn.disabled=false;btn.textContent=orig;}
+  fecharReabrirOSModal();
+  await loadOS();
+}
 function abrirNovaOS(){
   osEditId=null;
   setTimeout(osMovInit,60);
