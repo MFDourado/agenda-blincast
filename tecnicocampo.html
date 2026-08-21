@@ -166,10 +166,7 @@ input[list].field-inp{margin-bottom:4px;}
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Condutor</label>
       <select id="vv-condutor" onchange="atualizarBotaoVist()" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px;font-size:14px;outline:none;margin-bottom:12px;"></select>
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">KM do odômetro</label>
-      <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:6px;">
-      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Km da última vistoria (revisão)</label>
-      <input type="number" id="vv-km-ultima" placeholder="Ex.: 12356" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:4px;">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Só altere se hoje o carro passou por uma revisão/vistoria. A próxima é calculada a cada 10.000 km a partir daqui.</div>
+      <input type="number" id="vv-km" oninput="atualizarBotaoVist()" placeholder="Ex.: 84213" style="width:100%;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px;font-size:14px;outline:none;margin-bottom:14px;">
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">Fotos obrigatórias</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
         <label id="vslot-odometro" style="position:relative;border:1.5px dashed var(--border);border-radius:12px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:12px;background:var(--surface);cursor:pointer;overflow:hidden;"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="capturarFotoVist('odometro',this)"><span style="font-size:22px;">🔢</span><span>Odômetro</span><span id="vreq-odometro" style="position:absolute;top:5px;right:8px;color:#c0392b;font-weight:800;">*</span></label>
@@ -371,10 +368,56 @@ input[list].field-inp{margin-bottom:4px;}
   </div>
 </div>
 
+<!-- MODAL ESCOLHA DE WHATSAPP (pessoal / business) -->
+<div class="modal-overlay" id="wpp-choice-modal">
+  <div class="modal-sheet">
+    <div style="font-size:14px;font-weight:700;margin-bottom:14px;">Enviar por qual WhatsApp?</div>
+    <button class="btn-block btn-green" onclick="confirmarEnvioWpp('pessoal')">📱 WhatsApp Pessoal</button>
+    <button class="btn-block btn-blue" onclick="confirmarEnvioWpp('business')">💼 WhatsApp Business</button>
+    <button class="btn-block btn-gray" onclick="fecharWppChoice()" style="margin-bottom:0;">Cancelar</button>
+  </div>
+</div>
+
 <script>
 // ⬇️ COLE AQUI A MESMA URL /exec usada no index (se mudar, troque aqui também) ⬇️
 const API='https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
 const NUM_WPP_OPERACIONAL='5521971471125';
+
+// ── ESCOLHA WHATSAPP PESSOAL / BUSINESS ──────────────────────────────────
+// Sempre que o Campo for enviar algo por WhatsApp (cliente ou grupo
+// operacional), abre este modal para o técnico escolher qual app usar.
+let _wppPendente=null;
+function abrirWhatsApp(numero,mensagem){
+  const telLimpo=String(numero||'').replace(/\D/g,'');
+  const telCompleto=telLimpo.startsWith('55')?telLimpo:'55'+telLimpo;
+  _wppPendente={tel:telCompleto,msg:mensagem};
+  document.getElementById('wpp-choice-modal').classList.add('open');
+}
+function fecharWppChoice(){
+  document.getElementById('wpp-choice-modal').classList.remove('open');
+  _wppPendente=null;
+}
+function confirmarEnvioWpp(tipo){
+  if(!_wppPendente)return;
+  const {tel,msg}=_wppPendente;
+  const texto=encodeURIComponent(msg);
+  const pkg=tipo==='business'?'com.whatsapp.w4b':'com.whatsapp';
+  fecharWppChoice();
+  const isAndroid=/Android/i.test(navigator.userAgent);
+  if(isAndroid){
+    // Intent explícito: abre o app certo direto, sem depender do default do celular
+    window.location.href=`intent://send?phone=${tel}&text=${texto}#Intent;package=${pkg};scheme=whatsapp;end`;
+  } else {
+    // Fallback (desktop/teste): wa.me não distingue pessoal/business, abre o link normal
+    window.open(`https://wa.me/${tel}?text=${texto}`,'_blank');
+  }
+}
+function notificarGrupoOperacional(osId){
+  const o=osList.find(x=>String(x.id)===String(osId))||osAtual;
+  if(!o)return;
+  const msg=`Nova OS disponível!\nOS: ${o.numero}\nCliente: ${o.cliente}\nTipo: ${o.tipo||'—'}\nEndereço: ${o.endereco||'—'}\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`;
+  abrirWhatsApp(NUM_WPP_OPERACIONAL,msg);
+}
 
 let MATERIAIS=["ANTENA 60CM KU","ANTENA 90CM KU","ANTENA UHF 38 ELEMENTOS","MASTRO ANTENA UHF","LNBF KU UNIVERSAL SIMPLES","LNBF KU UNIVERSAL DUPLO","LNBF KU UNIVERSAL QUADRUPLO","LNBF DUPLO KU SKY","LNBF KU NORTH","LNBF KU MULTIPONTO","AMPLIFICADOR 20DB KU","AMPLIFICADOR 23DB KU","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB KU","AMPLIFICADOR 20DB UHF","AMPLIFICADOR 25DB UHF","AMPLIFICADOR 30DB UHF","AMPLIFICADOR 35DB UHF","AMPLIFICADOR 50DB UHF","MINI BOOSTER 26DB","CABO COAXIAL RG11","CABO COAXIAL RG6","DIPLEXER SAT-UHF","CONECTOR RG11","EMENDA CONECTOR COAXIAL","CONECTOR RG06","DIVISOR 1:2 ALTA","DIVISOR 1:4 ALTA","DIVISOR 1:3 ALTA","DIVISOR 1:8 ALTA","DIVISOR 1:2 BAIXA","DIVISOR 1:3 BAIXA","DIVISOR 1:4 BAIXA","DIVISOR 1:8 BAIXA","1S - TAP 06DB","1S - TAP 09DB","1S - TAP 12DB","1S - TAP 16DB","1S - TAP 20DB","1S - TAP 24DB","2S - 06DB TAP","2S - 09DB TAP","2S - 12DB TAP","2S - 16DB TAP","2S - 20DB TAP","2S - 24DB TAP","FITA ISOLANTE","BUCHA S6 PLASTICO","BUCHA S8 PLASTICO","BUCHA S10 PLASTICO","BUCHA S12 PLASTICO","FITA DE AUTO FUSÃO","FIXA FIO RG06","FIXA FIO RG11","PARAFUSO 6MM","PARAFUSO 8MM","PARAFUSO 12MM","CANALETA DE PVC","MODULADOR HD CANAL ZINWELL","MODULADOR SD ELETROSTAMP","RACK 10 CANAIS SD","RACK 10 CANAIS HD","RACK 15 CANAIS SD","RACK 15 CANAIS HD","RACK 20 CANAIS SD","RACK 20 CANAIS HD","RACK 25 CANAIS SD","RACK 25 CANAIS HD","RACK 30 CANAIS SD","RACK 30 CANAIS HD","FONTE 12V X 2A 24W","CABO RCA","CABO HDMI","RECEPTOR SKY HD","FONTE 24V 2A","CONECTOR RG59","MODULADORES HDMI ELETROSTAMP","FILTRO DIGITAL ZINWELL","BISNAGA DE SILICONE","COLA BRANCA","ABRAÇADEIRA 6MM","ABRAÇADEIRA COPO 1 POLEGADA","VELCRO 3MT","FITA ADESIVA TRANSPARENTE","FITA ADESIVA MARROM","PISTOLA DE SILICONE","PARAFUSO AUTO BROCANTE","BROCA SDS 10MM","BROCA SDS PLUS 6MM","BUCHA C/ PARAFUSO 10MM","CABO DROP ÓPTICO ROLO 1.000","CABO OPTICO","CORDÃO OPTICO","PATCH CORD 30CM","SWITCH 8 PORTAS GIGA","CONECTOR RJ45","CONECTOR BNC"];
 
@@ -766,9 +809,7 @@ function renderAcoes(o){
     html+=`<button class="btn-block btn-gray" onclick="abrirObsModal()">Adicionar observação</button>`;
   }
   if((isPool||isMeu(o.tecnico))&&o.status!=='Concluída'&&o.status!=='Cancelada'){
-    const tel=(usuarioCampo?.telefone||NUM_WPP_OPERACIONAL).replace(/\D/g,'');
-    const msg=encodeURIComponent(`Nova OS disponível!\nOS: ${o.numero}\nCliente: ${o.cliente}\nTipo: ${o.tipo||'—'}\nEndereço: ${o.endereco||'—'}\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`);
-    html+=`<a href="https://wa.me/${NUM_WPP_OPERACIONAL}?text=${msg}" target="_blank" style="display:block;text-decoration:none;"><button class="btn-block btn-gray" style="font-size:12px;">💬 Notificar grupo operacional</button></a>`;
+    html+=`<button class="btn-block btn-gray" style="font-size:12px;" onclick="notificarGrupoOperacional('${o.id}')">💬 Notificar grupo operacional</button>`;
   }
   acoes.innerHTML=html;
 }
@@ -935,7 +976,6 @@ async function abrirVistoriaVeic(){
   vistFotos={}; vistCombustivel=''; vistAvarias=[];
   ['odometro','frente','lateral_esq','lateral_dir','traseira'].forEach(k=>{ const el=document.getElementById('vslot-'+k); if(el){ el.style.borderStyle='dashed'; el.style.borderColor='var(--border)'; el.style.background='var(--surface)'; const im=el.querySelector('img'); if(im)im.remove(); const rq=document.getElementById('vreq-'+k); if(rq)rq.style.display=''; } });
   const km=document.getElementById('vv-km'); if(km)km.value='';
-  const kmUlt=document.getElementById('vv-km-ultima'); if(kmUlt)kmUlt.value='';
   const obs=document.getElementById('vv-obs'); if(obs)obs.value='';
   document.querySelectorAll('#vv-fuel button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
   document.querySelectorAll('#vv-avarias button').forEach(b=>{b.style.borderColor='var(--border)';b.style.color='var(--muted)';b.style.background='var(--surface)';});
@@ -953,13 +993,7 @@ async function carregarVeiculosCampo(){
     veiculosCampo=(d&&d.veiculos)?d.veiculos:[];
     sel.innerHTML='<option value="">Selecione o veículo...</option>'+veiculosCampo.map(v=>'<option value="'+v.id+'">'+(v.placa||'')+(v.modelo?(' — '+v.modelo):'')+'</option>').join('');
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar</option>'; }
-  sel.onchange=function(){ preencherKmUltimaVistoria(); atualizarBotaoVist(); };
-}
-function preencherKmUltimaVistoria(){
-  const veicId=document.getElementById('vv-veiculo')?.value||'';
-  const veic=veiculosCampo.find(v=>String(v.id)===String(veicId));
-  const campo=document.getElementById('vv-km-ultima');
-  if(campo) campo.value=(veic&&veic.km_ultima_vistoria)?veic.km_ultima_vistoria:'';
+  sel.onchange=atualizarBotaoVist;
 }
 async function carregarCondutoresCampo(){
   const sel=document.getElementById('vv-condutor'); if(!sel)return;
@@ -1038,7 +1072,7 @@ async function enviarVistoria(){
       token:getToken(),action:'saveVistoriaVeic',
       tecnico:nome, condutor:cond, data:hojeIso,
       veiculo_id:veicId, veiculo_placa:veic.placa||'', veiculo_modelo:veic.modelo||'',
-      km:km, km_ultima_vistoria:(document.getElementById('vv-km-ultima').value||'').trim(), combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
+      km:km, combustivel:vistCombustivel, avarias:JSON.stringify(vistAvarias), obs:document.getElementById('vv-obs').value.trim(),
       fotos:JSON.stringify(fotos)
     })});
     const d2=await r2.json();
@@ -1096,7 +1130,7 @@ async function concluirOS(){
   document.getElementById('conc-subtitulo').textContent=`${osAtual?.numero||'OS'} finalizada com sucesso`;
   document.getElementById('conc-wpp-msg').textContent=msg;
   document.getElementById('btn-wpp-cliente').onclick=()=>{
-    window.open(`https://wa.me/${telCompleto}?text=${encodeURIComponent(msg)}`,'_blank');
+    abrirWhatsApp(telCompleto,msg);
   };
 
   materiaisSelecionados=[];
@@ -1142,8 +1176,7 @@ async function salvarObs(){
 function enviarWppCliente(){
   const msg=document.getElementById('conc-wpp-msg').textContent;
   const tel=document.getElementById('conf-tel').textContent.replace(/\D/g,'');
-  const telCompleto=tel.startsWith('55')?tel:'55'+tel;
-  window.open(`https://wa.me/${telCompleto}?text=${encodeURIComponent(msg)}`,'_blank');
+  abrirWhatsApp(tel,msg);
 }
 
 window.addEventListener('load',()=>{
