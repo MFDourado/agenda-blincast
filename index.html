@@ -13307,16 +13307,10 @@ function executarExportarOSXLSX(){
   const statusFiltro=document.getElementById('export-os-status').value;
   let lista=osLista.slice();
   if(!lista.length){ alert('Nenhuma OS carregada ainda. Feche este popup, espere a lista sincronizar e tente de novo.'); return; }
-  const totalAntes=lista.length;
   if(de) lista=lista.filter(o=>String(o.data||'')>=de);
-  const aposDe=lista.length;
   if(ate) lista=lista.filter(o=>String(o.data||'')<=ate);
-  const aposAte=lista.length;
   if(statusFiltro) lista=lista.filter(o=>o.status===statusFiltro);
-  if(!lista.length){
-    alert('Nenhuma OS encontrada nesse período/status.\n\n[DIAGNÓSTICO]\nTotal carregado: '+totalAntes+'\nFiltro "De": "'+de+'" (restaram '+aposDe+')\nFiltro "Até": "'+ate+'" (restaram '+aposAte+')\nFiltro Status: "'+statusFiltro+'"\nExemplo de data na 1ª OS carregada: "'+String((osLista[0]&&osLista[0].data)||'(vazio)')+'"');
-    return;
-  }
+  if(!lista.length){ alert('Nenhuma OS encontrada nesse período/status.'); return; }
   lista.sort((a,c)=>String(a.data||'').localeCompare(String(c.data||'')));
   const headers=['Número','Data abertura','Status','Cliente','Cidade','Endereço','Classificação','Produto','Técnico','Previsto','Concluído em','Hora conclusão','Horas','Descrição','Materiais','Observações'];
   const rows=lista.map(o=>[
