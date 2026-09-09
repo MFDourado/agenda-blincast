@@ -13286,11 +13286,17 @@ function fecharVisualizarOS(){
 }
 
 // ── EXPORTAR OS EM XLSX (COM PERÍODO) ───────────────────────────────────────
-function abrirExportarOSXLSX(){
+async function abrirExportarOSXLSX(){
   document.getElementById('export-os-de').value='';
   document.getElementById('export-os-ate').value='';
   document.getElementById('export-os-status').value='';
   document.getElementById('export-os-modal').style.display='flex';
+  // Se a lista de OS ainda não carregou (ex: acabou de trocar de aba), busca agora
+  if(!osLista.length){
+    document.getElementById('export-os-de').closest('.modal').style.opacity='0.6';
+    await loadOS();
+    document.getElementById('export-os-de').closest('.modal').style.opacity='1';
+  }
 }
 function fecharExportarOSXLSX(){
   document.getElementById('export-os-modal').style.display='none';
@@ -13300,6 +13306,7 @@ function executarExportarOSXLSX(){
   const ate=document.getElementById('export-os-ate').value;
   const statusFiltro=document.getElementById('export-os-status').value;
   let lista=osLista.slice();
+  if(!lista.length){ alert('Nenhuma OS carregada ainda. Feche este popup, espere a lista sincronizar e tente de novo.'); return; }
   if(de) lista=lista.filter(o=>String(o.data||'')>=de);
   if(ate) lista=lista.filter(o=>String(o.data||'')<=ate);
   if(statusFiltro) lista=lista.filter(o=>o.status===statusFiltro);
