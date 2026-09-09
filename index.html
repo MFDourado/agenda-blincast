@@ -12831,6 +12831,7 @@ async function estEnviarEmail(reg){
       <option value="Cancelada">Cancelada</option>
     </select>
     <button id="os-btn-agrupar-mes" onclick="toggleAgruparOSPorMes()" style="height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗓️ Agrupar por mês</button>
+    <button id="os-btn-escolher-meses" onclick="abrirSeletorMesesOS()" style="display:none;height:32px;padding:0 14px;border:1px solid #F5B800;border-radius:var(--radius-sm);background:rgba(245,184,0,.1);color:#F5B800;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">📆 Escolher meses</button>
   </div>
   <div id="os-lista" style="padding:16px 20px;"></div>
 </div>
@@ -13056,6 +13057,23 @@ async function estEnviarEmail(reg){
   </div>
 </div>
 
+<!-- MODAL SELECIONAR MESES (múltipla escolha, usado no Agrupar por mês) -->
+<div class="modal-overlay" id="meses-os-modal" style="display:none" onclick="if(event.target===this)fecharSeletorMesesOS()">
+  <div class="modal">
+    <h3>📆 Quais meses você quer ver?</h3>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Marque um ou mais meses. Nenhum marcado = mostra todos.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="modal-btn" style="flex:1;padding:6px;" onclick="_marcarTodosMesesOS(true)">Marcar todos</button>
+      <button class="modal-btn" style="flex:1;padding:6px;" onclick="_marcarTodosMesesOS(false)">Limpar</button>
+    </div>
+    <div id="meses-os-lista" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="fecharSeletorMesesOS()">Cancelar</button>
+      <button class="modal-btn primary" onclick="aplicarFiltroMesesOS()">Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL VISUALIZAR OS (SOMENTE LEITURA) -->
 <div class="modal-overlay" id="os-view-modal" style="display:none" onclick="if(event.target===this)fecharVisualizarOS()">
   <div class="modal" style="max-width:520px;">
@@ -13103,15 +13121,48 @@ async function loadOS(){
   renderOS();
 }
 let osAgruparPorMes=false;
+let osMesesSelecionados=new Set(); // vazio = mostra todos os meses
 function toggleAgruparOSPorMes(){
   osAgruparPorMes=!osAgruparPorMes;
   const btn=document.getElementById('os-btn-agrupar-mes');
+  const btnMeses=document.getElementById('os-btn-escolher-meses');
   if(btn){
     btn.style.background=osAgruparPorMes?'rgba(245,184,0,.12)':'none';
     btn.style.borderColor=osAgruparPorMes?'#F5B800':'var(--border)';
     btn.style.color=osAgruparPorMes?'#F5B800':'var(--text-muted)';
   }
+  if(btnMeses) btnMeses.style.display=osAgruparPorMes?'inline-block':'none';
+  if(!osAgruparPorMes) osMesesSelecionados=new Set(); // reseta filtro ao desligar
   renderOS();
+}
+function abrirSeletorMesesOS(){
+  const grupos={};
+  osLista.forEach(o=>{
+    const {chave,label}=_mesAnoDeOS(o);
+    if(!grupos[chave]) grupos[chave]=label;
+  });
+  const chaves=Object.keys(grupos).sort((a,c)=>c.localeCompare(a));
+  const cont=document.getElementById('meses-os-lista');
+  cont.innerHTML=chaves.map(chave=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">
+      <input type="checkbox" value="${chave}" ${osMesesSelecionados.has(chave)?'checked':''} style="width:16px;height:16px;">
+      ${grupos[chave]}
+    </label>`).join('') || '<div style="font-size:12px;color:var(--text-muted);">Nenhuma OS cadastrada ainda.</div>';
+  document.getElementById('meses-os-modal').style.display='flex';
+}
+function fecharSeletorMesesOS(){
+  document.getElementById('meses-os-modal').style.display='none';
+}
+function _marcarTodosMesesOS(marcar){
+  document.querySelectorAll('#meses-os-lista input[type=checkbox]').forEach(cb=>cb.checked=marcar);
+}
+function aplicarFiltroMesesOS(){
+  const marcados=[...document.querySelectorAll('#meses-os-lista input[type=checkbox]:checked')].map(cb=>cb.value);
+  osMesesSelecionados=new Set(marcados);
+  fecharSeletorMesesOS();
+  renderOS();
+  const btnMeses=document.getElementById('os-btn-escolher-meses');
+  if(btnMeses) btnMeses.textContent=osMesesSelecionados.size?('📆 Meses ('+osMesesSelecionados.size+')'):'📆 Escolher meses';
 }
 function _cardOS(o){
   const sc2={'Aberta':'#5B9EF5','Em andamento':'#F5B800','Concluída':'#4CAF7D','Cancelada':'#e74c3c'};
@@ -13172,7 +13223,12 @@ function renderOS(){
     if(!grupos[chave]) grupos[chave]={label,itens:[]};
     grupos[chave].itens.push(o);
   });
-  const chaves=Object.keys(grupos).sort((a,c)=>c.localeCompare(a));
+  let chaves=Object.keys(grupos).sort((a,c)=>c.localeCompare(a));
+  if(osMesesSelecionados.size) chaves=chaves.filter(chave=>osMesesSelecionados.has(chave));
+  if(!chaves.length){
+    document.getElementById('os-lista').innerHTML='<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--text-muted);">Nenhuma OS nos meses selecionados. <button onclick="abrirSeletorMesesOS()" style="color:#F5B800;background:none;border:none;cursor:pointer;text-decoration:underline;">Trocar meses</button></div>';
+    return;
+  }
   document.getElementById('os-lista').innerHTML=chaves.map(chave=>{
     const g=grupos[chave];
     const abertas=g.itens.filter(o=>o.status==='Aberta'||o.status==='Em andamento').length;
