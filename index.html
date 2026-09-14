@@ -3457,6 +3457,14 @@ const sh=STEPS.map(s=>{
   </select>
   ${proj.pagamento_operadora&&proj.pagamento_operadora!=='N/A'?`<span style="font-size:12px;font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse — Blincast paga a operadora':'✅ Cliente PG — Cliente paga direto'}</span>`:proj.pagamento_operadora!=='N/A'?'<span style="font-size:12px;color:var(--text-muted);font-style:italic">⚠️ Não preenchido — importante definir antes da instalação</span>':''}
 </div>
+<div style="margin:8px 16px;padding:10px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+  <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">📝 Observações</div>
+  <div id="obs-list-${proj.id}" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">${renderObsPipelineHTML(proj.observacoes)}</div>
+  <div style="display:flex;gap:8px">
+    <input type="text" id="obs-input-${proj.id}" placeholder="Adicionar observação..." style="flex:1;height:34px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarObsPipeline('${proj.id}')}">
+    <button onclick="event.stopPropagation();adicionarObsPipeline('${proj.id}')" style="height:34px;padding:0 16px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Adicionar</button>
+  </div>
+</div>
 <div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>${!proj.enviado_montagem?`<button class="proj-btn" onclick="enviarParaMontagem('${proj.id}','${proj.nome}')" style="color:#B86A00;border-color:#B86A00">🔧 Enviar para montagem</button>`:`<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ Na montagem</span>`}${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${proj.id}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${proj.id}','${proj.nome}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}${proj.link_grade?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_grade}','${proj.nome} — Grade')" style="color:var(--c-andamento);border-color:var(--c-andamento)">📊 Ver grade</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhuma grade anexada ainda">📎 Grade pendente</button>`}</div></div></div>`;
   }).join('');
   // Restaurar cards que estavam abertos
@@ -3617,6 +3625,43 @@ async function deleteProject(id){
   if(!confirm('Remover este projeto?'))return;
   projects=projects.filter(p=>p.id!==id);renderPipeline();
   await deletePipelineProject(id);
+}
+function pipeObsEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function renderObsPipelineHTML(lista){
+  if(!lista||!lista.length) return '<div style="font-size:12px;color:var(--text-light,#bbb);font-style:italic">Nenhuma observação registrada.</div>';
+  return lista.map(o=>`<div style="font-size:12px;line-height:1.5;padding:6px 10px;background:var(--bg);border-radius:6px;border-left:3px solid var(--gold)"><b>${pipeObsEsc(o.usuario)||'—'}:</b> ${pipeObsEsc(o.texto)} <span style="color:var(--text-muted)">- ${pipeObsEsc(o.data_hora)}</span></div>`).join('');
+}
+async function adicionarObsPipeline(projId){
+  const input=document.getElementById('obs-input-'+projId);
+  if(!input)return;
+  const texto=input.value.trim();
+  if(!texto)return;
+  const proj=projects.find(p=>p.id===projId);
+  if(!proj)return;
+  const usuarioNome=(usuarioLogado&&(usuarioLogado.nome||usuarioLogado.usuario))||'';
+  const btnWrap=input.parentElement;
+  const btn=btnWrap?btnWrap.querySelector('button'):null;
+  if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({
+      token:getToken(),action:'addObsPipeline',card_id:projId,
+      usuario:usuarioNome,texto:texto
+    })});
+    const d=await r.json();
+    if(d&&d.ok&&d.observacao){
+      if(!Array.isArray(proj.observacoes))proj.observacoes=[];
+      proj.observacoes.unshift(d.observacao);
+      input.value='';
+      const listEl=document.getElementById('obs-list-'+projId);
+      if(listEl)listEl.innerHTML=renderObsPipelineHTML(proj.observacoes);
+    } else {
+      alert('Erro ao salvar observação: '+((d&&d.error)||'tente novamente'));
+    }
+  }catch(e){
+    alert('Erro ao salvar observação. Verifique sua conexão.');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Adicionar';}
+  }
 }
 async function salvarCanaisPipeline(projId, valor){
   const proj=projects.find(p=>p.id===projId);
