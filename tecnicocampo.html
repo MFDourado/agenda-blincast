@@ -74,6 +74,11 @@ input[list].field-inp{margin-bottom:4px;}
 .upload-box:hover{border-color:var(--gold);}
 .confirm-box{background:rgba(245,184,0,.1);border:1px solid rgba(245,184,0,.3);border-radius:8px;padding:16px;text-align:center;margin-bottom:10px;}
 .confirm-num{font-size:36px;font-weight:700;color:var(--gold);}
+.sig-pad-wrap{position:relative;border:1px solid var(--border);border-radius:8px;background:#fff;height:150px;overflow:hidden;touch-action:none;margin-bottom:8px;}
+.sig-canvas{width:100%;height:100%;display:block;touch-action:none;}
+.sig-placeholder{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);text-align:center;color:#bbb;font-size:13px;pointer-events:none;font-family:'DM Sans',sans-serif;}
+.sig-clear-btn{font-size:12px;padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.sig-ok{font-size:11px;color:var(--green);margin-left:8px;}
 .sync-bar{font-size:11px;color:var(--muted);text-align:center;padding:8px 16px 0;}
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
 .timer-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--green);background:rgba(76,175,61,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(76,175,61,.2);margin-bottom:10px;}
@@ -317,6 +322,24 @@ input[list].field-inp{margin-bottom:4px;}
         <div class="detail-row"><span class="detail-label">Fim</span><span class="detail-value" id="conf-fim"></span></div>
         <div class="detail-row"><span class="detail-label">Responsável</span><span class="detail-value" id="conf-resp"></span></div>
         <div class="detail-row"><span class="detail-label">Telefone</span><span class="detail-value" id="conf-tel"></span></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Assinatura do técnico — <span id="sig-tec-nome"></span></div>
+        <div class="sig-pad-wrap">
+          <canvas id="sig-canvas-tec" class="sig-canvas"></canvas>
+          <div class="sig-placeholder" id="sig-placeholder-tec">Assine aqui com o dedo</div>
+        </div>
+        <button type="button" class="sig-clear-btn" onclick="limparAssinatura('tec')">Limpar assinatura</button>
+        <span class="sig-ok" id="sig-ok-tec" style="display:none">✓ assinado</span>
+      </div>
+      <div class="section">
+        <div class="section-title">Assinatura do responsável — <span id="sig-cli-nome"></span></div>
+        <div class="sig-pad-wrap">
+          <canvas id="sig-canvas-cli" class="sig-canvas"></canvas>
+          <div class="sig-placeholder" id="sig-placeholder-cli">Assine aqui com o dedo</div>
+        </div>
+        <button type="button" class="sig-clear-btn" onclick="limparAssinatura('cli')">Limpar assinatura</button>
+        <span class="sig-ok" id="sig-ok-cli" style="display:none">✓ assinado</span>
       </div>
       <div class="confirm-box" id="confirm-box">
         <div class="confirm-num" id="confirm-num">2</div>
@@ -912,7 +935,113 @@ function avancarParaConfirmar(){
   // Resetar botão antes de mudar de página
   if(_btn){_btn.textContent='Revisar e confirmar →';_btn.disabled=false;}
   goPage('confirmar');
-  setTimeout(iniciarConfirm, 300);
+  setTimeout(()=>{iniciarConfirm();iniciarAssinaturas();}, 300);
+}
+
+// ─── ASSINATURA DIGITAL (canvas touch/mouse) ───────────────────────────────
+let sigCtx={tec:null,cli:null};
+let sigHasDrawn={tec:false,cli:false};
+let sigDrawing=false;
+
+function _sigResizeCanvas(id){
+  const canvas=document.getElementById('sig-canvas-'+id);
+  if(!canvas) return null;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  const ratio=window.devicePixelRatio||1;
+  canvas.width=rect.width*ratio;
+  canvas.height=rect.height*ratio;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(ratio,ratio);
+  ctx.lineWidth=2.2;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  ctx.strokeStyle='#111';
+  sigCtx[id]=ctx;
+  return ctx;
+}
+
+function _sigPos(evt,canvas){
+  const rect=canvas.getBoundingClientRect();
+  const p=(evt.touches&&evt.touches.length)?evt.touches[0]:evt;
+  return {x:p.clientX-rect.left,y:p.clientY-rect.top};
+}
+
+function _sigBind(id){
+  const canvas=document.getElementById('sig-canvas-'+id);
+  if(!canvas||canvas._sigBound) return;
+  canvas._sigBound=true;
+  let last=null;
+  const start=(e)=>{
+    e.preventDefault();
+    sigDrawing=true;
+    last=_sigPos(e,canvas);
+    const ph=document.getElementById('sig-placeholder-'+id);
+    if(ph) ph.style.display='none';
+  };
+  const move=(e)=>{
+    if(!sigDrawing) return;
+    e.preventDefault();
+    const p=_sigPos(e,canvas);
+    const ctx=sigCtx[id];
+    if(ctx&&last){
+      ctx.beginPath();
+      ctx.moveTo(last.x,last.y);
+      ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+    }
+    last=p;
+    sigHasDrawn[id]=true;
+    const okEl=document.getElementById('sig-ok-'+id);
+    if(okEl) okEl.style.display='inline';
+  };
+  const end=()=>{ sigDrawing=false; last=null; };
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',end);
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end);
+}
+
+function limparAssinatura(id){
+  const canvas=document.getElementById('sig-canvas-'+id);
+  const ctx=sigCtx[id];
+  if(canvas&&ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+  sigHasDrawn[id]=false;
+  const ph=document.getElementById('sig-placeholder-'+id);
+  if(ph) ph.style.display='block';
+  const okEl=document.getElementById('sig-ok-'+id);
+  if(okEl) okEl.style.display='none';
+}
+
+function iniciarAssinaturas(){
+  ['tec','cli'].forEach(id=>{
+    limparAssinatura(id);
+    _sigResizeCanvas(id);
+    _sigBind(id);
+  });
+  const nomeTec=(usuarioCampo&&(usuarioCampo.nome||usuarioCampo.usuario))||'';
+  const nomeCli=document.getElementById('resp-nome')?document.getElementById('resp-nome').value.trim():'';
+  const elTec=document.getElementById('sig-tec-nome'); if(elTec) elTec.textContent=nomeTec;
+  const elCli=document.getElementById('sig-cli-nome'); if(elCli) elCli.textContent=nomeCli;
+}
+
+function assinaturaParaBase64(id){
+  const canvas=document.getElementById('sig-canvas-'+id);
+  if(!canvas) return '';
+  return canvas.toDataURL('image/png').split(',')[1];
+}
+
+async function uploadAssinatura(id, osNumero){
+  if(!sigHasDrawn[id]) return {ok:false, url:''};
+  const base64=assinaturaParaBase64(id);
+  if(!base64) return {ok:false, url:''};
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'uploadAssinaturaOS',arquivo:base64,os_numero:osNumero||'',tipo:id})});
+    const d=await r.json();
+    if(d&&d.url) return {ok:true, url:d.url};
+    return {ok:false, url:''};
+  }catch(e){ return {ok:false, url:''}; }
 }
 
 function iniciarConfirm(){
@@ -1082,6 +1211,10 @@ async function enviarVistoria(){
 }
 
 async function concluirOS(){
+  if(!sigHasDrawn.tec || !sigHasDrawn.cli){
+    alert('É necessário coletar as duas assinaturas (técnico e responsável) antes de confirmar.');
+    return;
+  }
   const _btnOk=document.getElementById('btn-ok-confirmar');
   const _origOk=_btnOk?_btnOk.textContent:null;
   if(_btnOk){ _btnOk.disabled=true; _btnOk.style.opacity='.7'; _btnOk.textContent='Confirmando...'; }
@@ -1092,6 +1225,19 @@ async function concluirOS(){
   const hoje=new Date().toLocaleDateString('pt-BR');
   const materiais=materiaisSelecionados.map(m=>m.qtd+'x '+m.nome).join(', ');
   const obsCompleta=`Ação: ${acao}${materiais?'\nMateriais: '+materiais:''}\nResponsável: ${nome} (${tel})`;
+
+  const assinaturaTecnicoRes=await uploadAssinatura('tec', osAtual?.numero);
+  const assinaturaClienteRes=await uploadAssinatura('cli', osAtual?.numero);
+  let avisoAssinatura='';
+  if(!assinaturaTecnicoRes.ok || !assinaturaClienteRes.ok){
+    const faltando=[!assinaturaTecnicoRes.ok?'técnico':null, !assinaturaClienteRes.ok?'responsável':null].filter(Boolean).join(' e ');
+    const tentarDeNovo=confirm('⚠️ Não foi possível salvar a assinatura do '+faltando+' (falha de conexão).\n\nToque em OK para tentar novamente, ou em Cancelar para concluir a OS mesmo assim (a assinatura ficará registrada como NÃO coletada).\n\nOK = tentar de novo · Cancelar = seguir sem a assinatura');
+    if(tentarDeNovo){
+      if(_btnOk){ _btnOk.disabled=false; _btnOk.style.opacity='1'; _btnOk.textContent=_origOk; }
+      return;
+    }
+    avisoAssinatura=`\n⚠️ ASSINATURA NÃO REGISTRADA (falha de conexão): ${faltando}`;
+  }
 
   let fotosLinks=[];
   try{
@@ -1113,9 +1259,11 @@ async function concluirOS(){
       token:getToken(),action:'saveOS',
       id:osAtual.id,status:'Aguardando confirmação',
       data_conclusao:hoje,hora_conclusao:agora,
-      obs:obsCompleta,materiais,
+      obs:obsCompleta+avisoAssinatura,materiais,
       fotos:JSON.stringify(fotosFinal),
-      responsavel_nome:nome,responsavel_tel:tel
+      responsavel_nome:nome,responsavel_tel:tel,
+      assinatura_tecnico:assinaturaTecnicoRes.url,
+      assinatura_cliente:assinaturaClienteRes.url
     })});
     await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(),action:'atualizarAta',
