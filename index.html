@@ -13356,6 +13356,17 @@ function visualizarOS(id){
       fotosHtml='<div style="margin-top:10px;"><div style="color:var(--text-muted);font-size:12px;margin-bottom:6px;">Fotos ('+fotos.length+')</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+fotos.map(f=>`<img src="${f}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">`).join('')+'</div></div>';
     }
   }catch(e){}
+  let assinaturasHtml='';
+  if(o.assinatura_tecnico||o.assinatura_cliente){
+    const sigBloco=(url,label)=>{
+      if(!url) return `<div style="flex:1;min-width:140px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${label}</div><div style="font-size:12px;color:var(--text-light,#bbb);font-style:italic;padding:20px 0;text-align:center;border:1px dashed var(--border);border-radius:6px;">Não coletada</div></div>`;
+      const m=String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const fileId=m?m[1]:'';
+      const thumb=fileId?'https://drive.google.com/thumbnail?id='+fileId+'&sz=w400':url;
+      return `<div style="flex:1;min-width:140px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${label}</div><a href="${url}" target="_blank" title="Abrir em tamanho maior"><img src="${thumb}" style="width:100%;max-height:110px;object-fit:contain;background:#fff;border-radius:6px;border:1px solid var(--border);"></a></div>`;
+    };
+    assinaturasHtml='<div style="margin-top:10px;"><div style="color:var(--text-muted);font-size:12px;margin-bottom:6px;">Assinaturas</div><div style="display:flex;gap:10px;flex-wrap:wrap;">'+sigBloco(o.assinatura_tecnico,'Técnico')+sigBloco(o.assinatura_cliente,'Responsável')+'</div></div>';
+  }
   document.getElementById('os-view-body').innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <span style="font-size:16px;font-weight:800;">${o.numero||'—'}</span>
@@ -13379,6 +13390,7 @@ function visualizarOS(id){
     ${linha('Materiais', o.materiais)}
     ${linha('Observações', (o.obs||'').replace(/\n/g,'<br>'))}
     ${fotosHtml}
+    ${assinaturasHtml}
   `;
   document.getElementById('os-view-modal').style.display='flex';
 }
