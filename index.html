@@ -13568,6 +13568,15 @@ function editarOS(id){
   filtrarTecnicosPorUFdaOS(cidadeAtual);
   const tecNorm=normalizarNomeTecnico(o.tecnico||'');
   document.getElementById('os-tecnico').value=tecNorm;
+  if(typeof colabLista==='undefined' || !colabLista || !colabLista.length){
+    if(typeof loadColaboradores==='function'){
+      loadColaboradores().then(()=>{
+        filtrarTecnicosPorUFdaOS(document.getElementById('os-cidade')?.value||'');
+        const _sel=document.getElementById('os-tecnico');
+        if(_sel) _sel.value=normalizarNomeTecnico(o.tecnico||'');
+      }).catch(()=>{});
+    }
+  }
   // Carregar obs e bloquear se concluída
   osObsBuffer=[];
   if(o.obs){osObsBuffer=o.obs.split('\n\n---\n\n');}
@@ -13593,9 +13602,16 @@ function filtrarTecnicosPorUFdaOS(cidade){
   const valAtual = sel.value;
   // Usar lista segmentada por UF com nomes normalizados
   const ufU = (uf||'').toUpperCase().trim();
-  const lista = (typeof colabLista!=='undefined'?colabLista:[])
-    .filter(c=>{ const st=String(c.status||'').toLowerCase(); const ativo=st===''||st==='ativo'; const ufC=String(c.uf||'').toUpperCase().trim(); return ativo && (ufU?ufC===ufU:true); })
+  const base = (typeof colabLista!=='undefined'?colabLista:[])
+    .filter(c=>{ const st=String(c.status||'').toLowerCase(); return st===''||st==='ativo'; });
+  let lista = base
+    .filter(c=>{ const ufC=String(c.uf||'').toUpperCase().trim(); return ufU?ufC===ufU:true; })
     .map(c=>c.nome).filter(Boolean).sort();
+  // Fallback: se o filtro por UF não encontrar ninguém (ex: colaborador sem UF cadastrada),
+  // usa a lista completa de ativos em vez de deixar o campo vazio.
+  if(!lista.length && ufU){
+    lista = base.map(c=>c.nome).filter(Boolean).sort();
+  }
   sel.innerHTML = '<option value="">Pool — sem técnico definido</option>' +
     lista.map(t => `<option value="${t}"${t===valAtual?' selected':''}>${t}</option>`).join('');
 }
