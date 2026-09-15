@@ -13568,7 +13568,7 @@ function editarOS(id){
   filtrarTecnicosPorUFdaOS(cidadeAtual);
   const tecNorm=normalizarNomeTecnico(o.tecnico||'');
   document.getElementById('os-tecnico').value=tecNorm;
-  if(typeof colabLista==='undefined' || !colabLista || !colabLista.length){
+  if(!_colabFetchTentado){
     if(typeof loadColaboradores==='function'){
       loadColaboradores().then(()=>{
         filtrarTecnicosPorUFdaOS(document.getElementById('os-cidade')?.value||'');
@@ -13621,19 +13621,26 @@ function filtrarTecnicosPorUF(uf, selectId) {
   const val = sel.value;
   const ufU = (uf||'').toUpperCase().trim();
   // Fonte única: colaboradores cadastrados, filtrados pela UF de atuação
-  let lista = (colabLista||[])
+  const baseAtivos = (colabLista||[])
     .filter(c=>{
       const st=String(c.status||'').toLowerCase();
-      const ativo = st===''||st==='ativo';
+      return st===''||st==='ativo';
+    });
+  let lista = baseAtivos
+    .filter(c=>{
       const ufC = String(c.uf||'').toUpperCase().trim();
-      return ativo && (ufU? ufC===ufU : true);
+      return ufU? ufC===ufU : true;
     })
     .map(c=>c.nome)
     .filter(Boolean)
     .sort();
+  // Fallback: se ninguém tiver essa UF cadastrada, mostra todos os ativos em vez de nenhum.
+  if(!lista.length && ufU){
+    lista = baseAtivos.map(c=>c.nome).filter(Boolean).sort();
+  }
   sel.innerHTML = '<option value="">Selecione...</option>';
   if(!lista.length){
-    sel.innerHTML += '<option value="" disabled>Nenhum colaborador'+(ufU?(' em '+ufU):'')+'</option>';
+    sel.innerHTML += '<option value="" disabled>Nenhum colaborador cadastrado</option>';
   }
   lista.forEach(t => {
     const o = document.createElement('option');
@@ -13641,6 +13648,14 @@ function filtrarTecnicosPorUF(uf, selectId) {
     if(t===val) o.selected=true;
     sel.appendChild(o);
   });
+  // Se a lista ainda não tinha carregado, recarrega e tenta de novo assim que chegar.
+  if(!_colabFetchTentado){
+    if(typeof loadColaboradores==='function'){
+      loadColaboradores().then(()=>{
+        if(document.getElementById(selectId)) filtrarTecnicosPorUF(uf, selectId);
+      }).catch(()=>{});
+    }
+  }
 }
 function formatarData(val){
   if(!val) return '—';
@@ -14833,6 +14848,7 @@ async function excluirOS(id){
 <script>
 let colabLista = [];
 let colabEditId = null;
+let _colabFetchTentado = false;
 
 async function loadColaboradores(){
   const s=document.getElementById('colab-sync');
@@ -14845,6 +14861,7 @@ async function loadColaboradores(){
     colabLista.forEach(c=>{ c.nascimento=normalizarDataISO(c.nascimento); c.admissao=normalizarDataISO(c.admissao); });
     if(s) s.textContent=colabLista.length+' colaborador(es) cadastrado(s)';
   }catch(e){colabLista=[];if(s)s.textContent='Nenhum colaborador ainda';}
+  _colabFetchTentado=true;
   renderColaboradores();
   popularSelectColaboradores();
 }
