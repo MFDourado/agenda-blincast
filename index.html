@@ -4089,14 +4089,14 @@ function renderPreventivaPainel(){
 }
 
 // Abre o modal de atendimento já como preventiva
-function abrirNovaPreventiva(){
-  openAtaModal();
+async function abrirNovaPreventiva(){
+  await openAtaModal();
   const st=document.getElementById('at-status'); if(st) st.value='preventiva';
   const title=document.getElementById('ata-modal-title'); if(title) title.textContent='Nova preventiva';
 }
 // Edita uma preventiva (reusa o editor do painel) — ao salvar, mantém o status escolhido
-function abrirEditarPreventiva(id){
-  editarAta(id);
+async function abrirEditarPreventiva(id){
+  await editarAta(id);
   const title=document.getElementById('ata-modal-title'); if(title) title.textContent='Editar preventiva';
 }
 // Conclui a preventiva: pede a data e sincroniza com o Painel (mantém status preventiva + data de conclusão)
@@ -8155,7 +8155,7 @@ function limparFiltrosAta(){
   renderAta();
 }
 
-function openAtaModal(){
+async function openAtaModal(){
   ['at-no','at-cliente','at-estado','at-no','at-tecnico','at-ajudante','at-ajudante2','at-problema','at-obs','at-dt-abertura','at-dt-prevista','at-dt-conclusao','at-solicitante','at-tel-solicitante','at-manutencao','at-classificacao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const aj2El = document.getElementById('at-ajudante2');
   if(aj2El){ aj2El.style.display='none'; }
@@ -8169,7 +8169,7 @@ function openAtaModal(){
   document.getElementById('at-edit-id').value='';
   const _atVw=document.getElementById('at-vinculo-wrap'); if(_atVw) _atVw.innerHTML=htmlVinculoCliente('at');
   if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
-  if(!Array.isArray(colabLista)||!colabLista.length){ if(typeof loadColaboradores==='function') loadColaboradores(); }
+  if(!Array.isArray(colabLista)||!colabLista.length){ if(typeof loadColaboradores==='function'){ try{ await loadColaboradores(); }catch(e){} } }
   // Reset select técnico para Pool
   const _sel=document.getElementById('at-tecnico');if(_sel){_sel.innerHTML='<option value="">Pool — qualquer técnico</option>';filtrarTecnicosPorUF('',"at-tecnico");}
   document.getElementById('ata-modal-title').textContent='Novo registro';
@@ -8177,13 +8177,16 @@ function openAtaModal(){
 }
 function closeAtaModal(){document.getElementById('ata-modal').style.display='none';}
 
-function editarAta(id){
+async function editarAta(id){
   const r=ataRegistros.find(x=>String(x.id)==String(id));if(!r)return;
   document.getElementById('at-edit-id').value=r.id;
   document.getElementById('at-no').value=r.no||'';
   document.getElementById('at-data').value=r.data||todayStr;
   document.getElementById('at-cliente').value=r.cliente||'';
   document.getElementById('at-estado').value=r.estado||'';
+  if(!Array.isArray(colabLista)||!colabLista.length){
+    if(typeof loadColaboradores==='function'){ try{ await loadColaboradores(); }catch(e){} }
+  }
   filtrarTecnicosPorUF(r.estado||'', 'at-tecnico');
   const _tsel=document.getElementById('at-tecnico');
   if(_tsel){ if(r.tecnico && ![..._tsel.options].some(o=>o.value===r.tecnico)){ const _o=document.createElement('option'); _o.value=r.tecnico; _o.textContent=r.tecnico; _tsel.appendChild(_o); } _tsel.value=r.tecnico||''; }
