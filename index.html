@@ -3332,6 +3332,21 @@ async function savePipelineProject(proj){
 }
 async function deletePipelineProject(id){try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deletePipeline',id})});}catch(e){}}
 function daysSince(ds){if(!ds)return null;return Math.floor((new Date()-new Date(ds))/(1000*60*60*24));}
+// Dias corridos de um projeto do pipeline: enquanto não está 100% concluído,
+// conta até hoje (como sempre foi). Uma vez concluído, CONGELA na data da
+// última etapa marcada — sem isso, o contador seguia correndo pra sempre,
+// mesmo em projetos já entregues há meses.
+function diasDoProjeto(proj){
+  if(!proj || !proj.inicio) return null;
+  const concluido = proj.steps && proj.steps.filter(s=>s.done).length===11;
+  if(concluido){
+    const datas = proj.steps.filter(s=>s.done&&s.date).map(s=>new Date(s.date).getTime()).filter(t=>!isNaN(t));
+    if(datas.length){
+      return Math.max(0, Math.floor((Math.max(...datas)-new Date(proj.inicio))/(1000*60*60*24)));
+    }
+  }
+  return daysSince(proj.inicio);
+}
 
 // Boxes Pipeline
 function togglePipelineBox(tipo){
@@ -3416,7 +3431,7 @@ function renderPipeline(){
   list.innerHTML=lista.map(proj=>{
     const doneCnt=proj.steps.filter(s=>s.done).length;
     const pct=Math.round((doneCnt/11)*100);
-    const dias=daysSince(proj.inicio);
+    const dias=diasDoProjeto(proj);
     let dc='ok';if(dias>=40)dc='danger';else if(dias>=30)dc='warn';
     const cs=proj.steps.find(s=>!s.done);
     const cst=cs?STEPS.find(s=>s.id===cs.id)?.title:'Concluído';
@@ -3737,7 +3752,7 @@ function renderDashTable() {
   tbody.innerHTML = lista.map(proj => {
     const dc = proj.steps.filter(s=>s.done).length;
     const pct = Math.round((dc/11)*100);
-    const dias = daysSince(proj.inicio);
+    const dias = diasDoProjeto(proj);
     const cs = proj.steps.find(s=>!s.done);
     const st = pct===100?'Concluído':cs?cs.id+'. '+STEPS.find(s=>s.id===cs.id)?.title:'—';
     const col = pct===100?'var(--c-concluido)':dias>=40?'var(--c-atrasado)':dias>=30?'var(--c-pendente)':'var(--text-muted)';
@@ -3760,7 +3775,7 @@ async function renderDashboard(){
   const emAndamento=projects.filter(p=>!p.steps.every(s=>s.done)&&p.steps.some(s=>s.done));
   const naoIniciados=projects.filter(p=>p.steps.every(s=>!s.done));
   const totalUHs=projects.reduce((acc,p)=>acc+(parseInt(p.uhs)||0),0);
-  const diasConc=concluidos.map(p=>daysSince(p.inicio)).filter(d=>d!==null);
+  const diasConc=concluidos.map(p=>diasDoProjeto(p)).filter(d=>d!==null);
   const mediaDias=diasConc.length?Math.round(diasConc.reduce((a,b)=>a+b,0)/diasConc.length):0;
 
   // Filtro ativo no dashboard
@@ -4312,7 +4327,24 @@ async function anexoMassaEnviar(){
   if(typeof renderClientes==='function') renderClientes();
 }
 
-async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes');const d=await r.json();clientes=Array.isArray(d)?d:[];if(typeof itensLocados==='undefined'||!itensLocados.length){try{const ri=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados');const di=await ri.json();itensLocados=Array.isArray(di.itens)?di.itens:[];}catch(e){}}if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();popularDatalistClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
+// Busca com nova tentativa automática: Apps Script às vezes recusa uma
+// chamada por estar processando muitas ao mesmo tempo (limite de execuções
+// simultâneas da conta). Em vez de mostrar erro na primeira falha, tenta
+// de novo (com uma pequena pausa) antes de desistir.
+async function fetchJsonComRetry(url, tentativas=3, delayMs=1000){
+  let ultimoErro;
+  for(let i=0;i<tentativas;i++){
+    try{
+      const r=await fetch(url);
+      return await r.json();
+    }catch(e){
+      ultimoErro=e;
+      if(i<tentativas-1) await new Promise(res=>setTimeout(res, delayMs*(i+1)));
+    }
+  }
+  throw ultimoErro;
+}
+async function loadClientes(){const syncEl=document.getElementById('cli-sync');if(syncEl)syncEl.textContent='Carregando...';try{const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getClientes');clientes=Array.isArray(d)?d:[];if(typeof itensLocados==='undefined'||!itensLocados.length){try{const di=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getItensLocados');itensLocados=Array.isArray(di.itens)?di.itens:[];}catch(e){}}if(syncEl)syncEl.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderClientes();popularDatalistClientes();}catch(e){if(syncEl)syncEl.textContent='Erro de conexão';}}
 async function saveCliente(clienteId){const cli=clientes.find(c=>c.id===clienteId);if(!cli)return;const get=id=>{const el=document.getElementById(id);return el?el.value:'';};const getChk=id=>{const el=document.getElementById(id);return el?el.checked:false;};const gradeAnexada=getChk('cli-grade-'+clienteId);const gradePor=get('cli-grade-por-'+clienteId);const produto=(cli.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');if(precisaGrade&&gradeAnexada&&!gradePor.trim()){alert('Informe quem anexou a grade.');return;}if(precisaGrade&&!gradeAnexada){if(!confirm('Grade nao marcada como anexada. Salvar mesmo assim?'))return;}const payload={action:'saveCliente',id:clienteId,nome:cli.nome,data_instalacao:get('cli-instalacao-'+clienteId),tecnico:get('cli-tecnico-'+clienteId),nf_envio:get('cli-nf-'+clienteId),os_instalacao:get('cli-os-'+clienteId),status:get('cli-status-'+clienteId),observacoes:get('cli-obs-'+clienteId),grade_anexada:gradeAnexada,grade_por:gradePor,link_contrato:get('cli-link-contrato-'+clienteId),link_projeto:get('cli-link-projeto-'+clienteId)};const btn=document.getElementById('cli-save-btn-'+clienteId);if(btn){btn.textContent='Salvando...';btn.disabled=true;}try{await fetch(API,{method:'POST',body:JSON.stringify({...payload,token:getToken()})});await loadClientes();if(btn){btn.textContent='Salvo!';setTimeout(()=>{btn.textContent='Salvar';btn.disabled=false;},2000);}}catch(e){if(btn){btn.textContent='Erro';btn.disabled=false;}}}
 function toggleCliCard(id){const el=document.getElementById('cli-body-'+id);const chev=document.getElementById('cli-chev-'+id);if(!el)return;const open=el.style.display!=='none';el.style.display=open?'none':'block';chev.className='chevron'+(open?'':' open');}
 
@@ -8269,14 +8301,25 @@ async function salvarAta(){
     fora_base: (document.getElementById('at-forabase')||{}).checked ? 'Sim' : '',
     fora_base_obs: (document.getElementById('at-forabase-obs')||{}).value?.trim()||''
   };
+  const _checarResp = async (r, label) => {
+    if(!r.ok) throw new Error(label+': HTTP '+r.status);
+    let d;
+    try{ d = await r.json(); }
+    catch(e){ throw new Error(label+': resposta inválida do servidor (não era JSON)'); }
+    if(d && (d.ok===false || d.error)) throw new Error(label+': '+(d.error||'falha desconhecida'));
+    return d;
+  };
   try{
     const ataId = editId || uid();
     if(editId){
-      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAta',id:editId,...payload})});
+      const _rUpd = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'updateAta',id:editId,...payload})});
+      await _checarResp(_rUpd, 'updateAta');
       const _cliBaseE = (Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===String(payload.cliente||'').trim().toLowerCase());
-      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:'os-'+editId,cliente:payload.cliente||'',cnpj:_cliBaseE?(_cliBaseE.cnpj||''):'',cidade:payload.estado||'',endereco:_cliBaseE?(_cliBaseE.endereco||''):'',descricao:payload.problema||'',manutencao:payload.manutencao||'',classificacao:payload.classificacao||'',responsavel_nome:payload.solicitante||'',responsavel_tel:payload.tel_solicitante||'',tecnico:payload.tecnico||'',data_prevista:payload.dt_prevista||''})});
+      const _rOs = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:'os-'+editId,cliente:payload.cliente||'',cnpj:_cliBaseE?(_cliBaseE.cnpj||''):'',cidade:payload.estado||'',endereco:_cliBaseE?(_cliBaseE.endereco||''):'',descricao:payload.problema||'',manutencao:payload.manutencao||'',classificacao:payload.classificacao||'',responsavel_nome:payload.solicitante||'',responsavel_tel:payload.tel_solicitante||'',tecnico:payload.tecnico||'',data_prevista:payload.dt_prevista||''})});
+      await _checarResp(_rOs, 'saveOS (atualização vinculada)');
     } else {
-      await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:ataId,...payload})});
+      const _rAdd = await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'addAta',id:ataId,...payload})});
+      await _checarResp(_rAdd, 'addAta');
       // Criar OS automaticamente vinculada à ATA
       const osNum = payload.no ? 'OS-'+payload.no : 'OS-ATA-'+ataId.slice(-6).toUpperCase();
       const _cliBase = (Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===String(payload.cliente||'').trim().toLowerCase());
@@ -8310,7 +8353,8 @@ async function salvarAta(){
         os_id_ata: ataId,
         criado_em: new Date().toLocaleString('pt-BR'),
       };
-      await fetch(API,{method:'POST',body:JSON.stringify(osPayload)});
+      const _rOsNew = await fetch(API,{method:'POST',body:JSON.stringify(osPayload)});
+      await _checarResp(_rOsNew, 'saveOS (criação vinculada)');
       // Notificar técnico via WhatsApp se definido
       setTimeout(()=>notificarTecnicoOS({...osPayload, numero:osNum}), 800);
     }
@@ -8320,6 +8364,7 @@ async function salvarAta(){
   }catch(e){
     if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
     setStatus('error','Erro ao salvar ata');
+    alert('❌ Não foi possível salvar o registro.\n\nMotivo: '+(e&&e.message?e.message:'erro desconhecido')+'\n\nO registro NÃO foi salvo — o modal continua aberto pra você tentar de novo.');
   }
 }
 
