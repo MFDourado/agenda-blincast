@@ -11080,20 +11080,40 @@ function armBalRenderTabela(){
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function mesRefLabel(ym){
   if(!ym) return '';
-  const p = String(ym).split('-');
-  if(p.length!==2) return ym;
-  const idx = parseInt(p[1],10)-1;
-  return (MESES_PT[idx]||p[1])+'/'+p[0];
+  const s = String(ym).trim();
+  // formato nativo do <input type="month">: YYYY-MM (aceita também YYYY-MM-DD por segurança)
+  let m = s.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
+  if(m){
+    const idx = parseInt(m[2],10)-1;
+    return (MESES_PT[idx]||m[2])+'/'+m[1];
+  }
+  // fallback: navegadores sem suporte a type="month" (ex: Safari) caem pra texto livre —
+  // aceita dd/mm/yyyy ou mm/yyyy digitado à mão e ignora o dia.
+  m = s.match(/^(?:\d{1,2}\/)?(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const idx = parseInt(m[1],10)-1;
+    return (MESES_PT[idx]||m[1])+'/'+m[2];
+  }
+  return s;
+}
+function _normalizarMesRef(ym){
+  const s = String(ym||'').trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
+  if(m) return m[1]+'-'+String(m[2]).padStart(2,'0');
+  m = s.match(/^(?:\d{1,2}\/)?(\d{1,2})\/(\d{4})$/);
+  if(m) return m[2]+'-'+String(m[1]).padStart(2,'0');
+  return '';
 }
 async function armEncerrarBalanco(){
   if(!armBalArmazem){ return; }
-  const refYm=document.getElementById('arm-bal-ref').value.trim();
-  const ref=mesRefLabel(refYm);
+  const refInput=document.getElementById('arm-bal-ref').value.trim();
+  const refYm=_normalizarMesRef(refInput)||refInput;
+  const ref=mesRefLabel(refInput);
   const obs=document.getElementById('arm-bal-obs').value.trim();
   const nome=document.getElementById('arm-bal-resp-nome').value.trim();
   const cargo=document.getElementById('arm-bal-resp-cargo').value.trim();
   const cpf=document.getElementById('arm-bal-resp-cpf').value.trim();
-  if(!refYm){ alert('Informe o mês de referência.'); return; }
+  if(!refInput){ alert('Informe o mês de referência.'); return; }
   if(!armBalItens.length){ alert('Carregue a planilha Excel com os itens.'); return; }
   if(!nome){ alert('Informe o nome do responsável.'); return; }
   if(!cargo){ alert('Informe o cargo do responsável.'); return; }
