@@ -9313,6 +9313,7 @@ function renderEntMatRows(){
     <td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="entmat-ac-wrap-${i}"><input type="text" id="entmat-item-${i}" oninput="entMatBuildAcList(${i},this.value)" onblur="setTimeout(()=>entMatFecharAc(${i}),300)" placeholder="Digite pra buscar no estoque..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="entmat-ac-list-${i}" style="display:none"></div></div></td>
     <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="entmat-qtd-${i}" min="0" step="any" placeholder="0" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
     <td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="entmat-linha-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td>
+    <td style="border:none;padding:2px 4px;width:20px;" class="ent-no-print"><button onclick="entMatRemoverLinha(${i})" title="Excluir linha" style="border:none;background:none;cursor:pointer;color:#c00;font-size:14px;line-height:1;padding:0;">✕</button></td>
   </tr>`).join('');
 }
 function entMatBuildAcList(i, q){
@@ -9336,6 +9337,29 @@ function entMatSelecionarItem(i, nome){
   const el = document.getElementById('entmat-item-'+i);
   if(el) el.value = nome;
   entMatFecharAc(i);
+}
+function entMatRemoverLinha(idxRemover){
+  if(entMatLinhas<=1){
+    // não faz sentido ficar com zero linhas: só limpa a última que restou
+    const elI=document.getElementById('entmat-item-0'), elQ=document.getElementById('entmat-qtd-0'), elO=document.getElementById('entmat-linha-obs-0');
+    if(elI) elI.value=''; if(elQ) elQ.value=''; if(elO) elO.value='';
+    return;
+  }
+  const snap=[];
+  for(let i=0;i<entMatLinhas;i++){
+    if(i===idxRemover) continue;
+    snap.push({
+      item:(document.getElementById('entmat-item-'+i)||{}).value||'',
+      qtd:(document.getElementById('entmat-qtd-'+i)||{}).value||'',
+      obs:(document.getElementById('entmat-linha-obs-'+i)||{}).value||''
+    });
+  }
+  entMatLinhas--;
+  renderEntMatRows();
+  snap.forEach((r,i)=>{
+    const elI=document.getElementById('entmat-item-'+i), elQ=document.getElementById('entmat-qtd-'+i), elO=document.getElementById('entmat-linha-obs-'+i);
+    if(elI) elI.value=r.item; if(elQ) elQ.value=r.qtd; if(elO) elO.value=r.obs;
+  });
 }
 function entMatAddLinha(){
   const snap = [];
