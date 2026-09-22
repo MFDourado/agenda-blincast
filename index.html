@@ -757,6 +757,32 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <button id="ferias-aba-solicitadas" onclick="setFeriasAba('solicitadas')" style="padding:7px 16px;border:1px solid var(--gold);border-radius:var(--radius-sm) 0 0 var(--radius-sm);background:var(--gold);color:#000;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">⏳ Solicitadas</button>
     <button id="ferias-aba-historico" onclick="setFeriasAba('historico')" style="padding:7px 16px;border:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;background:none;color:var(--text-muted);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">✅ Concedidas / Histórico</button>
   </div>
+  <div id="ferias-filtros" style="display:none;padding:0 24px;margin-bottom:14px;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Colaborador</label>
+      <select id="ferias-filtro-colab" onchange="renderFeriasAdmin()" style="height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;min-width:170px;">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Mês</label>
+      <select id="ferias-filtro-mes" onchange="renderFeriasAdmin()" style="height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="">Todos</option>
+        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Ano</label>
+      <select id="ferias-filtro-ano" onchange="renderFeriasAdmin()" style="height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <button onclick="limparFiltrosFerias()" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar filtros</button>
+    <div id="ferias-filtro-contagem" style="font-size:12px;color:var(--text-muted);margin-left:4px;"></div>
+  </div>
   <div id="ferias-list" style="padding:0 24px 24px;"></div>
 </div>
 <!-- VIAGEM -->
@@ -6622,6 +6648,48 @@ function setFeriasAba(aba){
   renderFeriasAdmin();
 }
 
+function _feriasPartesData(d){
+  if(!d) return null;
+  const s=String(d).trim();
+  if(s.includes('/')){ // dd/mm/yyyy
+    const p=s.split('/');
+    if(p.length===3) return {ano:p[2], mes:p[1].padStart(2,'0')};
+    return null;
+  }
+  if(s.includes('-')){ // yyyy-mm-dd
+    const p=s.split('-');
+    if(p.length===3) return {ano:p[0], mes:p[1].padStart(2,'0')};
+  }
+  return null;
+}
+function _popularFiltrosFerias(dados){
+  const colabSel = document.getElementById('ferias-filtro-colab');
+  const anoSel = document.getElementById('ferias-filtro-ano');
+  if(!colabSel || !anoSel) return;
+  const colabValAtual = colabSel.value;
+  const anoValAtual = anoSel.value;
+  const colabs = {};
+  const anos = new Set();
+  dados.forEach(f=>{
+    if(f.usuario) colabs[f.usuario]=f.nome||f.usuario;
+    const p=_feriasPartesData(f.dt_inicio);
+    if(p) anos.add(p.ano);
+  });
+  colabSel.innerHTML = '<option value="">Todos</option>' + Object.entries(colabs).sort((a,b)=>String(a[1]).localeCompare(String(b[1]))).map(([u,n])=>`<option value="${u}">${n}</option>`).join('');
+  colabSel.value = colabValAtual;
+  const anosOrdenados = [...anos].sort((a,b)=>String(b).localeCompare(String(a)));
+  anoSel.innerHTML = '<option value="">Todos</option>' + anosOrdenados.map(a=>`<option value="${a}">${a}</option>`).join('');
+  anoSel.value = anoValAtual;
+}
+function limparFiltrosFerias(){
+  const colabSel = document.getElementById('ferias-filtro-colab');
+  const mesSel = document.getElementById('ferias-filtro-mes');
+  const anoSel = document.getElementById('ferias-filtro-ano');
+  if(colabSel) colabSel.value='';
+  if(mesSel) mesSel.value='';
+  if(anoSel) anoSel.value='';
+  renderFeriasAdmin();
+}
 function renderFeriasAdmin(){
   const list = document.getElementById('ferias-list');
   if(!list) return;
@@ -6629,7 +6697,29 @@ function renderFeriasAdmin(){
   const abas=document.getElementById('ferias-abas'); if(abas) abas.style.display='flex';
   // filtra os registros conforme a aba: solicitadas = status 'solicitado'; histórico = aprovado/reprovado
   const filtroStatus = feriasAba==='solicitadas' ? ['solicitado'] : ['aprovado','reprovado'];
-  const dados = (feriasDados||[]).filter(f=>filtroStatus.includes(f.status));
+  let dados = (feriasDados||[]).filter(f=>filtroStatus.includes(f.status));
+  const filtrosEl = document.getElementById('ferias-filtros');
+  if(feriasAba==='historico'){
+    if(filtrosEl) filtrosEl.style.display='flex';
+    _popularFiltrosFerias(feriasDados||[]);
+    const colabVal = document.getElementById('ferias-filtro-colab')?.value||'';
+    const mesVal = document.getElementById('ferias-filtro-mes')?.value||'';
+    const anoVal = document.getElementById('ferias-filtro-ano')?.value||'';
+    if(colabVal) dados = dados.filter(f=>f.usuario===colabVal);
+    if(mesVal || anoVal){
+      dados = dados.filter(f=>{
+        const p=_feriasPartesData(f.dt_inicio);
+        if(!p) return false;
+        if(mesVal && p.mes!==mesVal) return false;
+        if(anoVal && p.ano!==anoVal) return false;
+        return true;
+      });
+    }
+    const contEl = document.getElementById('ferias-filtro-contagem');
+    if(contEl) contEl.textContent = dados.length+' registro(s)';
+  } else if(filtrosEl){
+    filtrosEl.style.display='none';
+  }
   // Agrupar por usuário
   const usuarios = {};
   dados.forEach(f => {
@@ -6642,7 +6732,7 @@ function renderFeriasAdmin(){
     const banner = pendentes ? '<div style="padding:10px 0 16px;font-size:13px;color:#e67e22;font-weight:600;">⏳ '+pendentes+' solicitação(ões) aguardando sua aprovação</div>' : '<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma solicitação aguardando aprovação.</div>';
     list.innerHTML = banner + Object.entries(usuarios).map(([usuario, info]) => _feriasBlocoUsuario(usuario, info)).join('');
   } else {
-    if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma férias concedida ou histórico ainda.</div>'; return; }
+    if(!dados.length){ list.innerHTML='<div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-muted);">Nenhuma férias concedida para os filtros selecionados.</div>'; return; }
     list.innerHTML = Object.entries(usuarios).map(([usuario, info]) => _feriasBlocoUsuario(usuario, info)).join('');
   }
 }
@@ -6668,6 +6758,7 @@ function renderFeriasColaborador(){
   const list = document.getElementById('ferias-list');
   if(!list) return;
   const abas=document.getElementById('ferias-abas'); if(abas) abas.style.display='none';
+  const filtrosEl=document.getElementById('ferias-filtros'); if(filtrosEl) filtrosEl.style.display='none';
   if(!feriasDados.length){
     list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma solicitação de férias. Clique em "+ Solicitar férias".</div>';
     return;
