@@ -11077,14 +11077,23 @@ function armBalRenderTabela(){
   </tr>`).join('');
 }
 
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function mesRefLabel(ym){
+  if(!ym) return '';
+  const p = String(ym).split('-');
+  if(p.length!==2) return ym;
+  const idx = parseInt(p[1],10)-1;
+  return (MESES_PT[idx]||p[1])+'/'+p[0];
+}
 async function armEncerrarBalanco(){
   if(!armBalArmazem){ return; }
-  const ref=document.getElementById('arm-bal-ref').value.trim();
+  const refYm=document.getElementById('arm-bal-ref').value.trim();
+  const ref=mesRefLabel(refYm);
   const obs=document.getElementById('arm-bal-obs').value.trim();
   const nome=document.getElementById('arm-bal-resp-nome').value.trim();
   const cargo=document.getElementById('arm-bal-resp-cargo').value.trim();
   const cpf=document.getElementById('arm-bal-resp-cpf').value.trim();
-  if(!ref){ alert('Informe a referência (ex: Maio/2026).'); return; }
+  if(!refYm){ alert('Informe o mês de referência.'); return; }
   if(!armBalItens.length){ alert('Carregue a planilha Excel com os itens.'); return; }
   if(!nome){ alert('Informe o nome do responsável.'); return; }
   if(!cargo){ alert('Informe o cargo do responsável.'); return; }
@@ -11095,7 +11104,7 @@ async function armEncerrarBalanco(){
   const payload={
     action:'salvarBalanco', token:getToken(),
     armazem_id:armBalArmazem.id, armazem_nome:armBalArmazem.nome, tipo:armBalArmazem.tipo,
-    referencia:ref, obs, resp_nome:nome, resp_cargo:cargo, resp_cpf:cpf,
+    referencia:ref, referencia_ym:refYm, obs, resp_nome:nome, resp_cargo:cargo, resp_cpf:cpf,
     itens:armBalItens, dt_conclusao:dtConc
   };
   try{
@@ -11114,6 +11123,8 @@ async function armVerHistorico(armazemId){
   const arm=armazensCache.find(a=>a.id===armazemId);
   document.getElementById('arm-hist-titulo').textContent='Balanços encerrados — '+(arm?arm.nome:'');
   document.getElementById('arm-hist-conteudo').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:13px;">Carregando...</div>';
+  const mesSel=document.getElementById('arm-hist-filtro-mes'); if(mesSel) mesSel.value='';
+  const anoSel=document.getElementById('arm-hist-filtro-ano'); if(anoSel) anoSel.value='';
   document.getElementById('arm-hist-modal').style.display='flex';
   try{
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getBalancos&armazem_id='+encodeURIComponent(armazemId));
@@ -11123,14 +11134,60 @@ async function armVerHistorico(armazemId){
   armRenderHistorico();
 }
 
+function _balancoPartes(b){
+  if(b.referencia_ym){
+    const p=String(b.referencia_ym).split('-');
+    if(p.length===2) return {ano:p[0], mes:p[1].padStart(2,'0')};
+  }
+  // fallback pra balanços antigos, com referência digitada em texto livre
+  const txt=String(b.referencia||'');
+  const mNum=txt.match(/(\d{1,2})\s*\/\s*(\d{4})/);
+  if(mNum) return {ano:mNum[2], mes:mNum[1].padStart(2,'0')};
+  const idx=MESES_PT.findIndex(m=>txt.toLowerCase().includes(m.toLowerCase()));
+  if(idx>=0){
+    const anoM=txt.match(/(\d{4})/);
+    if(anoM) return {ano:anoM[1], mes:String(idx+1).padStart(2,'0')};
+  }
+  return null;
+}
+function _armPopularFiltroAno(){
+  const anoSel=document.getElementById('arm-hist-filtro-ano');
+  if(!anoSel) return;
+  const atual=anoSel.value;
+  const anos=new Set();
+  armBalancosCache.forEach(b=>{ const p=_balancoPartes(b); if(p) anos.add(p.ano); });
+  const ordenados=[...anos].sort((a,b)=>String(b).localeCompare(String(a)));
+  anoSel.innerHTML='<option value="">Todos</option>'+ordenados.map(a=>`<option value="${a}">${a}</option>`).join('');
+  anoSel.value=atual;
+}
+function armLimparFiltroHistorico(){
+  const mesSel=document.getElementById('arm-hist-filtro-mes');
+  const anoSel=document.getElementById('arm-hist-filtro-ano');
+  if(mesSel) mesSel.value='';
+  if(anoSel) anoSel.value='';
+  armRenderHistorico();
+}
 function armRenderHistorico(){
   const cont=document.getElementById('arm-hist-conteudo');
   if(!cont) return;
-  if(!armBalancosCache.length){
-    cont.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum balanço encerrado para este armazém ainda.</div>';
+  _armPopularFiltroAno();
+  const mesVal=document.getElementById('arm-hist-filtro-mes')?.value||'';
+  const anoVal=document.getElementById('arm-hist-filtro-ano')?.value||'';
+  let lista=armBalancosCache;
+  if(mesVal||anoVal){
+    lista=lista.filter(b=>{
+      const p=_balancoPartes(b);
+      if(!p) return false;
+      if(mesVal && p.mes!==mesVal) return false;
+      if(anoVal && p.ano!==anoVal) return false;
+      return true;
+    });
+  }
+  if(!lista.length){
+    cont.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">'+((mesVal||anoVal)?'Nenhum balanço para os filtros selecionados.':'Nenhum balanço encerrado para este armazém ainda.')+'</div>';
     return;
   }
-  const ordenado=[...armBalancosCache].reverse();
+  const ordenado=[...lista].reverse();
   cont.innerHTML=ordenado.map(b=>`<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
       <div>
@@ -13268,8 +13325,8 @@ async function estEnviarEmail(reg){
     <div id="arm-bal-armazem-info" style="padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;font-weight:600;"></div>
 
     <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Referência (ex: Maio/2026) *</label>
-      <input id="arm-bal-ref" type="text" placeholder="Ex: Maio/2026" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;background:var(--bg);color:var(--text);">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Mês de referência *</label>
+      <input id="arm-bal-ref" type="month" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;background:var(--bg);color:var(--text);">
     </div>
     <div style="margin-bottom:14px;">
       <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Observações</label>
@@ -13318,6 +13375,25 @@ async function estEnviarEmail(reg){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <h3 id="arm-hist-titulo" style="margin:0;">Balanços encerrados</h3>
       <button onclick="document.getElementById('arm-hist-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Mês</label>
+        <select id="arm-hist-filtro-mes" onchange="armRenderHistorico()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Todos</option>
+          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Ano</label>
+        <select id="arm-hist-filtro-ano" onchange="armRenderHistorico()" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <button onclick="armLimparFiltroHistorico()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar filtros</button>
     </div>
     <div id="arm-hist-conteudo"></div>
   </div>
