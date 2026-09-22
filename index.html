@@ -456,7 +456,11 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <button class="snav-btn" id="mt-ferias" onclick="switchMainTab('ferias');closeSidebar()">Férias</button>
     <button class="snav-btn" id="mt-viagem" onclick="switchMainTab('viagem');closeSidebar()">Viagem</button>
     <button class="snav-btn" id="mt-requisicoes" onclick="switchMainTab('requisicoes');closeSidebar()">Requisições</button>
-    <button class="snav-btn" id="mt-entrega-material" onclick="switchMainTab('entrega-material');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Entrega de material</button>
+    <button class="snav-btn" id="mt-materiais-group" onclick="toggleSubMenu('materiais-sub')">Materiais <span id="arrow-materiais-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+    <div id="materiais-sub" style="display:none;background:rgba(0,0,0,.15)">
+      <button class="snav-btn" id="mt-entrega-material" onclick="switchMainTab('entrega-material');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Entrega de material</button>
+      <button class="snav-btn" id="mt-transferencia-material" onclick="switchMainTab('transferencia-material');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Transferência de material</button>
+    </div>
     <button class="snav-btn" id="mt-escala-group" onclick="toggleSubMenu('escala-sub')">Escala de atendimento <span id="arrow-escala-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
     <div id="escala-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-escala-sac" onclick="switchMainTab('escala-sac');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">SAC</button>
@@ -3018,12 +3022,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3042,6 +3046,7 @@ function switchMainTab(t){
   if(t==='montagem')_cargaAba('montagem',loadMontagem);
   if(t==='requisicoes')renderRequisicoes();
   if(t==='entrega-material')iniciarEntregaMaterial();
+  if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
   if(t==='viagem')iniciarViagem();
   if(t==='implantacoes')_cargaAba('implantacoes',loadImplantacoes);
@@ -9455,6 +9460,184 @@ async function exportarEntregaMaterialPDF(){
   }
 }
 
+// ============ TRANSFERÊNCIA DE MATERIAL ============
+let transfIniciado = false;
+let transfLinhas = 4;
+let transfItens = [];
+function iniciarTransferenciaMaterial(){
+  if(transfIniciado) return;
+  transfIniciado = true;
+  transfCarregarArmazens();
+  const dataEl = document.getElementById('transf-data');
+  if(dataEl){ dataEl.value = todayStr; document.getElementById('transf-data-doc').textContent = formatarData(todayStr); }
+  renderTransfRows();
+}
+async function transfCarregarArmazens(){
+  if(!Array.isArray(armazensCache)||!armazensCache.length){ try{ await _fetchArmazens(); }catch(e){} }
+  const opts = '<option value="">Selecione...</option>' + armazensCache.map(a=>`<option value="${a.id}">${a.nome}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
+  const selO = document.getElementById('transf-origem');
+  const selD = document.getElementById('transf-destino');
+  if(selO) selO.innerHTML = opts;
+  if(selD) selD.innerHTML = opts;
+}
+async function transfCarregarItensOrigem(){
+  const arm = document.getElementById('transf-origem')?.value||'';
+  transfItens = [];
+  if(!arm) return;
+  try{
+    const r = await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getEstoqueItens&armazem_id='+encodeURIComponent(arm));
+    const d = await r.json();
+    transfItens = Array.isArray(d.itens)?d.itens:[];
+  }catch(e){}
+}
+function renderTransfRows(){
+  const tb = document.getElementById('transf-tbody');
+  if(!tb) return;
+  tb.innerHTML = Array.from({length:transfLinhas},(_,i)=>`<tr id="transf-row-${i}">
+    <td style="border:1px solid #ccc;padding:2px 4px;"><div class="orc-autocomplete-wrap" id="transf-ac-wrap-${i}"><input type="text" id="transf-item-${i}" oninput="transfBuildAcList(${i},this.value)" onblur="setTimeout(()=>transfFecharAc(${i}),300)" placeholder="Digite pra buscar no estoque de origem..." style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"><div class="orc-ac-list" id="transf-ac-list-${i}" style="display:none"></div></div></td>
+    <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="transf-qtd-${i}" min="0" step="any" placeholder="0" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
+    <td style="border:1px solid #ccc;padding:2px 4px;"><input type="text" id="transf-linha-obs-${i}" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;"></td>
+    <td style="border:none;padding:2px 4px;width:20px;" class="ent-no-print"><button onclick="transfRemoverLinha(${i})" title="Excluir linha" style="border:none;background:none;cursor:pointer;color:#c00;font-size:14px;line-height:1;padding:0;">✕</button></td>
+  </tr>`).join('');
+}
+function transfBuildAcList(i, q){
+  const list = document.getElementById('transf-ac-list-'+i);
+  if(!list) return;
+  if(!q || q.length < 2){ list.style.display='none'; return; }
+  if(!document.getElementById('transf-origem')?.value){ list.innerHTML = '<div class="orc-ac-item" style="color:#999;cursor:default;">Selecione o estoque de origem primeiro</div>'; list.style.display='block'; return; }
+  const termo = q.toUpperCase();
+  const filtrados = transfItens.filter(it => String(it.item||'').toUpperCase().includes(termo)).slice(0, 12);
+  if(!filtrados.length){ list.style.display='none'; return; }
+  list.innerHTML = filtrados.map(it =>
+    `<div class="orc-ac-item" onmousedown="transfSelecionarItem(${i},'${String(it.item||'').replace(/'/g,"\\'")}')">${it.item} <span style="float:right;color:#888">saldo: ${it.quantidade!==undefined?it.quantidade:'—'}</span></div>`
+  ).join('');
+  list.style.display = 'block';
+}
+function transfFecharAc(i){
+  const list = document.getElementById('transf-ac-list-'+i);
+  if(list) list.style.display='none';
+}
+function transfSelecionarItem(i, nome){
+  const el = document.getElementById('transf-item-'+i);
+  if(el) el.value = nome;
+  transfFecharAc(i);
+}
+function transfAddLinha(){
+  const snap = [];
+  for(let i=0;i<transfLinhas;i++){
+    snap.push({
+      item: (document.getElementById('transf-item-'+i)||{}).value||'',
+      qtd: (document.getElementById('transf-qtd-'+i)||{}).value||'',
+      obs: (document.getElementById('transf-linha-obs-'+i)||{}).value||''
+    });
+  }
+  transfLinhas++;
+  renderTransfRows();
+  snap.forEach((r,i)=>{
+    const elI=document.getElementById('transf-item-'+i), elQ=document.getElementById('transf-qtd-'+i), elO=document.getElementById('transf-linha-obs-'+i);
+    if(elI) elI.value=r.item; if(elQ) elQ.value=r.qtd; if(elO) elO.value=r.obs;
+  });
+}
+function transfRemoverLinha(idxRemover){
+  if(transfLinhas<=1){
+    const elI=document.getElementById('transf-item-0'), elQ=document.getElementById('transf-qtd-0'), elO=document.getElementById('transf-linha-obs-0');
+    if(elI) elI.value=''; if(elQ) elQ.value=''; if(elO) elO.value='';
+    return;
+  }
+  const snap=[];
+  for(let i=0;i<transfLinhas;i++){
+    if(i===idxRemover) continue;
+    snap.push({
+      item:(document.getElementById('transf-item-'+i)||{}).value||'',
+      qtd:(document.getElementById('transf-qtd-'+i)||{}).value||'',
+      obs:(document.getElementById('transf-linha-obs-'+i)||{}).value||''
+    });
+  }
+  transfLinhas--;
+  renderTransfRows();
+  snap.forEach((r,i)=>{
+    const elI=document.getElementById('transf-item-'+i), elQ=document.getElementById('transf-qtd-'+i), elO=document.getElementById('transf-linha-obs-'+i);
+    if(elI) elI.value=r.item; if(elQ) elQ.value=r.qtd; if(elO) elO.value=r.obs;
+  });
+}
+function novaTransferenciaMaterial(){
+  document.getElementById('transf-origem').value='';
+  document.getElementById('transf-destino').value='';
+  document.getElementById('transf-solicitante').value='';
+  document.getElementById('transf-obs').value='';
+  document.getElementById('transf-entregou').value='';
+  document.getElementById('transf-recebeu').value='';
+  transfItens=[];
+  transfLinhas=4;
+  renderTransfRows();
+  const dataEl=document.getElementById('transf-data');
+  dataEl.value=todayStr;
+  document.getElementById('transf-data-doc').textContent=formatarData(todayStr);
+}
+async function exportarTransferenciaMaterialPDF(){
+  const nomeArquivo='Transferência de Material';
+  const area=document.getElementById('transf-print-area');
+  const inputs=area.querySelectorAll('input,textarea,select');
+  const spans=[];
+  inputs.forEach(el=>{
+    const span=document.createElement('span');
+    span.style.cssText='font-size:12px;font-family:Arial,sans-serif;';
+    let texto='';
+    if(el.tagName==='SELECT'){ texto=el.options[el.selectedIndex]?.text||''; }
+    else if(el.type==='date'){
+      const v=el.value;
+      if(v && /^\d{4}-\d{2}-\d{2}$/.test(v)){ const p=v.split('-'); texto=p[2]+'/'+p[1]+'/'+p[0]; }
+      else texto=v||'';
+    } else { texto=el.value; }
+    span.textContent=texto;
+    el.style.display='none';
+    el.parentNode.insertBefore(span,el.nextSibling);
+    spans.push({el,span});
+  });
+  const ocultos=[];
+  area.querySelectorAll('.ent-no-print').forEach(el=>{ ocultos.push([el,el.style.display]); el.style.display='none'; });
+  const restaurar=()=>{
+    spans.forEach(({el,span})=>{ el.style.display=''; span.remove(); });
+    ocultos.forEach(([el,d])=>{ el.style.display=d; });
+  };
+  const btnPdf=document.querySelector('[onclick="exportarTransferenciaMaterialPDF()"]');
+  const txtBtn=btnPdf?btnPdf.textContent:null;
+  if(btnPdf){ btnPdf.disabled=true; btnPdf.textContent='Gerando PDF...'; }
+  try{
+    if(typeof html2canvas==='undefined' || !window.jspdf){
+      throw new Error('Bibliotecas de PDF não carregaram. Verifique a conexão e recarregue a página.');
+    }
+    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pagW=pdf.internal.pageSize.getWidth();
+    const pagH=pdf.internal.pageSize.getHeight();
+    const margem=8;
+    const imgW=pagW-margem*2;
+    const imgH=canvas.height*imgW/canvas.width;
+    const img=canvas.toDataURL('image/jpeg',0.92);
+    if(imgH<=pagH-margem*2){
+      pdf.addImage(img,'JPEG',margem,margem,imgW,imgH);
+    } else {
+      let resta=imgH, pos=margem;
+      pdf.addImage(img,'JPEG',margem,pos,imgW,imgH);
+      resta-=(pagH-margem*2);
+      while(resta>0){
+        pos=margem-(imgH-resta);
+        pdf.addPage();
+        pdf.addImage(img,'JPEG',margem,pos,imgW,imgH);
+        resta-=(pagH-margem*2);
+      }
+    }
+    pdf.save(nomeArquivo+'.pdf');
+  }catch(err){
+    alert('Não foi possível gerar o PDF: '+(err.message||err));
+  }finally{
+    restaurar();
+    if(btnPdf){ btnPdf.disabled=false; btnPdf.textContent=txtBtn; }
+  }
+}
+
 // ============ CLIENTE DO ORÇAMENTO (autocomplete) ============
 // O campo usa <datalist>: sugere os clientes da base, mas continua aceitando
 // digitacao livre -- da pra orcar para quem ainda nao esta cadastrado.
@@ -12336,6 +12519,58 @@ async function estEnviarEmail(reg){
         </td>
         <td style="border:none;padding:0 0 0 30px;width:50%;vertical-align:top;">
           <div style="border:1px solid #999;padding:4px 8px;"><label style="font-size:10px;color:#555;font-weight:600;">NOME DE QUEM RECEBEU:</label><input id="entmat-recebeu" type="text" placeholder="Nome completo" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;margin-top:2px;"></div>
+          <div style="margin-top:40px;border-top:1px solid #111;text-align:center;padding-top:4px;font-size:10px;color:#555;">Assinatura de quem recebeu</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- TRANSFERÊNCIA DE MATERIAL -->
+<div id="page-transferencia-material" class="main" style="display:none">
+  <div class="orc-toolbar" style="margin-bottom:1.2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:18px;font-weight:600">Transferência de Material</h2>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Comprovante de transferência entre estoques, pronto pra imprimir e assinar manualmente.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="novaTransferenciaMaterial()" style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">+ Novo</button>
+        <button onclick="exportarTransferenciaMaterialPDF()" style="height:36px;padding:0 16px;background:var(--black);color:var(--gold);border:none;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">Exportar PDF</button>
+      </div>
+    </div>
+  </div>
+  <div id="transf-print-area" style="background:#fff;color:#111;padding:24px;max-width:900px;margin:0 auto;border:1px solid #ddd;">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5B800;padding-bottom:10px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:20px;font-weight:900;color:#111;">Blin<span style="color:#F5B800">Track</span></div>
+        <div style="font-size:9px;color:#888;">Blincast Media S/A — Documento Interno</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:800;color:#111;letter-spacing:.6px;">COMPROVANTE DE TRANSFERÊNCIA DE MATERIAL</div>
+        <div style="font-size:11px;color:#555;">Data: <span id="transf-data-doc">—</span></div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;width:140px;white-space:nowrap">ESTOQUE ORIGEM:</td><td style="border:1px solid #999;padding:2px 6px;"><select id="transf-origem" onchange="transfCarregarItensOrigem()" class="ent-no-print" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:100%;"><option value="">Selecione...</option></select></td><td style="border:1px solid #999;padding:4px 8px;font-weight:600;width:140px;">ESTOQUE DESTINO:</td><td style="border:1px solid #999;padding:2px 6px;"><select id="transf-destino" class="ent-no-print" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:100%;"><option value="">Selecione...</option></select></td></tr>
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">DATA DA TRANSFERÊNCIA:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="transf-data" type="date" oninput="document.getElementById('transf-data-doc').textContent=formatarData(this.value)" style="border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;width:200px;"></td></tr>
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-weight:600;">SOLICITANTE:</td><td style="border:1px solid #999;padding:2px 6px;" colspan="3"><input id="transf-solicitante" type="text" placeholder="Nome de quem solicitou" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;"></td></tr>
+    </table>
+    <div style="font-weight:700;margin-bottom:4px;">MATERIAIS TRANSFERIDOS</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+      <thead><tr style="background:#222;color:#fff;"><th style="border:1px solid #999;padding:5px 8px;text-align:left;width:50%;">ITEM</th><th style="border:1px solid #999;padding:5px 8px;text-align:center;width:14%;">QTD</th><th style="border:1px solid #999;padding:5px 8px;text-align:left;">OBSERVAÇÕES</th></tr></thead>
+      <tbody id="transf-tbody"></tbody>
+      <tfoot><tr class="ent-no-print"><td colspan="3" style="border:1px dashed #ccc;padding:4px;text-align:center;"><button onclick="transfAddLinha()" style="border:none;background:none;cursor:pointer;font-size:18px;color:#888;line-height:1;" title="Adicionar linha">＋</button></td></tr></tfoot>
+    </table>
+    <div style="margin:16px 0 24px;"><div style="font-weight:700;margin-bottom:2px;">OBSERVAÇÕES GERAIS:</div><div style="border:1px solid #999;min-height:36px;padding:4px 8px;"><textarea id="transf-obs" placeholder="Observações..." style="width:100%;min-height:30px;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;resize:vertical;"></textarea></div></div>
+    <table style="width:100%;border-collapse:collapse;margin-top:24px;">
+      <tr>
+        <td style="border:none;padding:0 30px 0 0;width:50%;vertical-align:top;">
+          <div style="border:1px solid #999;padding:4px 8px;"><label style="font-size:10px;color:#555;font-weight:600;">NOME DE QUEM ENTREGOU:</label><input id="transf-entregou" type="text" placeholder="Nome completo" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;margin-top:2px;"></div>
+          <div style="margin-top:40px;border-top:1px solid #111;text-align:center;padding-top:4px;font-size:10px;color:#555;">Assinatura de quem entregou</div>
+        </td>
+        <td style="border:none;padding:0 0 0 30px;width:50%;vertical-align:top;">
+          <div style="border:1px solid #999;padding:4px 8px;"><label style="font-size:10px;color:#555;font-weight:600;">NOME DE QUEM RECEBEU:</label><input id="transf-recebeu" type="text" placeholder="Nome completo" style="width:100%;border:none;outline:none;font-size:12px;font-family:Arial,sans-serif;margin-top:2px;"></div>
           <div style="margin-top:40px;border-top:1px solid #111;text-align:center;padding-top:4px;font-size:10px;color:#555;">Assinatura de quem recebeu</div>
         </td>
       </tr>
