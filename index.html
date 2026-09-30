@@ -13984,7 +13984,7 @@ async function aceitarOSN2(btnEl, osId, ataId){
       return;
     }
     if(ataId){
-      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:ataId,nivel:'N2',tecnico:nome})}); }catch(e){}
+      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:ataId,nivel:'N2',tecnico:nome,status:'em_andamento_tecnico'})}); }catch(e){}
     }
   }catch(e){
     alert('Erro ao aceitar o atendimento. Verifique sua conexão.');
@@ -15155,9 +15155,19 @@ async function executarSalvarOS(motivoTrocaTecnico){
     const d=await r.json();
     if(d.error){alert('Erro: '+d.error);return;}
   }catch(e){if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}alert('Erro ao salvar OS');return;}
+  // Se a OS foi concluída e está vinculada a um atendimento, marca o status
+  // do Painel de Atendimento como "Concluído pelo técnico" também.
+  if(os.status==='Concluída' && osEditId){
+    const _osOriginal=(typeof osLista!=='undefined'?osLista:[]).find(x=>String(x.id)===String(osEditId));
+    const _ataId=_osOriginal&&_osOriginal.os_id_ata;
+    if(_ataId){
+      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:_ataId,status:'concluido_tecnico'})}); }catch(e){}
+    }
+  }
   if(_btn){_btn.textContent='Salvar';_btn.disabled=false;}
   fecharModalOS();
   loadOS();
+  if(typeof loadAta==='function') loadAta();
   // Notificar técnico via WhatsApp se tiver técnico definido
   setTimeout(()=>notificarTecnicoOS(os), 500);
 }
