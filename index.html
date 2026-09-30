@@ -13565,7 +13565,7 @@ async function estEnviarEmail(reg){
 <div id="page-os" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Ordens de Serviço</h2><span class="dash-sync" id="os-sync"></span></div>
-    <button onclick="abrirConsultaCliente('os')" style="height:36px;padding:0 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);margin-right:8px;">🔎 Consultar por cliente</button><button onclick="abrirExportarOSXLSX()" style="height:36px;padding:0 16px;border:1px solid #2BB673;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#2BB673;margin-right:8px;">📊 Exportar Excel</button><button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
+    <button onclick="abrirConsultaCliente('os')" style="height:36px;padding:0 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto);margin-right:8px;">🔎 Consultar por cliente</button><button onclick="abrirMinhasConcluidas()" style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;margin-right:8px;">📋 Minhas concluídas</button><button onclick="abrirExportarOSXLSX()" style="height:36px;padding:0 16px;border:1px solid #2BB673;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#2BB673;margin-right:8px;">📊 Exportar Excel</button><button onclick="abrirNovaOS()" class="btn-new-project">+ Nova OS</button>
   </div>
   <div style="padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
     <input id="os-busca" type="text" placeholder="Buscar por número, cliente ou técnico..." oninput="renderOS()" style="flex:1;min-width:200px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;">
@@ -13600,6 +13600,26 @@ async function estEnviarEmail(reg){
       <button onclick="exportarConsultaPDF()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📄 PDF</button>
       <button onclick="exportarConsultaExcel()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Excel</button>
       <button class="modal-btn" onclick="fecharConsulta()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MINHAS CONCLUÍDAS (por técnico/N2, com período) -->
+<div class="modal-overlay" id="minhas-concluidas-modal" style="display:none" onclick="if(event.target===this)fecharMinhasConcluidas()">
+  <div class="modal" style="max-width:760px;max-height:90vh;overflow-y:auto;">
+    <h3 id="mc-titulo">Minhas Concluídas</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:14px 0;">
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">De</label>
+        <input type="date" id="mc-de" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Até</label>
+        <input type="date" id="mc-ate" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div>
+      <button class="btn-new-project" onclick="rodarMinhasConcluidas()" style="height:36px;">🔎 Consultar</button>
+    </div>
+    <div id="mc-resultado"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <button onclick="exportarMinhasConcluidasPDF()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📄 PDF</button>
+      <button onclick="exportarMinhasConcluidasExcel()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Excel</button>
+      <button class="modal-btn" onclick="fecharMinhasConcluidas()">Fechar</button>
     </div>
   </div>
 </div>
@@ -15097,6 +15117,75 @@ function exportarConsultaPDF(){
 }
 
 
+// ============ MINHAS CONCLUÍDAS (por técnico/N2, com período) ============
+function abrirMinhasConcluidas(){
+  const meuNome=(usuarioLogado&&usuarioLogado.nome)||'';
+  document.getElementById('mc-titulo').textContent='Minhas Concluídas — '+(meuNome||'—');
+  document.getElementById('mc-de').value='';
+  document.getElementById('mc-ate').value='';
+  document.getElementById('mc-resultado').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px">Escolha o período (ou deixe em branco pra ver tudo) e clique em Consultar.</div>';
+  document.getElementById('minhas-concluidas-modal').style.display='flex';
+}
+function fecharMinhasConcluidas(){document.getElementById('minhas-concluidas-modal').style.display='none';}
+function _mcDados(){
+  const meuNome=String((usuarioLogado&&usuarioLogado.nome)||'').trim().toLowerCase();
+  const de=document.getElementById('mc-de').value;
+  const ate=document.getElementById('mc-ate').value;
+  return (osLista||[]).filter(o=>{
+    if(String(o.tecnico||'').trim().toLowerCase()!==meuNome) return false;
+    if(o.status!=='Concluída') return false;
+    const d=_consNormDate(o.data_conclusao);
+    if(de){ if(!d||d<de) return false; }
+    if(ate){ if(!d||d>ate) return false; }
+    return true;
+  }).sort((a,b)=>String(b.data_conclusao||'').localeCompare(String(a.data_conclusao||'')));
+}
+function _mcPeriodoLabel(){
+  const de=document.getElementById('mc-de').value, ate=document.getElementById('mc-ate').value;
+  if(de&&ate) return _consFmtData(de)+' a '+_consFmtData(ate);
+  if(de) return 'a partir de '+_consFmtData(de);
+  if(ate) return 'até '+_consFmtData(ate);
+  return 'todos os períodos';
+}
+function rodarMinhasConcluidas(){
+  const lista=_mcDados();
+  const wrap=document.getElementById('mc-resultado');
+  if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma OS concluída no período.</div>'; return; }
+  const linhas=lista.map(o=>`<tr style="border-top:1px solid var(--border)">
+    <td style="padding:7px 10px;font-size:12px;font-weight:500">${o.numero||'—'}</td>
+    <td style="padding:7px 10px;font-size:12px">${o.cliente||'—'}</td>
+    <td style="padding:7px 10px;font-size:12px">${o.descricao||o.tipo||'—'}</td>
+    <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data)}</td>
+    <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data_conclusao)}</td>
+  </tr>`).join('');
+  wrap.innerHTML=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">${lista.length} OS concluída(s)</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--bg)"><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">OS</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Cliente</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Descrição</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Abertura</th><th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Conclusão</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div>`;
+}
+function exportarMinhasConcluidasExcel(){
+  const lista=_mcDados();
+  if(!lista.length){ alert('Nada para exportar.'); return; }
+  const meuNome=(usuarioLogado&&usuarioLogado.nome)||'';
+  const headers=['OS','Cliente','Descrição','Técnico','Abertura','Conclusão','Materiais'];
+  const rows=lista.map(o=>[o.numero||'',o.cliente||'',o.descricao||'',o.tecnico||'',_consFmtData(o.data),_consFmtData(o.data_conclusao),o.materiais||'']);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=headers.map((h,i)=>({wch:i===2||i===6?40:16}));
+  XLSX.utils.book_append_sheet(wb,ws,'Concluídas');
+  XLSX.writeFile(wb,'Concluidas_'+meuNome.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'.xlsx');
+}
+function exportarMinhasConcluidasPDF(){
+  const lista=_mcDados();
+  if(!lista.length){ alert('Nada para exportar.'); return; }
+  const meuNome=(usuarioLogado&&usuarioLogado.nome)||'';
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const cols='<th>OS</th><th>Cliente</th><th>Descrição</th><th>Abertura</th><th>Conclusão</th>';
+  const linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${o.numero||''}</td><td>${o.cliente||''}</td><td>${o.descricao||o.tipo||''}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Concluídas — '+meuNome+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:28px}.logo{font-size:20px;font-weight:900}.logo span{color:#F5B800}h1{font-size:16px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:7px;margin:14px 0 6px}.meta{font-size:10px;color:#888;margin-bottom:14px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#111;color:#F5B800;padding:6px 8px;font-size:9px;text-align:left;text-transform:uppercase}td{padding:5px 8px;font-size:10px;border-bottom:1px solid #eee}.footer{margin-top:18px;font-size:9px;color:#aaa;text-align:right}@media print{body{padding:0}}</style></head><body><div class="logo">Blin<span>Track</span></div><div style="font-size:9px;color:#888">Blincast Media S/A — Documento Interno</div><h1>Concluídas — '+meuNome+'</h1><div class="meta">Período: '+_mcPeriodoLabel()+' · '+lista.length+' registro(s) · Gerado em '+hoje+'</div><table><thead><tr>'+cols+'</tr></thead><tbody>'+linhasHtml+'</tbody></table><div class="footer">BlinTrack — Blincast Media S/A</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>');
+  w.document.close();
+}
 async function salvarOS(){
   const g=(id)=>document.getElementById(id)?.value?.trim()||'';
   const tecnicoNovo=g('os-tecnico');
