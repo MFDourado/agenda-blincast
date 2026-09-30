@@ -14281,6 +14281,23 @@ function verFotosOS(id){
   document.body.appendChild(ov);
 }
 let osTecnicoOriginal='', osStatusOriginal='';
+// Garante que o técnico atualmente gravado na OS sempre apareça selecionável
+// no menu — mesmo que a pessoa não esteja cadastrada como técnico de campo
+// (ex: alguém do N2 que aceitou o atendimento). Sem isso, o campo volta
+// sozinho pro "Pool" e o sistema acusa falsamente uma troca de técnico.
+function _garantirOpcaoTecnico(selectId, nome){
+  if(!nome) return;
+  const sel=document.getElementById(selectId);
+  if(!sel) return;
+  if(sel.value===nome) return;
+  const jaExiste=Array.from(sel.options).some(o=>o.value===nome);
+  if(!jaExiste){
+    const opt=document.createElement('option');
+    opt.value=nome; opt.textContent=nome;
+    sel.appendChild(opt);
+  }
+  sel.value=nome;
+}
 function editarOS(id){
   const o=osLista.find(x=>String(x.id)===String(id));
   if(!o) return;
@@ -14313,12 +14330,15 @@ function editarOS(id){
   filtrarTecnicosPorUFdaOS(cidadeAtual);
   const tecNorm=normalizarNomeTecnico(o.tecnico||'');
   document.getElementById('os-tecnico').value=tecNorm;
+  _garantirOpcaoTecnico('os-tecnico', tecNorm);
   if(!_colabFetchTentado){
     if(typeof loadColaboradores==='function'){
       loadColaboradores().then(()=>{
         filtrarTecnicosPorUFdaOS(document.getElementById('os-cidade')?.value||'');
         const _sel=document.getElementById('os-tecnico');
-        if(_sel) _sel.value=normalizarNomeTecnico(o.tecnico||'');
+        const _tecNorm2=normalizarNomeTecnico(o.tecnico||'');
+        if(_sel) _sel.value=_tecNorm2;
+        _garantirOpcaoTecnico('os-tecnico', _tecNorm2);
       }).catch(()=>{});
     }
   }
