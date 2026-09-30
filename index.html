@@ -8088,7 +8088,7 @@ function renderAta(){
         </div>
       </td>
       <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:5px;">${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:1px 5px;border:1px solid #F5B800;border-radius:3px;font-size:9px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;font-family:'DM Sans',sans-serif;">OS</button>`:''}<span style="overflow:hidden;text-overflow:ellipsis;">${r.no||'—'}</span></span></td>
-      <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}</td>
+      <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}${r.nivel==='N2'?(r.tecnico?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(43,182,115,.15);color:#2BB673;border:1px solid #2BB67344;font-weight:700;white-space:nowrap;">✓ Em atendimento N2 — ${normalizarNomeTecnico(r.tecnico)}</span></div>`:`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(245,184,0,.15);color:#B8860B;border:1px solid #B8860B44;font-weight:700;white-space:nowrap;">⚠ Aguardando aceite N2</span></div>`):(r.nivel==='Campo'?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.15);color:#5B9EF5;border:1px solid #5B9EF544;font-weight:700;white-space:nowrap;">🔧 Campo${r.tecnico?' — '+normalizarNomeTecnico(r.tecnico):''}</span></div>`:'')}</td>
       <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
       <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${r.equipamento||'—'}</td>
       <td style="padding:3px 4px;text-align:center;white-space:nowrap;">${r.classificacao?`<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${r.classificacao}</span>`:''}${r.manutencao?`<div style="margin-top:2px;"><span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(184,134,11,.12);color:#B8860B;border:1px solid #B8860B44;">${r.manutencao}</span></div>`:''}${(!r.classificacao&&!r.manutencao)?'<span style="color:var(--text-muted);font-size:11px;">—</span>':''}</td>
@@ -13921,6 +13921,7 @@ function _cardOS(o){
             <span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span>
             <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${o.status||'—'}</span>
             ${osAgruparPorMes&&emAberto?'<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F5B80022;color:#F5B800;border:1px solid #F5B80044;font-weight:700;">⚠ Em aberto</span>':''}
+            ${o.nivel==='N2'?(o.tecnico?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(43,182,115,.12);color:#2BB673;border:1px solid #2BB67344;font-weight:700;">N2 — em atendimento</span>`:`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(245,184,0,.15);color:#B8860B;border:1px solid #B8860B44;font-weight:700;">⚠ N2 — aguardando aceite</span>`):''}
             ${o.classificacao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${o.classificacao}</span>`:''}${o.manutencao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,184,0,.12);color:#B8860B;border:1px solid #B8860B44;">${o.manutencao}</span>`:''}
             ${o.produto?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.produto}</span>`:''}
           </div>
@@ -13934,6 +13935,7 @@ function _cardOS(o){
           ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
+          ${(o.nivel==='N2'&&!o.tecnico)?`<button onclick="aceitarOSN2(this,'${o.id}','${o.os_id_ata||''}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.15);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Aceitar atendimento</button>`:''}
           <button onclick="visualizarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #5B9EF5;border-radius:5px;background:rgba(91,158,245,.1);color:#5B9EF5;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">👁️ Visualizar</button>
           <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
           ${o.status==='Concluída'?`<button onclick="abrirReabrirOSModal('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #F5B800;border-radius:5px;background:rgba(245,184,0,.1);color:#F5B800;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">🔁 Reabrir</button>`:''}
@@ -13943,6 +13945,33 @@ function _cardOS(o){
         </div>
       </div>
     </div>`;
+}
+async function aceitarOSN2(btnEl, osId, ataId){
+  const nome=(usuarioLogado&&usuarioLogado.nome)||'';
+  if(!nome){ alert('Não foi possível identificar seu usuário logado.'); return; }
+  if(!confirm('Aceitar este atendimento? Ele vai passar a ser seu, com o nome "'+nome+'".')) return;
+  const txtOrig=btnEl?btnEl.textContent:null;
+  if(btnEl){ btnEl.disabled=true; btnEl.style.opacity='.7'; btnEl.style.cursor='wait'; btnEl.textContent='Aceitando...'; }
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:osId,tecnico:nome})});
+    const d=await r.json().catch(()=>({}));
+    if(d && d.error){
+      alert('Erro ao aceitar: '+d.error);
+      if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; }
+      return;
+    }
+    if(ataId){
+      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:ataId,nivel:'N2',tecnico:nome})}); }catch(e){}
+    }
+  }catch(e){
+    alert('Erro ao aceitar o atendimento. Verifique sua conexão.');
+    if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; }
+    return;
+  }
+  if(btnEl){ btnEl.textContent='Aceito ✓'; }
+  if(typeof loadOS==='function') loadOS();
+  if(typeof loadAta==='function') loadAta();
+  if(typeof showToast==='function') showToast('✅ Atendimento aceito — agora é com você!');
 }
 function _mesAnoDeOS(o){
   const v=String(o.data||'').trim();
@@ -15163,26 +15192,37 @@ function abrirEscalarAta(id){
     `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${r?('Cliente: <b>'+(r.cliente||'—')+'</b>'):''} · Tratado hoje pelo N1</div>`+
     `<div class="modal-field"><label>Escalar para</label>`+
     `<select id="esc-destino" class="field-sel" onchange="_escPopular()"><option value="N2">N2</option><option value="Campo">Técnico de campo</option></select></div>`+
-    `<div class="modal-field" style="margin-top:8px;"><label>Responsável</label><select id="esc-pessoa" class="field-sel"></select></div>`+
+    `<div class="modal-field" id="esc-pessoa-wrap" style="margin-top:8px;"><label>Responsável</label><select id="esc-pessoa" class="field-sel"></select></div>`+
+    `<div id="esc-n2-info" style="display:none;font-size:12px;color:var(--text-muted);margin-top:8px;background:rgba(91,158,245,.08);border:1px solid rgba(91,158,245,.3);border-radius:6px;padding:8px 10px;">Vai pra fila do N2 — qualquer um da equipe N2 pode aceitar na aba Ordens de Serviço.</div>`+
     `<div class="modal-actions"><button class="modal-btn" onclick="document.getElementById('escalar-ov').remove()">Voltar</button>`+
     `<button class="modal-btn primary" id="esc-ok">Escalar + WhatsApp</button></div></div>`;
   document.body.appendChild(ov);
   window._escPopular=function(){
     const dest=document.getElementById('esc-destino').value;
+    const wrap=document.getElementById('esc-pessoa-wrap');
+    const info=document.getElementById('esc-n2-info');
+    if(dest==='N2'){
+      wrap.style.display='none';
+      info.style.display='block';
+      return;
+    }
+    info.style.display='none';
+    wrap.style.display='';
     const sel=document.getElementById('esc-pessoa');
     const base=(typeof colabLista!=='undefined'?colabLista:[]).filter(c=>{const st=String(c.status||'').toLowerCase();return st===''||st==='ativo';});
-    let lista;
-    if(dest==='N2'){ lista=base.filter(c=>/n2/i.test(String(c.setor||'')+' '+String(c.cargo||''))); if(!lista.length) lista=base; }
-    else { lista=base.filter(c=>/t[eé]cnic/i.test(String(c.cargo||'')+' '+String(c.setor||''))); if(!lista.length) lista=base; }
+    let lista=base.filter(c=>/t[eé]cnic/i.test(String(c.cargo||'')+' '+String(c.setor||''))); if(!lista.length) lista=base;
     sel.innerHTML='<option value="">Selecione...</option>'+lista.map(c=>`<option value="${(c.nome||'').replace(/"/g,'')}" data-tel="${(c.telefone||'').replace(/\D/g,'')}">${c.nome}${c.cargo?(' — '+c.cargo):''}</option>`).join('');
   };
   _escPopular();
   document.getElementById('esc-ok').onclick=async()=>{
     const dest=document.getElementById('esc-destino').value;
-    const selEl=document.getElementById('esc-pessoa');
-    const pessoa=selEl.value;
-    if(!pessoa){alert('Selecione o responsável.');return;}
-    const tel=selEl.selectedOptions[0]?.getAttribute('data-tel')||'';
+    let pessoa='', tel='';
+    if(dest==='Campo'){
+      const selEl=document.getElementById('esc-pessoa');
+      pessoa=selEl.value;
+      if(!pessoa){alert('Selecione o técnico de campo.');return;}
+      tel=selEl.selectedOptions[0]?.getAttribute('data-tel')||'';
+    }
     const nivel = dest==='Campo' ? 'Campo' : 'N2';
     try{
       await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id,nivel,tecnico: dest==='Campo'?pessoa:''})});
@@ -15191,7 +15231,9 @@ function abrirEscalarAta(id){
     if(typeof loadAta==='function') loadAta();
     const cliente=r?(r.cliente||'—'):'—';
     const problema=r?(r.problema||'—'):'—';
-    const msg=`Atendimento escalado para ${dest==='Campo'?'Técnico de campo':'N2'}!\nCliente: ${cliente}\nMotivo: ${problema}\nResponsável: ${pessoa}`+(dest==='Campo'?`\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`:'');
+    const msg = dest==='Campo'
+      ? `Atendimento escalado para Técnico de campo!\nCliente: ${cliente}\nMotivo: ${problema}\nResponsável: ${pessoa}\n\nAcesse: https://mfdourado.github.io/agenda-blincast/tecnicocampo.html`
+      : `Atendimento escalado para N2!\nCliente: ${cliente}\nMotivo: ${problema}\n\nQualquer um do N2 pode aceitar na aba Ordens de Serviço.`;
     let numero = (tel || '5521971471125').replace(/\D/g,'');
     if(numero.length<=11) numero='55'+numero;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`,'_blank');
