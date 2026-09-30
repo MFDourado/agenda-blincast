@@ -13989,6 +13989,22 @@ function concluirOSDireta(id){
   const sel=document.getElementById('os-status');
   if(sel) sel.value='Concluída';
 }
+// Fallback: quando a OS não tem o vínculo interno com o atendimento
+// (os_id_ata vazio — acontece em OS's antigas ou criadas fora do fluxo padrão),
+// tenta achar o atendimento certo comparando o número visível ("Nº/OS").
+async function _resolverAtaIdPorNumero(numero){
+  if(!numero) return '';
+  try{
+    let lista = Array.isArray(ataRegistros)&&ataRegistros.length ? ataRegistros : null;
+    if(!lista){
+      const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getAta');
+      const d=await r.json();
+      lista=Array.isArray(d)?d.map(r=>{const n={};Object.keys(r).forEach(k=>n[k.toLowerCase()]=r[k]);return n;}):[];
+    }
+    const found=lista.find(a=>String(a.no||'').trim()===String(numero).trim() && String(a.no||'').trim()!=='');
+    return found?String(found.id):'';
+  }catch(e){ return ''; }
+}
 async function aceitarOSN2(btnEl, osId, ataId){
   const nome=(usuarioLogado&&usuarioLogado.nome)||'';
   if(!nome){ alert('Não foi possível identificar seu usuário logado.'); return; }
@@ -14002,6 +14018,10 @@ async function aceitarOSN2(btnEl, osId, ataId){
       alert('Erro ao aceitar: '+d.error);
       if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; }
       return;
+    }
+    if(!ataId){
+      const osObj=(osLista||[]).find(x=>String(x.id)===String(osId));
+      if(osObj && osObj.numero) ataId = await _resolverAtaIdPorNumero(osObj.numero);
     }
     if(ataId){
       try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:ataId,nivel:'N2',tecnico:nome,status:'em_andamento_tecnico'})}); }catch(e){}
@@ -15248,7 +15268,8 @@ async function executarSalvarOS(motivoTrocaTecnico){
   // do Painel de Atendimento como "Concluído pelo técnico" também.
   if(os.status==='Concluída' && osEditId){
     const _osOriginal=(typeof osLista!=='undefined'?osLista:[]).find(x=>String(x.id)===String(osEditId));
-    const _ataId=_osOriginal&&_osOriginal.os_id_ata;
+    let _ataId=_osOriginal&&_osOriginal.os_id_ata;
+    if(!_ataId && os.numero){ _ataId=await _resolverAtaIdPorNumero(os.numero); }
     if(_ataId){
       try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:_ataId,status:'concluido_tecnico'})}); }catch(e){}
     }
