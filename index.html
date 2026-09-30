@@ -13858,6 +13858,9 @@ function popularSelectTecnicosOS(){
 async function loadOS(){
   const s=document.getElementById('os-sync');
   if(s)s.textContent='Carregando...';
+  if(!_colabFetchTentado){
+    if(typeof loadColaboradores==='function'){ try{ await loadColaboradores(); }catch(e){} }
+  }
   try{
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getOS');
     const d=await r.json();
@@ -13865,6 +13868,17 @@ async function loadOS(){
     if(s)s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){osLista=[];if(s)s.textContent='Nenhuma OS ainda';}
   renderOS();
+}
+// Restringe a visão da aba Ordens de Serviço para a equipe N2 (lista fixa de
+// usuários de login): só enxergam OS's escaladas pro nível N2 (aceitas ou
+// ainda na fila), nunca as demais (pool geral, campo). Todo mundo fora dessa
+// lista continua vendo tudo, normalmente.
+const N2_USUARIOS_LOGIN = ['maria.trajano','marco.antonio'];
+function _souN2Restrito(){
+  if(!usuarioLogado) return false;
+  const usuarioAtual=String(usuarioLogado.usuario||'').trim().toLowerCase();
+  if(!usuarioAtual) return false;
+  return N2_USUARIOS_LOGIN.includes(usuarioAtual);
 }
 let osAgruparPorMes=false;
 let osMesesSelecionados=new Set(); // vazio = mostra todos os meses
@@ -13983,7 +13997,8 @@ function _mesAnoDeOS(o){
 function renderOS(){
   const b=(document.getElementById('os-busca')?.value||'').toLowerCase();
   const fs=document.getElementById('os-filtro-status')?.value||'';
-  let lista=osLista.filter(o=>
+  const baseOS=_souN2Restrito()?osLista.filter(o=>o.nivel==='N2'):osLista;
+  let lista=baseOS.filter(o=>
     (!b||(o.numero||'').toLowerCase().includes(b)||(o.cliente||'').toLowerCase().includes(b)||(o.tecnico||'').toLowerCase().includes(b))
     &&(!fs||o.status===fs)
   ).sort((a,c)=>String(c.id).localeCompare(String(a.id)));
