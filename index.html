@@ -13950,6 +13950,7 @@ function _cardOS(o){
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           ${(o.nivel==='N2'&&!o.tecnico)?`<button onclick="aceitarOSN2(this,'${o.id}','${o.os_id_ata||''}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.15);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Aceitar atendimento</button>`:''}
+          ${(o.tecnico&&o.status!=='Concluída')?`<button onclick="concluirOSDireta('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #4CAF7D;border-radius:5px;background:rgba(76,175,125,.15);color:#4CAF7D;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Concluir OS</button>`:''}
           <button onclick="visualizarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #5B9EF5;border-radius:5px;background:rgba(91,158,245,.1);color:#5B9EF5;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">👁️ Visualizar</button>
           <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
           ${o.status==='Concluída'?`<button onclick="abrirReabrirOSModal('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #F5B800;border-radius:5px;background:rgba(245,184,0,.1);color:#F5B800;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">🔁 Reabrir</button>`:''}
@@ -13959,6 +13960,14 @@ function _cardOS(o){
         </div>
       </div>
     </div>`;
+}
+// Atalho pra concluir: abre o mesmo formulário de edição (status, data de
+// conclusão, horas, materiais, fotos, observações) já com o status ajustado
+// pra "Concluída" — evita a pessoa ter que trocar isso manualmente toda vez.
+function concluirOSDireta(id){
+  editarOS(id);
+  const sel=document.getElementById('os-status');
+  if(sel) sel.value='Concluída';
 }
 async function aceitarOSN2(btnEl, osId, ataId){
   const nome=(usuarioLogado&&usuarioLogado.nome)||'';
