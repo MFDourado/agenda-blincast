@@ -412,6 +412,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Operacional</div>
     <button class="snav-btn" id="mt-comercial" onclick="switchMainTab('comercial');closeSidebar()">Comercial</button>
     <button class="snav-btn" id="mt-clientes" onclick="switchMainTab('clientes');closeSidebar()">Clientes</button>
+    <button class="snav-btn" id="mt-milplay" onclick="switchMainTab('milplay');closeSidebar()">MilPlay</button>
     <button class="snav-btn" id="mt-cronograma" onclick="switchMainTab('cronograma');closeSidebar()">Cronograma</button>
     <button class="snav-btn" id="mt-ata" onclick="switchMainTab('ata');closeSidebar()">Painel de Atendimento</button>
     <button class="snav-btn" id="mt-implantacoes-group" onclick="toggleSubMenu('impl-sub')">Implantações <span id="arrow-impl-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
@@ -3022,12 +3023,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3045,6 +3046,7 @@ function switchMainTab(t){
   if(t==='poc')_cargaAba('poc',loadPocOperacional);
   if(t==='montagem')_cargaAba('montagem',loadMontagem);
   if(t==='requisicoes')renderRequisicoes();
+  if(t==='milplay')iniciarMilPlay();
   if(t==='entrega-material')iniciarEntregaMaterial();
   if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
@@ -4391,6 +4393,254 @@ function popularDatalistClientes(){
     const extra=[c.cidade,c.cnpj].filter(Boolean).join(' · ');
     return '<option value="'+String(c.nome||'').replace(/"/g,'&quot;')+'">'+extra+'</option>';
   }).join('');
+}
+// ============ MILPLAY (acessos de login por quarto/dispositivo) ============
+let milplayLista=[];
+let milplayClienteAtual=null;
+function iniciarMilPlay(){
+  milplayClienteAtual=null;
+  const vd=document.getElementById('mp-view-detalhe'); if(vd) vd.style.display='none';
+  const vl=document.getElementById('mp-view-lista'); if(vl) vl.style.display='block';
+  if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
+  loadMilPlay();
+}
+async function loadMilPlay(){
+  const s=document.getElementById('mp-sync');
+  if(s) s.textContent='Carregando...';
+  try{
+    const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMilPlay');
+    const d=await r.json();
+    milplayLista=Array.isArray(d.itens)?d.itens:[];
+    if(s) s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ milplayLista=[]; if(s) s.textContent='Erro ao carregar'; }
+  renderMilPlayLista();
+}
+function _milplayClientesUnicos(){
+  const mapa={};
+  milplayLista.forEach(it=>{
+    const chave=String(it.cnpj||it.razao_social||'').trim();
+    if(!chave) return;
+    if(!mapa[chave]) mapa[chave]={cnpj:it.cnpj||'',razao_social:it.razao_social||'(sem nome)',qtd:0};
+    mapa[chave].qtd++;
+  });
+  return Object.values(mapa).sort((a,b)=>String(a.razao_social).localeCompare(String(b.razao_social)));
+}
+function renderMilPlayLista(){
+  const wrap=document.getElementById('mp-lista-clientes');
+  if(!wrap) return;
+  const busca=(document.getElementById('mp-busca-cliente')?.value||'').trim().toLowerCase();
+  const clientesUnicos=_milplayClientesUnicos().filter(c=>!busca||String(c.razao_social).toLowerCase().includes(busca)||String(c.cnpj).toLowerCase().includes(busca));
+  if(!clientesUnicos.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">Nenhum cliente MilPlay encontrado.</div>'; return; }
+  wrap.innerHTML=clientesUnicos.map(c=>`<div onclick="milplayAbrirCliente('${String(c.cnpj).replace(/'/g,"\\'")}','${String(c.razao_social).replace(/'/g,"\\'")}')" style="border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;background:var(--surface);">
+    <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">${c.razao_social}</div>
+    <div style="font-size:11px;color:var(--text-muted);">${c.cnpj||'—'}</div>
+    <div style="font-size:11px;color:var(--gold);margin-top:8px;font-weight:600;">${c.qtd} registro(s) →</div>
+  </div>`).join('');
+}
+function milplayAbrirCliente(cnpj, razao){
+  milplayClienteAtual={cnpj:cnpj||'',razao:razao||''};
+  document.getElementById('mp-view-lista').style.display='none';
+  document.getElementById('mp-view-detalhe').style.display='block';
+  document.getElementById('mp-detalhe-nome').textContent=razao||'(sem nome)';
+  document.getElementById('mp-detalhe-cnpj').textContent=cnpj||'—';
+  renderMilPlayDetalhe();
+}
+function milplayVoltarLista(){
+  milplayClienteAtual=null;
+  document.getElementById('mp-view-detalhe').style.display='none';
+  document.getElementById('mp-view-lista').style.display='block';
+  renderMilPlayLista();
+}
+function renderMilPlayDetalhe(){
+  if(!milplayClienteAtual) return;
+  const linhas=milplayLista.filter(it=>String(it.cnpj||'').trim()===milplayClienteAtual.cnpj.trim());
+  const wrap=document.getElementById('mp-detalhe-tabela');
+  if(!wrap) return;
+  if(!linhas.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum registro pra esse cliente ainda.</div>'; return; }
+  const ordenado=[...linhas].sort((a,b)=>String(a.quarto||'').localeCompare(String(b.quarto||''),undefined,{numeric:true}));
+  wrap.innerHTML=`<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--bg)">
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Quarto</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Usuário</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Pacotes</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Contrato</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Fabricante</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Rede</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Wifi</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${ordenado.map(it=>`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${it.quarto||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;">${it.usuario||'—'}</span>${it.usuario?` <button onclick="milplayCopiar('${String(it.usuario).replace(/'/g,"\\'")}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
+      <td style="padding:7px 10px;font-size:12px;">${it.pacotes||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;">${it.contrato||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;">${it.fabricante||'—'}</td>
+      <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_rede||'—'}</td>
+      <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_wifi||'—'}</td>
+      <td style="padding:7px 10px;white-space:nowrap;"><button onclick="abrirEditarMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;" title="Editar">✎</button> <button onclick="excluirMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:#e00;font-size:13px;" title="Excluir">🗑️</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+function milplayCopiar(texto, btnEl){
+  if(!navigator.clipboard){ return; }
+  navigator.clipboard.writeText(texto).then(()=>{
+    if(btnEl){ const orig=btnEl.textContent; btnEl.textContent='✓'; setTimeout(()=>{ btnEl.textContent=orig; },1200); }
+  }).catch(()=>{});
+}
+function fecharMilPlayModal(){ document.getElementById('milplay-modal').style.display='none'; }
+function milplayClienteSelecionado(){
+  const val=document.getElementById('mp-cliente-busca').value.trim().toLowerCase();
+  if(!val) return;
+  const achou=(clientes||[]).find(c=>String(c.nome||'').trim().toLowerCase()===val);
+  if(achou){
+    document.getElementById('mp-cnpj').value=achou.cnpj||'';
+    document.getElementById('mp-razao').value=achou.nome||'';
+  }
+}
+function abrirNovoMilPlay(){
+  document.getElementById('mp-modal-titulo').textContent='Novo registro MilPlay';
+  document.getElementById('mp-edit-id').value='';
+  ['mp-cliente-busca','mp-cnpj','mp-razao','mp-quarto','mp-usuario','mp-contrato','mp-fabricante','mp-pacotes','mp-mac-rede','mp-mac-wifi','mp-obs'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  if(milplayClienteAtual){
+    document.getElementById('mp-cliente-busca').value=milplayClienteAtual.razao||'';
+    document.getElementById('mp-cnpj').value=milplayClienteAtual.cnpj||'';
+    document.getElementById('mp-razao').value=milplayClienteAtual.razao||'';
+  }
+  document.getElementById('milplay-modal').style.display='flex';
+}
+function abrirEditarMilPlay(id){
+  const it=milplayLista.find(x=>String(x.id)===String(id));
+  if(!it) return;
+  document.getElementById('mp-modal-titulo').textContent='Editar registro MilPlay';
+  document.getElementById('mp-edit-id').value=it.id;
+  document.getElementById('mp-cliente-busca').value=it.razao_social||'';
+  document.getElementById('mp-cnpj').value=it.cnpj||'';
+  document.getElementById('mp-razao').value=it.razao_social||'';
+  document.getElementById('mp-quarto').value=it.quarto||'';
+  document.getElementById('mp-usuario').value=it.usuario||'';
+  document.getElementById('mp-contrato').value=it.contrato||'';
+  document.getElementById('mp-fabricante').value=it.fabricante||'';
+  document.getElementById('mp-pacotes').value=it.pacotes||'';
+  document.getElementById('mp-mac-rede').value=it.mac_rede||'';
+  document.getElementById('mp-mac-wifi').value=it.mac_wifi||'';
+  document.getElementById('mp-obs').value=it.obs||'';
+  document.getElementById('milplay-modal').style.display='flex';
+}
+async function salvarMilPlay(){
+  const id=document.getElementById('mp-edit-id').value.trim();
+  const cnpj=document.getElementById('mp-cnpj').value.trim();
+  const razao=document.getElementById('mp-razao').value.trim();
+  const usuario=document.getElementById('mp-usuario').value.trim();
+  if(!razao){ alert('Informe o cliente.'); return; }
+  if(!usuario){ alert('Informe o usuário (login).'); return; }
+  const payload={
+    token:getToken(), action:'saveMilPlay',
+    cnpj, razao_social:razao,
+    quarto:document.getElementById('mp-quarto').value.trim(),
+    usuario,
+    contrato:document.getElementById('mp-contrato').value.trim(),
+    fabricante:document.getElementById('mp-fabricante').value.trim(),
+    pacotes:document.getElementById('mp-pacotes').value.trim(),
+    mac_rede:document.getElementById('mp-mac-rede').value.trim(),
+    mac_wifi:document.getElementById('mp-mac-wifi').value.trim(),
+    obs:document.getElementById('mp-obs').value.trim()
+  };
+  if(id) payload.id=id;
+  const btn=document.querySelector('#milplay-modal .modal-btn.primary');
+  const txt=btn?btn.textContent:null;
+  if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d && d.error){ alert('Erro: '+d.error); if(btn){btn.disabled=false;btn.textContent=txt;} return; }
+  }catch(e){ alert('Erro ao salvar. Verifique sua conexão.'); if(btn){btn.disabled=false;btn.textContent=txt;} return; }
+  if(btn){btn.disabled=false;btn.textContent=txt;}
+  fecharMilPlayModal();
+  await loadMilPlay();
+  if(milplayClienteAtual) renderMilPlayDetalhe();
+}
+async function excluirMilPlay(id){
+  if(!confirm('Excluir esse registro? Não tem como desfazer.')) return;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteMilPlay',id})});
+    const d=await r.json();
+    if(d && d.error){ alert('Erro: '+d.error); return; }
+  }catch(e){ alert('Erro ao excluir. Verifique sua conexão.'); return; }
+  await loadMilPlay();
+  if(milplayClienteAtual) renderMilPlayDetalhe();
+}
+// Importação em lote a partir da planilha modelo (uma aba por cliente).
+// Essas duas abas são sempre ignoradas (combinado: interno/cadastro incorreto).
+const MILPLAY_ABAS_IGNORAR=['pocs blincast','clara ibiuna cadastro incorreto'];
+async function milplayImportarArquivo(input, ehNovoCliente){
+  const file=input.files[0]; if(!file) return;
+  const msgConfirmacao = ehNovoCliente
+    ? 'Vou ler o arquivo e ADICIONAR os registros desse(s) cliente(s) ao MilPlay — não mexe em mais nada do que já existe. Continuar?'
+    : 'Isso vai ler todas as abas da planilha (exceto as combinadas de ignorar) e ADICIONAR como novos registros MilPlay — não substitui o que já existe. Continuar?';
+  if(!confirm(msgConfirmacao)){ input.value=''; return; }
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const CNPJ_RE=/(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/;
+    const itensImportar=[];
+    const avisos=[];
+    wb.SheetNames.forEach(nomeAba=>{
+      const chaveAba=nomeAba.trim().toLowerCase();
+      if(MILPLAY_ABAS_IGNORAR.includes(chaveAba)) return;
+      const ws=wb.Sheets[nomeAba];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      let linhaTitulo=-1, linhaCab=-1;
+      for(let i=0;i<rows.length && i<10;i++){
+        const textoLinha=rows[i].map(c=>String(c||'')).join(' ');
+        if(linhaTitulo===-1 && CNPJ_RE.test(textoLinha)) linhaTitulo=i;
+        const textoUpper=textoLinha.toUpperCase();
+        if(linhaCab===-1 && (textoUpper.includes('USUÁRIO')||textoUpper.includes('USUARIO'))) linhaCab=i;
+      }
+      if(linhaTitulo===-1 || linhaCab===-1){ avisos.push(nomeAba+': não achei título (CNPJ) ou cabeçalho (Usuário) — aba pulada.'); return; }
+      const textoTitulo=rows[linhaTitulo].map(c=>String(c||'')).join(' ');
+      const mCnpj=textoTitulo.match(CNPJ_RE);
+      const cnpj=mCnpj?mCnpj[1]:'';
+      let razao=mCnpj?textoTitulo.slice(0,mCnpj.index):textoTitulo;
+      razao=razao.replace(/CNPJ\s*:?\s*$/i,'').replace(/[-:\s]+$/,'').trim();
+      const headers=rows[linhaCab].map(h=>String(h||'').trim().toUpperCase());
+      const idx=(...nomes)=>{ for(const n of nomes){ const i=headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+      const cQuarto=idx('QUARTO');
+      const cUsuario=idx('USUÁRIO','USUARIO');
+      const cContrato=idx('CONT');
+      const cFabricante=idx('FABRICANTE');
+      const cMacRede=idx('MAC REDE');
+      const cMacWifi=idx('MAC WIFI');
+      const cPacotes=idx('PACOTE');
+      if(cUsuario===-1){ avisos.push(nomeAba+': não achei coluna de usuário — aba pulada.'); return; }
+      for(let i=linhaCab+1;i<rows.length;i++){
+        const r=rows[i];
+        if(!r || r.every(c=>c==='')) continue;
+        const usuario=String(r[cUsuario]||'').trim();
+        if(!usuario) continue;
+        itensImportar.push({
+          cnpj, razao_social:razao,
+          quarto: cQuarto>=0?String(r[cQuarto]||'').trim():'',
+          usuario,
+          contrato: cContrato>=0?String(r[cContrato]||'').trim():'',
+          fabricante: cFabricante>=0?String(r[cFabricante]||'').trim():'',
+          mac_rede: cMacRede>=0?String(r[cMacRede]||'').trim():'',
+          mac_wifi: cMacWifi>=0?String(r[cMacWifi]||'').trim():'',
+          pacotes: cPacotes>=0?String(r[cPacotes]||'').trim():''
+        });
+      }
+    });
+    if(!itensImportar.length){ alert('Nenhum registro válido encontrado pra importar.'+(avisos.length?'\n\nAvisos:\n'+avisos.join('\n'):'')); input.value=''; return; }
+    if(!confirm(itensImportar.length+' registro(s) encontrados pra importar'+(avisos.length?' (com '+avisos.length+' aba(s) ignorada(s) por não bater o formato esperado — veja depois)':'')+'. Confirma a importação?')){ input.value=''; return; }
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'importMilPlayLote',itens:itensImportar})});
+    const d=await r.json();
+    if(d && d.error){ alert('Erro ao importar: '+d.error); input.value=''; return; }
+    alert('Importação concluída: '+(d.importados||itensImportar.length)+' registro(s) adicionados.'+(avisos.length?'\n\nAvisos (abas não importadas):\n'+avisos.join('\n'):''));
+    input.value='';
+    await loadMilPlay();
+  }catch(e){
+    alert('Erro ao ler o arquivo: '+(e.message||e));
+    input.value='';
+  }
 }
 // Verifica se um nome digitado bate com algum cliente da base (match exato, case-insensitive)
 function clienteEstaNaBase(nome){
@@ -11731,6 +11981,66 @@ async function estEnviarEmail(reg){
       </div>
     </div>
     <div class="modal-actions"><button class="modal-btn" onclick="closeNovoClienteModal()">Cancelar</button><button class="modal-btn primary" onclick="criarClienteAvulso()">Criar cliente</button></div>
+  </div>
+</div>
+
+<!-- MILPLAY -->
+<div id="page-milplay" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">MilPlay</h2><span class="dash-sync" id="mp-sync"></span></div>
+    <div style="display:flex;gap:8px;">
+      <label style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;display:flex;align-items:center;">➕ Importar novo cliente<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,true)" style="display:none"></label>
+      <label style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;">📥 Importar planilha completa<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,false)" style="display:none"></label>
+      <button onclick="abrirNovoMilPlay()" class="btn-new-project">+ Novo registro</button>
+    </div>
+  </div>
+
+  <!-- VISTA: LISTA DE CLIENTES -->
+  <div id="mp-view-lista">
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
+      <input id="mp-busca-cliente" type="text" placeholder="Buscar cliente..." oninput="renderMilPlayLista()" style="width:100%;max-width:400px;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+    </div>
+    <div id="mp-lista-clientes" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- VISTA: DETALHE DE UM CLIENTE -->
+  <div id="mp-view-detalhe" style="display:none;">
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+      <button onclick="milplayVoltarLista()" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">← Voltar</button>
+      <div>
+        <div id="mp-detalhe-nome" style="font-weight:700;font-size:15px;color:var(--text);"></div>
+        <div id="mp-detalhe-cnpj" style="font-size:11px;color:var(--text-muted);"></div>
+      </div>
+    </div>
+    <div id="mp-detalhe-tabela" style="padding:16px 20px;"></div>
+  </div>
+</div>
+
+<!-- MODAL MILPLAY (novo/editar registro) -->
+<div class="modal-overlay" id="milplay-modal" style="display:none" onclick="if(event.target===this)fecharMilPlayModal()">
+  <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto;">
+    <h3 id="mp-modal-titulo">Novo registro MilPlay</h3>
+    <input type="hidden" id="mp-edit-id">
+    <div class="modal-field"><label>Cliente *</label><input type="text" id="mp-cliente-busca" list="clientes-datalist" placeholder="Digite para buscar na base de clientes" oninput="milplayClienteSelecionado()"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>CNPJ</label><input type="text" id="mp-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="modal-field"><label>Razão Social</label><input type="text" id="mp-razao"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>Quarto</label><input type="text" id="mp-quarto" placeholder="Ex: 0001"></div>
+      <div class="modal-field"><label>Usuário (login) *</label><input type="text" id="mp-usuario" placeholder="Ex: CSB.0001.dtoc66"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>Contrato</label><input type="text" id="mp-contrato"></div>
+      <div class="modal-field"><label>Fabricante</label><input type="text" id="mp-fabricante" placeholder="Ex: ZTE"></div>
+      <div class="modal-field"><label>Pacotes</label><input type="text" id="mp-pacotes" placeholder="Ex: Abertos+Fechados"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>MAC Rede</label><input type="text" id="mp-mac-rede"></div>
+      <div class="modal-field"><label>MAC Wifi</label><input type="text" id="mp-mac-wifi"></div>
+    </div>
+    <div class="modal-field"><label>Observações</label><input type="text" id="mp-obs"></div>
+    <div class="modal-actions"><button class="modal-btn" onclick="fecharMilPlayModal()">Cancelar</button><button class="modal-btn primary" onclick="salvarMilPlay()">Salvar</button></div>
   </div>
 </div>
 
