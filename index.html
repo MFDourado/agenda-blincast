@@ -4463,7 +4463,7 @@ function renderMilPlayDetalhe(){
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Quarto</th>
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Usuário</th>
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Pacotes</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Contrato</th>
+      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Data de Ativação</th>
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Fabricante</th>
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Rede</th>
       <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Wifi</th>
@@ -4473,7 +4473,7 @@ function renderMilPlayDetalhe(){
       <td style="padding:7px 10px;font-size:12px;font-weight:600;">${it.quarto||'—'}</td>
       <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;">${it.usuario||'—'}</span>${it.usuario?` <button onclick="milplayCopiar('${String(it.usuario).replace(/'/g,"\\'")}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
       <td style="padding:7px 10px;font-size:12px;">${it.pacotes||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px;">${it.contrato||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;">${it.data_ativacao||'—'}</td>
       <td style="padding:7px 10px;font-size:12px;">${it.fabricante||'—'}</td>
       <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_rede||'—'}</td>
       <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_wifi||'—'}</td>
@@ -4500,7 +4500,7 @@ function milplayClienteSelecionado(){
 function abrirNovoMilPlay(){
   document.getElementById('mp-modal-titulo').textContent='Novo registro MilPlay';
   document.getElementById('mp-edit-id').value='';
-  ['mp-cliente-busca','mp-cnpj','mp-razao','mp-quarto','mp-usuario','mp-contrato','mp-fabricante','mp-pacotes','mp-mac-rede','mp-mac-wifi','mp-obs'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  ['mp-cliente-busca','mp-cnpj','mp-razao','mp-quarto','mp-usuario','mp-data-ativacao','mp-fabricante','mp-pacotes','mp-mac-rede','mp-mac-wifi','mp-obs'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
   if(milplayClienteAtual){
     document.getElementById('mp-cliente-busca').value=milplayClienteAtual.razao||'';
     document.getElementById('mp-cnpj').value=milplayClienteAtual.cnpj||'';
@@ -4518,7 +4518,7 @@ function abrirEditarMilPlay(id){
   document.getElementById('mp-razao').value=it.razao_social||'';
   document.getElementById('mp-quarto').value=it.quarto||'';
   document.getElementById('mp-usuario').value=it.usuario||'';
-  document.getElementById('mp-contrato').value=it.contrato||'';
+  document.getElementById('mp-data-ativacao').value=it.data_ativacao||'';
   document.getElementById('mp-fabricante').value=it.fabricante||'';
   document.getElementById('mp-pacotes').value=it.pacotes||'';
   document.getElementById('mp-mac-rede').value=it.mac_rede||'';
@@ -4538,7 +4538,7 @@ async function salvarMilPlay(){
     cnpj, razao_social:razao,
     quarto:document.getElementById('mp-quarto').value.trim(),
     usuario,
-    contrato:document.getElementById('mp-contrato').value.trim(),
+    data_ativacao:document.getElementById('mp-data-ativacao').value.trim(),
     fabricante:document.getElementById('mp-fabricante').value.trim(),
     pacotes:document.getElementById('mp-pacotes').value.trim(),
     mac_rede:document.getElementById('mp-mac-rede').value.trim(),
@@ -4606,7 +4606,7 @@ async function milplayImportarArquivo(input, ehNovoCliente){
       const idx=(...nomes)=>{ for(const n of nomes){ const i=headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
       const cQuarto=idx('QUARTO');
       const cUsuario=idx('USUÁRIO','USUARIO');
-      const cContrato=idx('CONT');
+      const cDataAtivacao=idx('ATIVA','DATA');
       const cFabricante=idx('FABRICANTE');
       const cMacRede=idx('MAC REDE');
       const cMacWifi=idx('MAC WIFI');
@@ -4621,7 +4621,7 @@ async function milplayImportarArquivo(input, ehNovoCliente){
           cnpj, razao_social:razao,
           quarto: cQuarto>=0?String(r[cQuarto]||'').trim():'',
           usuario,
-          contrato: cContrato>=0?String(r[cContrato]||'').trim():'',
+          data_ativacao: cDataAtivacao>=0?String(r[cDataAtivacao]||'').trim():'',
           fabricante: cFabricante>=0?String(r[cFabricante]||'').trim():'',
           mac_rede: cMacRede>=0?String(r[cMacRede]||'').trim():'',
           mac_wifi: cMacWifi>=0?String(r[cMacWifi]||'').trim():'',
@@ -12031,7 +12031,7 @@ async function estEnviarEmail(reg){
       <div class="modal-field"><label>Usuário (login) *</label><input type="text" id="mp-usuario" placeholder="Ex: CSB.0001.dtoc66"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-      <div class="modal-field"><label>Contrato</label><input type="text" id="mp-contrato"></div>
+      <div class="modal-field"><label>Data de Ativação</label><input type="date" id="mp-data-ativacao"></div>
       <div class="modal-field"><label>Fabricante</label><input type="text" id="mp-fabricante" placeholder="Ex: ZTE"></div>
       <div class="modal-field"><label>Pacotes</label><input type="text" id="mp-pacotes" placeholder="Ex: Abertos+Fechados"></div>
     </div>
