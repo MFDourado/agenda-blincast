@@ -12244,8 +12244,8 @@ async function estEnviarEmail(reg){
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Vistoria Remota Preventiva - StreamBlink</h2><span class="dash-sync" id="vr-sync"></span></div>
     <div style="display:flex;gap:8px;">
-      <button id="vr-btn-voltar" onclick="vrVoltarLista()" class="modal-btn" style="display:none;">← Lista</button>
-      <button id="vr-btn-nova" onclick="vrNova()" class="btn-new-project">+ Nova preventiva</button>
+      <button id="vr-btn-voltar" onclick="vrVoltarLista()" class="modal-btn" style="display:none;align-items:center;justify-content:center;">← Lista</button>
+      <button id="vr-btn-nova" onclick="vrNova()" class="btn-new-project" style="align-items:center;justify-content:center;">+ Nova preventiva</button>
     </div>
   </div>
 
@@ -17063,10 +17063,11 @@ async function loadVistoriasRemotas(){
   const s=document.getElementById('vr-sync'); if(s) s.textContent='Carregando...';
   try{
     const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getVistoriasRemotas');
+    if(d&&d.error) throw new Error(d.error);
     vrLista=Array.isArray(d.itens)?d.itens:[];
     vrLista.forEach(v=>{ try{ v.uhs=JSON.parse(v.uhs_json||'[]'); }catch(e){ v.uhs=[]; } });
     if(s) s.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){ vrLista=[]; if(s) s.textContent='Erro ao carregar'; }
+  }catch(e){ vrLista=[]; if(s) s.textContent='Erro ao carregar'+(e&&e.message?': '+e.message:''); }
   renderVrLista();
 }
 function vrMostrar(v){
@@ -17149,13 +17150,39 @@ function vrCalcAmostra(){ const t=+document.getElementById('vr-total').value||0;
 function vrAndar(uh){ const s=String(uh).replace(/\D/g,''); return s.length>2?s.slice(0,-2):(s?'T':''); }
 function vrMkUh(uh,why,ip){ return {uh:String(uh||''),andar:vrAndar(uh),ip:ip||'',why:why||'',vaga:true,ans:{},obs:{},res:{},done:false}; }
 
+let vrAbrindo=false;
+function vrPausa(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function vrOverlay(titulo,detalhe,ok){
+  let ov=document.getElementById('vr-overlay');
+  if(!ov){
+    if(!document.getElementById('vr-overlay-css')){ const st=document.createElement('style'); st.id='vr-overlay-css'; st.textContent='@keyframes vrspin{to{transform:rotate(360deg)}}'; document.head.appendChild(st); }
+    ov=document.createElement('div'); ov.id='vr-overlay';
+    ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML='<div style="background:var(--surface);color:var(--text);border-radius:12px;padding:28px 36px;min-width:300px;max-width:90vw;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:\'DM Sans\',sans-serif;"><div id="vr-ov-icon"></div><div id="vr-ov-titulo" style="font-size:16px;font-weight:700;"></div><div id="vr-ov-det" style="font-size:13px;color:var(--text-muted);margin-top:6px;"></div></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display='flex';
+  const ic=document.getElementById('vr-ov-icon');
+  if(ok){ ic.style.cssText='margin:0 auto 10px;font-size:38px;line-height:38px;color:#2BB673;font-weight:700;'; ic.textContent='✓'; }
+  else { ic.style.cssText='margin:0 auto 14px;width:38px;height:38px;border:4px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:vrspin .8s linear infinite;'; ic.textContent=''; }
+  document.getElementById('vr-ov-titulo').textContent=titulo;
+  document.getElementById('vr-ov-det').textContent=detalhe||'';
+}
+function vrOverlayFechar(){ const ov=document.getElementById('vr-overlay'); if(ov) ov.style.display='none'; }
+
 async function vrAbrirPreventiva(){
+  if(vrAbrindo) return;
   const cliente=String(document.getElementById('vr-cliente').value||'').trim();
   const tot=+document.getElementById('vr-total').value||0;
   if(!cliente) return alert('Informe o cliente.');
   if(!tot) return alert('Informe o total de UHs.');
+  vrAbrindo=true;
   const btn=document.getElementById('vr-btn-abrir'); btn.disabled=true; btn.textContent='Abrindo...';
+  const ataId=uid();
+  let vistoriaSalva=false, ataCriada=false;
   try{
+    vrOverlay('Abrindo preventiva...','Gerando a amostra de UHs');
+    await vrPausa(150); // deixa a tela de "Abrindo" aparecer antes do trabalho pesado
     const base=vrClienteBase();
     const temMp=document.getElementById('vr-tem-mp').value==='1';
     const n=Math.ceil(tot*0.1);
@@ -17179,23 +17206,43 @@ async function vrAbrirPreventiva(){
       while(uhs.length<n) uhs.push(vrMkUh('','Sorteio (informar UH)',''));
     }
     uhs.sort((a,b)=>(+a.uh||0)-(+b.uh||0));
-    // cria atendimento + OS para o N2
-    const ataId=uid();
     const hojeIso=new Date().toISOString().split('T')[0];
     const problema='Vistoria remota preventiva - StreamBlink'+(temMp?' + MilPlay':'')+' | Amostra: '+uhs.length+' de '+tot+' UHs';
-    const ataPayload={token:getToken(),action:'addAta',id:ataId,no:'',data:hojeIso,cliente:cliente,estado:base?(base.uf||''):'',tecnico:'',ajudante:'',problema:problema,status:'pendente',manutencao:'Preventiva',classificacao:'Remoto',obs:'Aberta pelo módulo Vistoria Remota por '+vrUsuarioNome(),solicitante:vrUsuarioNome(),tel_solicitante:'',dt_abertura:hojeIso,dt_prevista:hojeIso,dt_conclusao:'',equipamento:'StreamBlink',forma_conclusao:'',fora_base:'',fora_base_obs:'',nivel:'N2'};
-    const rA=await fetch(API,{method:'POST',body:JSON.stringify(ataPayload)}); const dA=await rA.json(); if(dA&&(dA.error||dA.ok===false)) throw new Error('addAta: '+(dA.error||'falha'));
     const osNum='OS-ATA-'+ataId.slice(-6).toUpperCase();
-    const osPayload={token:getToken(),action:'saveOS',id:'os-'+ataId,numero:osNum,data:hojeIso,status:'Aberta',cliente:cliente,cnpj:base?(base.cnpj||''):'',cidade:base?(base.cidade||''):'',endereco:base?(base.endereco||''):'',tipo:'Preventiva remota',produto:'StreamBlink',descricao:problema,manutencao:'Preventiva',classificacao:'Remoto',nivel:'N2',responsavel_nome:vrUsuarioNome(),responsavel_tel:'',tecnico:'',data_prevista:hojeIso,data_conclusao:'',hora_inicio:'',hora_conclusao:'',horas:'',obs:'',materiais:'',os_id_ata:ataId,criado_em:new Date().toLocaleString('pt-BR')};
-    const rO=await fetch(API,{method:'POST',body:JSON.stringify(osPayload)}); const dO=await rO.json(); if(dO&&(dO.error||dO.ok===false)) throw new Error('saveOS: '+(dO.error||'falha'));
     vrAtual={id:'vr_'+uid(),data:vrHoje(),cliente:cliente,cnpj:base?(base.cnpj||''):'',total_uhs:tot,qtd_amostra:uhs.length,tecnico:document.getElementById('vr-tecnico').value,versao_sb:document.getElementById('vr-vsb').value.trim(),tem_milplay:temMp?'Sim':'Não',versao_mp:temMp?document.getElementById('vr-vmp').value.trim():'',ata_id:ataId,os_id:'os-'+ataId,os_numero:osNum,status:'aberta',parecer:'',justificativa:'',recomendacoes:'',uhs:uhs,criado_por:vrUsuarioNome(),criado_em:new Date().toLocaleString('pt-BR'),concluido_em:''};
-    await vrSalvar();
+
+    // 1) salva a vistoria primeiro: se o servidor falhar aqui, nada mais foi criado
+    vrOverlay('Abrindo preventiva...','Salvando a vistoria');
+    await vrSalvar(); vistoriaSalva=true;
+
+    // 2) atendimento (Ata) para o N2
+    vrOverlay('Abrindo preventiva...','Criando o atendimento para o N2');
+    const ataPayload={token:getToken(),action:'addAta',id:ataId,no:'',data:hojeIso,cliente:cliente,estado:base?(base.uf||''):'',tecnico:'',ajudante:'',problema:problema,status:'pendente',manutencao:'Preventiva',classificacao:'Remoto',obs:'Aberta pelo módulo Vistoria Remota por '+vrUsuarioNome(),solicitante:vrUsuarioNome(),tel_solicitante:'',dt_abertura:hojeIso,dt_prevista:hojeIso,dt_conclusao:'',equipamento:'StreamBlink',forma_conclusao:'',fora_base:'',fora_base_obs:'',nivel:'N2'};
+    const rA=await fetch(API,{method:'POST',body:JSON.stringify(ataPayload)}); const dA=await rA.json(); if(dA&&(dA.error||dA.ok===false)) throw new Error('atendimento: '+(dA.error||'falha'));
+    ataCriada=true;
+
+    // 3) OS do N2
+    vrOverlay('Abrindo preventiva...','Criando a OS do N2 ('+osNum+')');
+    const osPayload={token:getToken(),action:'saveOS',id:'os-'+ataId,numero:osNum,data:hojeIso,status:'Aberta',cliente:cliente,cnpj:base?(base.cnpj||''):'',cidade:base?(base.cidade||''):'',endereco:base?(base.endereco||''):'',tipo:'Preventiva remota',produto:'StreamBlink',descricao:problema,manutencao:'Preventiva',classificacao:'Remoto',nivel:'N2',responsavel_nome:vrUsuarioNome(),responsavel_tel:'',tecnico:'',data_prevista:hojeIso,data_conclusao:'',hora_inicio:'',hora_conclusao:'',horas:'',obs:'',materiais:'',os_id_ata:ataId,criado_em:new Date().toLocaleString('pt-BR')};
+    const rO=await fetch(API,{method:'POST',body:JSON.stringify(osPayload)}); const dO=await rO.json(); if(dO&&(dO.error||dO.ok===false)) throw new Error('OS: '+(dO.error||'falha'));
+
+    // pronto: mostra "aberta" e segue para a página do checklist
     vrLista.unshift(vrAtual);
     vrRenderCheck();
+    vrOverlay('Preventiva aberta',osNum+' criada para o N2. Abrindo o checklist...',true);
+    await vrPausa(900);
+    vrOverlayFechar();
     vrMostrar('check');
   }catch(e){
-    alert('Não foi possível abrir a preventiva: '+(e.message||e));
-  }finally{ btn.disabled=false; btn.textContent='Abrir preventiva e gerar amostra'; }
+    vrOverlayFechar();
+    // desfaz o que já tinha sido criado, pra não deixar atendimento/vistoria órfãos
+    try{ if(ataCriada) await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteAta',id:ataId,cliente:cliente,resp_nome:'Sistema',resp_cargo:'Desfeito: falha ao abrir vistoria remota'})}); }catch(x){}
+    try{ if(vistoriaSalva&&vrAtual) await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteVistoriaRemota',id:vrAtual.id})}); }catch(x){}
+    vrAtual=null;
+    alert('Não foi possível abrir a preventiva: '+(e.message||e)+'\n\nNada ficou criado (o que já tinha sido gerado foi desfeito).');
+  }finally{
+    vrAbrindo=false; btn.disabled=false; btn.textContent='Abrir preventiva e gerar amostra';
+  }
 }
 async function vrSalvar(){
   if(!vrAtual) return;
