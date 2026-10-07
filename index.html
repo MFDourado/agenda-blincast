@@ -12270,6 +12270,7 @@ async function estEnviarEmail(reg){
         </div>
         <div class="modal-field" style="margin:0;"><label>Total de UHs *</label><input type="number" id="vr-total" min="1" oninput="vrCalcAmostra()"></div>
         <div class="modal-field" style="margin:0;"><label>Data da vistoria</label><input type="text" id="vr-data" readonly></div>
+        <div class="modal-field" style="margin:0;"><label>UHs na amostra inicial (mín. 5)</label><input type="number" id="vr-n-amostra" min="5" oninput="vrAmostraEditada()"><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Sugerido: 5% das UHs. Pode reduzir até 5 e ampliar depois, sorteando mais UHs durante a vistoria.</div></div>
         <div class="modal-field" style="margin:0;"><label>Técnico responsável *</label>
           <select id="vr-tecnico"><option>Matheus Dourado</option><option>Maria Eduarda Trajano</option><option>Marco Antônio Quintela</option><option>Daniel Sampaio</option></select>
         </div>
@@ -12281,7 +12282,7 @@ async function estEnviarEmail(reg){
         <div class="modal-field" style="margin:0;grid-column:1/-1;"><label>UHs obrigatórias na amostra (com chamado no mês anterior), separadas por vírgula</label><input type="text" id="vr-obrigatorias" placeholder="ex.: 1204, 1511"></div>
       </div>
       <div style="display:flex;gap:28px;align-items:flex-end;margin:18px 0 10px;flex-wrap:wrap;">
-        <div><div id="vr-min-uh" style="font-size:40px;font-weight:700;line-height:1;color:var(--text);">0</div><div style="font-size:12px;color:var(--text-muted);">UHs mínimas (10%, arredondado para cima)</div></div>
+        <div><div id="vr-min-uh" style="font-size:40px;font-weight:700;line-height:1;color:var(--text);">0</div><div style="font-size:12px;color:var(--text-muted);">UHs na amostra (5% das UHs, mínimo de 5)</div></div>
         <div><div id="vr-fonte-uh" style="font-size:13px;color:var(--text-muted);"></div></div>
       </div>
       <div style="font-size:12px;color:var(--text-muted);border-left:3px solid var(--gold);padding:8px 12px;background:rgba(245,184,0,.06);margin-bottom:16px;">
@@ -12322,6 +12323,7 @@ async function estEnviarEmail(reg){
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;">
       <button class="modal-btn" onclick="vrAddUh()">+ Adicionar UH à amostra</button>
+      <button class="modal-btn" onclick="vrSortearMais()">+ Sortear mais UHs</button>
       <button class="modal-btn primary" id="vr-btn-fechar" onclick="vrIrParecer()" disabled>Fechar vistoria e emitir parecer</button>
     </div>
   </div>
@@ -17032,7 +17034,7 @@ function ciGerarPDF(d){
 }
 
 // ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK =====================
-// Mensal por cliente. Amostra mínima de 10% das UHs. Acesso via jalin (ADB + scrcpy).
+// Mensal por cliente. Amostra de 5% das UHs (mínimo de 5), ampliável durante a vistoria. Acesso via jalin (ADB + scrcpy).
 // Abrir a preventiva cria atendimento (Ata) + OS para o N2. Termo em PDF ao final.
 const VR_CK={
   A:{t:'A. Dispositivo e rede (ADB)',i:[
@@ -17116,6 +17118,7 @@ function vrNova(){
   document.getElementById('vr-tem-mp').value='1';
   document.getElementById('vr-vmp').value=''; document.getElementById('vr-vmp').disabled=false;
   document.getElementById('vr-obrigatorias').value='';
+  vrAmostraManual=false; { const c=document.getElementById('vr-n-amostra'); if(c) c.value=''; }
   document.getElementById('vr-fonte-uh').textContent='';
   try{ const n=vrUsuarioNome(); const sel=document.getElementById('vr-tecnico'); [...sel.options].forEach(o=>{ if(n&&o.text.toLowerCase().indexOf(n.toLowerCase().split(' ')[0])===0) sel.value=o.text; }); }catch(e){}
   vrCalcAmostra();
@@ -17146,7 +17149,16 @@ function vrClienteSelecionado(){
   }
   vrCalcAmostra();
 }
-function vrCalcAmostra(){ const t=+document.getElementById('vr-total').value||0; document.getElementById('vr-min-uh').textContent=t?Math.ceil(t*0.1):0; }
+const VR_PCT=0.05, VR_MIN_UH=5;
+let vrAmostraManual=false;
+function vrMinimo(t){ t=+t||0; if(!t) return 0; return Math.min(t,Math.max(VR_MIN_UH,Math.ceil(t*VR_PCT))); }
+function vrAmostraEditada(){ vrAmostraManual=true; }
+function vrCalcAmostra(){
+  const t=+document.getElementById('vr-total').value||0;
+  document.getElementById('vr-min-uh').textContent=vrMinimo(t);
+  const campo=document.getElementById('vr-n-amostra');
+  if(campo && !vrAmostraManual) campo.value=t?vrMinimo(t):'';
+}
 function vrAndar(uh){ const s=String(uh).replace(/\D/g,''); return s.length>2?s.slice(0,-2):(s?'T':''); }
 function vrMkUh(uh,why,ip){ return {uh:String(uh||''),andar:vrAndar(uh),ip:ip||'',why:why||'',vaga:true,ans:{},obs:{},res:{},done:false}; }
 
@@ -17176,6 +17188,8 @@ async function vrAbrirPreventiva(){
   const tot=+document.getElementById('vr-total').value||0;
   if(!cliente) return alert('Informe o cliente.');
   if(!tot) return alert('Informe o total de UHs.');
+  const nInformado=+(document.getElementById('vr-n-amostra')||{}).value||0;
+  if(nInformado && nInformado<Math.min(VR_MIN_UH,tot)) return alert('A amostra mínima é de '+VR_MIN_UH+' UHs.');
   vrAbrindo=true;
   const btn=document.getElementById('vr-btn-abrir'); btn.disabled=true; btn.textContent='Abrindo...';
   const ataId=uid();
@@ -17185,7 +17199,7 @@ async function vrAbrirPreventiva(){
     await vrPausa(150); // deixa a tela de "Abrindo" aparecer antes do trabalho pesado
     const base=vrClienteBase();
     const temMp=document.getElementById('vr-tem-mp').value==='1';
-    const n=Math.ceil(tot*0.1);
+    const n=Math.min(tot,nInformado||vrMinimo(tot));
     const obrig=String(document.getElementById('vr-obrigatorias').value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean);
     const quartos=vrQuartosMilPlay(base?base.cnpj:'');
     const ipDe=q=>{ const f=quartos.find(x=>x.uh===q); return f?f.ip:''; };
@@ -17295,11 +17309,40 @@ function vrRenderCheck(){
   document.getElementById('vr-k-done').textContent=cnt.done; document.getElementById('vr-k-tot').textContent=(v.uhs||[]).length;
   document.getElementById('vr-k-c').textContent=cnt.c; document.getElementById('vr-k-r').textContent=cnt.r; document.getElementById('vr-k-n').textContent=cnt.n;
   const sort=(v.uhs||[]).filter(u=>u.why.indexOf('Sorteio')===0).length, prev=(v.uhs||[]).filter(u=>u.why==='Chamado no mês anterior').length, man=(v.uhs||[]).length-sort-prev;
-  document.getElementById('vr-amostra-txt').innerHTML=`Amostra desta vistoria: <b>${(v.uhs||[]).length} UHs</b> = ${prev} com chamado no mês anterior (obrigatórias) + ${sort} sorteadas${man?' + '+man+' adicionadas manualmente':''}. Mínimo exigido: ${Math.ceil((+v.total_uhs||0)*0.1)} (10% de ${v.total_uhs}).`;
+  document.getElementById('vr-amostra-txt').innerHTML=`Amostra desta vistoria: <b>${(v.uhs||[]).length} UHs</b> = ${prev} com chamado no mês anterior (obrigatórias) + ${sort} sorteadas${man?' + '+man+' adicionadas manualmente':''}. Referência: 5% de ${v.total_uhs} = ${vrMinimo(v.total_uhs)} UHs (mínimo de ${VR_MIN_UH}). Se aparecer não conformidade, use "+ Sortear mais UHs" para ampliar.`;
   document.getElementById('vr-btn-fechar').disabled=!(cnt.done>0 && cnt.done>=(v.uhs||[]).length);
 }
 function vrAddUh(){ const r=prompt('Número da UH'); if(!r) return; vrAtual.uhs.push(vrMkUh(r.trim(),'Adicionada manualmente','')); vrRenderCheck(); vrSalvar().catch(()=>{}); }
 function vrRemoverUh(i){ if(!confirm('Remover esta UH da amostra?')) return; vrAtual.uhs.splice(i,1); vrRenderCheck(); vrSalvar().catch(()=>{}); }
+function vrSortearMais(){
+  const v=vrAtual; if(!v) return;
+  const r=prompt('Quantas UHs a mais sortear?','5'); if(r===null) return;
+  const qtd=parseInt(r,10);
+  if(!qtd||qtd<1) return alert('Informe um número válido.');
+  const base=(Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===String(v.cliente||'').trim().toLowerCase());
+  const quartos=vrQuartosMilPlay(v.cnpj||(base?base.cnpj:''));
+  let add=0;
+  if(!quartos.length){
+    for(let i=0;i<qtd;i++){ v.uhs.push(vrMkUh('','Sorteio adicional (informar UH)','')); add++; }
+  } else {
+    // sorteio distribuído por andar entre as UHs que ainda não estão na amostra
+    const usadas=new Set(v.uhs.map(u=>String(u.uh)));
+    const porAndar={};
+    quartos.forEach(q=>{ if(usadas.has(q.uh)) return; const a=vrAndar(q.uh); (porAndar[a]=porAndar[a]||[]).push(q); });
+    Object.values(porAndar).forEach(arr=>arr.sort(()=>Math.random()-0.5));
+    const andares=Object.keys(porAndar).sort((a,b)=>(+a||0)-(+b||0));
+    let rodada=0;
+    while(add<qtd && andares.some(a=>porAndar[a].length>rodada)){
+      for(const a of andares){ if(add>=qtd) break; const q=porAndar[a][rodada]; if(q){ v.uhs.push(vrMkUh(q.uh,'Sorteio adicional por andar',q.ip)); add++; } }
+      rodada++;
+    }
+    if(add<qtd) alert('Só havia '+add+' UH(s) disponíveis para sortear. Foram adicionadas '+add+'.');
+  }
+  if(!add) return;
+  v.uhs.sort((a,b)=>(+a.uh||0)-(+b.uh||0));
+  v.qtd_amostra=v.uhs.length;
+  vrRenderCheck(); vrSalvar().catch(()=>{});
+}
 
 // ---------- MODAL ----------
 function vrAbrirUh(i){
@@ -17402,7 +17445,7 @@ function vrTermoHtml(v){
       <tr><td style="${td}${lab}">Cliente</td><td style="${td}">${vrEsc(v.cliente)}</td></tr>
       <tr><td style="${td}${lab}">CNPJ</td><td style="${td}">${vrEsc(v.cnpj||'-')}</td></tr>
       <tr><td style="${td}${lab}">Total de UHs</td><td style="${td}">${tot}</td></tr>
-      <tr><td style="${td}${lab}">UHs vistoriadas</td><td style="${td}">${(v.uhs||[]).length} (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}%, mínimo 10%)</td></tr>
+      <tr><td style="${td}${lab}">UHs vistoriadas</td><td style="${td}">${(v.uhs||[]).length} (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}% do total, referência 5%)</td></tr>
       <tr><td style="${td}${lab}">Técnico Blincast</td><td style="${td}">${vrEsc(v.tecnico)}</td></tr>
       <tr><td style="${td}${lab}">Forma de acesso</td><td style="${td}">Remoto via jalin (ADB + scrcpy)</td></tr>
       <tr><td style="${td}${lab}">Versão de referência StreamBlink</td><td style="${td}">${vrEsc(v.versao_sb||'-')}</td></tr>
