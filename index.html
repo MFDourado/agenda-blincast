@@ -405,6 +405,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <div id="vistoria-sub" style="display:none;background:rgba(0,0,0,.15)">
       <button class="snav-btn" id="mt-vistoria" onclick="switchMainTab('vistoria');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Instalação</button>
       <button class="snav-btn" id="mt-vistoria-preventiva" onclick="switchMainTab('vistoria-preventiva');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Preventiva</button>
+      <button class="snav-btn" id="mt-vistoria-remota" onclick="switchMainTab('vistoria-remota');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Remota (StreamBlink)</button>
     </div>
     <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
     <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">Dashboard</button>
@@ -3023,12 +3024,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','vistoria-remota','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria-remota','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3047,6 +3048,7 @@ function switchMainTab(t){
   if(t==='montagem')_cargaAba('montagem',loadMontagem);
   if(t==='requisicoes')renderRequisicoes();
   if(t==='milplay')iniciarMilPlay();
+  if(t==='vistoria-remota')iniciarVistoriaRemota();
   if(t==='entrega-material')iniciarEntregaMaterial();
   if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
@@ -12136,6 +12138,148 @@ async function estEnviarEmail(reg){
 </div>
 
 <!-- MILPLAY -->
+<!-- ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK ===================== -->
+<div id="page-vistoria-remota" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Vistoria Remota Preventiva - StreamBlink</h2><span class="dash-sync" id="vr-sync"></span></div>
+    <div style="display:flex;gap:8px;">
+      <button id="vr-btn-voltar" onclick="vrVoltarLista()" class="modal-btn" style="display:none;">← Lista</button>
+      <button id="vr-btn-nova" onclick="vrNova()" class="btn-new-project">+ Nova preventiva</button>
+    </div>
+  </div>
+
+  <!-- VISTA: LISTA -->
+  <div id="vr-view-lista">
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input id="vr-busca" type="text" placeholder="Buscar cliente..." oninput="renderVrLista()" style="flex:1;min-width:220px;max-width:400px;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+      <select id="vr-filtro-status" onchange="renderVrLista()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+        <option value="">Todas</option><option value="aberta">Abertas</option><option value="concluida">Concluídas</option>
+      </select>
+    </div>
+    <div id="vr-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- VISTA: ABERTURA -->
+  <div id="vr-view-abertura" style="display:none;padding:20px;max-width:980px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+        <div class="modal-field" style="margin:0;"><label>Cliente *</label>
+          <input type="text" id="vr-cliente" list="clientes-datalist" placeholder="Digite para buscar na base de clientes" oninput="vrClienteSelecionado()">
+          <div id="vr-cliente-aviso" style="font-size:11px;color:var(--text-muted);margin-top:4px;">Se não estiver no cadastro, o nome digitado é usado como está.</div>
+        </div>
+        <div class="modal-field" style="margin:0;"><label>Total de UHs *</label><input type="number" id="vr-total" min="1" oninput="vrCalcAmostra()"></div>
+        <div class="modal-field" style="margin:0;"><label>Data da vistoria</label><input type="text" id="vr-data" readonly></div>
+        <div class="modal-field" style="margin:0;"><label>Técnico responsável *</label>
+          <select id="vr-tecnico"><option>Matheus Dourado</option><option>Maria Eduarda Trajano</option><option>Marco Antônio Quintela</option><option>Daniel Sampaio</option></select>
+        </div>
+        <div class="modal-field" style="margin:0;"><label>Versão de referência StreamBlink</label><input type="text" id="vr-vsb" value="3.5.1"></div>
+        <div class="modal-field" style="margin:0;"><label>Cliente possui MilPlay</label>
+          <select id="vr-tem-mp" onchange="document.getElementById('vr-vmp').disabled=this.value!=='1'"><option value="1">Sim</option><option value="0">Não</option></select>
+        </div>
+        <div class="modal-field" style="margin:0;"><label>Versão de referência MilPlay</label><input type="text" id="vr-vmp" placeholder="ex.: 2.4.0"></div>
+        <div class="modal-field" style="margin:0;grid-column:1/-1;"><label>UHs obrigatórias na amostra (com chamado no mês anterior), separadas por vírgula</label><input type="text" id="vr-obrigatorias" placeholder="ex.: 1204, 1511"></div>
+      </div>
+      <div style="display:flex;gap:28px;align-items:flex-end;margin:18px 0 10px;flex-wrap:wrap;">
+        <div><div id="vr-min-uh" style="font-size:40px;font-weight:700;line-height:1;color:var(--text);">0</div><div style="font-size:12px;color:var(--text-muted);">UHs mínimas (10%, arredondado para cima)</div></div>
+        <div><div id="vr-fonte-uh" style="font-size:13px;color:var(--text-muted);"></div></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);border-left:3px solid var(--gold);padding:8px 12px;background:rgba(245,184,0,.06);margin-bottom:16px;">
+        Ao abrir a preventiva, o sistema cria automaticamente um atendimento e uma OS para o N2 e sorteia a amostra distribuída por andar (quando o cliente tem a lista de quartos no MilPlay). A data da vistoria é a de hoje e a preventiva deve ser concluída no mesmo dia.
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" onclick="vrVoltarLista()">Cancelar</button>
+        <button class="modal-btn primary" id="vr-btn-abrir" onclick="vrAbrirPreventiva()">Abrir preventiva e gerar amostra</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA: CHECKLISTS -->
+  <div id="vr-view-check" style="display:none;padding:20px;">
+    <div id="vr-banner" style="display:flex;gap:12px;align-items:center;padding:10px 14px;margin-bottom:14px;border-left:3px solid var(--gold);background:rgba(245,184,0,.06);font-size:13px;flex-wrap:wrap;"></div>
+    <div style="display:flex;gap:28px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;">
+      <div><div style="font-size:36px;font-weight:700;line-height:1;"><span id="vr-k-done">0</span><span style="font-size:18px;color:var(--text-muted);"> / <span id="vr-k-tot">0</span></span></div><div style="font-size:12px;color:var(--text-muted);">UHs vistoriadas</div></div>
+      <div><div id="vr-k-c" style="font-size:36px;font-weight:700;line-height:1;color:#2BB673;">0</div><div style="font-size:12px;color:var(--text-muted);">Conformes</div></div>
+      <div><div id="vr-k-r" style="font-size:36px;font-weight:700;line-height:1;color:#D9A400;">0</div><div style="font-size:12px;color:var(--text-muted);">Com ressalva</div></div>
+      <div><div id="vr-k-n" style="font-size:36px;font-weight:700;line-height:1;color:#D9534F;">0</div><div style="font-size:12px;color:var(--text-muted);">Não conformes</div></div>
+    </div>
+    <p id="vr-amostra-txt" style="font-size:13px;color:var(--text-muted);margin:0 0 12px;"></p>
+    <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+      <table class="ptable" style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">UH</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Andar</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">IP</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Por que está na amostra</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Checklist A<br>Dispositivo e rede</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Checklist B<br>StreamBlink</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Checklist C<br>MilPlay</th>
+          <th style="text-align:left;padding:9px 10px;font-size:11px;color:var(--text-muted);font-weight:400;">Resultado da UH</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="vr-uhs"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;">
+      <button class="modal-btn" onclick="vrAddUh()">+ Adicionar UH à amostra</button>
+      <button class="modal-btn primary" id="vr-btn-fechar" onclick="vrIrParecer()" disabled>Fechar vistoria e emitir parecer</button>
+    </div>
+  </div>
+
+  <!-- VISTA: PARECER -->
+  <div id="vr-view-parecer" style="display:none;padding:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="vr-cols">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+        <div style="font-size:12px;color:var(--text-muted);border-bottom:2px solid var(--gold);display:inline-block;padding-bottom:3px;margin-bottom:10px;">Parecer técnico</div>
+        <p id="vr-resumo" style="font-size:13px;margin:0 0 10px;"></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--border);padding:7px 12px;border-radius:var(--radius-sm);cursor:pointer;"><input type="radio" name="vr-par" value="Plataforma em pleno funcionamento"> Pleno funcionamento</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--border);padding:7px 12px;border-radius:var(--radius-sm);cursor:pointer;"><input type="radio" name="vr-par" value="Em funcionamento com ressalvas"> Com ressalvas</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--border);padding:7px 12px;border-radius:var(--radius-sm);cursor:pointer;"><input type="radio" name="vr-par" value="Com não conformidades críticas"> NC críticas</label>
+        </div>
+        <div class="modal-field"><label>Justificativa</label><textarea id="vr-just" rows="4" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font:inherit;font-size:13px;"></textarea></div>
+        <div class="modal-field"><label>Considerações e recomendações</label><textarea id="vr-rec" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font:inherit;font-size:13px;"></textarea></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+        <div style="font-size:12px;color:var(--text-muted);border-bottom:2px solid var(--gold);display:inline-block;padding-bottom:3px;margin-bottom:10px;">Ocorrências e pendências</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:400;">UH</th><th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:400;">Ocorrência</th><th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:400;">Encaminhamento</th></tr></thead><tbody id="vr-pend"></tbody></table>
+        <p id="vr-pend-hint" style="font-size:12px;color:var(--text-muted);margin:10px 0 0;"></p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;">
+      <button class="modal-btn" onclick="vrMostrar('check')">← Voltar aos checklists</button>
+      <div style="display:flex;gap:8px;">
+        <button class="modal-btn" id="vr-btn-concluir" onclick="vrConcluir()">Concluir vistoria</button>
+        <button class="modal-btn primary" id="vr-btn-pdf" onclick="vrEmitirPDF()">Emitir Termo (PDF)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÁREA DE IMPRESSÃO (fora da tela) -->
+  <div id="vr-print-wrap" style="position:absolute;left:-10000px;top:0;"><div id="vr-print-area" style="width:794px;background:#fff;color:#111;padding:28px 32px;font-family:Arial,Helvetica,sans-serif;font-size:11px;"></div></div>
+</div>
+
+<!-- MODAL: CHECKLIST DA UH -->
+<div class="modal-overlay" id="vr-modal" style="display:none" onclick="if(event.target===this)vrFecharModal()">
+  <div class="modal" style="max-width:900px;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+      <h3 style="margin:0;">UH <span id="vr-m-uh"></span> <span id="vr-m-sub" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span></h3>
+      <button class="modal-btn" onclick="vrFecharModal()">Fechar</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="modal-field" style="margin:0;"><label>IP do dispositivo</label><input type="text" id="vr-m-ip" placeholder="10.x.x.x"></div>
+      <div class="modal-field" style="margin:0;"><label>Andar</label><input type="text" id="vr-m-andar"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(245,184,0,.06);border-radius:var(--radius-sm);margin-bottom:12px;font-size:13px;cursor:pointer;">
+      <input type="checkbox" id="vr-m-vaga" onchange="vrModalBuild()"> UH vaga (libera os itens visuais via scrcpy). Ocupada: só verificação passiva por ADB, itens visuais travam em N/A.
+    </label>
+    <div id="vr-m-body"></div>
+    <div class="modal-actions" style="justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);">Qualquer NC sem resolução remota vira pendência na OS do N2.</span>
+      <button class="modal-btn primary" onclick="vrSalvarUh()">Salvar UH</button>
+    </div>
+  </div>
+</div>
+
 <div id="page-milplay" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">MilPlay</h2><span class="dash-sync" id="mp-sync"></span></div>
@@ -16785,6 +16929,369 @@ function ciGerarPDF(d){
   const w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();}
 }
+
+// ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK =====================
+// Mensal por cliente. Amostra mínima de 10% das UHs. Acesso via jalin (ADB + scrcpy).
+// Abrir a preventiva cria atendimento (Ata) + OS para o N2. Termo em PDF ao final.
+const VR_CK={
+  A:{t:'A. Dispositivo e rede (ADB)',i:[
+    'Dispositivo responde ao ADB via jalin','Uptime sem reinícios inesperados','Firmware V3 / Android conforme padrão','Armazenamento livre acima de 20%','RAM disponível sem app consumindo em excesso','Data, hora e fuso sincronizados','Conexão ativa (UTP/Wi-Fi) com IP válido','Latência e perda até o servidor aceitáveis','DNS resolvendo','IPv6 desabilitado ou sem impacto','Apenas apps homologados (Play Store bloqueada)','Nenhuma atualização pendente no jalin']},
+  B:{t:'B. StreamBlink',i:[
+    'APK na versão de referência','App em primeiro plano ao ligar','Inicia automaticamente após reinício',{v:1,t:'Tela inicial carrega sem erro'},{v:1,t:'Lista de canais completa, sem duplicados'},{v:1,t:'Troca de canal fluida em 5 canais'},{v:1,t:'Áudio e vídeo estáveis por 60 s'},{v:1,t:'EPG carregando'},{v:1,t:'Hotel, logo e UH corretos na interface'},{v:1,t:'Controle remoto responde'},'Logcat sem crash, ANR ou erro recorrente']},
+  C:{t:'C. MilPlay',i:[
+    'Instalado na versão de referência',{v:1,t:'Sessão logada (sem tela de login)'},{v:1,t:'Login corresponde ao quarto'},{v:1,t:'Catálogo e grade carregam'},{v:1,t:'Reprodução estável por 60 s'},{v:1,t:'Permanece logado após reiniciar o app'},{v:1,t:'Sem mensagem de erro ou bloqueio'},{v:1,t:'Retorno ao StreamBlink ao sair'}]}
+};
+const VR_TXT={p:'Pendente',c:'Conforme',r:'Ressalva',n:'Não conforme'};
+let vrLista=[];      // todas as vistorias remotas
+let vrAtual=null;    // vistoria aberta na tela
+let vrUhIdx=null;    // índice da UH no modal
+let vrSalvando=false;
+
+function vrEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function vrHoje(){ return new Date().toLocaleDateString('pt-BR'); }
+function vrUsuarioNome(){ try{ return (usuarioLogado&&usuarioLogado.nome)||JSON.parse(localStorage.getItem('blintrack_user')||'{}').nome||''; }catch(e){ return ''; } }
+function vrTag(s){ const cor={p:'var(--text-muted)',c:'#2BB673',r:'#D9A400',n:'#D9534F'}[s]; const bg={p:'rgba(128,128,128,.12)',c:'rgba(43,182,115,.12)',r:'rgba(217,164,0,.14)',n:'rgba(217,83,79,.12)'}[s]; return `<span style="display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;color:${cor};background:${bg};white-space:nowrap;">${VR_TXT[s]}</span>`; }
+
+function iniciarVistoriaRemota(){
+  vrMostrar('lista');
+  if(!Array.isArray(clientes)||!clientes.length){ try{ loadClientes(); }catch(e){} }
+  if(!Array.isArray(milplayLista)||!milplayLista.length){ try{ loadMilPlay(); }catch(e){} }
+  loadVistoriasRemotas();
+}
+async function loadVistoriasRemotas(){
+  const s=document.getElementById('vr-sync'); if(s) s.textContent='Carregando...';
+  try{
+    const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getVistoriasRemotas');
+    vrLista=Array.isArray(d.itens)?d.itens:[];
+    vrLista.forEach(v=>{ try{ v.uhs=JSON.parse(v.uhs_json||'[]'); }catch(e){ v.uhs=[]; } });
+    if(s) s.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ vrLista=[]; if(s) s.textContent='Erro ao carregar'; }
+  renderVrLista();
+}
+function vrMostrar(v){
+  ['lista','abertura','check','parecer'].forEach(k=>{ const el=document.getElementById('vr-view-'+k); if(el) el.style.display=(k===v)?'block':'none'; });
+  document.getElementById('vr-btn-voltar').style.display=(v==='lista')?'none':'inline-flex';
+  document.getElementById('vr-btn-nova').style.display=(v==='lista')?'inline-flex':'none';
+  window.scrollTo({top:0});
+}
+function vrVoltarLista(){ vrAtual=null; vrMostrar('lista'); renderVrLista(); }
+
+// ---------- LISTA ----------
+function renderVrLista(){
+  const wrap=document.getElementById('vr-lista'); if(!wrap) return;
+  const busca=(document.getElementById('vr-busca').value||'').toLowerCase();
+  const fs=document.getElementById('vr-filtro-status').value;
+  const lista=vrLista.filter(v=>(!busca||String(v.cliente||'').toLowerCase().includes(busca))&&(!fs||v.status===fs))
+    .sort((a,b)=>String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
+  if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">Nenhuma vistoria remota registrada.</div>'; return; }
+  wrap.innerHTML=lista.map(v=>{
+    const cnt=vrContar(v);
+    const aberta=v.status!=='concluida';
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;background:var(--surface);">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <div style="font-weight:700;font-size:14px;">${vrEsc(v.cliente)}</div>
+        <span style="font-size:11px;padding:2px 8px;border-radius:3px;${aberta?'background:rgba(217,164,0,.14);color:#D9A400;':'background:rgba(43,182,115,.12);color:#2BB673;'}">${aberta?'Aberta':'Concluída'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${vrEsc(v.data)} · ${vrEsc(v.tecnico)}${v.os_numero?' · '+vrEsc(v.os_numero):''}</div>
+      <div style="font-size:12px;margin-top:8px;">${cnt.done}/${(v.uhs||[]).length} UHs · <span style="color:#2BB673">${cnt.c} C</span> · <span style="color:#D9A400">${cnt.r} R</span> · <span style="color:#D9534F">${cnt.n} NC</span>${v.parecer?'<br><span style="color:var(--text-muted)">'+vrEsc(v.parecer)+'</span>':''}</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${v.id}')">${aberta?'Continuar':'Abrir'}</button>
+        ${!aberta?`<button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${v.id}',true)">Termo (PDF)</button>`:''}
+        <button class="modal-btn" style="height:30px;padding:0 10px;font-size:12px;color:#D9534F;" onclick="vrExcluir('${v.id}')" title="Excluir">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function vrContar(v){ const cnt={done:0,c:0,r:0,n:0}; (v.uhs||[]).forEach(u=>{ if(u.done){ cnt.done++; cnt[vrUhStatus(v,u)]++; } }); return cnt; }
+
+// ---------- ABERTURA ----------
+function vrNova(){
+  vrAtual=null;
+  document.getElementById('vr-cliente').value='';
+  document.getElementById('vr-total').value='';
+  document.getElementById('vr-data').value=vrHoje();
+  document.getElementById('vr-vsb').value='3.5.1';
+  document.getElementById('vr-tem-mp').value='1';
+  document.getElementById('vr-vmp').value=''; document.getElementById('vr-vmp').disabled=false;
+  document.getElementById('vr-obrigatorias').value='';
+  document.getElementById('vr-fonte-uh').textContent='';
+  try{ const n=vrUsuarioNome(); const sel=document.getElementById('vr-tecnico'); [...sel.options].forEach(o=>{ if(n&&o.text.toLowerCase().indexOf(n.toLowerCase().split(' ')[0])===0) sel.value=o.text; }); }catch(e){}
+  vrCalcAmostra();
+  vrMostrar('abertura');
+}
+function vrClienteBase(){
+  const nome=String(document.getElementById('vr-cliente').value||'').trim().toLowerCase();
+  if(!nome) return null;
+  return (Array.isArray(clientes)?clientes:[]).find(c=>String(c.nome||'').trim().toLowerCase()===nome)||null;
+}
+function vrQuartosMilPlay(cnpj){
+  if(!cnpj||!Array.isArray(milplayLista)) return [];
+  const alvo=String(cnpj).replace(/\D/g,'');
+  return milplayLista.filter(it=>String(it.cnpj||'').replace(/\D/g,'')===alvo && String(it.quarto||'').trim()).map(it=>({uh:String(it.quarto).trim(), ip:String(it.ip||'').trim()}));
+}
+function vrClienteSelecionado(){
+  const c=vrClienteBase();
+  const aviso=document.getElementById('vr-cliente-aviso');
+  if(c){
+    if(c.uhs) document.getElementById('vr-total').value=c.uhs;
+    const q=vrQuartosMilPlay(c.cnpj);
+    document.getElementById('vr-tem-mp').value=q.length?'1':document.getElementById('vr-tem-mp').value;
+    document.getElementById('vr-fonte-uh').textContent=q.length?('Lista de quartos encontrada no MilPlay: '+q.length+' UHs. A amostra será sorteada por andar.'):'Sem lista de quartos no MilPlay: a amostra será criada com as linhas em branco para você informar as UHs.';
+    aviso.textContent='Cliente do cadastro: '+(c.cidade||'')+(c.uf?' - '+c.uf:'');
+  } else {
+    document.getElementById('vr-fonte-uh').textContent='';
+    aviso.textContent='Se não estiver no cadastro, o nome digitado é usado como está.';
+  }
+  vrCalcAmostra();
+}
+function vrCalcAmostra(){ const t=+document.getElementById('vr-total').value||0; document.getElementById('vr-min-uh').textContent=t?Math.ceil(t*0.1):0; }
+function vrAndar(uh){ const s=String(uh).replace(/\D/g,''); return s.length>2?s.slice(0,-2):(s?'T':''); }
+function vrMkUh(uh,why,ip){ return {uh:String(uh||''),andar:vrAndar(uh),ip:ip||'',why:why||'',vaga:true,ans:{},obs:{},res:{},done:false}; }
+
+async function vrAbrirPreventiva(){
+  const cliente=String(document.getElementById('vr-cliente').value||'').trim();
+  const tot=+document.getElementById('vr-total').value||0;
+  if(!cliente) return alert('Informe o cliente.');
+  if(!tot) return alert('Informe o total de UHs.');
+  const btn=document.getElementById('vr-btn-abrir'); btn.disabled=true; btn.textContent='Abrindo...';
+  try{
+    const base=vrClienteBase();
+    const temMp=document.getElementById('vr-tem-mp').value==='1';
+    const n=Math.ceil(tot*0.1);
+    const obrig=String(document.getElementById('vr-obrigatorias').value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean);
+    const quartos=vrQuartosMilPlay(base?base.cnpj:'');
+    const ipDe=q=>{ const f=quartos.find(x=>x.uh===q); return f?f.ip:''; };
+    const uhs=[];
+    obrig.forEach(q=>{ if(!uhs.find(u=>u.uh===q)) uhs.push(vrMkUh(q,'Chamado no mês anterior',ipDe(q))); });
+    if(quartos.length){
+      // sorteio distribuído por andar: embaralha dentro de cada andar e vai pegando um de cada andar por rodada
+      const porAndar={};
+      quartos.forEach(q=>{ if(uhs.find(u=>u.uh===q.uh)) return; const a=vrAndar(q.uh); (porAndar[a]=porAndar[a]||[]).push(q); });
+      Object.values(porAndar).forEach(arr=>arr.sort(()=>Math.random()-0.5));
+      const andares=Object.keys(porAndar).sort((a,b)=>(+a||0)-(+b||0));
+      let rodada=0;
+      while(uhs.length<n && andares.some(a=>porAndar[a].length>rodada)){
+        for(const a of andares){ if(uhs.length>=n) break; const q=porAndar[a][rodada]; if(q) uhs.push(vrMkUh(q.uh,'Sorteio por andar',q.ip)); }
+        rodada++;
+      }
+    } else {
+      while(uhs.length<n) uhs.push(vrMkUh('','Sorteio (informar UH)',''));
+    }
+    uhs.sort((a,b)=>(+a.uh||0)-(+b.uh||0));
+    // cria atendimento + OS para o N2
+    const ataId=uid();
+    const hojeIso=new Date().toISOString().split('T')[0];
+    const problema='Vistoria remota preventiva - StreamBlink'+(temMp?' + MilPlay':'')+' | Amostra: '+uhs.length+' de '+tot+' UHs';
+    const ataPayload={token:getToken(),action:'addAta',id:ataId,no:'',data:hojeIso,cliente:cliente,estado:base?(base.uf||''):'',tecnico:'',ajudante:'',problema:problema,status:'pendente',manutencao:'Preventiva',classificacao:'Remoto',obs:'Aberta pelo módulo Vistoria Remota por '+vrUsuarioNome(),solicitante:vrUsuarioNome(),tel_solicitante:'',dt_abertura:hojeIso,dt_prevista:hojeIso,dt_conclusao:'',equipamento:'StreamBlink',forma_conclusao:'',fora_base:'',fora_base_obs:'',nivel:'N2'};
+    const rA=await fetch(API,{method:'POST',body:JSON.stringify(ataPayload)}); const dA=await rA.json(); if(dA&&(dA.error||dA.ok===false)) throw new Error('addAta: '+(dA.error||'falha'));
+    const osNum='OS-ATA-'+ataId.slice(-6).toUpperCase();
+    const osPayload={token:getToken(),action:'saveOS',id:'os-'+ataId,numero:osNum,data:hojeIso,status:'Aberta',cliente:cliente,cnpj:base?(base.cnpj||''):'',cidade:base?(base.cidade||''):'',endereco:base?(base.endereco||''):'',tipo:'Preventiva remota',produto:'StreamBlink',descricao:problema,manutencao:'Preventiva',classificacao:'Remoto',nivel:'N2',responsavel_nome:vrUsuarioNome(),responsavel_tel:'',tecnico:'',data_prevista:hojeIso,data_conclusao:'',hora_inicio:'',hora_conclusao:'',horas:'',obs:'',materiais:'',os_id_ata:ataId,criado_em:new Date().toLocaleString('pt-BR')};
+    const rO=await fetch(API,{method:'POST',body:JSON.stringify(osPayload)}); const dO=await rO.json(); if(dO&&(dO.error||dO.ok===false)) throw new Error('saveOS: '+(dO.error||'falha'));
+    vrAtual={id:'vr_'+uid(),data:vrHoje(),cliente:cliente,cnpj:base?(base.cnpj||''):'',total_uhs:tot,qtd_amostra:uhs.length,tecnico:document.getElementById('vr-tecnico').value,versao_sb:document.getElementById('vr-vsb').value.trim(),tem_milplay:temMp?'Sim':'Não',versao_mp:temMp?document.getElementById('vr-vmp').value.trim():'',ata_id:ataId,os_id:'os-'+ataId,os_numero:osNum,status:'aberta',parecer:'',justificativa:'',recomendacoes:'',uhs:uhs,criado_por:vrUsuarioNome(),criado_em:new Date().toLocaleString('pt-BR'),concluido_em:''};
+    await vrSalvar();
+    vrLista.unshift(vrAtual);
+    vrRenderCheck();
+    vrMostrar('check');
+  }catch(e){
+    alert('Não foi possível abrir a preventiva: '+(e.message||e));
+  }finally{ btn.disabled=false; btn.textContent='Abrir preventiva e gerar amostra'; }
+}
+async function vrSalvar(){
+  if(!vrAtual) return;
+  const payload=Object.assign({},vrAtual,{token:getToken(),action:'saveVistoriaRemota',uhs_json:JSON.stringify(vrAtual.uhs||[])});
+  delete payload.uhs;
+  const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)});
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(d&&(d.error||d.ok===false)) throw new Error(d.error||'falha ao salvar');
+  return d;
+}
+function vrAbrirExistente(id,pdf){
+  const v=vrLista.find(x=>String(x.id)===String(id)); if(!v) return;
+  vrAtual=v;
+  if(v.status==='concluida'){ vrIrParecer(true); if(pdf) setTimeout(vrEmitirPDF,300); }
+  else { vrRenderCheck(); vrMostrar('check'); }
+}
+async function vrExcluir(id){
+  if(!confirm('Excluir esta vistoria remota? A OS vinculada não é apagada.')) return;
+  try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteVistoriaRemota',id:id})}); }catch(e){}
+  vrLista=vrLista.filter(v=>String(v.id)!==String(id)); renderVrLista();
+}
+
+// ---------- CHECKLISTS ----------
+function vrSecoes(v){ return ['A','B'].concat(String(v.tem_milplay)==='Sim'?['C']:[]); }
+function vrSecStatus(u,k){
+  const items=VR_CK[k].i; let s='c';
+  for(let i=0;i<items.length;i++){
+    const vis=typeof items[i]==='object'&&items[i].v;
+    if(vis&&u.vaga===false) continue;
+    const a=u.ans[k+i];
+    if(a===undefined) return u.done?'c':'p';
+    if(a==='n'){ if(!u.res[k+i]) return 'n'; s='r'; }
+  }
+  return s;
+}
+function vrUhStatus(v,u){ if(!u.done) return 'p'; const ss=vrSecoes(v).map(k=>vrSecStatus(u,k)); return ss.includes('n')?'n':ss.includes('r')?'r':'c'; }
+function vrRenderCheck(){
+  const v=vrAtual; if(!v) return;
+  document.getElementById('vr-banner').innerHTML=`<b>${vrEsc(v.os_numero||'OS')} aberta automaticamente para o N2</b><span style="color:var(--text-muted)">${vrEsc(v.cliente)} · ${vrEsc(v.data)} · técnico ${vrEsc(v.tecnico)} · StreamBlink ref. ${vrEsc(v.versao_sb)}${String(v.tem_milplay)==='Sim'?' · MilPlay ref. '+vrEsc(v.versao_mp||'-'):''}</span>`;
+  const tb=document.getElementById('vr-uhs'); tb.innerHTML='';
+  (v.uhs||[]).forEach((u,i)=>{
+    const s=vrUhStatus(v,u);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="padding:8px 10px;"><b>${vrEsc(u.uh)||'<span style="color:#D9534F">informar</span>'}</b></td><td style="padding:8px 10px;">${vrEsc(u.andar)}</td><td style="padding:8px 10px;color:var(--text-muted);font-family:monospace;font-size:12px;">${vrEsc(u.ip)||'—'}</td><td style="padding:8px 10px;color:var(--text-muted);font-size:12px;">${vrEsc(u.why)}</td>
+      <td style="padding:8px 10px;">${vrTag(u.done?vrSecStatus(u,'A'):'p')}</td><td style="padding:8px 10px;">${vrTag(u.done?vrSecStatus(u,'B'):'p')}</td><td style="padding:8px 10px;">${String(v.tem_milplay)==='Sim'?vrTag(u.done?vrSecStatus(u,'C'):'p'):'<span style="color:var(--text-muted);font-size:12px;">N/A</span>'}</td>
+      <td style="padding:8px 10px;">${vrTag(s)}</td><td style="padding:8px 10px;white-space:nowrap;"><button class="modal-btn" style="height:28px;padding:0 10px;font-size:12px;" onclick="vrAbrirUh(${i})">${u.done?'Editar':'Vistoriar'}</button> <button onclick="vrRemoverUh(${i})" title="Remover" style="border:none;background:none;cursor:pointer;color:var(--text-muted);">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  const cnt=vrContar(v);
+  document.getElementById('vr-k-done').textContent=cnt.done; document.getElementById('vr-k-tot').textContent=(v.uhs||[]).length;
+  document.getElementById('vr-k-c').textContent=cnt.c; document.getElementById('vr-k-r').textContent=cnt.r; document.getElementById('vr-k-n').textContent=cnt.n;
+  const sort=(v.uhs||[]).filter(u=>u.why.indexOf('Sorteio')===0).length, prev=(v.uhs||[]).filter(u=>u.why==='Chamado no mês anterior').length, man=(v.uhs||[]).length-sort-prev;
+  document.getElementById('vr-amostra-txt').innerHTML=`Amostra desta vistoria: <b>${(v.uhs||[]).length} UHs</b> = ${prev} com chamado no mês anterior (obrigatórias) + ${sort} sorteadas${man?' + '+man+' adicionadas manualmente':''}. Mínimo exigido: ${Math.ceil((+v.total_uhs||0)*0.1)} (10% de ${v.total_uhs}).`;
+  document.getElementById('vr-btn-fechar').disabled=!(cnt.done>0 && cnt.done>=(v.uhs||[]).length);
+}
+function vrAddUh(){ const r=prompt('Número da UH'); if(!r) return; vrAtual.uhs.push(vrMkUh(r.trim(),'Adicionada manualmente','')); vrRenderCheck(); vrSalvar().catch(()=>{}); }
+function vrRemoverUh(i){ if(!confirm('Remover esta UH da amostra?')) return; vrAtual.uhs.splice(i,1); vrRenderCheck(); vrSalvar().catch(()=>{}); }
+
+// ---------- MODAL ----------
+function vrAbrirUh(i){
+  vrUhIdx=i; const u=vrAtual.uhs[i];
+  document.getElementById('vr-m-uh').textContent=u.uh||'(informar)';
+  document.getElementById('vr-m-sub').textContent=u.ip?('IP '+u.ip):'';
+  document.getElementById('vr-m-ip').value=u.ip||'';
+  document.getElementById('vr-m-andar').value=u.andar||'';
+  document.getElementById('vr-m-vaga').checked=u.vaga!==false;
+  vrModalBuild();
+  document.getElementById('vr-modal').style.display='flex';
+}
+function vrFecharModal(){ document.getElementById('vr-modal').style.display='none'; }
+function vrModalBuild(){
+  const u=vrAtual.uhs[vrUhIdx]; u.vaga=document.getElementById('vr-m-vaga').checked;
+  let h='';
+  if(!u.uh) h+=`<div class="modal-field"><label>Número da UH *</label><input type="text" id="vr-m-uhnum" placeholder="ex.: 1204"></div>`;
+  vrSecoes(vrAtual).forEach(k=>{
+    h+=`<div style="font-size:12px;color:var(--text-muted);border-bottom:2px solid var(--gold);display:inline-block;padding-bottom:3px;margin:14px 0 6px;">${VR_CK[k].t}</div><table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>`;
+    VR_CK[k].i.forEach((it,idx)=>{
+      const vis=typeof it==='object'&&it.v; const t=typeof it==='object'?it.t:it; const id=k+idx; const lock=vis&&!u.vaga;
+      const a=lock?'na':(u.ans[id]||'');
+      const seg=(val,label,cor)=>`<button type="button" onclick="vrSetAns('${id}','${val}')" style="padding:4px 10px;border:1px solid var(--border);background:${a===val?cor:'var(--surface)'};color:${a===val?'#fff':'var(--text-muted)'};font-size:11px;cursor:pointer;border-radius:3px;margin-right:3px;">${label}</button>`;
+      h+=`<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 4px;width:48%;${lock?'color:var(--text-muted);':''}">${vrEsc(t)}${vis?' <span style="color:var(--text-muted);font-size:10px;">(scrcpy)</span>':''}</td>
+        <td style="padding:6px 4px;white-space:nowrap;${lock?'opacity:.5;pointer-events:none;':''}">${seg('c','C','#2BB673')}${seg('n','NC','#D9534F')}${seg('na','N/A','#777')}</td>
+        <td style="padding:6px 4px;white-space:nowrap;font-size:11px;">${a==='n'?`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" ${u.res[id]?'checked':''} onchange="vrAtual.uhs[vrUhIdx].res['${id}']=this.checked">Resolvido remotamente</label>`:''}</td>
+        <td style="padding:6px 4px;"><input type="text" placeholder="Observação" value="${vrEsc(u.obs[id]||'')}" oninput="vrAtual.uhs[vrUhIdx].obs['${id}']=this.value" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text);font-size:11px;"></td></tr>`;
+    });
+    h+='</tbody></table>';
+  });
+  document.getElementById('vr-m-body').innerHTML=h;
+}
+function vrSetAns(id,val){ const u=vrAtual.uhs[vrUhIdx]; u.ans[id]=val; if(val!=='n') u.res[id]=false; vrModalBuild(); }
+async function vrSalvarUh(){
+  const u=vrAtual.uhs[vrUhIdx];
+  const numEl=document.getElementById('vr-m-uhnum'); if(numEl){ const n=numEl.value.trim(); if(!n) return alert('Informe o número da UH.'); u.uh=n; }
+  u.ip=document.getElementById('vr-m-ip').value.trim(); u.andar=document.getElementById('vr-m-andar').value.trim()||vrAndar(u.uh);
+  for(const k of vrSecoes(vrAtual)) for(let i=0;i<VR_CK[k].i.length;i++){ const it=VR_CK[k].i[i]; const vis=typeof it==='object'&&it.v; if(vis&&!u.vaga) continue; if(!u.ans[k+i]) return alert('Responda todos os itens antes de salvar (C, NC ou N/A).'); }
+  u.done=true;
+  vrFecharModal(); vrRenderCheck();
+  try{ await vrSalvar(); }catch(e){ alert('UH registrada na tela, mas não foi possível salvar no servidor: '+e.message); }
+}
+
+// ---------- PARECER ----------
+function vrPendencias(v){
+  const out=[];
+  (v.uhs||[]).forEach(u=>{ vrSecoes(v).forEach(k=>{ VR_CK[k].i.forEach((it,i)=>{ const id=k+i; if(u.ans[id]==='n'){ out.push({uh:u.uh,t:typeof it==='object'?it.t:it,res:!!u.res[id],obs:u.obs[id]||''}); } }); }); });
+  return out;
+}
+function vrIrParecer(somenteLeitura){
+  const v=vrAtual; const cnt=vrContar(v); const tot=+v.total_uhs||0;
+  document.getElementById('vr-resumo').innerHTML=`<b>${(v.uhs||[]).length}</b> UHs vistoriadas de <b>${tot}</b> (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}%): <span style="color:#2BB673">${cnt.c} conformes</span>, <span style="color:#D9A400">${cnt.r} com ressalva</span>, <span style="color:#D9534F">${cnt.n} não conformes</span>.`;
+  const sug=v.parecer||(cnt.n?'Com não conformidades críticas':cnt.r?'Em funcionamento com ressalvas':'Plataforma em pleno funcionamento');
+  document.querySelectorAll('[name=vr-par]').forEach(r=>r.checked=r.value===sug);
+  document.getElementById('vr-just').value=v.justificativa||'';
+  document.getElementById('vr-rec').value=v.recomendacoes||'';
+  const p=vrPendencias(v); const tb=document.getElementById('vr-pend'); tb.innerHTML='';
+  p.forEach(x=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td style="padding:6px 8px;border-top:1px solid var(--border);"><b>${vrEsc(x.uh)}</b></td><td style="padding:6px 8px;border-top:1px solid var(--border);">${vrEsc(x.t)}${x.obs?'<br><span style="color:var(--text-muted)">'+vrEsc(x.obs)+'</span>':''}</td><td style="padding:6px 8px;border-top:1px solid var(--border);">${x.res?vrTag('r'):'<span style="color:#D9534F;font-size:11px;">Pendência na '+vrEsc(v.os_numero||'OS')+'</span>'}</td>`; tb.appendChild(tr); });
+  document.getElementById('vr-pend-hint').textContent=p.length?'Pendências não resolvidas ficam abertas na OS do N2. O fechamento da OS segue pelo Painel de Atendimento.':'Nenhuma ocorrência. A OS do N2 pode ser fechada como preventiva concluída.';
+  document.getElementById('vr-btn-concluir').style.display=somenteLeitura?'none':'inline-flex';
+  vrMostrar('parecer');
+}
+async function vrConcluir(){
+  const v=vrAtual;
+  const par=(document.querySelector('[name=vr-par]:checked')||{}).value||'';
+  if(!par) return alert('Selecione o parecer técnico.');
+  v.parecer=par; v.justificativa=document.getElementById('vr-just').value.trim(); v.recomendacoes=document.getElementById('vr-rec').value.trim();
+  v.status='concluida'; v.concluido_em=new Date().toLocaleString('pt-BR');
+  const btn=document.getElementById('vr-btn-concluir'); btn.disabled=true; btn.textContent='Concluindo...';
+  try{
+    await vrSalvar();
+    // registra o resumo na OS do N2 (observação), sem fechar a OS
+    try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:v.os_id,obs:'[Vistoria remota concluída em '+v.concluido_em+'] Parecer: '+par+'. Pendências: '+vrPendencias(v).filter(x=>!x.res).length+'.'})}); }catch(e){}
+    btn.textContent='Concluída';
+    document.getElementById('vr-btn-concluir').style.display='none';
+    renderVrLista();
+  }catch(e){ alert('Não foi possível concluir: '+e.message); btn.disabled=false; btn.textContent='Concluir vistoria'; }
+}
+
+// ---------- TERMO EM PDF ----------
+function vrTermoHtml(v){
+  const tot=+v.total_uhs||0; const cnt=vrContar(v);
+  const par=(document.querySelector('[name=vr-par]:checked')||{}).value||v.parecer||'';
+  const just=document.getElementById('vr-just').value.trim()||v.justificativa||'';
+  const rec=document.getElementById('vr-rec').value.trim()||v.recomendacoes||'';
+  const th='background:#1b1b1b;color:#fff;font-size:10px;padding:5px 6px;border:1px solid #1b1b1b;text-align:left;';
+  const td='font-size:10px;padding:5px 6px;border:1px solid #ccc;vertical-align:top;';
+  const lab='background:#f4f4f4;font-weight:700;width:32%;';
+  const chk=(k)=>`<h4 style="font-size:11px;margin:12px 0 5px;">${k==='A'?'3':k==='B'?'4':'5'}. Checklist ${VR_CK[k].t}</h4><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">Item verificado</th><th style="${th};text-align:center;width:40px;">C</th><th style="${th};text-align:center;width:40px;">NC</th><th style="${th};text-align:center;width:40px;">N/A</th><th style="${th};width:120px;">UHs com NC</th></tr></thead><tbody>${VR_CK[k].i.map((it,i)=>{ const t=typeof it==='object'?it.t:it; const id=k+i; let c=0,n=0,na=0; const ucs=[]; (v.uhs||[]).forEach(u=>{ const vis=typeof it==='object'&&it.v; const a=(vis&&u.vaga===false)?'na':u.ans[id]; if(a==='c')c++; else if(a==='n'){n++;ucs.push(u.uh);} else if(a==='na')na++; }); return `<tr><td style="${td}">${vrEsc(t)}</td><td style="${td};text-align:center;">${c||''}</td><td style="${td};text-align:center;${n?'color:#C62828;font-weight:700;':''}">${n||''}</td><td style="${td};text-align:center;">${na||''}</td><td style="${td}">${vrEsc(ucs.join(', '))}</td></tr>`; }).join('')}</tbody></table>`;
+  const rows=(v.uhs||[]).map(u=>`<tr><td style="${td}">${vrEsc(u.uh)}</td><td style="${td}">${vrEsc(u.andar)}</td><td style="${td}">${vrEsc(u.ip)||'-'}</td><td style="${td}">${u.vaga!==false?'Sim':'Não'}</td><td style="${td}">${VR_TXT[vrSecStatus(u,'A')]}</td><td style="${td}">${VR_TXT[vrSecStatus(u,'B')]}</td><td style="${td}">${String(v.tem_milplay)==='Sim'?VR_TXT[vrSecStatus(u,'C')]:'N/A'}</td><td style="${td};font-weight:700;">${VR_TXT[vrUhStatus(v,u)]}</td></tr>`).join('');
+  const p=vrPendencias(v);
+  const prow=p.length?p.map((x,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${vrEsc(x.uh)}</td><td style="${td}">${vrEsc(x.t)}${x.obs?'<br><span style="color:#555">'+vrEsc(x.obs)+'</span>':''}</td><td style="${td}">${x.res?'Resolvido remotamente':'Pendente - '+vrEsc(v.os_numero||'OS')}</td><td style="${td}">${x.res?'Blincast':'Blincast / N2'}</td></tr>`).join(''):`<tr><td colspan="5" style="${td}">Sem ocorrências.</td></tr>`;
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #F7BC2B;padding-bottom:8px;margin-bottom:12px;">
+      <div><div style="font-weight:700;font-size:18px;">Blincast <span style="color:#F7BC2B;">&#9655;</span></div><div style="font-size:12px;margin-top:4px;font-weight:700;">TERMO DE VISTORIA REMOTA PREVENTIVA</div><div style="font-size:11px;color:#444;">StreamBlink${String(v.tem_milplay)==='Sim'?' | MilPlay':''}</div></div>
+      <div style="text-align:right;font-size:10px;color:#444;">Nº: VRP-${vrEsc(String(v.id||'').replace(/^vr_/,'').slice(-8).toUpperCase())}<br>Data da vistoria: ${vrEsc(v.data)}<br>OS vinculada: ${vrEsc(v.os_numero||'-')}</div>
+    </div>
+    <h4 style="font-size:11px;margin:10px 0 5px;">1. Identificação da vistoria</h4>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><td style="${td}${lab}">Cliente</td><td style="${td}">${vrEsc(v.cliente)}</td></tr>
+      <tr><td style="${td}${lab}">CNPJ</td><td style="${td}">${vrEsc(v.cnpj||'-')}</td></tr>
+      <tr><td style="${td}${lab}">Total de UHs</td><td style="${td}">${tot}</td></tr>
+      <tr><td style="${td}${lab}">UHs vistoriadas</td><td style="${td}">${(v.uhs||[]).length} (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}%, mínimo 10%)</td></tr>
+      <tr><td style="${td}${lab}">Técnico Blincast</td><td style="${td}">${vrEsc(v.tecnico)}</td></tr>
+      <tr><td style="${td}${lab}">Forma de acesso</td><td style="${td}">Remoto via jalin (ADB + scrcpy)</td></tr>
+      <tr><td style="${td}${lab}">Versão de referência StreamBlink</td><td style="${td}">${vrEsc(v.versao_sb||'-')}</td></tr>
+      <tr><td style="${td}${lab}">MilPlay</td><td style="${td}">${String(v.tem_milplay)==='Sim'?('Sim - versão de referência '+vrEsc(v.versao_mp||'-')):'Não contratado'}</td></tr>
+      <tr><td style="${td}${lab}">Escopo</td><td style="${td}">&#9745; Dispositivo e rede &nbsp; &#9745; StreamBlink &nbsp; ${String(v.tem_milplay)==='Sim'?'&#9745;':'&#9744;'} MilPlay</td></tr>
+    </table>
+    <h4 style="font-size:11px;margin:12px 0 5px;">2. Amostragem por UH</h4>
+    <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">UH</th><th style="${th}">Andar</th><th style="${th}">IP</th><th style="${th}">Vaga</th><th style="${th}">Dispositivo e rede</th><th style="${th}">StreamBlink</th><th style="${th}">MilPlay</th><th style="${th}">Resultado</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:10px;margin-top:5px;color:#444;">Resumo: ${cnt.c} conformes, ${cnt.r} com ressalva (NC corrigida remotamente), ${cnt.n} não conformes.</div>
+    ${chk('A')}${chk('B')}${String(v.tem_milplay)==='Sim'?chk('C'):''}
+    <h4 style="font-size:11px;margin:12px 0 5px;">${String(v.tem_milplay)==='Sim'?'6':'5'}. Ocorrências, ações tomadas e pendências</h4>
+    <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th};width:24px;">Nº</th><th style="${th};width:50px;">UH</th><th style="${th}">Ocorrência</th><th style="${th};width:150px;">Situação</th><th style="${th};width:90px;">Responsável</th></tr></thead><tbody>${prow}</tbody></table>
+    <h4 style="font-size:11px;margin:12px 0 5px;">${String(v.tem_milplay)==='Sim'?'7':'6'}. Parecer técnico</h4>
+    <div style="border:1px solid #F7BC2B;padding:8px 10px;font-size:11px;"><b>${vrEsc(par)}</b>${just?'<br>'+vrEsc(just).replace(/\n/g,'<br>'):''}</div>
+    ${rec?`<h4 style="font-size:11px;margin:12px 0 5px;">${String(v.tem_milplay)==='Sim'?'8':'7'}. Considerações e recomendações</h4><div style="font-size:11px;">${vrEsc(rec).replace(/\n/g,'<br>')}</div>`:''}
+    <div style="font-size:10px;color:#444;margin-top:10px;">Nota: UHs ocupadas na data da vistoria tiveram apenas as verificações passivas por ADB; os itens visuais ficam como N/A e são priorizados na amostra do mês seguinte.</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:18px;"><tr><td style="${td};height:55px;vertical-align:bottom;width:50%;">Elaboração - Técnico Blincast<br><b>${vrEsc(v.tecnico)}</b></td><td style="${td};vertical-align:bottom;">Revisão / Aprovação<br>&nbsp;</td></tr></table>
+    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:6px;text-align:center;color:#666;font-size:9px;">Av. Célia Ribeiro da Silva Mendes, 132 - Barra da Tijuca, Rio de Janeiro - RJ, CEP 22793-081 | 0800-878-3962 / (21) 97147-1125 | sac@blincast.com.br<br>Gerado pelo BlinTrack em ${new Date().toLocaleString('pt-BR')}</div>`;
+}
+async function vrEmitirPDF(){
+  const v=vrAtual; if(!v) return;
+  const area=document.getElementById('vr-print-area');
+  area.innerHTML=vrTermoHtml(v);
+  const btn=document.getElementById('vr-btn-pdf'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Gerando PDF...';
+  try{
+    if(typeof html2canvas==='undefined'||!window.jspdf) throw new Error('Bibliotecas de PDF não carregaram. Recarregue a página.');
+    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const { jsPDF }=window.jspdf; const pdf=new jsPDF('p','mm','a4');
+    const pagW=pdf.internal.pageSize.getWidth(), pagH=pdf.internal.pageSize.getHeight(), margem=8;
+    const imgW=pagW-margem*2, imgH=canvas.height*imgW/canvas.width; const img=canvas.toDataURL('image/jpeg',0.92);
+    if(imgH<=pagH-margem*2){ pdf.addImage(img,'JPEG',margem,margem,imgW,imgH); }
+    else { let resta=imgH, pos=margem; pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); while(resta>0){ pos=margem-(imgH-resta); pdf.addPage(); pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); } }
+    pdf.save('Termo Vistoria Remota - '+String(v.cliente||'').replace(/[\\/:*?"<>|]/g,'')+' - '+String(v.data||'').replace(/\//g,'-')+'.pdf');
+  }catch(err){ alert('Não foi possível gerar o PDF: '+(err.message||err)); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
 </script>
 
 </body>
