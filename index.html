@@ -3734,6 +3734,11 @@ function pipeAbaTrocar(projId, aba){
 }
 const DOC_PIPE_TIPOS=['Orçamento','Vistoria','Outro documento'];
 function _docPipeIcone(tipo){ return tipo==='Orçamento'?'💰':tipo==='Vistoria'?'🔍':'📄'; }
+function baixarDocPipeline(link){
+  const m=String(link||'').match(/\/file\/d\/([^\/]+)/);
+  if(!m){ alert('Link do arquivo inválido.'); return; }
+  window.open('https://drive.google.com/uc?export=download&id='+m[1],'_blank');
+}
 function renderDocsListaPipelineHTML(proj){
   const docs=Array.isArray(proj.documentos)?proj.documentos:[];
   if(!docs.length) return '<div style="font-size:12px;color:var(--text-light,#bbb);font-style:italic;padding:6px 2px">Nenhum documento anexado ainda.</div>';
@@ -3744,6 +3749,7 @@ function renderDocsListaPipelineHTML(proj){
       <div style="font-size:11px;color:var(--text-muted)"><b>${pipeObsEsc(d.tipo)}</b> · ${pipeObsEsc(d.enviado_por)||'—'} · ${pipeObsEsc(d.data_hora)}</div>
     </div>
     <button onclick="event.stopPropagation();abrirAnexoNovaAba('${String(d.link||'').replace(/'/g,"\\'")}','')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Abrir</button>
+    <button onclick="event.stopPropagation();baixarDocPipeline('${String(d.link||'').replace(/'/g,"\\'")}')" title="Baixar o arquivo completo" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Baixar</button>
     <button onclick="event.stopPropagation();removerDocPipeline('${proj.id}','${d.id}')" title="Excluir" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer">🗑️</button>
   </div>`).join('');
 }
@@ -3770,6 +3776,7 @@ async function anexarDocPipeline(projId){
   const inp=document.getElementById('doc-file-'+projId);
   const file=inp&&inp.files&&inp.files[0];
   if(!file){ alert('Escolha um arquivo pra anexar.'); return; }
+  if(!file.size){ alert('O arquivo está vazio (0 KB). Escolha o arquivo de novo.'); return; }
   if(file.size>10*1024*1024){ alert('Arquivo muito grande ('+(file.size/1048576).toFixed(1)+' MB). O limite é 10 MB.'); return; }
   const tipo=document.getElementById('doc-tipo-'+projId).value||'Outro documento';
   const btn=document.getElementById('doc-btn-'+projId);
@@ -3779,7 +3786,7 @@ async function anexarDocPipeline(projId){
     const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
     const resp=await fetch(API,{method:'POST',body:JSON.stringify({
       token:getToken(), action:'uploadDocPipeline', card_id:projId, tipo,
-      nomeArquivo:file.name, mime:file.type||'application/octet-stream', arquivo:b64,
+      nomeArquivo:file.name, mime:file.type||'application/octet-stream', tamanho:file.size, arquivo:b64,
       usuario:(usuarioLogado&&(usuarioLogado.nome||usuarioLogado.usuario))||''
     })});
     const d=await resp.json();
@@ -12270,7 +12277,7 @@ async function estEnviarEmail(reg){
         </div>
         <div class="modal-field" style="margin:0;"><label>Total de UHs *</label><input type="number" id="vr-total" min="1" oninput="vrCalcAmostra()"></div>
         <div class="modal-field" style="margin:0;"><label>Data da vistoria</label><input type="text" id="vr-data" readonly></div>
-        <div class="modal-field" style="margin:0;"><label>UHs na amostra inicial (mín. 5)</label><input type="number" id="vr-n-amostra" min="5" oninput="vrAmostraEditada()"><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Sugerido: 5% das UHs. Pode reduzir até 5 e ampliar depois, sorteando mais UHs durante a vistoria.</div></div>
+        <div class="modal-field" style="margin:0;"><label>UHs na amostra inicial (mín. 5)</label><input type="number" id="vr-n-amostra" min="5" oninput="vrAmostraEditada()"><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Padrão de 5 UHs para qualquer cliente. Se aparecer problema, amplie durante a vistoria em "+ Sortear mais UHs".</div></div>
         <div class="modal-field" style="margin:0;"><label>Técnico responsável *</label>
           <select id="vr-tecnico"><option>Matheus Dourado</option><option>Maria Eduarda Trajano</option><option>Marco Antônio Quintela</option><option>Daniel Sampaio</option></select>
         </div>
@@ -12282,7 +12289,7 @@ async function estEnviarEmail(reg){
         <div class="modal-field" style="margin:0;grid-column:1/-1;"><label>UHs obrigatórias na amostra (com chamado no mês anterior), separadas por vírgula</label><input type="text" id="vr-obrigatorias" placeholder="ex.: 1204, 1511"></div>
       </div>
       <div style="display:flex;gap:28px;align-items:flex-end;margin:18px 0 10px;flex-wrap:wrap;">
-        <div><div id="vr-min-uh" style="font-size:40px;font-weight:700;line-height:1;color:var(--text);">0</div><div style="font-size:12px;color:var(--text-muted);">UHs na amostra (5% das UHs, mínimo de 5)</div></div>
+        <div><div id="vr-min-uh" style="font-size:40px;font-weight:700;line-height:1;color:var(--text);">0</div><div style="font-size:12px;color:var(--text-muted);">UHs na amostra inicial (fixo em 5, amplie se for necessário)</div></div>
         <div><div id="vr-fonte-uh" style="font-size:13px;color:var(--text-muted);"></div></div>
       </div>
       <div style="font-size:12px;color:var(--text-muted);border-left:3px solid var(--gold);padding:8px 12px;background:rgba(245,184,0,.06);margin-bottom:16px;">
@@ -17034,7 +17041,7 @@ function ciGerarPDF(d){
 }
 
 // ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK =====================
-// Mensal por cliente. Amostra de 5% das UHs (mínimo de 5), ampliável durante a vistoria. Acesso via jalin (ADB + scrcpy).
+// Mensal por cliente. Amostra inicial fixa de 5 UHs, ampliável durante a vistoria quando necessário. Acesso via jalin (ADB + scrcpy).
 // Abrir a preventiva cria atendimento (Ata) + OS para o N2. Termo em PDF ao final.
 const VR_CK={
   A:{t:'A. Dispositivo e rede (ADB)',i:[
@@ -17149,9 +17156,9 @@ function vrClienteSelecionado(){
   }
   vrCalcAmostra();
 }
-const VR_PCT=0.05, VR_MIN_UH=5;
+const VR_MIN_UH=5;
 let vrAmostraManual=false;
-function vrMinimo(t){ t=+t||0; if(!t) return 0; return Math.min(t,Math.max(VR_MIN_UH,Math.ceil(t*VR_PCT))); }
+function vrMinimo(t){ t=+t||0; if(!t) return 0; return Math.min(t,VR_MIN_UH); }
 function vrAmostraEditada(){ vrAmostraManual=true; }
 function vrCalcAmostra(){
   const t=+document.getElementById('vr-total').value||0;
@@ -17309,7 +17316,7 @@ function vrRenderCheck(){
   document.getElementById('vr-k-done').textContent=cnt.done; document.getElementById('vr-k-tot').textContent=(v.uhs||[]).length;
   document.getElementById('vr-k-c').textContent=cnt.c; document.getElementById('vr-k-r').textContent=cnt.r; document.getElementById('vr-k-n').textContent=cnt.n;
   const sort=(v.uhs||[]).filter(u=>u.why.indexOf('Sorteio')===0).length, prev=(v.uhs||[]).filter(u=>u.why==='Chamado no mês anterior').length, man=(v.uhs||[]).length-sort-prev;
-  document.getElementById('vr-amostra-txt').innerHTML=`Amostra desta vistoria: <b>${(v.uhs||[]).length} UHs</b> = ${prev} com chamado no mês anterior (obrigatórias) + ${sort} sorteadas${man?' + '+man+' adicionadas manualmente':''}. Referência: 5% de ${v.total_uhs} = ${vrMinimo(v.total_uhs)} UHs (mínimo de ${VR_MIN_UH}). Se aparecer não conformidade, use "+ Sortear mais UHs" para ampliar.`;
+  document.getElementById('vr-amostra-txt').innerHTML=`Amostra desta vistoria: <b>${(v.uhs||[]).length} UHs</b> = ${prev} com chamado no mês anterior (obrigatórias) + ${sort} sorteadas${man?' + '+man+' adicionadas manualmente':''}. Mínimo: ${vrMinimo(v.total_uhs)} UHs. Se aparecer não conformidade, use "+ Sortear mais UHs" para ampliar a amostra.`;
   document.getElementById('vr-btn-fechar').disabled=!(cnt.done>0 && cnt.done>=(v.uhs||[]).length);
 }
 function vrAddUh(){ const r=prompt('Número da UH'); if(!r) return; vrAtual.uhs.push(vrMkUh(r.trim(),'Adicionada manualmente','')); vrRenderCheck(); vrSalvar().catch(()=>{}); }
@@ -17445,7 +17452,7 @@ function vrTermoHtml(v){
       <tr><td style="${td}${lab}">Cliente</td><td style="${td}">${vrEsc(v.cliente)}</td></tr>
       <tr><td style="${td}${lab}">CNPJ</td><td style="${td}">${vrEsc(v.cnpj||'-')}</td></tr>
       <tr><td style="${td}${lab}">Total de UHs</td><td style="${td}">${tot}</td></tr>
-      <tr><td style="${td}${lab}">UHs vistoriadas</td><td style="${td}">${(v.uhs||[]).length} (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}% do total, referência 5%)</td></tr>
+      <tr><td style="${td}${lab}">UHs vistoriadas</td><td style="${td}">${(v.uhs||[]).length} (${tot?((v.uhs||[]).length/tot*100).toFixed(1):0}% do total)</td></tr>
       <tr><td style="${td}${lab}">Técnico Blincast</td><td style="${td}">${vrEsc(v.tecnico)}</td></tr>
       <tr><td style="${td}${lab}">Forma de acesso</td><td style="${td}">Remoto via jalin (ADB + scrcpy)</td></tr>
       <tr><td style="${td}${lab}">Versão de referência StreamBlink</td><td style="${td}">${vrEsc(v.versao_sb||'-')}</td></tr>
