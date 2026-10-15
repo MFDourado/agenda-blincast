@@ -585,11 +585,12 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
   </div>
   <!-- Filtro de período -->
   <div style="padding:10px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;border-bottom:1px solid var(--border);">
+    <div style="flex:1;min-width:220px;max-width:380px;display:flex;"><input id="vistoria-busca" type="text" placeholder="Buscar cliente..." oninput="renderVistoria()" style="flex:1;min-width:0;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;"></div>
     <span style="font-size:12px;color:var(--text-muted);">Período:</span>
-    <input type="date" id="vistoria-dt-ini" onchange="renderVistoria()" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <input type="date" id="vistoria-dt-ini" onchange="renderVistoria()" style="width:140px;flex:none;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
     <span style="font-size:12px;color:var(--text-muted);">até</span>
-    <input type="date" id="vistoria-dt-fim" onchange="renderVistoria()" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
-    <button onclick="document.getElementById('vistoria-dt-ini').value='';document.getElementById('vistoria-dt-fim').value='';renderVistoria();" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar</button>
+    <input type="date" id="vistoria-dt-fim" onchange="renderVistoria()" style="width:140px;flex:none;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <button onclick="document.getElementById('vistoria-dt-ini').value='';document.getElementById('vistoria-dt-fim').value='';document.getElementById('vistoria-busca').value='';renderVistoria();" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar</button>
   </div>
   <!-- BOXES vistorias -->
   <div class="pipeline-boxes" style="margin-bottom:1.5rem;">
@@ -3734,6 +3735,18 @@ function pipeAbaTrocar(projId, aba){
 }
 const DOC_PIPE_TIPOS=['Orçamento','Vistoria','Outro documento'];
 function _docPipeIcone(tipo){ return tipo==='Orçamento'?'💰':tipo==='Vistoria'?'🔍':'📄'; }
+// PDF e imagem abrem direto no visualizador do navegador (mostra todas as páginas, não depende do visualizador do Drive).
+// Word/Excel não abrem inline em lugar nenhum, então seguem pelo Drive.
+function abrirDocPipeline(projId, docId){
+  const proj=projects.find(p=>p.id===projId);
+  const doc=proj&&Array.isArray(proj.documentos)?proj.documentos.find(d=>d.id===docId):null;
+  if(!doc){ alert('Documento não encontrado.'); return; }
+  const m=String(doc.link||'').match(/\/file\/d\/([^\/]+)/);
+  if(!m){ alert('Link do arquivo inválido.'); return; }
+  const ext=String(doc.nome_arquivo||'').split('.').pop().toLowerCase();
+  if(['pdf','png','jpg','jpeg','webp'].includes(ext)) window.open('https://drive.google.com/uc?export=view&id='+m[1],'_blank');
+  else abrirAnexoNovaAba(doc.link,'');
+}
 function baixarDocPipeline(link){
   const m=String(link||'').match(/\/file\/d\/([^\/]+)/);
   if(!m){ alert('Link do arquivo inválido.'); return; }
@@ -3748,7 +3761,7 @@ function renderDocsListaPipelineHTML(proj){
       <div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-word">${pipeObsEsc(d.nome_arquivo)||'(sem nome)'}</div>
       <div style="font-size:11px;color:var(--text-muted)"><b>${pipeObsEsc(d.tipo)}</b> · ${pipeObsEsc(d.enviado_por)||'—'} · ${pipeObsEsc(d.data_hora)}</div>
     </div>
-    <button onclick="event.stopPropagation();abrirAnexoNovaAba('${String(d.link||'').replace(/'/g,"\\'")}','')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Abrir</button>
+    <button onclick="event.stopPropagation();abrirDocPipeline('${proj.id}','${d.id}')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Abrir</button>
     <button onclick="event.stopPropagation();baixarDocPipeline('${String(d.link||'').replace(/'/g,"\\'")}')" title="Baixar o arquivo completo" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Baixar</button>
     <button onclick="event.stopPropagation();removerDocPipeline('${proj.id}','${d.id}')" title="Excluir" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer">🗑️</button>
   </div>`).join('');
@@ -4330,11 +4343,89 @@ function exportarPreventivaPDF(){
   w.document.write(html); w.document.close();
 }
 
+// ============ BUSCA COM AUTOCOMPLETE (telas de Vistorias) ============
+// Usa só os dados que a tela já carregou: não faz chamada extra ao servidor.
+function vfNorm(s){ return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function vfEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function vfIsoData(t){
+  const s=String(t||'');
+  let m=s.match(/(\d{2})\/(\d{2})\/(\d{4})/); if(m) return m[3]+'-'+m[2]+'-'+m[1];
+  m=s.match(/(\d{4})-(\d{2})-(\d{2})/); return m?m[0]:'';
+}
+function vfIniciar(inputId, obterItens, aoMudar){
+  const inp=document.getElementById(inputId);
+  if(!inp || inp.dataset.vf) return;
+  inp.dataset.vf='1'; inp.setAttribute('autocomplete','off');
+  const wrap=inp.parentElement; wrap.style.position='relative';
+  const box=document.createElement('div');
+  box.style.cssText='display:none;position:absolute;top:100%;left:0;right:0;z-index:60;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:320px;overflow-y:auto;';
+  wrap.appendChild(box);
+  let itens=[], sel=-1;
+  function fechar(){ box.style.display='none'; sel=-1; }
+  function marcar(){ box.querySelectorAll('[data-i]').forEach(el=>{ el.style.background=(+el.dataset.i===sel)?'var(--bg)':''; }); const el=box.querySelector('[data-i="'+sel+'"]'); if(el&&el.scrollIntoView) el.scrollIntoView({block:'nearest'}); }
+  function escolher(i){ const it=itens[i]; if(!it) return; inp.value=it.texto; fechar(); aoMudar(); }
+  function abrir(){
+    const q=vfNorm(inp.value);
+    if(!q){ fechar(); return; }
+    const vistos=new Set(); const achados=[];
+    (obterItens()||[]).forEach(it=>{
+      const n=vfNorm(it.texto); const chave=it.tipo+'|'+n;
+      if(!n||vistos.has(chave)||!n.includes(q)) return;
+      vistos.add(chave); achados.push({it, ini:n.startsWith(q)?0:1});
+    });
+    achados.sort((a,b)=>a.ini-b.ini||String(a.it.texto).localeCompare(String(b.it.texto),'pt-BR',{numeric:true}));
+    const porTipo={}; achados.forEach(a=>{ (porTipo[a.it.tipo]=porTipo[a.it.tipo]||[]).push(a.it); });
+    itens=[]; let html='';
+    Object.keys(porTipo).forEach(tp=>{
+      html+='<div style="padding:7px 12px 3px;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.6px;text-transform:uppercase;">'+vfEsc(tp)+'</div>';
+      porTipo[tp].slice(0,6).forEach(it=>{
+        html+='<div data-i="'+itens.length+'" style="padding:8px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:12px;color:var(--text);"><span>'+vfEsc(it.texto)+'</span><span style="color:var(--text-muted);font-size:11px;white-space:nowrap;">'+vfEsc(it.sub||'')+'</span></div>';
+        itens.push(it);
+      });
+    });
+    if(!itens.length){ box.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-muted);">Nenhuma sugestão. Enter filtra pelo que você digitou.</div>'; }
+    else box.innerHTML=html;
+    sel=-1; box.style.display='block';
+  }
+  inp.addEventListener('input',abrir);
+  inp.addEventListener('focus',abrir);
+  inp.addEventListener('blur',()=>setTimeout(fechar,150));
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'&&itens.length){ e.preventDefault(); sel=(sel+1)%itens.length; marcar(); }
+    else if(e.key==='ArrowUp'&&itens.length){ e.preventDefault(); sel=(sel<=0?itens.length:sel)-1; marcar(); }
+    else if(e.key==='Enter'){ if(sel>=0) { e.preventDefault(); escolher(sel); } else { fechar(); aoMudar(); } }
+    else if(e.key==='Escape'){ fechar(); }
+  });
+  box.addEventListener('mousedown',e=>{ const r=e.target.closest('[data-i]'); if(r){ e.preventDefault(); escolher(+r.dataset.i); } });
+}
+function vfItensVistoria(){
+  const cont={};
+  (vistorias||[]).filter(v=>(v.tipo||'instalacao')===vistoriaFiltroTipo).forEach(v=>{
+    const n=String(v.nomeCliente||v.nome||v.cliente||'').trim(); if(n) cont[n]=(cont[n]||0)+1;
+  });
+  return Object.keys(cont).map(n=>({tipo:'Cliente',texto:n,sub:cont[n]+(cont[n]===1?' vistoria':' vistorias')}));
+}
+function vfItensVr(){
+  const out=[]; const cont={};
+  (vrLista||[]).forEach(v=>{
+    const n=String(v.cliente||'').trim(); if(n) cont[n]=(cont[n]||0)+1;
+    if(v.os_numero) out.push({tipo:'OS',texto:String(v.os_numero),sub:String(v.cliente||'')});
+  });
+  Object.keys(cont).forEach(n=>out.push({tipo:'Cliente',texto:n,sub:cont[n]+(cont[n]===1?' vistoria':' vistorias')}));
+  return out;
+}
+function vrLimparFiltros(){
+  ['vr-busca','vr-dt-ini','vr-dt-fim'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const st=document.getElementById('vr-filtro-status'); if(st) st.value='';
+  renderVrLista();
+}
 function renderVistoria(){
   const list=document.getElementById('vistoria-list');
   // Filtrar por tipo se definido
   const dtIni = document.getElementById('vistoria-dt-ini')?.value||'';
   const dtFim = document.getElementById('vistoria-dt-fim')?.value||'';
+  vfIniciar('vistoria-busca', vfItensVistoria, renderVistoria);
+  const busca = vfNorm(document.getElementById('vistoria-busca')?.value||'');
 
   const vistoriasFiltradas = vistorias.filter(v=>{
     // Filtro por tipo — preventiva NUNCA mostra instalação e vice-versa
@@ -4347,6 +4438,8 @@ function renderVistoria(){
       if(dtIni && d && d < dtIni) return false;
       if(dtFim && d && d > dtFim) return false;
     }
+    // Filtro por texto (cliente)
+    if(busca && !vfNorm(v.nomeCliente||v.nome||v.cliente||'').includes(busca)) return false;
     return true;
   });
   // Atualizar contagem dos boxes ANTES de qualquer return (senão fica o valor da aba anterior)
@@ -4356,7 +4449,7 @@ function renderVistoria(){
   const elP = document.getElementById('vbox-num-pendentes');
   if(elC) elC.textContent = numConc;
   if(elP) elP.textContent = numPend;
-  if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.</div>';return;}
+  if(!vistoriasFiltradas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">'+((busca||dtIni||dtFim)?'Nenhuma vistoria encontrada com esses filtros.':'Nenhuma vistoria '+( vistoriaFiltroTipo==='preventiva'?'preventiva':'de instalação')+'.')+'</div>';return;}
   // Filtrar (sempre a partir da lista já filtrada por TIPO)
   let lista = vistoriasFiltradas;
   if(vistoriaBoxFilter==='concluidas') lista = vistoriasFiltradas.filter(v=>v.status==='concluida'||v.steps.every(s=>s.done));
@@ -12259,10 +12352,15 @@ async function estEnviarEmail(reg){
   <!-- VISTA: LISTA -->
   <div id="vr-view-lista">
     <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <input id="vr-busca" type="text" placeholder="Buscar cliente..." oninput="renderVrLista()" style="flex:1;min-width:220px;max-width:400px;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+      <div style="flex:1;min-width:220px;max-width:400px;display:flex;"><input id="vr-busca" type="text" placeholder="Buscar cliente ou número da OS..." oninput="renderVrLista()" style="flex:1;min-width:220px;max-width:400px;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;"></div>
       <select id="vr-filtro-status" onchange="renderVrLista()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
         <option value="">Todas</option><option value="aberta">Abertas</option><option value="concluida">Concluídas</option>
       </select>
+      <span style="font-size:12px;color:var(--text-muted);">Data:</span>
+      <input type="date" id="vr-dt-ini" onchange="renderVrLista()" style="width:150px;flex:none;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      <span style="font-size:12px;color:var(--text-muted);">até</span>
+      <input type="date" id="vr-dt-fim" onchange="renderVrLista()" style="width:150px;flex:none;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      <button onclick="vrLimparFiltros()" style="height:34px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Limpar</button>
     </div>
     <div id="vr-lista" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
   </div>
@@ -17090,11 +17188,18 @@ function vrVoltarLista(){ vrAtual=null; vrMostrar('lista'); renderVrLista(); }
 // ---------- LISTA ----------
 function renderVrLista(){
   const wrap=document.getElementById('vr-lista'); if(!wrap) return;
-  const busca=(document.getElementById('vr-busca').value||'').toLowerCase();
+  vfIniciar('vr-busca', vfItensVr, renderVrLista);
+  const busca=vfNorm(document.getElementById('vr-busca').value);
   const fs=document.getElementById('vr-filtro-status').value;
-  const lista=vrLista.filter(v=>(!busca||String(v.cliente||'').toLowerCase().includes(busca))&&(!fs||v.status===fs))
+  const dtIni=(document.getElementById('vr-dt-ini')||{}).value||'', dtFim=(document.getElementById('vr-dt-fim')||{}).value||'';
+  const lista=vrLista.filter(v=>{
+      if(busca && !(vfNorm(v.cliente).includes(busca)||vfNorm(v.os_numero).includes(busca))) return false;
+      if(fs && v.status!==fs) return false;
+      if(dtIni||dtFim){ const d=vfIsoData(v.data||v.criado_em); if(d){ if(dtIni&&d<dtIni) return false; if(dtFim&&d>dtFim) return false; } }
+      return true;
+    })
     .sort((a,b)=>String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
-  if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">Nenhuma vistoria remota registrada.</div>'; return; }
+  if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">'+((busca||fs||dtIni||dtFim)?'Nenhuma vistoria remota encontrada com esses filtros.':'Nenhuma vistoria remota registrada.')+'</div>'; return; }
   wrap.innerHTML=lista.map(v=>{
     const cnt=vrContar(v);
     const aberta=v.status!=='concluida';
