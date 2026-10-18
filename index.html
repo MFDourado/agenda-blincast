@@ -407,7 +407,11 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       <button class="snav-btn" id="mt-vistoria-preventiva" onclick="switchMainTab('vistoria-preventiva');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Preventiva</button>
       <button class="snav-btn" id="mt-vistoria-remota" onclick="switchMainTab('vistoria-remota');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Remota (StreamBlink)</button>
     </div>
-    <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
+    <button class="snav-btn" id="mt-prev-group" onclick="toggleSubMenu('prev-sub')">Preventivas <span id="arrow-prev-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
+<div id="prev-sub" style="display:none;background:rgba(0,0,0,.15)">
+<button class="snav-btn" id="mt-prev-plano" onclick="switchMainTab('prev-plano');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Plano do mês</button>
+</div>
+<button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
     <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">Dashboard</button>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 12px;"></div>
     <div style="padding:6px 16px 2px;font-size:10px;color:#606068;letter-spacing:.8px;text-transform:uppercase;">Operacional</div>
@@ -1471,7 +1475,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-plano':'Plano do mês', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -3025,12 +3029,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','vistoria-remota','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','vistoria-remota','prev-plano','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','vistoria-remota','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria-remota','prev-plano','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3050,6 +3054,7 @@ function switchMainTab(t){
   if(t==='requisicoes')renderRequisicoes();
   if(t==='milplay')iniciarMilPlay();
   if(t==='vistoria-remota')iniciarVistoriaRemota();
+  if(t==='prev-plano')iniciarPrevPlano();
   if(t==='entrega-material')iniciarEntregaMaterial();
   if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
@@ -4343,6 +4348,190 @@ function exportarPreventivaPDF(){
   w.document.write(html); w.document.close();
 }
 
+// ============ PLANO DO MÊS (preventivas) ============
+const PP_MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let ppMes='', ppMeta=0, ppItens=[], ppSujo=false, ppUltimas={}, ppMeses=[], ppIniciou=false, ppCarregando=false;
+function ppNorm(t){ return vfNorm(t).replace(/\s+/g,' '); }
+function ppEditavel(){ return !!(usuarioLogado && usuarioLogado.perfil==='admin'); }
+function ppMesAtualISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function ppSomaMes(mes,n){ const [a,m]=mes.split('-').map(Number); const d=new Date(a,m-1+n,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function ppRotuloMes(mes){ const [a,m]=mes.split('-').map(Number); return PP_MESES[m-1]+' de '+a; }
+// A semana 1 é a que começa na primeira segunda-feira do mês; as seguintes seguem de 7 em 7 dias, enquanto começarem dentro do mês.
+function ppSemanas(mes){
+  const [a,m]=mes.split('-').map(Number);
+  const d=new Date(a,m-1,1); while(d.getDay()!==1) d.setDate(d.getDate()+1);
+  const out=[]; let n=1; const dm=x=>String(x.getMonth()+1).padStart(2,'0');
+  while(d.getMonth()===m-1){
+    const ini=new Date(d), fim=new Date(d); fim.setDate(fim.getDate()+6);
+    out.push({n:n, label:(ini.getMonth()===fim.getMonth()? ini.getDate() : ini.getDate()+'/'+dm(ini))+' a '+fim.getDate()+'/'+dm(fim)});
+    d.setDate(d.getDate()+7); n++;
+  }
+  return out;
+}
+function ppDefinirSujo(v){
+  ppSujo=!!v;
+  const el=document.getElementById('pp-sujo'); if(el) el.style.display=ppSujo?'inline':'none';
+}
+function ppPreencherMeses(){
+  const sel=document.getElementById('pp-mes'); if(!sel) return;
+  const atual=ppMesAtualISO(); const guardado=sel.value;
+  let html='';
+  for(let i=-1;i<=12;i++){
+    const m=ppSomaMes(atual,i); const info=ppMeses.find(x=>x.mes===m);
+    const marca=(i===0?' (mês atual)':'')+(info&&info.qtd?' - '+ptN(info.qtd,'cliente','clientes')+', meta '+info.meta:'');
+    html+='<option value="'+m+'">'+vfEsc(ppRotuloMes(m)+marca)+'</option>';
+  }
+  sel.innerHTML=html;
+  sel.value=guardado||ppMes||ppSomaMes(atual,1);
+  ppMes=sel.value;
+}
+async function iniciarPrevPlano(){
+  if(!ppIniciou){ ppMes=ppSomaMes(ppMesAtualISO(),1); ppIniciou=true; }
+  ppPreencherMeses();
+  vfIniciar('pp-add', ppItensAuto, ()=>ppAdicionar(false));
+  await Promise.all([ppCarregarUltimas(), ppCarregarMes()]);
+}
+async function ppCarregarUltimas(){
+  try{
+    const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getUltimasPreventivas');
+    ppUltimas=(d&&d.ultimas)?d.ultimas:{};
+  }catch(e){ ppUltimas={}; }
+  ppRender();
+}
+async function ppCarregarMes(){
+  const sync=document.getElementById('pp-sync'); if(sync) sync.textContent='Carregando...';
+  ppCarregando=true;
+  try{
+    const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getPlanoPreventivas&mes='+encodeURIComponent(ppMes));
+    if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'resposta vazia');
+    ppMeta=Number(d.meta)||0; ppItens=(d.itens||[]).map(x=>({cliente:x.cliente,cnpj:x.cnpj||'',cidade:x.cidade||'',uf:x.uf||'',tipo:x.tipo==='StreamBlink'?'StreamBlink':'Rack',semana:Number(x.semana)||1}));
+    ppMeses=d.meses||[];
+    const fixos=ppMeses.find(x=>x.mes===ppMes);
+    if(sync) sync.textContent=(d.atualizado_por?'Salvo por '+d.atualizado_por+' em '+d.atualizado_em:'Plano ainda não salvo para este mês');
+    const aviso=document.getElementById('pp-aviso'); if(aviso) aviso.style.display='none';
+  }catch(e){
+    ppMeta=0; ppItens=[];
+    if(sync) sync.textContent='Erro ao carregar';
+    const aviso=document.getElementById('pp-aviso');
+    if(aviso){ aviso.style.display='block'; aviso.textContent='Não foi possível carregar o plano: '+(e&&e.message?e.message:e)+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
+  }
+  ppCarregando=false;
+  ppDefinirSujo(false);
+  ppPreencherMeses();
+  const metaEl=document.getElementById('pp-meta'); if(metaEl) metaEl.value=ppMeta||'';
+  ppRender();
+}
+function ppTrocarMes(){
+  const sel=document.getElementById('pp-mes'); const novo=sel.value;
+  if(ppSujo && !confirm('Você tem alterações não salvas neste mês. Trocar de mês e descartar?')){ sel.value=ppMes; return; }
+  ppMes=novo; ppCarregarMes();
+}
+function ppMetaMudou(){ ppMeta=Math.max(0,parseInt(document.getElementById('pp-meta').value,10)||0); ppDefinirSujo(true); ppRenderResumo(); }
+function ppSemanaMenosCheia(){
+  const n=ppSemanas(ppMes).length||1; const cont=new Array(n).fill(0);
+  ppItens.forEach(i=>{ if(i.semana>=1&&i.semana<=n) cont[i.semana-1]++; });
+  return cont.indexOf(Math.min.apply(null,cont))+1;
+}
+function ppItensAuto(){
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente)));
+  return (clientes||[]).filter(c=>c&&c.nome&&!no.has(ppNorm(c.nome))).map(c=>{
+    const u=ppUltimaInfo(c.nome); const local=[c.cidade,(c.uf||c.estado)].filter(Boolean).join(' - ');
+    return {tipo:'Cliente', texto:String(c.nome), sub:(local?local+', ':'')+'última: '+u.t};
+  });
+}
+function ppAdicionar(avisar){
+  if(!ppEditavel()) return;
+  const inp=document.getElementById('pp-add'); const v=ppNorm(inp.value);
+  if(!v) return;
+  const c=(clientes||[]).find(x=>x&&ppNorm(x.nome)===v);
+  if(!c){ if(avisar!==false) alert('Escolha um cliente da lista que aparece enquanto você digita.'); return; }
+  if(ppItens.some(i=>ppNorm(i.cliente)===v)){ alert('Esse cliente já está no plano deste mês.'); inp.value=''; return; }
+  ppItens.push({cliente:String(c.nome),cnpj:String(c.cnpj||''),cidade:String(c.cidade||''),uf:String(c.uf||c.estado||''),tipo:'Rack',semana:ppSemanaMenosCheia()});
+  inp.value=''; ppDefinirSujo(true); ppRender();
+  inp.focus();
+}
+function ppRemover(i){ ppItens.splice(i,1); ppDefinirSujo(true); ppRender(); }
+function ppSetTipo(i,v){ if(ppItens[i]){ ppItens[i].tipo=v==='StreamBlink'?'StreamBlink':'Rack'; ppDefinirSujo(true); ppRenderResumo(); } }
+function ppSetSemana(i,v){ if(ppItens[i]){ ppItens[i].semana=parseInt(v,10)||1; ppDefinirSujo(true); ppRender(); } }
+// Divide os clientes em partes iguais pelas semanas, mantendo a mesma cidade junta quando ela cabe numa semana.
+function ppDistribuir(){
+  if(!ppEditavel()||!ppItens.length) return;
+  if(!confirm('Distribuir os clientes nas semanas vai substituir as semanas que você escolheu. Continuar?')) return;
+  const n=ppSemanas(ppMes).length||1; const cap=Math.max(1,Math.ceil(ppItens.length/n));
+  const ord=ppItens.slice().sort((a,b)=>(a.uf+a.cidade+a.cliente).localeCompare(b.uf+b.cidade+b.cliente,'pt-BR'));
+  const grupos=[]; ord.forEach(c=>{ const g=grupos[grupos.length-1]; if(g&&g[0].uf===c.uf&&g[0].cidade===c.cidade) g.push(c); else grupos.push([c]); });
+  let sem=1, usados=0;
+  grupos.forEach(g=>{
+    if(g.length<=cap && usados+g.length>cap && sem<n){ sem++; usados=0; }
+    g.forEach(c=>{ if(usados>=cap && sem<n){ sem++; usados=0; } c.semana=sem; usados++; });
+  });
+  ppDefinirSujo(true); ppRender();
+}
+function ppUltimaInfo(nome){
+  const u=ppUltimas[ppNorm(nome)];
+  if(!u) return {t:'nunca',nunca:true,sub:'sem preventiva registrada'};
+  const hj=new Date(); hj.setHours(0,0,0,0); const d=new Date(u.d+'T00:00:00'); const dias=Math.max(0,Math.round((hj.getTime()-d.getTime())/86400000));
+  const t=dias<1?'hoje':(dias<30?'há '+ptN(dias,'dia','dias'):'há '+ptN(Math.floor(dias/30.44),'mês','meses'));
+  const dt=u.d.slice(8,10)+'/'+u.d.slice(5,7)+'/'+u.d.slice(0,4);
+  return {t:t,nunca:false,sub:dt+', '+u.o};
+}
+function ppRenderResumo(){
+  const el=document.getElementById('pp-resumo'); if(!el) return;
+  const n=ppItens.length, stb=ppItens.filter(i=>i.tipo==='StreamBlink').length;
+  let extra='';
+  if(ppMeta>0 && n>ppMeta) extra='<span style="color:#C0392B;font-weight:600;">+'+(n-ppMeta)+' acima da meta</span>';
+  else if(ppMeta>0 && n<ppMeta) extra='<span style="color:var(--text-muted);">'+(ppMeta-n===1?'falta 1 cliente':'faltam '+(ppMeta-n)+' clientes')+' para a meta</span>';
+  el.innerHTML='<span><b style="font-size:20px;">'+n+'</b> de <b style="font-size:20px;">'+ppMeta+'</b> '+(ppMeta===1?'cliente escolhido':'clientes escolhidos')+'</span>'+
+    (n?'<span style="color:var(--text-muted);">StreamBlink '+stb+' e Rack '+(n-stb)+'</span>':'')+extra;
+  const sem=ppSemanas(ppMes);
+  document.getElementById('pp-semanas').innerHTML=sem.map(w=>{
+    const q=ppItens.filter(i=>i.semana===w.n).length;
+    return '<span style="padding:5px 12px;border-radius:99px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text);"><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+'): '+ptN(q,'cliente','clientes')+'</span>';
+  }).join('');
+  const dica=document.getElementById('pp-meta-dica');
+  if(dica){ const ant=ppMeses.find(x=>x.mes===ppSomaMes(ppMes,-1)); dica.textContent=ant&&ant.meta?'Mês anterior: '+ant.meta:''; }
+}
+function ppRender(){
+  const ed=ppEditavel();
+  const ctl=(id,show,disp)=>{ const el=document.getElementById(id); if(el) el.style.display=show?(disp||''):'none'; };
+  ctl('pp-btn-salvar',ed); ctl('pp-btn-distribuir',ed); ctl('pp-add-linha',ed,'flex');
+  const metaEl=document.getElementById('pp-meta'); if(metaEl) metaEl.disabled=!ed;
+  const av=document.getElementById('pp-aviso');
+  if(!ed && av && av.style.display==='none'){ av.style.display='block'; av.textContent='Somente o gestor edita o plano. Você pode consultar os clientes e as semanas.'; }
+  ppRenderResumo();
+  const lista=document.getElementById('pp-lista'); if(!lista) return;
+  if(!ppItens.length){ lista.innerHTML='<div style="padding:30px 20px;text-align:center;font-size:13px;color:var(--text-muted);">'+(ppCarregando?'Carregando...':'Nenhum cliente no plano deste mês. '+(ed?'Digite o nome de um cliente acima para adicionar.':''))+'</div>'; return; }
+  const sem=ppSemanas(ppMes);
+  const view=ppItens.map((it,i)=>({it:it,i:i})).sort((a,b)=>a.it.semana-b.it.semana||a.i-b.i);
+  const dis=ed?'':' disabled';
+  lista.innerHTML=view.map(({it,i})=>{
+    const u=ppUltimaInfo(it.cliente);
+    const opts=sem.map(w=>'<option value="'+w.n+'"'+(w.n===it.semana?' selected':'')+'>Semana '+w.n+' ('+vfEsc(w.label)+')</option>').join('')+(it.semana>sem.length?'<option value="'+it.semana+'" selected>Semana '+it.semana+'</option>':'');
+    const stl="height:32px;width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;padding:0 6px;";
+    return '<div style="display:grid;grid-template-columns:minmax(0,2fr) 130px 190px 170px 44px;gap:12px;align-items:center;padding:10px 20px;border-top:1px solid var(--border);">'+
+      '<div><div style="font-weight:600;font-size:13px;color:var(--text);">'+vfEsc(it.cliente)+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+vfEsc([it.cidade,it.uf].filter(Boolean).join(' - '))+'</div></div>'+
+      '<div><select aria-label="Tipo" onchange="ppSetTipo('+i+',this.value)" style="'+stl+'"'+dis+'><option value="Rack"'+(it.tipo==='Rack'?' selected':'')+'>Rack</option><option value="StreamBlink"'+(it.tipo==='StreamBlink'?' selected':'')+'>StreamBlink</option></select></div>'+
+      '<div><div style="font-size:13px;'+(u.nunca?'color:#C0392B;font-weight:600;':'color:var(--text);')+'">'+vfEsc(u.t)+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+vfEsc(u.sub)+'</div></div>'+
+      '<div><select aria-label="Semana" onchange="ppSetSemana('+i+',this.value)" style="'+stl+'"'+dis+'>'+opts+'</select></div>'+
+      '<div>'+(ed?'<button onclick="ppRemover('+i+')" aria-label="Tirar do plano" title="Tirar do plano" style="width:36px;height:36px;border:none;background:none;color:#C0392B;font-size:16px;cursor:pointer;">&#10005;</button>':'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+async function ppSalvar(){
+  if(!ppEditavel()) return;
+  const btn=document.getElementById('pp-btn-salvar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='Salvando...';
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'savePlanoPreventivas',mes:ppMes,meta:ppMeta,itens:ppItens})});
+    const d=await r.json();
+    if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'falha ao salvar');
+    ppDefinirSujo(false);
+    const sync=document.getElementById('pp-sync'); if(sync) sync.textContent='Salvo por '+d.atualizado_por+' em '+d.atualizado_em;
+    const i=ppMeses.findIndex(x=>x.mes===ppMes); const novo={mes:ppMes,meta:ppMeta,qtd:ppItens.length};
+    if(i>=0) ppMeses[i]=novo; else ppMeses.push(novo);
+    ppPreencherMeses(); ppRenderResumo();
+  }catch(e){ alert('Não foi possível salvar o plano: '+(e.message||e)); }
+  btn.disabled=false; btn.textContent=txt;
+}
 // ============ BUSCA COM AUTOCOMPLETE (telas de Vistorias) ============
 // Usa só os dados que a tela já carregou: não faz chamada extra ao servidor.
 function ptN(n,sing,plur){ n=Number(n)||0; return n+' '+(n===1?sing:plur); }
@@ -12341,6 +12530,42 @@ async function estEnviarEmail(reg){
 
 <!-- MILPLAY -->
 <!-- ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK ===================== -->
+<div id="page-prev-plano" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Plano do mês</h2><span class="dash-sync" id="pp-sync"></span></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span id="pp-sujo" style="display:none;font-size:12px;font-weight:600;color:#C98A00;">Alterações não salvas</span>
+      <button id="pp-btn-salvar" onclick="ppSalvar()" class="btn-new-project">Salvar plano</button>
+    </div>
+  </div>
+  <div style="padding:16px 20px;">
+    <div id="pp-aviso" style="display:none;margin-bottom:14px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-muted);"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+      <div><label for="pp-mes" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Mês do plano</label>
+        <select id="pp-mes" onchange="ppTrocarMes()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;min-width:220px;"></select></div>
+      <div><label for="pp-meta" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Meta de preventivas</label>
+        <input id="pp-meta" type="number" min="0" max="500" oninput="ppMetaMudou()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:120px;font-size:16px;font-weight:700;">
+        <div id="pp-meta-dica" style="font-size:11px;color:var(--text-muted);margin-top:4px;min-height:14px;"></div></div>
+      <button id="pp-btn-distribuir" onclick="ppDistribuir()" class="modal-btn" style="margin-top:20px;">Distribuir nas semanas</button>
+    </div>
+    <div style="margin-top:4px;padding:10px 14px;border-radius:var(--radius-sm);background:rgba(245,184,0,.08);font-size:13px;line-height:1.55;color:var(--text);">Você escolhe os clientes e a semana de cada um, ao longo do mês, e clica em <b>Salvar plano</b>. A semana 1 é a que começa na primeira segunda-feira do mês, e a preventiva que não for concluída na sua semana fica atrasada.</div>
+    <div id="pp-resumo" style="display:flex;flex-wrap:wrap;gap:6px 20px;align-items:baseline;margin-top:18px;font-size:14px;color:var(--text);"></div>
+    <div id="pp-semanas" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+    <div id="pp-add-linha" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:18px;">
+      <div style="flex:1;min-width:260px;max-width:460px;"><label for="pp-add" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Adicionar cliente ao plano</label>
+        <div style="display:flex;"><input id="pp-add" type="text" placeholder="Digite o nome do cliente" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;flex:1;min-width:0;"></div></div>
+      <button onclick="ppAdicionar(true)" class="modal-btn">Adicionar</button>
+    </div>
+    <div style="margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;background:var(--surface);">
+      <div style="min-width:820px;">
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) 130px 190px 170px 44px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Tipo</span><span>Última preventiva</span><span>Semana</span><span></span></div>
+        <div id="pp-lista"></div>
+      </div>
+    </div>
+    <p style="margin:10px 0 0;font-size:12px;color:var(--text-muted);line-height:1.6;">A última preventiva considera o que foi concluído no Painel de Atendimento (preventiva com status Feito), na Vistoria Remota e em Vistorias → Preventiva. O tipo (StreamBlink ou Rack) fica como Rack até a planilha dos clientes StreamBlink ser importada, e você pode trocar na linha.</p>
+  </div>
+</div>
+
 <div id="page-vistoria-remota" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Vistoria Remota Preventiva - StreamBlink</h2><span class="dash-sync" id="vr-sync"></span></div>
