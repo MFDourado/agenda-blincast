@@ -4521,8 +4521,28 @@ function ppDefinirSujo(v){ ppSujo=!!v; const el=document.getElementById('pp-sujo
 // ---------- vencimento e obrigatoriedade ----------
 function ppFimDoMes(mes){ const [a,m]=mes.split('-').map(Number); return new Date(a,m,0); }
 function ppDiasAteFimDoMes(mes){ const hj=new Date(); hj.setHours(0,0,0,0); return Math.max(0,Math.round((ppFimDoMes(mes).getTime()-hj.getTime())/86400000)); }
+// a Ata escreve o nome do cliente de um jeito e o cadastro de outro: casa pelo nome exato, sem "hotel/de/by", por um nome que contém o outro e por erro de digitação
+const PP_ENFEITE=new Set(['hotel','hoteis','de','da','do','das','dos','e','by','ltda','sa','s','a','the']);
+let ppUltimasCli={};
+function ppToks(n){ return ppNorm(n).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(t=>t&&!PP_ENFEITE.has(t)); }
+function ppLev(a,b){ const m=a.length,n=b.length; if(!m) return n; if(!n) return m; let v=[]; for(let j=0;j<=n;j++) v[j]=j; for(let i=1;i<=m;i++){ let ant=v[0]; v[0]=i; for(let j=1;j<=n;j++){ const t=v[j]; v[j]=Math.min(v[j]+1,v[j-1]+1,ant+(a[i-1]===b[j-1]?0:1)); ant=t; } } return v[n]; }
+function ppReindexarUltimas(){
+  ppUltimasCli={}; const cls=(clientes||[]).filter(c=>c&&c.nome); if(!cls.length) return;
+  const porNome=new Map(); cls.forEach(c=>{ const k=ppNorm(c.nome); if(!porNome.has(k)) porNome.set(k,[]); porNome.get(k).push(c); });
+  const exatos=new Set(Object.keys(ppUltimas).filter(k=>porNome.has(k)));
+  const atribui=(c,u)=>{ const k=ppNorm(c.nome); if(!ppUltimasCli[k]||u.d>ppUltimasCli[k].d) ppUltimasCli[k]=u; };
+  Object.keys(ppUltimas).forEach(k=>{
+    const u=ppUltimas[k]; if(porNome.has(k)){ porNome.get(k).forEach(c=>atribui(c,u)); return; }
+    const kt=ppToks(k); if(!kt.length) return; const ks=new Set(kt);
+    let L=cls.filter(c=>{ const t=ppToks(c.nome); return t.length===kt.length&&t.every(x=>ks.has(x)); });
+    if(!L.length){ const C=cls.filter(c=>{ if(exatos.has(ppNorm(c.nome))) return false; const t=ppToks(c.nome), ts=new Set(t); return t.filter(x=>ks.has(x)).length>=2&&(t.every(x=>ks.has(x))||kt.every(x=>ts.has(x))); }); if(C.length===1) L=C; }
+    if(!L.length){ const C=cls.filter(c=>{ if(exatos.has(ppNorm(c.nome))) return false; const a=ppNorm(c.nome), m=Math.max(a.length,k.length); return m>=8&&1-ppLev(a,k)/m>=0.9; }); if(C.length===1) L=C; }
+    L.forEach(c=>atribui(c,u));
+  });
+}
+function ppUltimaDe(nome){ const k=ppNorm(nome); return ppUltimasCli[k]||ppUltimas[k]||null; }
 function ppUltimaDias(nome){
-  const u=ppUltimas[ppNorm(nome)]; if(!u) return null;
+  const u=ppUltimaDe(nome); if(!u) return null;
   const hj=new Date(); hj.setHours(0,0,0,0); return Math.max(0,Math.round((hj.getTime()-new Date(u.d+'T00:00:00').getTime())/86400000));
 }
 function ppPerDias(per){ return Math.round((PP_PER_MESES[per||'']||6)*30.44); }
@@ -4535,7 +4555,7 @@ function ppVencTxt(c,r){
   const d=ppPerDias(r.per)-u; return d>=0?{t:'vence em '+ppTempoTxt(d),atr:false}:{t:'venceu há '+ppTempoTxt(-d),atr:true};
 }
 function ppUltimaInfo(nome){
-  const u=ppUltimas[ppNorm(nome)];
+  const u=ppUltimaDe(nome);
   if(!u) return {t:'nunca',nunca:true,sub:'sem preventiva registrada'};
   const dias=ppUltimaDias(nome);
   const t=dias<1?'hoje':(dias<30?'há '+ptN(dias,'dia','dias'):'há '+ptN(Math.floor(dias/30.44),'mês','meses'));
@@ -4657,22 +4677,29 @@ function prFecharModal(){ document.getElementById('pr-modal').style.display='non
 function prCurvaDe(v){ const t=String(v==null?'':v).trim().toUpperCase(); if(!t) return {v:'C',aviso:'vazio'}; if(t==='A'||t==='B'||t==='C') return {v:t}; return {v:'C',aviso:'invalido'}; }
 function prPerDe(v){ const t=ppNorm(v); if(!t||t==='padrao'||t==='padrao, 6 meses'||t==='6 meses') return {v:''}; const f=PR_PERIODICIDADES.find(p=>ppNorm(p)===t); return f?{v:f}:{v:'',aviso:'invalido'}; }
 function prTipoDe(v,atual){ const t=ppNorm(v); if(t==='streamblink') return {v:'StreamBlink'}; if(t==='rack') return {v:'Rack'}; return {v:atual,aviso:t?'invalido':'vazio'}; }
+function prAchaCabecalho(rows){
+  for(let i=0;i<Math.min(rows.length,15);i++){
+    const n=rows[i].map(x=>ppNorm(x)); const iCli=n.findIndex(x=>x==='cliente'||x==='nome'||x==='nome do cliente');
+    const iCurva=n.findIndex(x=>x.startsWith('curva')), iPer=n.findIndex(x=>x.startsWith('periodicidade'));
+    if(iCli>=0&&(iCurva>=0||iPer>=0)) return {linha:i,iCli:iCli,iCnpj:n.findIndex(x=>x==='cnpj'),iTipo:n.findIndex(x=>x.startsWith('tipo')),iCurva:iCurva,iPer:iPer};
+  }
+  return null;
+}
 async function prImportar(inp){
   const file=inp.files[0]; inp.value=''; if(!file) return;
   if(!ppEditavel()){ alert('Somente o gestor importa regras.'); return; }
   if(typeof XLSX==='undefined'){ alert('A biblioteca de planilhas não carregou. Atualize a página e tente de novo.'); return; }
-  let rows;
-  try{ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'}); const aba=wb.SheetNames.find(n=>ppNorm(n)==='clientes')||wb.SheetNames[0]; rows=XLSX.utils.sheet_to_json(wb.Sheets[aba],{header:1,defval:''}); }
-  catch(e){ alert('Não consegui abrir esse arquivo. Use a planilha baixada pelo botão Baixar planilha (Excel).'); return; }
-  let cab=null;
-  for(let i=0;i<Math.min(rows.length,15)&&!cab;i++){
-    const n=rows[i].map(x=>ppNorm(x)); const iCli=n.findIndex(x=>x==='cliente'||x==='nome'||x==='nome do cliente');
-    const iCurva=n.findIndex(x=>x.startsWith('curva')), iPer=n.findIndex(x=>x.startsWith('periodicidade'));
-    if(iCli>=0&&(iCurva>=0||iPer>=0)) cab={linha:i,iCli:iCli,iCnpj:n.findIndex(x=>x==='cnpj'),iTipo:n.findIndex(x=>x.startsWith('tipo')),iCurva:iCurva,iPer:iPer};
-  }
-  if(!cab){ alert('Não achei as colunas Cliente, Curva ABC e Periodicidade. Use a planilha baixada pelo botão Baixar planilha (Excel).'); return; }
+  // o Google Planilhas baixa TODAS as abas: procura a que tem as colunas Cliente, Curva ABC e Periodicidade (Clientes_Preventivas primeiro)
+  let rows=null, cab=null, abaLida='';
+  try{
+    const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+    const pref=n=>{ const k=ppNorm(n).replace(/[^a-z]/g,''); return k==='clientespreventivas'?0:(k==='clientes'?1:2); };
+    const ordem=wb.SheetNames.map((n,i)=>({n:n,i:i})).sort((a,b)=>pref(a.n)-pref(b.n)||a.i-b.i);
+    for(const o of ordem){ const r=XLSX.utils.sheet_to_json(wb.Sheets[o.n],{header:1,defval:''}); const c=prAchaCabecalho(r); if(c){ rows=r; cab=c; abaLida=o.n; break; } }
+  }catch(e){ alert('Não consegui abrir esse arquivo. Use a planilha da aba Clientes_Preventivas ou a baixada pelo botão Baixar planilha (Excel).'); return; }
+  if(!cab){ alert('Não achei, em nenhuma aba do arquivo, as colunas Cliente, Curva ABC e Periodicidade. Use a aba Clientes_Preventivas ou a planilha baixada pelo botão Baixar planilha (Excel).'); return; }
   const porCnpj={}, porNome={}; (clientes||[]).filter(c=>c&&c.nome&&prAtivo(c)).forEach(c=>{ const d=String(c.cnpj||'').replace(/\D/g,''); if(d.length>=11&&!porCnpj[d]) porCnpj[d]=c; if(!porNome[ppNorm(c.nome)]) porNome[ppNorm(c.nome)]=c; });
-  const achados={}, naoEncontrados=[]; let lidos=0, curvaVazia=0, curvaInvalida=0, perInvalida=0, tipoInvalido=0, repetidos=0;
+  const achados={}, naoEncontrados=[], conflitos=[]; let lidos=0, curvaVazia=0, curvaInvalida=0, perInvalida=0, tipoInvalido=0, repetidos=0;
   rows.slice(cab.linha+1).forEach(l=>{
     const nome=String(l[cab.iCli]||'').trim(); if(!nome) return; lidos++;
     const dig=cab.iCnpj>=0?String(l[cab.iCnpj]||'').replace(/\D/g,''):'';
@@ -4681,17 +4708,18 @@ async function prImportar(inp){
     const atual=prRegraDe(c);
     const cu=cab.iCurva>=0?prCurvaDe(l[cab.iCurva]):{v:atual.curva}, pe=cab.iPer>=0?prPerDe(l[cab.iPer]):{v:atual.per}, ti=cab.iTipo>=0?prTipoDe(l[cab.iTipo],atual.tipo):{v:atual.tipo};
     if(cu.aviso==='vazio') curvaVazia++; if(cu.aviso==='invalido') curvaInvalida++; if(pe.aviso==='invalido') perInvalida++; if(ti.aviso==='invalido') tipoInvalido++;
-    const k=atual.chave; if(achados[k]) repetidos++;
-    achados[k]={c:c,atual:atual,novo:{curva:cu.v,per:pe.v,tipo:ti.v}};
+    const k=atual.chave; if(achados[k]){ repetidos++; const o=achados[k].novo; if(o.curva!==cu.v||o.per!==pe.v||o.tipo!==ti.v) conflitos.push(achados[k].nomeArq+' e '+nome); }
+    achados[k]={c:c,nomeArq:nome,atual:atual,novo:{curva:cu.v,per:pe.v,tipo:ti.v}};
   });
   const mudam=Object.keys(achados).filter(k=>{ const a=achados[k]; return !a.atual.definida||a.atual.curva!==a.novo.curva||a.atual.per!==a.novo.per||a.atual.tipo!==a.novo.tipo; });
   window.__prPendente={achados:achados,mudam:mudam};
   const linha=(rot,n)=>'<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 14px;font-size:13px;border-top:1px solid var(--border);"><span>'+rot+'</span><b>'+n+'</b></div>';
-  let corpo='<h3>Importar planilha preenchida</h3><p style="margin:8px 0 12px;font-size:13px;color:var(--text-muted);line-height:1.55;">O arquivo <b>'+vfEsc(file.name)+'</b> foi conferido pelo CNPJ e, quando não tem CNPJ, pelo nome. Nada foi alterado ainda.</p>'+
+  let corpo='<h3>Importar planilha preenchida</h3><p style="margin:8px 0 12px;font-size:13px;color:var(--text-muted);line-height:1.55;">O arquivo <b>'+vfEsc(file.name)+'</b> (aba <b>'+vfEsc(abaLida)+'</b>) foi conferido pelo CNPJ e, quando não tem CNPJ, pelo nome. Nada foi alterado ainda.</p>'+
     '<div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">'+
     linha('Clientes lidos',lidos).replace('border-top:1px solid var(--border);','')+linha('Vão ser atualizados',mudam.length)+linha('Sem mudança',Object.keys(achados).length-mudam.length)+
-    (repetidos?linha('Linhas repetidas (vale a última)',repetidos):'')+linha('Curva em branco (vira C)',curvaVazia)+linha('Curva fora de A, B ou C (vira C)',curvaInvalida)+linha('Periodicidade fora da lista (vira padrão)',perInvalida)+(tipoInvalido?linha('Tipo fora da lista (mantém o atual)',tipoInvalido):'')+linha('Não encontrados no cadastro',naoEncontrados.length)+'</div>';
+    (repetidos?linha('Linhas com o mesmo CNPJ (vale a última)',repetidos):'')+linha('Curva em branco (vira C)',curvaVazia)+linha('Curva fora de A, B ou C (vira C)',curvaInvalida)+linha('Periodicidade fora da lista (vira padrão)',perInvalida)+(tipoInvalido?linha('Tipo fora da lista (mantém o atual)',tipoInvalido):'')+linha('Não encontrados no cadastro',naoEncontrados.length)+'</div>';
   if(naoEncontrados.length) corpo+='<p style="margin:12px 0 0;font-size:12px;color:var(--text-muted);line-height:1.55;">'+(naoEncontrados.length===1?'Não encontrado, e que fica de fora: ':'Não encontrados, e que ficam de fora: ')+vfEsc(naoEncontrados.slice(0,8).join(', '))+(naoEncontrados.length>8?' e mais '+(naoEncontrados.length-8):'')+'. Corrija o nome ou o CNPJ na planilha, ou cadastre o cliente no BlinTrack.</p>';
+  if(conflitos.length) corpo+='<p style="margin:12px 0 0;font-size:12px;color:var(--text-muted);line-height:1.55;">'+ptN(conflitos.length,'Cliente repetido','Clientes repetidos')+' com valores diferentes (vale a última linha): '+vfEsc(conflitos.slice(0,6).join('; '))+(conflitos.length>6?' e mais '+(conflitos.length-6):'')+'. O mesmo hotel está cadastrado mais de uma vez; confira se a linha que vale é a certa.</p>';
   corpo+='<div class="modal-actions"><button class="modal-btn" onclick="prFecharModal()">Cancelar</button><button class="modal-btn primary" onclick="prAplicarImportacao()"'+(mudam.length?'':' disabled')+'>Aplicar importação</button></div>';
   prModal(corpo);
 }
@@ -4720,16 +4748,17 @@ function ppSemanaPara(cidade){
   ppItens.filter(i=>i.cidade===String(cidade||'')).forEach(i=>{ if(i.semana<=n&&cont[i.semana-1]<cap&&(melhor<0||cont[i.semana-1]<cont[melhor-1])) melhor=i.semana; });
   return melhor>0?melhor:cont.indexOf(Math.min.apply(null,cont))+1;
 }
+function ppChaveItem(it){ const c=ppClientePorNome(it.cliente); return prChave(c?c.cnpj:it.cnpj,it.cliente); }
 function ppCandidatos(){
-  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm));
-  return ppClientes().filter(c=>!no.has(ppNorm(c.nome))&&!rej.has(ppNorm(c.nome))).map(c=>({c:c,r:prRegraDe(c)})).filter(x=>x.r.per==='')
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)), noK=new Set(ppItens.map(ppChaveItem)), vistas=new Set();
+  return ppClientes().filter(c=>{ if(no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))) return false; const k=prChave(c.cnpj,c.nome); if(noK.has(k)||vistas.has(k)) return false; vistas.add(k); return true; }).map(c=>({c:c,r:prRegraDe(c)})).filter(x=>x.r.per==='')
     .sort((a,b)=>PP_CURVA_PESO[a.r.curva]-PP_CURVA_PESO[b.r.curva]||(ppAtraso(b.c,b.r)===ppAtraso(a.c,a.r)?0:(ppAtraso(b.c,b.r)>ppAtraso(a.c,a.r)?1:-1))||String(a.c.nome).localeCompare(String(b.c.nome),'pt-BR'));
 }
 // clientes com periodicidade de contrato entram sozinhos no mês em que vencem; o mensal entra todo mês
 function ppSyncObrigatorios(){
   if(!ppEditavel()||ppPronto) return 0;
-  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)); let add=0;
-  ppClientes().forEach(c=>{ const r=prRegraDe(c); if(!r.definida||!ppObrigatorio(c,r,ppMes)||no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))) return; ppItens.push(ppNovoItem(c,r,'obrigatorio')); add++; });
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)), noK=new Set(ppItens.map(ppChaveItem)); let add=0;
+  ppClientes().forEach(c=>{ const r=prRegraDe(c); if(!r.definida||!ppObrigatorio(c,r,ppMes)||no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))||noK.has(r.chave)) return; noK.add(r.chave); ppItens.push(ppNovoItem(c,r,'obrigatorio')); add++; });
   ppItens.forEach(i=>{ if(i.origem==='sugerido'){ const x=ppInfoItem(i); if(x.r.definida&&ppObrigatorio(x.c,x.r,ppMes)) i.origem='obrigatorio'; } });
   return add;
 }
@@ -4810,6 +4839,7 @@ async function ppCarregarUltimas(){
     const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getUltimasPreventivas');
     ppUltimas=(d&&d.ultimas)?d.ultimas:{};
   }catch(e){ ppUltimas={}; }
+  ppReindexarUltimas();
 }
 function ppAposCarga(){
   const add=ppSyncObrigatorios();
@@ -5084,7 +5114,7 @@ function pvHistorico(it){
   if(it.concluida_por) l.push('Marcada como concluída por <b>'+vfEsc(it.concluida_por)+'</b>, '+vfEsc(pvCurto(it.concluida_em)));
   if(it.confirmada_por) l.push('Confirmada por <b>'+vfEsc(it.confirmada_por)+'</b>, '+vfEsc(pvCurto(it.confirmada_em)));
   if(it.obs&&it.estado==='andamento') l.push('Devolvida: '+vfEsc(it.obs));
-  if((it.estado==='prevista'||it.estado==='andamento')&&it.mes===ppMesAtualISO()){ const u=ppUltimas[ppNorm(it.cliente)]; if(u&&u.d.slice(0,7)===it.mes) l.push('Há registro de preventiva em '+vfEsc(u.d.slice(8,10)+'/'+u.d.slice(5,7))+' ('+vfEsc(u.o)+').'); }
+  if((it.estado==='prevista'||it.estado==='andamento')&&it.mes===ppMesAtualISO()){ const u=ppUltimaDe(it.cliente); if(u&&u.d.slice(0,7)===it.mes) l.push('Há registro de preventiva em '+vfEsc(u.d.slice(8,10)+'/'+u.d.slice(5,7))+' ('+vfEsc(u.o)+').'); }
   return l.length?l.join('<br>'):'<span style="color:var(--text-light)">Sem movimento</span>';
 }
 function pvAcoesHtml(it,i){
