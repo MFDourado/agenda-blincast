@@ -5128,19 +5128,19 @@ function ovRender(){
   const adm=ppEditavel(), itens=d.itens, L=itens.concat(d.anteriores||[]), plano=L;
   const regs=pvReal.filter(ev=>ev.mes===mes&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente))).map(ev=>({tipoLinha:'registro',mes:ev.mes,cliente:ev.cliente,uf:ev.uf||'',tipo:'',semana:0,estado:ev.estado==='andamento'?'aberta':ev.estado,origem:ev.origem,numero:ev.numero,abertura:ev.abertura,conclusao:ev.conclusao}));
   const forasC=regs.filter(x=>x.estado==='concluida'), forasA=regs.filter(x=>x.estado!=='concluida');
-  const N=d.pronto?itens.length:0, real=itens.filter(x=>x.estado==='concluida').length, conf=L.filter(x=>x.estado==='conferir').length;
+  const N=d.pronto?itens.length:0, realPlano=itens.filter(x=>x.estado==='concluida').length, real=realPlano+forasC.length, conf=L.filter(x=>x.estado==='conferir').length;
   const abertas=itens.filter(x=>x.estado==='aberta').length, emAnd=itens.filter(x=>x.estado==='aberta'||x.estado==='andamento').length, prev=itens.filter(x=>x.estado==='prevista').length, late=L.filter(pvAtrasada).length;
   const pct=n=>N?Math.round(n/N*100):0, rotMes=pvMesNome(mes).toLowerCase();
   ppSetHTML('ov-aviso',d.pronto?'':'<div class="ov-aviso"><b>O plano de preventivas de '+vfEsc(rotMes)+' ainda não está pronto.</b> Aqui aparecem as preventivas já realizadas no mês.'+(adm?'<button onclick="pvIrPlano(\'atual\')">Abrir Plano do mês</button>':'')+'</div>');
   const linha=(cor,num,rot,det)=>'<div class="ov-linha"><b style="color:'+cor+'">'+num+'</b><span>'+rot+'</span><em>'+det+'</em></div>';
   let kpi='<div class="ov-kpis"><div>';
-  if(d.pronto) kpi+='<div><span class="ov-big">'+real+'</span><span class="ov-de">de '+N+'</span></div><div class="ov-lbl">'+(real===1?'preventiva realizada':'preventivas realizadas')+', meta do mês</div>';
+  if(d.pronto) kpi+='<div><span class="ov-big">'+real+'</span><span class="ov-de">de '+N+'</span></div><div class="ov-lbl">'+(real===1?'preventiva realizada':'preventivas realizadas')+', meta do mês</div>'+(forasC.length?'<div class="ov-lbl" style="margin-top:4px;font-size:15px;">'+realPlano+' do plano e '+forasC.length+' fora do plano</div>':'');
   else kpi+='<div><span class="ov-big">'+forasC.length+'</span></div><div class="ov-lbl">'+(forasC.length===1?'preventiva realizada':'preventivas realizadas')+' no mês</div>';
   kpi+='</div><div>';
   if(d.pronto){
     kpi+=linha('var(--vd)',pct(real)+'%',(real===1?'concluída':'concluídas'),real+' de '+N);
     kpi+=linha('var(--am)',pct(emAnd)+'%','em andamento',ptN(abertas,'aberta','abertas'));
-    kpi+=linha('var(--tx)',N-real,(N-real===1?'falta':'faltam')+' para a meta',prev+' na fila');
+    kpi+=linha('var(--tx)',Math.max(0,N-real),(N-real===1?'falta':'faltam')+' para a meta',real>=N?'meta batida':prev+' na fila');
     kpi+=linha('var(--az)',conf,'a conferir','aguardando o gestor');
   }
   kpi+=linha('var(--vm)',late,(late===1?'atrasada':'atrasadas'),'de semanas anteriores');
@@ -5191,6 +5191,13 @@ function pvAplicarOrigem(d){
     it.estado=PV_NOMES[Math.max(PV_RANK[it.estadoBase]||0,conc.length?3:(abt.length?1:0))];
   });
 }
+// preventivas realizadas no mês que não são o item do plano daquele cliente
+function pvForaDoPlano(d){
+  if(!d) return []; const plano=d.itens.concat(d.anteriores||[]);
+  return pvReal.filter(ev=>ev.mes===d.mes&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente)));
+}
+// o que conta para a meta: as do plano já confirmadas e as feitas fora do plano
+function pvRealizadas(d){ return d.itens.filter(x=>x.estado==='concluida').length+pvForaDoPlano(d).filter(ev=>ev.estado==='concluida').length; }
 function pvLista(d){ return d?d.itens.concat(d.anteriores||[]):[]; }
 function pvSituacao(it){
   if(it.estado==='concluida') return ['conc','Concluída'];
@@ -5215,16 +5222,16 @@ function pvChipsHtml(L,filtro,fn){
   return [['todas','Tudo'],['atrasadas','Atrasadas'],['conferir','A conferir'],['andamento','Em andamento'],['abertas','Abertas'],['previstas','Previstas'],['concluidas','Concluídas']].map(f=>'<button class="pv-fch'+(filtro===f[0]?' on':'')+'" onclick="'+fn+'(\''+f[0]+'\')">'+f[1]+' ('+c(f[0])+')</button>').join('');
 }
 function pvNumerosHtml(d,fn){
-  const L=pvLista(d), itens=d.itens, N=itens.length;
-  const real=itens.filter(x=>x.estado==='concluida').length, conf=L.filter(x=>x.estado==='conferir').length, late=L.filter(pvAtrasada).length;
-  const confI=itens.filter(x=>x.estado==='conferir').length, lateI=itens.filter(pvAtrasada).length;
-  const seg=(n,c)=>'<i style="height:10px;background:'+c+';width:'+(N?(n/N*100).toFixed(2):0)+'%"></i>';
+  const L=pvLista(d), itens=d.itens, N=itens.length, real=pvRealizadas(d), fora=pvForaDoPlano(d).filter(ev=>ev.estado==='concluida').length, falta=Math.max(0,N-real);
+  const conf=L.filter(x=>x.estado==='conferir').length, late=L.filter(pvAtrasada).length;
+  const g=Math.min(real,N), c=Math.min(itens.filter(x=>x.estado==='conferir').length,N-g), l=Math.min(itens.filter(pvAtrasada).length,N-g-c), r=Math.max(0,N-g-c-l);
+  const seg=(n,cor)=>'<i style="height:10px;background:'+cor+';width:'+(N?(n/N*100).toFixed(2):0)+'%"></i>';
   return '<div class="pv-nums">'+
-    '<button class="pv-nb" onclick="'+fn+'(\'concluidas\',true)"><div class="v" style="color:#17734c">'+real+'<span style="font-size:16px;font-weight:500;color:var(--text-muted)"> de '+N+'</span></div><div class="r">'+(real===1?'concluída e conferida':'concluídas e conferidas')+'</div></button>'+
+    '<button class="pv-nb" onclick="'+fn+'(\'concluidas\',true)"><div class="v" style="color:#17734c">'+real+'<span style="font-size:16px;font-weight:500;color:var(--text-muted)"> de '+N+'</span></div><div class="r">'+(real===1?'concluída e conferida':'concluídas e conferidas')+(fora?' ('+fora+' fora do plano)':'')+'</div></button>'+
     '<button class="pv-nb" onclick="'+fn+'(\'conferir\',true)"><div class="v" style="color:#2a55b8">'+conf+'</div><div class="r">a conferir</div></button>'+
     '<button class="pv-nb" onclick="'+fn+'(\'atrasadas\',true)"><div class="v" style="color:#b8321f">'+late+'</div><div class="r">'+(late===1?'atrasada':'atrasadas')+'</div></button>'+
-    '<div><div class="v">'+(N-real)+'</div><div class="r">'+(N-real===1?'falta':'faltam')+' para a meta</div></div></div>'+
-    '<div class="pv-barra">'+seg(real,'#2fa06f')+seg(confI,'#5b8def')+seg(lateI,'#e4543f')+seg(Math.max(0,N-real-confI-lateI),'#d9d6cb')+'</div>';
+    '<div><div class="v">'+falta+'</div><div class="r">'+(real>=N?'meta batida':(falta===1?'falta':'faltam')+' para a meta')+'</div></div></div>'+
+    '<div class="pv-barra">'+seg(g,'#2fa06f')+seg(c,'#5b8def')+seg(l,'#e4543f')+seg(r,'#d9d6cb')+'</div>';
 }
 function pvTextoAtrasadas(late){
   const at=ppMesAtualISO(), mostrar=late.slice(0,3), mais=late.length>3?' e mais '+(late.length-3):'';
@@ -5271,7 +5278,7 @@ function pvRenderFaixa(){
     return;
   }
   const d=pvDados, L=pvLista(d), adm=ppEditavel(), at=d.mes, rotMes=pvMesNome(at).toLowerCase(), rotProx=pvMesNome(d.proximo.mes).toLowerCase();
-  const late=L.filter(pvAtrasada).sort(pvOrdena), conf=L.filter(x=>x.estado==='conferir'), itens=d.itens, N=itens.length, real=itens.filter(x=>x.estado==='concluida').length;
+  const late=L.filter(pvAtrasada).sort(pvOrdena), conf=L.filter(x=>x.estado==='conferir'), itens=d.itens, N=itens.length, real=pvRealizadas(d);
   pvAplicarEstadoFaixa(late.length);
   const planoAtualPend=!d.pronto, planoProxPend=!d.proximo.pronto;
   const diasFim=Math.max(0,Math.round((ppFimDoMes(at).getTime()-(()=>{const h=new Date();h.setHours(0,0,0,0);return h.getTime();})())/86400000));
