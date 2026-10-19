@@ -205,6 +205,45 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
+.pp-niveis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:6px}
+.pp-nivel{position:relative;text-align:left;padding:16px 18px;border-radius:12px;border:2px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.pp-nivel:hover:not(:disabled){border-color:#bdb8a6}
+.pp-nivel:disabled{cursor:not-allowed;opacity:.6}
+.pp-nivel small{display:block;font-size:12px;font-weight:600;color:var(--text-muted)}
+.pp-nivel b{display:block;font-size:18px;margin-top:2px}
+.pp-nivel .n{display:block;font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1.05;margin-top:8px}
+.pp-nivel em{font-style:normal;font-size:12px;color:var(--text-muted)}
+.pp-nivel.on{border-color:#111;box-shadow:0 0 0 3px var(--gold)}
+.pp-nivel.on::after{content:"Selecionado";position:absolute;top:12px;right:14px;font-size:11px;font-weight:700;background:#111;color:var(--gold);padding:3px 9px;border-radius:99px}
+.pp-chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap;vertical-align:2px;margin-left:4px}
+.pp-chip.rasc{background:rgba(245,184,0,.2);color:#7d5d00}
+.pp-chip.pronto{background:rgba(47,160,111,.16);color:#17734c}
+.pp-curva{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-weight:700;font-size:13px}
+.pp-curva.A{background:#111;color:var(--gold)}
+.pp-curva.B{background:#e8e5d8;color:#3a382f}
+.pp-curva.C{background:#f2f0e9;color:#6b6b63}
+.pp-lock{display:inline-flex;align-items:center;gap:5px;margin-left:4px;padding:2px 8px;border-radius:99px;background:rgba(245,184,0,.1);border:1px solid #ecd68a;font-size:11px;font-weight:700;color:#7d5d00;vertical-align:1px}
+.pp-aviso{margin-top:14px;padding:11px 14px;border-radius:var(--radius-sm);font-size:13px;line-height:1.55}
+.pp-aviso.ouro{background:rgba(245,184,0,.1);border:1px solid #ecd68a}
+.pp-aviso.verde{background:#e5f4ec;border:1px solid #b6dcc7;color:#17543a}
+.pp-aviso.verm{background:#fdebe8;border:1px solid #f0b9b0;color:#7a1f14}
+.pp-novo{background:#fff6d6!important}
+#pp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:3000;background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw}
+.pr-pend{display:inline-block;padding:2px 9px;border-radius:99px;background:#fdebe8;color:#b8321f;font-size:11px;font-weight:700;margin-left:4px;vertical-align:1px}
+@media (max-width:820px){.pp-niveis{grid-template-columns:1fr}}
+@media (max-width:760px){
+.pp-min,.pr-min{min-width:0!important}
+.pp-head,.pr-head{display:none!important}
+#pr-lista{max-height:none!important}
+.pp-row,.pr-row{display:flex!important;flex-wrap:wrap;align-items:flex-end;gap:10px 14px!important;padding:12px 14px!important}
+.pp-row>.pp-c1,.pr-row>.pr-c1{flex:1 1 calc(100% - 56px);min-width:0;align-self:flex-start}
+.pp-row>.pp-cx{order:2;flex:0 0 auto;align-self:flex-start}
+.pp-row>.pp-c{order:3;flex:0 0 auto;min-width:0}
+.pp-row>.pp-cs{flex:1 1 100%}
+.pr-row>.pr-c{order:3;flex:1 1 130px;min-width:0}
+.pr-row>.pr-cc{flex:0 0 84px}
+.pp-c[data-rot]::before,.pr-c[data-rot]::before{content:attr(data-rot);display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:3px}
+}
 .cron-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
 .cron-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);}
 .cron-name{font-size:15px;font-weight:500;}
@@ -410,6 +449,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <button class="snav-btn" id="mt-prev-group" onclick="toggleSubMenu('prev-sub')">Preventivas <span id="arrow-prev-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
 <div id="prev-sub" style="display:none;background:rgba(0,0,0,.15)">
 <button class="snav-btn" id="mt-prev-plano" onclick="switchMainTab('prev-plano');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Plano do mês</button>
+<button class="snav-btn" id="mt-prev-regras" onclick="switchMainTab('prev-regras');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Regras dos clientes</button>
 </div>
 <button class="snav-btn" id="mt-agenda" onclick="switchMainTab('agenda');closeSidebar()">Agenda</button>
     <button class="snav-btn" id="mt-dashboard" onclick="switchMainTab('dashboard');closeSidebar()">Dashboard</button>
@@ -1475,7 +1515,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-plano':'Plano do mês', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-plano':'Plano do mês', 'prev-regras':'Regras dos clientes', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -3029,12 +3069,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','vistoria-remota','prev-plano','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','vistoria-remota','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','vistoria-remota','prev-plano','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria-remota','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3055,6 +3095,7 @@ function switchMainTab(t){
   if(t==='milplay')iniciarMilPlay();
   if(t==='vistoria-remota')iniciarVistoriaRemota();
   if(t==='prev-plano')iniciarPrevPlano();
+  if(t==='prev-regras')iniciarPrevRegras();
   if(t==='entrega-material')iniciarEntregaMaterial();
   if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
@@ -4348,11 +4389,22 @@ function exportarPreventivaPDF(){
   w.document.write(html); w.document.close();
 }
 
-// ============ PLANO DO MÊS (preventivas) ============
+// ============ REGRAS DOS CLIENTES E PLANO DO MÊS (preventivas) ============
 const PP_MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-let ppMes='', ppMeta=0, ppItens=[], ppSujo=false, ppUltimas={}, ppMeses=[], ppIniciou=false, ppCarregando=false;
+const PP_PER_MESES={'Mensal':1,'Bimestral':2,'Trimestral':3,'Semestral':6,'Anual':12,'':6};
+const PP_CURVA_PESO={A:0,B:1,C:2};
+const PP_NIVEIS_DEF=[['simples','Simples','Batível'],['intermediaria','Intermediária','Mais puxada'],['desafio','Desafio','Subir o sarrafo']];
+const PR_PERIODICIDADES=['Mensal','Bimestral','Trimestral','Semestral','Anual'];
+let ppMes='', ppMeta=0, ppNivel='', ppNiveis={simples:20,intermediaria:30,desafio:45}, ppItens=[], ppRejeitados=[], ppPronto=false, ppProntoPor='', ppProntoEm='', ppSujo=false, ppUltimas={}, ppMeses=[], ppIniciou=false, ppCarregando=false, ppNovos=[];
+let prRegras={}, prAlt=new Set(), prErro='', prVisiveis=[];
 function ppNorm(t){ return vfNorm(t).replace(/\s+/g,' '); }
 function ppEditavel(){ return !!(usuarioLogado && usuarioLogado.perfil==='admin'); }
+// só troca o HTML quando mudou: redesenhar no meio de um clique faria o clique se perder
+function ppSetHTML(id,html){ const e=document.getElementById(id); if(e&&e._h!==html){ e._h=html; e.innerHTML=html; } }
+function ppToast(msg){
+  let e=document.getElementById('pp-toast'); if(!e){ e=document.createElement('div'); e.id='pp-toast'; document.body.appendChild(e); }
+  e.textContent=msg; e.style.display='block'; clearTimeout(ppToast._t); ppToast._t=setTimeout(()=>{ e.style.display='none'; },4200);
+}
 function ppMesAtualISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function ppSomaMes(mes,n){ const [a,m]=mes.split('-').map(Number); const d=new Date(a,m-1+n,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function ppRotuloMes(mes){ const [a,m]=mes.split('-').map(Number); return PP_MESES[m-1]+' de '+a; }
@@ -4368,34 +4420,304 @@ function ppSemanas(mes){
   }
   return out;
 }
-function ppDefinirSujo(v){
-  ppSujo=!!v;
-  const el=document.getElementById('pp-sujo'); if(el) el.style.display=ppSujo?'inline':'none';
+function ppDefinirSujo(v){ ppSujo=!!v; const el=document.getElementById('pp-sujo'); if(el) el.style.display=ppSujo?'inline':'none'; }
+
+// ---------- vencimento e obrigatoriedade ----------
+function ppFimDoMes(mes){ const [a,m]=mes.split('-').map(Number); return new Date(a,m,0); }
+function ppDiasAteFimDoMes(mes){ const hj=new Date(); hj.setHours(0,0,0,0); return Math.max(0,Math.round((ppFimDoMes(mes).getTime()-hj.getTime())/86400000)); }
+function ppUltimaDias(nome){
+  const u=ppUltimas[ppNorm(nome)]; if(!u) return null;
+  const hj=new Date(); hj.setHours(0,0,0,0); return Math.max(0,Math.round((hj.getTime()-new Date(u.d+'T00:00:00').getTime())/86400000));
+}
+function ppPerDias(per){ return Math.round((PP_PER_MESES[per||'']||6)*30.44); }
+function ppAtraso(c,r){ const u=ppUltimaDias(c.nome); return u===null?Infinity:u-ppPerDias(r.per); }
+function ppVenceNoMes(c,r,mes){ const u=ppUltimaDias(c.nome); return u===null||u+ppDiasAteFimDoMes(mes)>=ppPerDias(r.per); }
+function ppObrigatorio(c,r,mes){ return r.per==='Mensal'||(r.per!==''&&ppVenceNoMes(c,r,mes)); }
+function ppTempoTxt(n){ return n<=60?ptN(n,'dia','dias'):ptN(Math.round(n/30.44),'mês','meses'); }
+function ppVencTxt(c,r){
+  const u=ppUltimaDias(c.nome); if(u===null) return {t:'nunca vistoriado',atr:true};
+  const d=ppPerDias(r.per)-u; return d>=0?{t:'vence em '+ppTempoTxt(d),atr:false}:{t:'venceu há '+ppTempoTxt(-d),atr:true};
+}
+function ppUltimaInfo(nome){
+  const u=ppUltimas[ppNorm(nome)];
+  if(!u) return {t:'nunca',nunca:true,sub:'sem preventiva registrada'};
+  const dias=ppUltimaDias(nome);
+  const t=dias<1?'hoje':(dias<30?'há '+ptN(dias,'dia','dias'):'há '+ptN(Math.floor(dias/30.44),'mês','meses'));
+  return {t:t,nunca:false,sub:u.d.slice(8,10)+'/'+u.d.slice(5,7)+'/'+u.d.slice(0,4)+', '+u.o};
+}
+
+// ---------- regras dos clientes: curva ABC, periodicidade e tipo ----------
+function prChave(cnpj,nome){ const d=String(cnpj||'').replace(/\D/g,''); return d.length>=11?d:'n:'+ppNorm(nome); }
+function prAtivo(c){ return String((c&&c.status)||'ativo').toLowerCase()!=='inativo'; }
+function prTipoSugerido(c){ return /stb/i.test(String((c&&c.produto)||''))?'StreamBlink':'Rack'; }
+function prRegraDe(c){
+  const k=prChave(c.cnpj,c.nome), r=prRegras[k];
+  return r?{chave:k,curva:r.curva,per:r.per,tipo:r.tipo,definida:true}:{chave:k,curva:'C',per:'',tipo:prTipoSugerido(c),definida:false};
+}
+async function prGarantirClientes(){ if(!Array.isArray(clientes)||!clientes.length){ try{ await loadClientes(); }catch(e){} } }
+async function prCarregarRegras(){
+  try{
+    const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getRegrasPreventivas');
+    if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'resposta vazia');
+    prRegras={}; (d.regras||[]).forEach(r=>{ prRegras[r.chave]={curva:r.curva,per:r.periodicidade||'',tipo:r.tipo}; });
+    prAlt=new Set(); prErro=''; return true;
+  }catch(e){ prErro=(e&&e.message)?e.message:String(e); return false; }
+}
+function prOrdenados(soPorNome){
+  const l=(clientes||[]).filter(c=>c&&c.nome&&prAtivo(c));
+  return l.sort((a,b)=>{ const pa=(soPorNome||prRegraDe(a).definida)?1:0, pb=(soPorNome||prRegraDe(b).definida)?1:0; return pa-pb||String(a.nome).localeCompare(String(b.nome),'pt-BR'); });
+}
+function prDefinirSujo(v){ const el=document.getElementById('pr-sujo'); if(el) el.style.display=v?'inline':'none'; }
+async function iniciarPrevRegras(){
+  if(!ppIniciou){ ppMes=ppSomaMes(ppMesAtualISO(),1); ppIniciou=true; }
+  const sync=document.getElementById('pr-sync'); if(sync) sync.textContent='Carregando...';
+  await prGarantirClientes();
+  await Promise.all([ppCarregarUltimas(), prCarregarRegras()]);
+  if(sync) sync.textContent=prErro?'Erro ao carregar':'Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  prDefinirSujo(false); prRender();
+}
+function prRender(){
+  const ed=ppEditavel();
+  const ctl=(id,show)=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; };
+  ctl('pr-btn-salvar',ed); ctl('pr-btn-importar',ed);
+  const av=document.getElementById('pr-aviso');
+  if(av){
+    if(prErro){ av.style.display='block'; av.textContent='Não foi possível carregar as regras: '+prErro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
+    else if(!ed){ av.style.display='block'; av.textContent='Somente o gestor edita as regras. Você pode consultar a curva, a periodicidade e o tipo de cada cliente.'; }
+    else av.style.display='none';
+  }
+  const mesRot=ppRotuloMes(ppMes||ppSomaMes(ppMesAtualISO(),1)).split(' de ')[0];
+  const colMes=document.getElementById('pr-col-mes'); if(colMes) colMes.textContent='Em '+mesRot.toLowerCase();
+  const todos=prOrdenados(false);
+  const pend=todos.filter(c=>!prRegraDe(c).definida);
+  ppSetHTML('pr-pendencias', pend.length&&ed?'<div class="pp-aviso verm"><b>'+ptN(pend.length,'cliente ainda sem regras definidas','clientes ainda sem regras definidas')+'.</b> '+(pend.length===1?'Até você preencher, conta':'Até você preencher, contam')+' como curva C e ciclo de 6 meses. <button class="modal-btn" style="height:30px;margin-left:8px;" onclick="prConfirmarPadrao()">Confirmar o padrão para todos os pendentes</button></div>':'');
+  const q=ppNorm(document.getElementById('pr-busca').value), fc=document.getElementById('pr-fcurva').value, fp=document.getElementById('pr-fper').value, so=document.getElementById('pr-fpend').checked;
+  prVisiveis=todos.filter(c=>{ const r=prRegraDe(c); return (!q||ppNorm(c.nome).includes(q))&&(!fc||r.curva===fc)&&(!fp||(fp==='padrao'?r.per==='':r.per===fp))&&(!so||!r.definida); });
+  document.getElementById('pr-cont').textContent=ptN(prVisiveis.length,'cliente','clientes')+' de '+todos.length;
+  const dis=ed?'':' disabled';
+  const stl="height:32px;width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;padding:0 6px;";
+  const mesISO=ppMes||ppSomaMes(ppMesAtualISO(),1);
+  ppSetHTML('pr-lista', prVisiveis.length?prVisiveis.map((c,i)=>{
+    const r=prRegraDe(c), u=ppUltimaInfo(c.nome);
+    const optP=['',...PR_PERIODICIDADES].map(p=>'<option value="'+p+'"'+(r.per===p?' selected':'')+'>'+(p||'Padrão, 6 meses')+'</option>').join('');
+    const local=[c.cidade,(c.uf||c.estado)].filter(Boolean).join(' - ')+(c.produto?' ('+c.produto+')':'');
+    const noMes=ppObrigatorio(c,r,mesISO)?'<span class="pp-lock">Obrigatório</span>':'<span style="color:var(--text-muted);font-size:12px;">'+(r.per===''?'Entra por sugestão':'Ainda não vence')+'</span>';
+    return '<div class="pr-row" style="display:grid;grid-template-columns:minmax(0,2fr) 140px 90px 170px 190px 150px;gap:12px;align-items:center;padding:10px 20px;border-top:1px solid var(--border);">'+
+      '<div class="pr-c1"><div style="font-weight:600;font-size:13px;color:var(--text);">'+vfEsc(c.nome)+(r.definida?'':' <span class="pr-pend">Preencher</span>')+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+vfEsc(local)+'</div></div>'+
+      '<div class="pr-c" data-rot="Tipo"><select aria-label="Tipo" onchange="prSetI('+i+',\'tipo\',this.value)" style="'+stl+'"'+dis+'><option value="Rack"'+(r.tipo==='Rack'?' selected':'')+'>Rack</option><option value="StreamBlink"'+(r.tipo==='StreamBlink'?' selected':'')+'>StreamBlink</option></select></div>'+
+      '<div class="pr-c pr-cc" data-rot="Curva"><select aria-label="Curva" onchange="prSetI('+i+',\'curva\',this.value)" style="'+stl+'"'+dis+'><option'+(r.curva==='A'?' selected':'')+'>A</option><option'+(r.curva==='B'?' selected':'')+'>B</option><option'+(r.curva==='C'?' selected':'')+'>C</option></select></div>'+
+      '<div class="pr-c" data-rot="Periodicidade"><select aria-label="Periodicidade" onchange="prSetI('+i+',\'per\',this.value)" style="'+stl+'"'+dis+'>'+optP+'</select></div>'+
+      '<div class="pr-c" data-rot="Última preventiva" style="font-size:13px;">'+(u.nunca?'<span style="color:#C0392B;font-weight:600;">nunca</span>':vfEsc(u.t))+'</div>'+
+      '<div class="pr-c" data-rot="Em '+vfEsc(mesRot.toLowerCase())+'">'+noMes+'</div></div>';
+  }).join(''):'<div style="padding:30px 20px;text-align:center;font-size:13px;color:var(--text-muted);">Nenhum cliente com esses filtros.</div>');
+}
+function prSetI(i,campo,valor){
+  if(!ppEditavel()) return; const c=prVisiveis[i]; if(!c) return;
+  const r=prRegraDe(c); const novo={curva:r.curva,per:r.per,tipo:r.tipo}; novo[campo]=valor;
+  prRegras[r.chave]=novo; prAlt.add(r.chave); prDefinirSujo(true); prRender();
+}
+function prConfirmarPadrao(){
+  if(!ppEditavel()) return;
+  const pend=prOrdenados(false).filter(c=>!prRegraDe(c).definida);
+  if(!pend.length) return;
+  if(!confirm(ptN(pend.length,'cliente vai','clientes vão')+' ficar com curva C, ciclo de 6 meses e o tipo sugerido pelo produto do cadastro. Continuar?')) return;
+  pend.forEach(c=>{ const r=prRegraDe(c); prRegras[r.chave]={curva:'C',per:'',tipo:r.tipo}; prAlt.add(r.chave); });
+  prDefinirSujo(true); prRender();
+}
+async function prSalvar(){
+  if(!ppEditavel()||!prAlt.size) return;
+  const porChave={}; (clientes||[]).forEach(c=>{ porChave[prChave(c.cnpj,c.nome)]=c; });
+  const lista=[]; prAlt.forEach(k=>{ const c=porChave[k], r=prRegras[k]; if(c&&r) lista.push({cliente:c.nome,cnpj:c.cnpj||'',curva:r.curva,periodicidade:r.per,tipo:r.tipo}); });
+  const btn=document.getElementById('pr-btn-salvar'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Salvando...';
+  let ok=false;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveRegrasPreventivas',regras:lista})});
+    const d=await r.json(); if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'falha ao salvar');
+    prAlt=new Set(); prDefinirSujo(false); ok=true;
+    const sync=document.getElementById('pr-sync'); if(sync) sync.textContent='Salvo por '+d.atualizado_por+' em '+d.atualizado_em;
+    ppToast(ptN(lista.length,'regra salva','regras salvas')+'.'); prRender();
+  }catch(e){ alert('Não foi possível salvar as regras: '+(e.message||e)); }
+  btn.disabled=false; btn.textContent=txt; return ok;
+}
+function prBaixarPlanilha(){
+  if(typeof XLSX==='undefined'){ alert('A biblioteca de planilhas não carregou. Atualize a página e tente de novo.'); return; }
+  const cab=['Cliente','CNPJ','Cidade','UF','Produto no cadastro','Tipo (confira)','Curva ABC','Periodicidade','Última preventiva (só informativo)'];
+  const linhas=prOrdenados(true).map(c=>{ const r=prRegraDe(c), u=ppUltimaInfo(c.nome); return [c.nome,c.cnpj||'',c.cidade||'',c.uf||c.estado||'',c.produto||'',r.tipo,r.definida?r.curva:'',r.definida?r.per:'',u.nunca?'nunca':u.t+' ('+u.sub+')']; });
+  const ws=XLSX.utils.aoa_to_sheet([cab,...linhas]);
+  ws['!cols']=[{wch:34},{wch:20},{wch:22},{wch:6},{wch:18},{wch:16},{wch:11},{wch:15},{wch:38}];
+  const ajuda=[['Como preencher'],[''],
+    ['Preencha só as colunas Tipo, Curva ABC e Periodicidade. As outras servem para você se localizar.'],
+    ['Tipo: StreamBlink ou Rack. A coluna já vem sugerida pelo produto do cadastro (STB vira StreamBlink). Confira cliente por cliente.'],
+    ['Curva ABC: A, B ou C. Em branco vale C.'],
+    ['Periodicidade: Mensal, Bimestral, Trimestral, Semestral ou Anual. Em branco vale o plano padrão, de 6 meses.'],
+    ['Não mude o CNPJ nem o nome do cliente: é por eles que o sistema reconhece cada linha.'],
+    ['Depois de preencher, volte em Preventivas, Regras dos clientes e use o botão Importar planilha preenchida.']];
+  const ws2=XLSX.utils.aoa_to_sheet(ajuda); ws2['!cols']=[{wch:120}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Clientes'); XLSX.utils.book_append_sheet(wb,ws2,'Como preencher');
+  XLSX.writeFile(wb,'Regras_preventivas_clientes_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+function prModal(html){ document.getElementById('pr-modal-corpo').innerHTML=html; document.getElementById('pr-modal').style.display='flex'; }
+function prFecharModal(){ document.getElementById('pr-modal').style.display='none'; window.__prPendente=null; }
+function prCurvaDe(v){ const t=String(v==null?'':v).trim().toUpperCase(); if(!t) return {v:'C',aviso:'vazio'}; if(t==='A'||t==='B'||t==='C') return {v:t}; return {v:'C',aviso:'invalido'}; }
+function prPerDe(v){ const t=ppNorm(v); if(!t||t==='padrao'||t==='padrao, 6 meses'||t==='6 meses') return {v:''}; const f=PR_PERIODICIDADES.find(p=>ppNorm(p)===t); return f?{v:f}:{v:'',aviso:'invalido'}; }
+function prTipoDe(v,atual){ const t=ppNorm(v); if(t==='streamblink') return {v:'StreamBlink'}; if(t==='rack') return {v:'Rack'}; return {v:atual,aviso:t?'invalido':'vazio'}; }
+async function prImportar(inp){
+  const file=inp.files[0]; inp.value=''; if(!file) return;
+  if(!ppEditavel()){ alert('Somente o gestor importa regras.'); return; }
+  if(typeof XLSX==='undefined'){ alert('A biblioteca de planilhas não carregou. Atualize a página e tente de novo.'); return; }
+  let rows;
+  try{ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'}); const aba=wb.SheetNames.find(n=>ppNorm(n)==='clientes')||wb.SheetNames[0]; rows=XLSX.utils.sheet_to_json(wb.Sheets[aba],{header:1,defval:''}); }
+  catch(e){ alert('Não consegui abrir esse arquivo. Use a planilha baixada pelo botão Baixar planilha (Excel).'); return; }
+  let cab=null;
+  for(let i=0;i<Math.min(rows.length,15)&&!cab;i++){
+    const n=rows[i].map(x=>ppNorm(x)); const iCli=n.findIndex(x=>x==='cliente'||x==='nome'||x==='nome do cliente');
+    const iCurva=n.findIndex(x=>x.startsWith('curva')), iPer=n.findIndex(x=>x.startsWith('periodicidade'));
+    if(iCli>=0&&(iCurva>=0||iPer>=0)) cab={linha:i,iCli:iCli,iCnpj:n.findIndex(x=>x==='cnpj'),iTipo:n.findIndex(x=>x.startsWith('tipo')),iCurva:iCurva,iPer:iPer};
+  }
+  if(!cab){ alert('Não achei as colunas Cliente, Curva ABC e Periodicidade. Use a planilha baixada pelo botão Baixar planilha (Excel).'); return; }
+  const porCnpj={}, porNome={}; (clientes||[]).filter(c=>c&&c.nome&&prAtivo(c)).forEach(c=>{ const d=String(c.cnpj||'').replace(/\D/g,''); if(d.length>=11&&!porCnpj[d]) porCnpj[d]=c; if(!porNome[ppNorm(c.nome)]) porNome[ppNorm(c.nome)]=c; });
+  const achados={}, naoEncontrados=[]; let lidos=0, curvaVazia=0, curvaInvalida=0, perInvalida=0, tipoInvalido=0, repetidos=0;
+  rows.slice(cab.linha+1).forEach(l=>{
+    const nome=String(l[cab.iCli]||'').trim(); if(!nome) return; lidos++;
+    const dig=cab.iCnpj>=0?String(l[cab.iCnpj]||'').replace(/\D/g,''):'';
+    const c=(dig.length>=11&&porCnpj[dig])||porNome[ppNorm(nome)];
+    if(!c){ naoEncontrados.push(nome); return; }
+    const atual=prRegraDe(c);
+    const cu=cab.iCurva>=0?prCurvaDe(l[cab.iCurva]):{v:atual.curva}, pe=cab.iPer>=0?prPerDe(l[cab.iPer]):{v:atual.per}, ti=cab.iTipo>=0?prTipoDe(l[cab.iTipo],atual.tipo):{v:atual.tipo};
+    if(cu.aviso==='vazio') curvaVazia++; if(cu.aviso==='invalido') curvaInvalida++; if(pe.aviso==='invalido') perInvalida++; if(ti.aviso==='invalido') tipoInvalido++;
+    const k=atual.chave; if(achados[k]) repetidos++;
+    achados[k]={c:c,atual:atual,novo:{curva:cu.v,per:pe.v,tipo:ti.v}};
+  });
+  const mudam=Object.keys(achados).filter(k=>{ const a=achados[k]; return !a.atual.definida||a.atual.curva!==a.novo.curva||a.atual.per!==a.novo.per||a.atual.tipo!==a.novo.tipo; });
+  window.__prPendente={achados:achados,mudam:mudam};
+  const linha=(rot,n)=>'<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 14px;font-size:13px;border-top:1px solid var(--border);"><span>'+rot+'</span><b>'+n+'</b></div>';
+  let corpo='<h3>Importar planilha preenchida</h3><p style="margin:8px 0 12px;font-size:13px;color:var(--text-muted);line-height:1.55;">O arquivo <b>'+vfEsc(file.name)+'</b> foi conferido pelo CNPJ e, quando não tem CNPJ, pelo nome. Nada foi alterado ainda.</p>'+
+    '<div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">'+
+    linha('Clientes lidos',lidos).replace('border-top:1px solid var(--border);','')+linha('Vão ser atualizados',mudam.length)+linha('Sem mudança',Object.keys(achados).length-mudam.length)+
+    (repetidos?linha('Linhas repetidas (vale a última)',repetidos):'')+linha('Curva em branco (vira C)',curvaVazia)+linha('Curva fora de A, B ou C (vira C)',curvaInvalida)+linha('Periodicidade fora da lista (vira padrão)',perInvalida)+(tipoInvalido?linha('Tipo fora da lista (mantém o atual)',tipoInvalido):'')+linha('Não encontrados no cadastro',naoEncontrados.length)+'</div>';
+  if(naoEncontrados.length) corpo+='<p style="margin:12px 0 0;font-size:12px;color:var(--text-muted);line-height:1.55;">'+(naoEncontrados.length===1?'Não encontrado, e que fica de fora: ':'Não encontrados, e que ficam de fora: ')+vfEsc(naoEncontrados.slice(0,8).join(', '))+(naoEncontrados.length>8?' e mais '+(naoEncontrados.length-8):'')+'. Corrija o nome ou o CNPJ na planilha, ou cadastre o cliente no BlinTrack.</p>';
+  corpo+='<div class="modal-actions"><button class="modal-btn" onclick="prFecharModal()">Cancelar</button><button class="modal-btn primary" onclick="prAplicarImportacao()"'+(mudam.length?'':' disabled')+'>Aplicar importação</button></div>';
+  prModal(corpo);
+}
+async function prAplicarImportacao(){
+  const p=window.__prPendente; if(!p||!p.mudam.length) return;
+  p.mudam.forEach(k=>{ prRegras[k]=p.achados[k].novo; prAlt.add(k); });
+  const n=p.mudam.length; prFecharModal();
+  const ok=await prSalvar();
+  if(ok) ppToast('Importação aplicada em '+ptN(n,'cliente','clientes')+'.');
+}
+
+// ---------- plano do mês ----------
+function ppClientes(){ return (clientes||[]).filter(c=>c&&c.nome&&prAtivo(c)); }
+function ppClientePorNome(n){ const k=ppNorm(n); return (clientes||[]).find(c=>c&&ppNorm(c.nome)===k)||null; }
+function ppInfoItem(it){
+  const c=ppClientePorNome(it.cliente);
+  if(c) return {c:c,r:prRegraDe(c)};
+  return {c:{nome:it.cliente,cidade:it.cidade,uf:it.uf,cnpj:it.cnpj},r:{curva:'C',per:'',tipo:it.tipo||'Rack',definida:false}};
+}
+function ppNovoItem(c,r,origem){
+  return {cliente:String(c.nome),cnpj:String(c.cnpj||''),cidade:String(c.cidade||''),uf:String(c.uf||c.estado||''),tipo:r.tipo,semana:ppSemanaPara(c.cidade),origem:origem};
+}
+function ppSemanaPara(cidade){
+  const n=ppSemanas(ppMes).length||1, cont=new Array(n).fill(0); ppItens.forEach(i=>{ if(i.semana>=1&&i.semana<=n) cont[i.semana-1]++; });
+  const cap=Math.max(1,Math.ceil((ppItens.length+1)/n)); let melhor=-1;
+  ppItens.filter(i=>i.cidade===String(cidade||'')).forEach(i=>{ if(i.semana<=n&&cont[i.semana-1]<cap&&(melhor<0||cont[i.semana-1]<cont[melhor-1])) melhor=i.semana; });
+  return melhor>0?melhor:cont.indexOf(Math.min.apply(null,cont))+1;
+}
+function ppCandidatos(){
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm));
+  return ppClientes().filter(c=>!no.has(ppNorm(c.nome))&&!rej.has(ppNorm(c.nome))).map(c=>({c:c,r:prRegraDe(c)})).filter(x=>x.r.per==='')
+    .sort((a,b)=>PP_CURVA_PESO[a.r.curva]-PP_CURVA_PESO[b.r.curva]||(ppAtraso(b.c,b.r)===ppAtraso(a.c,a.r)?0:(ppAtraso(b.c,b.r)>ppAtraso(a.c,a.r)?1:-1))||String(a.c.nome).localeCompare(String(b.c.nome),'pt-BR'));
+}
+// clientes com periodicidade de contrato entram sozinhos no mês em que vencem; o mensal entra todo mês
+function ppSyncObrigatorios(){
+  if(!ppEditavel()||ppPronto) return 0;
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)); let add=0;
+  ppClientes().forEach(c=>{ const r=prRegraDe(c); if(!r.definida||!ppObrigatorio(c,r,ppMes)||no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))) return; ppItens.push(ppNovoItem(c,r,'obrigatorio')); add++; });
+  ppItens.forEach(i=>{ if(i.origem==='sugerido'){ const x=ppInfoItem(i); if(x.r.definida&&ppObrigatorio(x.c,x.r,ppMes)) i.origem='obrigatorio'; } });
+  return add;
+}
+function ppCompletar(){
+  let add=0; const novos=[];
+  while(ppNivel&&ppItens.length<ppMeta){ const nx=ppCandidatos()[0]; if(!nx) break; ppItens.push(ppNovoItem(nx.c,nx.r,'sugerido')); novos.push(nx.c.nome); add++; }
+  ppMarcarNovos(novos); return add;
+}
+function ppMarcarNovos(nomes){ if(!nomes.length) return; ppNovos=nomes.map(ppNorm); setTimeout(()=>{ ppNovos=[]; ppRender(); },1800); }
+function ppEscolherNivel(k){
+  if(ppPronto||!ppEditavel()) return;
+  ppNivel=k; ppMeta=ppNiveis[k]; const obr=ppSyncObrigatorios(); const add=ppCompletar(); ppDefinirSujo(true); ppRender();
+  if(add) ppToast(ptN(add,'cliente sugerido','clientes sugeridos')+' para completar '+ppMeta+'.');
+  else if(ppItens.length>ppMeta) ppToast('A lista já passou da meta de '+ppMeta+'. Use o X para tirar.');
+}
+function ppAjustarMetas(){ const p=document.getElementById('pp-metas'); p.style.display=p.style.display==='flex'?'none':'flex'; ppRender(); }
+function ppMudouMetas(){
+  ['simples','intermediaria','desafio'].forEach(k=>{ const v=parseInt(document.getElementById('pp-m-'+k).value,10); if(v>0) ppNiveis[k]=Math.min(300,v); });
+  if(ppNivel){ ppMeta=ppNiveis[ppNivel]; ppCompletar(); }
+  ppDefinirSujo(true); ppRender();
+}
+function ppTirar(i){
+  if(ppPronto||!ppEditavel()) return; const it=ppItens[i]; if(!it) return;
+  if(it.origem==='obrigatorio'&&!confirm(it.cliente+' está no plano por contrato ('+String(ppInfoItem(it).r.per||'padrão').toLowerCase()+'). Tirar mesmo assim?')) return;
+  ppItens.splice(i,1); if(!ppRejeitados.some(x=>ppNorm(x)===ppNorm(it.cliente))) ppRejeitados.push(it.cliente);
+  let msg=it.cliente+' saiu do plano.';
+  if(ppNivel&&ppItens.length<ppMeta){ const nx=ppCandidatos()[0]; if(nx){ ppItens.push(ppNovoItem(nx.c,nx.r,'sugerido')); ppMarcarNovos([nx.c.nome]); msg=nx.c.nome+' entrou no lugar de '+it.cliente+'.'; } }
+  ppDefinirSujo(true); ppRender(); ppToast(msg);
+}
+function ppSetSemana(i,v){ if(ppPronto||!ppEditavel()||!ppItens[i]) return; ppItens[i].semana=parseInt(v,10)||1; ppDefinirSujo(true); ppRender(); }
+// Divide os clientes em partes iguais pelas semanas, mantendo a mesma cidade junta quando ela cabe numa semana.
+function ppDistribuir(){
+  if(ppPronto||!ppEditavel()||!ppItens.length) return;
+  if(!confirm('Distribuir os clientes nas semanas vai substituir as semanas que você escolheu. Continuar?')) return;
+  const n=ppSemanas(ppMes).length||1, cap=Math.max(1,Math.ceil(ppItens.length/n));
+  const ord=ppItens.slice().sort((a,b)=>(a.uf+a.cidade+a.cliente).localeCompare(b.uf+b.cidade+b.cliente,'pt-BR'));
+  const grupos=[]; ord.forEach(c=>{ const g=grupos[grupos.length-1]; if(g&&g[0].uf===c.uf&&g[0].cidade===c.cidade) g.push(c); else grupos.push([c]); });
+  let sem=1, usados=0;
+  grupos.forEach(g=>{ if(g.length<=cap&&usados+g.length>cap&&sem<n){ sem++; usados=0; } g.forEach(c=>{ if(usados>=cap&&sem<n){ sem++; usados=0; } c.semana=sem; usados++; }); });
+  ppDefinirSujo(true); ppRender();
+}
+function ppItensAuto(){
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente)));
+  return ppClientes().filter(c=>!no.has(ppNorm(c.nome))).map(c=>{
+    const r=prRegraDe(c), v=ppVencTxt(c,r), local=[c.cidade,(c.uf||c.estado)].filter(Boolean).join(' - ');
+    return {tipo:'Cliente',texto:String(c.nome),sub:(local?local+', ':'')+'curva '+r.curva+', '+(r.per||'padrão')+', '+v.t};
+  });
+}
+function ppAdicionar(avisar){
+  if(ppPronto||!ppEditavel()) return;
+  const inp=document.getElementById('pp-add'); const v=ppNorm(inp.value); if(!v) return;
+  const c=ppClientes().find(x=>ppNorm(x.nome)===v);
+  if(!c){ if(avisar!==false) alert('Escolha um cliente da lista que aparece enquanto você digita.'); return; }
+  if(ppItens.some(i=>ppNorm(i.cliente)===v)){ alert('Esse cliente já está no plano deste mês.'); inp.value=''; return; }
+  ppItens.push(ppNovoItem(c,prRegraDe(c),'manual')); ppRejeitados=ppRejeitados.filter(x=>ppNorm(x)!==v); ppMarcarNovos([c.nome]);
+  inp.value=''; ppDefinirSujo(true); ppRender(); ppToast(c.nome+' foi acrescentado ao plano.'); inp.focus();
 }
 function ppPreencherMeses(){
   const sel=document.getElementById('pp-mes'); if(!sel) return;
-  const atual=ppMesAtualISO(); const guardado=sel.value;
-  let html='';
+  const atual=ppMesAtualISO(); const guardado=sel.value; let html='';
   for(let i=-1;i<=12;i++){
     const m=ppSomaMes(atual,i); const info=ppMeses.find(x=>x.mes===m);
-    const marca=(i===0?' (mês atual)':'')+(info&&info.qtd?' - '+ptN(info.qtd,'cliente','clientes')+', meta '+info.meta:'');
+    const marca=(i===0?' (mês atual)':'')+(info&&info.qtd?' - '+ptN(info.qtd,'cliente','clientes'):'');
     html+='<option value="'+m+'">'+vfEsc(ppRotuloMes(m)+marca)+'</option>';
   }
-  sel.innerHTML=html;
-  sel.value=guardado||ppMes||ppSomaMes(atual,1);
-  ppMes=sel.value;
+  sel.innerHTML=html; sel.value=guardado||ppMes||ppSomaMes(atual,1); ppMes=sel.value;
 }
 async function iniciarPrevPlano(){
   if(!ppIniciou){ ppMes=ppSomaMes(ppMesAtualISO(),1); ppIniciou=true; }
   ppPreencherMeses();
   vfIniciar('pp-add', ppItensAuto, ()=>ppAdicionar(false));
-  await Promise.all([ppCarregarUltimas(), ppCarregarMes()]);
+  await prGarantirClientes();
+  await Promise.all([ppCarregarUltimas(), prCarregarRegras(), ppCarregarMes()]);
+  ppAposCarga();
 }
 async function ppCarregarUltimas(){
   try{
     const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getUltimasPreventivas');
     ppUltimas=(d&&d.ultimas)?d.ultimas:{};
   }catch(e){ ppUltimas={}; }
+}
+function ppAposCarga(){
+  const add=ppSyncObrigatorios();
+  if(add){ ppDefinirSujo(true); ppToast(ptN(add,'cliente obrigatório entrou','clientes obrigatórios entraram')+' no plano por contrato.'); }
   ppRender();
 }
 async function ppCarregarMes(){
@@ -4404,134 +4726,106 @@ async function ppCarregarMes(){
   try{
     const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getPlanoPreventivas&mes='+encodeURIComponent(ppMes));
     if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'resposta vazia');
-    ppMeta=Number(d.meta)||0; ppItens=(d.itens||[]).map(x=>({cliente:x.cliente,cnpj:x.cnpj||'',cidade:x.cidade||'',uf:x.uf||'',tipo:x.tipo==='StreamBlink'?'StreamBlink':'Rack',semana:Number(x.semana)||1}));
+    if(d.niveis) ppNiveis={simples:+d.niveis.simples||20,intermediaria:+d.niveis.intermediaria||30,desafio:+d.niveis.desafio||45};
+    ppNivel=d.nivel||''; ppMeta=ppNivel?(Number(d.meta)||ppNiveis[ppNivel]):0;
+    ppPronto=!!d.pronto; ppProntoPor=d.pronto_por||''; ppProntoEm=d.pronto_em||''; ppRejeitados=Array.isArray(d.rejeitados)?d.rejeitados:[];
+    ppItens=(d.itens||[]).map(x=>({cliente:x.cliente,cnpj:x.cnpj||'',cidade:x.cidade||'',uf:x.uf||'',tipo:x.tipo==='StreamBlink'?'StreamBlink':'Rack',semana:Number(x.semana)||1,origem:x.origem||'manual'}));
     ppMeses=d.meses||[];
-    const fixos=ppMeses.find(x=>x.mes===ppMes);
     if(sync) sync.textContent=(d.atualizado_por?'Salvo por '+d.atualizado_por+' em '+d.atualizado_em:'Plano ainda não salvo para este mês');
     const aviso=document.getElementById('pp-aviso'); if(aviso) aviso.style.display='none';
   }catch(e){
-    ppMeta=0; ppItens=[];
+    ppMeta=0; ppNivel=''; ppItens=[]; ppRejeitados=[]; ppPronto=false;
     if(sync) sync.textContent='Erro ao carregar';
     const aviso=document.getElementById('pp-aviso');
     if(aviso){ aviso.style.display='block'; aviso.textContent='Não foi possível carregar o plano: '+(e&&e.message?e.message:e)+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
   }
-  ppCarregando=false;
-  ppDefinirSujo(false);
-  ppPreencherMeses();
-  const metaEl=document.getElementById('pp-meta'); if(metaEl) metaEl.value=ppMeta||'';
-  ppRender();
+  ppCarregando=false; ppDefinirSujo(false); ppPreencherMeses();
 }
-function ppTrocarMes(){
+async function ppTrocarMes(){
   const sel=document.getElementById('pp-mes'); const novo=sel.value;
-  if(ppSujo && !confirm('Você tem alterações não salvas neste mês. Trocar de mês e descartar?')){ sel.value=ppMes; return; }
-  ppMes=novo; ppCarregarMes();
-}
-function ppMetaMudou(){ ppMeta=Math.max(0,parseInt(document.getElementById('pp-meta').value,10)||0); ppDefinirSujo(true); ppRenderResumo(); }
-function ppSemanaMenosCheia(){
-  const n=ppSemanas(ppMes).length||1; const cont=new Array(n).fill(0);
-  ppItens.forEach(i=>{ if(i.semana>=1&&i.semana<=n) cont[i.semana-1]++; });
-  return cont.indexOf(Math.min.apply(null,cont))+1;
-}
-function ppItensAuto(){
-  const no=new Set(ppItens.map(i=>ppNorm(i.cliente)));
-  return (clientes||[]).filter(c=>c&&c.nome&&!no.has(ppNorm(c.nome))).map(c=>{
-    const u=ppUltimaInfo(c.nome); const local=[c.cidade,(c.uf||c.estado)].filter(Boolean).join(' - ');
-    return {tipo:'Cliente', texto:String(c.nome), sub:(local?local+', ':'')+'última: '+u.t};
-  });
-}
-function ppAdicionar(avisar){
-  if(!ppEditavel()) return;
-  const inp=document.getElementById('pp-add'); const v=ppNorm(inp.value);
-  if(!v) return;
-  const c=(clientes||[]).find(x=>x&&ppNorm(x.nome)===v);
-  if(!c){ if(avisar!==false) alert('Escolha um cliente da lista que aparece enquanto você digita.'); return; }
-  if(ppItens.some(i=>ppNorm(i.cliente)===v)){ alert('Esse cliente já está no plano deste mês.'); inp.value=''; return; }
-  ppItens.push({cliente:String(c.nome),cnpj:String(c.cnpj||''),cidade:String(c.cidade||''),uf:String(c.uf||c.estado||''),tipo:'Rack',semana:ppSemanaMenosCheia()});
-  inp.value=''; ppDefinirSujo(true); ppRender();
-  inp.focus();
-}
-function ppRemover(i){ ppItens.splice(i,1); ppDefinirSujo(true); ppRender(); }
-function ppSetTipo(i,v){ if(ppItens[i]){ ppItens[i].tipo=v==='StreamBlink'?'StreamBlink':'Rack'; ppDefinirSujo(true); ppRenderResumo(); } }
-function ppSetSemana(i,v){ if(ppItens[i]){ ppItens[i].semana=parseInt(v,10)||1; ppDefinirSujo(true); ppRender(); } }
-// Divide os clientes em partes iguais pelas semanas, mantendo a mesma cidade junta quando ela cabe numa semana.
-function ppDistribuir(){
-  if(!ppEditavel()||!ppItens.length) return;
-  if(!confirm('Distribuir os clientes nas semanas vai substituir as semanas que você escolheu. Continuar?')) return;
-  const n=ppSemanas(ppMes).length||1; const cap=Math.max(1,Math.ceil(ppItens.length/n));
-  const ord=ppItens.slice().sort((a,b)=>(a.uf+a.cidade+a.cliente).localeCompare(b.uf+b.cidade+b.cliente,'pt-BR'));
-  const grupos=[]; ord.forEach(c=>{ const g=grupos[grupos.length-1]; if(g&&g[0].uf===c.uf&&g[0].cidade===c.cidade) g.push(c); else grupos.push([c]); });
-  let sem=1, usados=0;
-  grupos.forEach(g=>{
-    if(g.length<=cap && usados+g.length>cap && sem<n){ sem++; usados=0; }
-    g.forEach(c=>{ if(usados>=cap && sem<n){ sem++; usados=0; } c.semana=sem; usados++; });
-  });
-  ppDefinirSujo(true); ppRender();
-}
-function ppUltimaInfo(nome){
-  const u=ppUltimas[ppNorm(nome)];
-  if(!u) return {t:'nunca',nunca:true,sub:'sem preventiva registrada'};
-  const hj=new Date(); hj.setHours(0,0,0,0); const d=new Date(u.d+'T00:00:00'); const dias=Math.max(0,Math.round((hj.getTime()-d.getTime())/86400000));
-  const t=dias<1?'hoje':(dias<30?'há '+ptN(dias,'dia','dias'):'há '+ptN(Math.floor(dias/30.44),'mês','meses'));
-  const dt=u.d.slice(8,10)+'/'+u.d.slice(5,7)+'/'+u.d.slice(0,4);
-  return {t:t,nunca:false,sub:dt+', '+u.o};
+  if(ppSujo&&!confirm('Você tem alterações não salvas neste mês. Trocar de mês e descartar?')){ sel.value=ppMes; return; }
+  ppMes=novo; ppItens=[]; ppRender(); await ppCarregarMes(); ppAposCarga();
 }
 function ppRenderResumo(){
-  const el=document.getElementById('pp-resumo'); if(!el) return;
-  const n=ppItens.length, stb=ppItens.filter(i=>i.tipo==='StreamBlink').length;
+  const n=ppItens.length, N=ppNivel?ppMeta:0;
+  const obr=ppItens.filter(i=>i.origem==='obrigatorio').length, sug=ppItens.filter(i=>i.origem==='sugerido').length, man=n-obr-sug;
+  const cont={A:0,B:0,C:0}; ppItens.forEach(i=>{ cont[ppInfoItem(i).r.curva]++; });
   let extra='';
-  if(ppMeta>0 && n>ppMeta) extra='<span style="color:#C0392B;font-weight:600;">+'+(n-ppMeta)+' acima da meta</span>';
-  else if(ppMeta>0 && n<ppMeta) extra='<span style="color:var(--text-muted);">'+(ppMeta-n===1?'falta 1 cliente':'faltam '+(ppMeta-n)+' clientes')+' para a meta</span>';
-  el.innerHTML='<span><b style="font-size:20px;">'+n+'</b> de <b style="font-size:20px;">'+ppMeta+'</b> '+(ppMeta===1?'cliente escolhido':'clientes escolhidos')+'</span>'+
-    (n?'<span style="color:var(--text-muted);">StreamBlink '+stb+' e Rack '+(n-stb)+'</span>':'')+extra;
-  const sem=ppSemanas(ppMes);
-  document.getElementById('pp-semanas').innerHTML=sem.map(w=>{
-    const q=ppItens.filter(i=>i.semana===w.n).length;
-    return '<span style="padding:5px 12px;border-radius:99px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text);"><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+'): '+ptN(q,'cliente','clientes')+'</span>';
-  }).join('');
-  const dica=document.getElementById('pp-meta-dica');
-  if(dica){ const ant=ppMeses.find(x=>x.mes===ppSomaMes(ppMes,-1)); dica.textContent=ant&&ant.meta?'Mês anterior: '+ant.meta:''; }
+  if(ppNivel&&n<N) extra='<span style="color:var(--text-muted);">'+(N-n===1?'falta 1 cliente':'faltam '+(N-n)+' clientes')+' para a meta</span>';
+  ppSetHTML('pp-resumo',(ppNivel?'<span><b style="font-size:22px;">'+n+'</b> de <b style="font-size:22px;">'+N+'</b> '+(N===1?'cliente':'clientes')+'</span>':'<span><b style="font-size:22px;">'+n+'</b> '+(n===1?'cliente no plano':'clientes no plano')+', ainda sem nível de meta</span>')+
+    '<span style="color:var(--text-muted);">'+ptN(obr,'obrigatório','obrigatórios')+', '+ptN(sug,'sugerido','sugeridos')+' e '+ptN(man,'escolhido por você','escolhidos por você')+'</span><span style="color:var(--text-muted);">Curva A '+cont.A+', B '+cont.B+', C '+cont.C+'</span>'+extra);
+  ppSetHTML('pp-semanas',ppSemanas(ppMes).map(w=>'<span style="padding:5px 12px;border-radius:99px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text);"><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+'): '+ptN(ppItens.filter(i=>i.semana===w.n).length,'cliente','clientes')+'</span>').join(''));
 }
 function ppRender(){
-  const ed=ppEditavel();
+  const ed=ppEditavel(), bloq=ppPronto||!ed;
   const ctl=(id,show,disp)=>{ const el=document.getElementById(id); if(el) el.style.display=show?(disp||''):'none'; };
-  ctl('pp-btn-salvar',ed); ctl('pp-btn-distribuir',ed); ctl('pp-add-linha',ed,'flex');
-  const metaEl=document.getElementById('pp-meta'); if(metaEl) metaEl.disabled=!ed;
+  ctl('pp-btn-salvar',ed&&!ppPronto); ctl('pp-btn-pronto',ed&&!ppPronto); ctl('pp-btn-reabrir',ed&&ppPronto);
+  ctl('pp-add-linha',!bloq,'flex'); ctl('pp-btn-metas',ed&&!ppPronto);
+  if(bloq){ const m=document.getElementById('pp-metas'); if(m) m.style.display='none'; }
+  const st=document.getElementById('pp-status'); if(st){ st.className='pp-chip '+(ppPronto?'pronto':'rasc'); st.textContent=ppPronto?'Pronto':'Rascunho'; }
+  ['simples','intermediaria','desafio'].forEach(k=>{ const e=document.getElementById('pp-m-'+k); if(e&&document.activeElement!==e) e.value=ppNiveis[k]; });
+  ppSetHTML('pp-niveis',PP_NIVEIS_DEF.map(([k,nome,leg])=>'<button class="pp-nivel'+(ppNivel===k?' on':'')+'" onclick="ppEscolherNivel(\''+k+'\')"'+(bloq?' disabled':'')+'><small>'+leg+'</small><b>'+nome+'</b><span class="n">'+ppNiveis[k]+'</span><em>clientes no mês</em></button>').join(''));
   const av=document.getElementById('pp-aviso');
-  if(!ed && av && av.style.display==='none'){ av.style.display='block'; av.textContent='Somente o gestor edita o plano. Você pode consultar os clientes e as semanas.'; }
+  if(!ed&&av&&av.style.display==='none'){ av.style.display='block'; av.textContent='Somente o gestor edita o plano. Você pode consultar os clientes e as semanas.'; }
+  if(prErro&&av&&av.style.display==='none'){ av.style.display='block'; av.textContent='Não foi possível carregar as regras dos clientes: '+prErro+'. Até lá, todos contam como curva C e ciclo de 6 meses.'; }
+  const n=ppItens.length, N=ppNivel?ppMeta:0, obr=ppItens.filter(i=>i.origem==='obrigatorio').length;
+  let avs='';
+  if(ppPronto) avs='<div class="pp-aviso verde"><b>Plano pronto por '+vfEsc(ppProntoPor)+(ppProntoEm?' em '+vfEsc(ppProntoEm):'')+'.</b> Liberado para o painel de preventivas, o banner do Pipeline e a TV. Para mexer de novo, clique em Reabrir plano.</div>';
+  else if(!ppNivel) avs='<div class="pp-aviso ouro"><b>'+ptN(obr,'cliente obrigatório já está','clientes obrigatórios já estão')+' no plano</b> por contrato. Escolha um nível de meta acima para ver as sugestões do restante.</div>';
+  else if(obr>N) avs='<div class="pp-aviso verm"><b>Os obrigatórios ('+obr+') já passam do nível escolhido ('+N+').</b> Eles ficam no plano, e não entram sugestões novas.</div>';
+  else if(n>N) avs='<div class="pp-aviso ouro">A lista passou da meta em '+ptN(n-N,'cliente','clientes')+'. Use o X para tirar, que acima da meta ele só remove.</div>';
+  ppSetHTML('pp-avisos',avs);
   ppRenderResumo();
   const lista=document.getElementById('pp-lista'); if(!lista) return;
-  if(!ppItens.length){ lista.innerHTML='<div style="padding:30px 20px;text-align:center;font-size:13px;color:var(--text-muted);">'+(ppCarregando?'Carregando...':'Nenhum cliente no plano deste mês. '+(ed?'Digite o nome de um cliente acima para adicionar.':''))+'</div>'; return; }
-  const sem=ppSemanas(ppMes);
-  const view=ppItens.map((it,i)=>({it:it,i:i})).sort((a,b)=>a.it.semana-b.it.semana||a.i-b.i);
-  const dis=ed?'':' disabled';
-  lista.innerHTML=view.map(({it,i})=>{
-    const u=ppUltimaInfo(it.cliente);
+  if(!ppItens.length){ ppSetHTML('pp-lista','<div style="padding:30px 20px;text-align:center;font-size:13px;color:var(--text-muted);">'+(ppCarregando?'Carregando...':'Nenhum cliente no plano deste mês.'+(ed?' Escolha um nível de meta ou digite o nome de um cliente acima.':''))+'</div>'); return; }
+  const sem=ppSemanas(ppMes), dis=bloq?' disabled':'';
+  const view=ppItens.map((it,i)=>({it:it,i:i,x:ppInfoItem(it)})).sort((a,b)=>a.it.semana-b.it.semana||(a.it.origem==='obrigatorio'?0:1)-(b.it.origem==='obrigatorio'?0:1)||PP_CURVA_PESO[a.x.r.curva]-PP_CURVA_PESO[b.x.r.curva]||String(a.it.cliente).localeCompare(String(b.it.cliente),'pt-BR'));
+  const stl="height:32px;width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;padding:0 6px;";
+  ppSetHTML('pp-lista',view.map(({it,i,x})=>{
+    const c=x.c, r=x.r, v=ppVencTxt(c,r);
     const opts=sem.map(w=>'<option value="'+w.n+'"'+(w.n===it.semana?' selected':'')+'>Semana '+w.n+' ('+vfEsc(w.label)+')</option>').join('')+(it.semana>sem.length?'<option value="'+it.semana+'" selected>Semana '+it.semana+'</option>':'');
-    const stl="height:32px;width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;padding:0 6px;";
-    return '<div style="display:grid;grid-template-columns:minmax(0,2fr) 130px 190px 170px 44px;gap:12px;align-items:center;padding:10px 20px;border-top:1px solid var(--border);">'+
-      '<div><div style="font-weight:600;font-size:13px;color:var(--text);">'+vfEsc(it.cliente)+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+vfEsc([it.cidade,it.uf].filter(Boolean).join(' - '))+'</div></div>'+
-      '<div><select aria-label="Tipo" onchange="ppSetTipo('+i+',this.value)" style="'+stl+'"'+dis+'><option value="Rack"'+(it.tipo==='Rack'?' selected':'')+'>Rack</option><option value="StreamBlink"'+(it.tipo==='StreamBlink'?' selected':'')+'>StreamBlink</option></select></div>'+
-      '<div><div style="font-size:13px;'+(u.nunca?'color:#C0392B;font-weight:600;':'color:var(--text);')+'">'+vfEsc(u.t)+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+vfEsc(u.sub)+'</div></div>'+
-      '<div><select aria-label="Semana" onchange="ppSetSemana('+i+',this.value)" style="'+stl+'"'+dis+'>'+opts+'</select></div>'+
-      '<div>'+(ed?'<button onclick="ppRemover('+i+')" aria-label="Tirar do plano" title="Tirar do plano" style="width:36px;height:36px;border:none;background:none;color:#C0392B;font-size:16px;cursor:pointer;">&#10005;</button>':'')+'</div>'+
-    '</div>';
-  }).join('');
+    const lock=it.origem==='obrigatorio'?'<span class="pp-lock" title="Obrigatório por contrato"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Contrato '+vfEsc(String(r.per||'').toLowerCase())+'</span>':'';
+    let motivo; if(it.origem==='manual') motivo='Escolhido por você'; else if(it.origem==='obrigatorio') motivo='Obrigatório: contrato '+String(r.per||'').toLowerCase()+(r.per==='Mensal'?', entra todo mês':', vence neste mês'); else { const a=ppAtraso(c,r); motivo='Curva '+r.curva+', '+(a===Infinity?'nunca vistoriado':(a>0?'atrasado '+ppTempoTxt(a):'vence em '+ppTempoTxt(-a))); }
+    const local=[it.cidade,it.uf].filter(Boolean).join(' - ');
+    return '<div class="pp-row" style="display:grid;grid-template-columns:minmax(0,2.3fr) 64px 130px 150px 110px 190px 44px;gap:12px;align-items:center;padding:10px 20px;border-top:1px solid var(--border);'+(ppNovos.indexOf(ppNorm(it.cliente))>=0?'background:#fff6d6;':'')+'">'+
+      '<div class="pp-c1"><div style="font-weight:600;font-size:13px;color:var(--text);">'+vfEsc(it.cliente)+(lock?' ':'')+lock+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45;">'+vfEsc(local)+(local?'. ':'')+vfEsc(motivo)+'</div></div>'+
+      '<div class="pp-c" data-rot="Curva"><span class="pp-curva '+r.curva+'" title="Curva '+r.curva+'">'+r.curva+'</span></div>'+
+      '<div class="pp-c" data-rot="Periodicidade" style="font-size:13px;">'+vfEsc(r.per||'Padrão, 6 meses')+'</div>'+
+      '<div class="pp-c" data-rot="Vencimento" style="font-size:13px;'+(v.atr?'color:#C0392B;font-weight:600;':'')+'">'+vfEsc(v.t)+'</div>'+
+      '<div class="pp-c" data-rot="Tipo" style="font-size:13px;">'+vfEsc(r.tipo)+'</div>'+
+      '<div class="pp-c pp-cs" data-rot="Semana"><select aria-label="Semana" onchange="ppSetSemana('+i+',this.value)" style="'+stl+'"'+dis+'>'+opts+'</select></div>'+
+      '<div class="pp-cx">'+(bloq?'':'<button onclick="ppTirar('+i+')" aria-label="Tirar '+vfEsc(it.cliente)+' do plano" title="Tirar do plano" style="width:36px;height:36px;border:none;background:none;color:#C0392B;font-size:16px;cursor:pointer;">&#10005;</button>')+'</div></div>';
+  }).join(''));
 }
-async function ppSalvar(){
-  if(!ppEditavel()) return;
-  const btn=document.getElementById('pp-btn-salvar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='Salvando...';
+async function ppSalvar(pronto){
+  if(!ppEditavel()) return false;
+  const btn=document.getElementById('pp-btn-salvar'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Salvando...';
+  let ok=false;
   try{
-    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'savePlanoPreventivas',mes:ppMes,meta:ppMeta,itens:ppItens})});
+    const corpo={token:getToken(),action:'savePlanoPreventivas',mes:ppMes,meta:ppNivel?ppMeta:0,nivel:ppNivel,rejeitados:ppRejeitados,itens:ppItens,niveis:ppNiveis};
+    if(pronto===true) corpo.pronto=true; if(pronto===false) corpo.pronto=false;
+    const r=await fetch(API,{method:'POST',body:JSON.stringify(corpo)});
     const d=await r.json();
     if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'falha ao salvar');
-    ppDefinirSujo(false);
+    ppDefinirSujo(false); ppPronto=!!d.pronto; ppProntoPor=d.pronto_por||''; ppProntoEm=d.pronto_em||'';
     const sync=document.getElementById('pp-sync'); if(sync) sync.textContent='Salvo por '+d.atualizado_por+' em '+d.atualizado_em;
-    const i=ppMeses.findIndex(x=>x.mes===ppMes); const novo={mes:ppMes,meta:ppMeta,qtd:ppItens.length};
+    const i=ppMeses.findIndex(x=>x.mes===ppMes); const novo={mes:ppMes,meta:ppNivel?ppMeta:0,qtd:ppItens.length};
     if(i>=0) ppMeses[i]=novo; else ppMeses.push(novo);
-    ppPreencherMeses(); ppRenderResumo();
+    ppPreencherMeses(); ppRender(); ok=true;
+    if(pronto===true) ppToast('Plano pronto. Liberado para o painel, o banner e a TV.'); else if(pronto===false) ppToast('Plano reaberto. Voltou a ser rascunho.'); else ppToast('Rascunho salvo.');
   }catch(e){ alert('Não foi possível salvar o plano: '+(e.message||e)); }
-  btn.disabled=false; btn.textContent=txt;
+  btn.disabled=false; btn.textContent=txt; return ok;
 }
+function ppMarcarPronto(){
+  if(!ppEditavel()||ppPronto) return;
+  if(!ppNivel){ alert('Escolha um dos três níveis de meta antes de marcar o plano como pronto.'); return; }
+  const n=ppItens.length, N=ppMeta;
+  const msg=n<N?((N-n===1?'Falta ':'Faltam ')+ptN(N-n,'cliente','clientes')+' para a meta de '+N+'. Marcar como pronto mesmo assim?'):'O plano de '+ppRotuloMes(ppMes).split(' de ')[0].toLowerCase()+', com '+ptN(n,'cliente','clientes')+', será liberado para o painel, o banner e a TV. Você pode reabrir depois. Confirmar?';
+  if(!confirm(msg)) return;
+  ppSalvar(true);
+}
+function ppReabrir(){ if(!ppEditavel()||!ppPronto) return; ppSalvar(false); }
+
 // ============ BUSCA COM AUTOCOMPLETE (telas de Vistorias) ============
 // Usa só os dados que a tela já carregou: não faz chamada extra ao servidor.
 function ptN(n,sing,plur){ n=Number(n)||0; return n+' '+(n===1?sing:plur); }
@@ -8702,12 +8996,13 @@ async function excluirCliente(id, nome){
   }catch(e){alert('Erro ao excluir cliente.');}
 }
 
-function openNovoClienteModal(){['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('nc-produto').value='';document.getElementById('nc-status').value='ativo';document.getElementById('nc-vigencia').value=todayStr;document.getElementById('novo-cliente-modal').style.display='flex';}
+function openNovoClienteModal(){['nc-nome','nc-cidade','nc-cnpj','nc-contato','nc-telefone','nc-endereco','nc-uhs','nc-responsavel','nc-motivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('nc-produto').value='';document.getElementById('nc-status').value='ativo';document.getElementById('nc-vigencia').value=todayStr;['nc-curva','nc-periodicidade','nc-tipo-prev'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const _adm=ppEditavel();document.getElementById('nc-regras-campos').style.display=_adm?'grid':'none';document.getElementById('nc-regras-aviso').style.display=_adm?'none':'block';document.getElementById('novo-cliente-modal').style.display='flex';}
+function ncProdutoMudou(){const t=document.getElementById('nc-tipo-prev');if(t&&!t.value){const pr=document.getElementById('nc-produto').value;if(pr)t.value=/stb/i.test(pr)?'StreamBlink':'Rack';}}
 function closeNovoClienteModal(){document.getElementById('novo-cliente-modal').style.display='none';}
 async function criarClienteAvulso(){const nome=document.getElementById('nc-nome').value.trim();const cidade=document.getElementById('nc-cidade').value.trim();const produto=document.getElementById('nc-produto').value;const uhs=document.getElementById('nc-uhs').value;const vigencia=document.getElementById('nc-vigencia').value;const responsavel=document.getElementById('nc-responsavel').value.trim();const motivo=document.getElementById('nc-motivo').value.trim();const endereco_val=document.getElementById('nc-endereco').value.trim();
   const contato_val=document.getElementById('nc-contato').value.trim();
   const telefone_val=document.getElementById('nc-telefone').value.trim();
-  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val||!contato_val||!telefone_val){alert('Preencha todos os campos obrigatórios (*)');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
+  if(!nome||!cidade||!produto||!uhs||!vigencia||!responsavel||!motivo||!endereco_val||!contato_val||!telefone_val){alert('Preencha todos os campos obrigatórios (*)');return;}const _ehAdm=ppEditavel(),_curva=document.getElementById('nc-curva').value,_perNC=document.getElementById('nc-periodicidade').value,_tipoNC=document.getElementById('nc-tipo-prev').value,_cnpjNC=document.getElementById('nc-cnpj').value.trim();if(_ehAdm&&(!_curva||!_perNC||!_tipoNC)){alert('Escolha a curva ABC, a periodicidade e o tipo do cliente.');return;}closeNovoClienteModal();document.getElementById('cli-sync').textContent='Criando cliente...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'criarCliente',id:uid(),prospectId:'avulso',nome,cidade,cnpj:document.getElementById('nc-cnpj').value.trim(),contato:document.getElementById('nc-contato').value.trim(),telefone:document.getElementById('nc-telefone').value.trim(),endereco:document.getElementById('nc-endereco').value.trim(),produto,uhs:parseInt(uhs)||0,vigencia_inicio:vigencia,status:document.getElementById('nc-status').value,responsavel_criacao:responsavel,motivo_criacao:motivo})});if(_ehAdm){try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveRegrasPreventivas',regras:[{cliente:nome,cnpj:_cnpjNC,curva:_curva,periodicidade:_perNC==='padrao'?'':_perNC,tipo:_tipoNC}]})});}catch(e){}}await loadClientes();}catch(e){document.getElementById('cli-sync').textContent='Erro ao criar cliente';}}
 
 // ===================== CRONOGRAMA =====================
 let cronogramas=[],cronSaveTimer=null;
@@ -12511,11 +12806,20 @@ async function estEnviarEmail(reg){
       <div class="modal-field"><label>Telefone *</label><input type="text" id="nc-telefone" placeholder="(00) 00000-0000"></div>
       <div class="modal-field" style="grid-column:span 2"><label>Endereço *</label><input type="text" id="nc-endereco" placeholder="Rua, número, cidade"></div>
       <div class="modal-field"><label>Produto *</label>
-        <select class="field-sel" id="nc-produto"><option value="">Selecione...</option><option value="HD">HD</option><option value="SD">SD</option><option value="STB">STB</option><option value="STR">STR</option><option value="OUTROS">OUTROS</option></select>
+        <select class="field-sel" id="nc-produto" onchange="ncProdutoMudou()"><option value="">Selecione...</option><option value="HD">HD</option><option value="SD">SD</option><option value="STB">STB</option><option value="STR">STR</option><option value="OUTROS">OUTROS</option></select>
       </div>
       <div class="modal-field"><label>UHs *</label><input type="number" id="nc-uhs" placeholder="Ex: 120" min="1"></div>
       <div class="modal-field"><label>Vigência início *</label><input type="date" id="nc-vigencia"></div>
       <div class="modal-field"><label>Status</label><select class="field-sel" id="nc-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+      <div id="nc-regras-box" style="grid-column:span 2;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Regras de preventiva *</div>
+        <div id="nc-regras-campos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+          <div class="modal-field"><label>Curva ABC *</label><select class="field-sel" id="nc-curva"><option value="">Escolha...</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
+          <div class="modal-field"><label>Periodicidade *</label><select class="field-sel" id="nc-periodicidade"><option value="">Escolha...</option><option value="padrao">Padrão, 6 meses</option><option>Mensal</option><option>Bimestral</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div>
+          <div class="modal-field"><label>Tipo *</label><select class="field-sel" id="nc-tipo-prev"><option value="">Escolha...</option><option>Rack</option><option>StreamBlink</option></select></div>
+        </div>
+        <div id="nc-regras-aviso" style="display:none;font-size:12px;color:var(--text-muted);line-height:1.5;">Somente o gestor define a curva, a periodicidade e o tipo. O cliente fica pendente em Preventivas, Regras dos clientes.</div>
+      </div>
       <div style="grid-column:span 2;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
         <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Registro de criação avulsa</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -12532,38 +12836,81 @@ async function estEnviarEmail(reg){
 <!-- ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK ===================== -->
 <div id="page-prev-plano" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
-    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Plano do mês</h2><span class="dash-sync" id="pp-sync"></span></div>
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Plano do mês <span id="pp-status" class="pp-chip rasc">Rascunho</span></h2><span class="dash-sync" id="pp-sync"></span></div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <span id="pp-sujo" style="display:none;font-size:12px;font-weight:600;color:#C98A00;">Alterações não salvas</span>
-      <button id="pp-btn-salvar" onclick="ppSalvar()" class="btn-new-project">Salvar plano</button>
+      <button id="pp-btn-salvar" onclick="ppSalvar()" class="modal-btn">Salvar rascunho</button>
+      <button id="pp-btn-reabrir" onclick="ppReabrir()" class="modal-btn" style="display:none">Reabrir plano</button>
+      <button id="pp-btn-pronto" onclick="ppMarcarPronto()" class="btn-new-project">Plano pronto para o mês</button>
     </div>
   </div>
   <div style="padding:16px 20px;">
     <div id="pp-aviso" style="display:none;margin-bottom:14px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-muted);"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
-      <div><label for="pp-mes" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Mês do plano</label>
-        <select id="pp-mes" onchange="ppTrocarMes()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;min-width:220px;"></select></div>
-      <div><label for="pp-meta" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Meta de preventivas</label>
-        <input id="pp-meta" type="number" min="0" max="500" oninput="ppMetaMudou()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:120px;font-size:16px;font-weight:700;">
-        <div id="pp-meta-dica" style="font-size:11px;color:var(--text-muted);margin-top:4px;min-height:14px;"></div></div>
-      <button id="pp-btn-distribuir" onclick="ppDistribuir()" class="modal-btn" style="margin-top:20px;">Distribuir nas semanas</button>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;">
+      <div style="max-width:100%;min-width:0;"><label for="pp-mes" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Mês do plano</label>
+        <select id="pp-mes" onchange="ppTrocarMes()" style="max-width:100%;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;min-width:220px;"></select></div>
+      <button id="pp-btn-metas" onclick="ppAjustarMetas()" class="modal-btn" style="height:36px;">Ajustar os números das metas</button>
     </div>
-    <div style="margin-top:4px;padding:10px 14px;border-radius:var(--radius-sm);background:rgba(245,184,0,.08);font-size:13px;line-height:1.55;color:var(--text);">Você escolhe os clientes e a semana de cada um, ao longo do mês, e clica em <b>Salvar plano</b>. A semana 1 é a que começa na primeira segunda-feira do mês, e a preventiva que não for concluída na sua semana fica atrasada.</div>
+    <div id="pp-metas" style="display:none;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px;padding:12px 14px;border:1px dashed var(--border);border-radius:var(--radius-sm);">
+      <div><label for="pp-m-simples" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Simples</label><input id="pp-m-simples" type="number" min="1" max="300" onchange="ppMudouMetas()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:90px;"></div>
+      <div><label for="pp-m-intermediaria" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Intermediária</label><input id="pp-m-intermediaria" type="number" min="1" max="300" onchange="ppMudouMetas()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:90px;"></div>
+      <div><label for="pp-m-desafio" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Desafio</label><input id="pp-m-desafio" type="number" min="1" max="300" onchange="ppMudouMetas()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:90px;"></div>
+      <span style="font-size:12px;color:var(--text-muted);padding-bottom:9px;">Os obrigatórios por contrato já contam dentro de cada número. Clique em Salvar rascunho para guardar.</span>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:18px;">Nível da meta do mês</div>
+    <div class="pp-niveis" id="pp-niveis"></div>
+    <div id="pp-avisos"></div>
     <div id="pp-resumo" style="display:flex;flex-wrap:wrap;gap:6px 20px;align-items:baseline;margin-top:18px;font-size:14px;color:var(--text);"></div>
     <div id="pp-semanas" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
     <div id="pp-add-linha" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:18px;">
-      <div style="flex:1;min-width:260px;max-width:460px;"><label for="pp-add" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Adicionar cliente ao plano</label>
+      <div style="flex:1;min-width:240px;max-width:460px;"><label for="pp-add" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Acrescentar cliente por conta própria</label>
         <div style="display:flex;"><input id="pp-add" type="text" placeholder="Digite o nome do cliente" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;flex:1;min-width:0;"></div></div>
-      <button onclick="ppAdicionar(true)" class="modal-btn">Adicionar</button>
+      <button onclick="ppAdicionar(true)" class="modal-btn">Acrescentar</button>
+      <button id="pp-btn-distribuir" onclick="ppDistribuir()" class="modal-btn">Distribuir nas semanas</button>
     </div>
     <div style="margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;background:var(--surface);">
-      <div style="min-width:820px;">
-        <div style="display:grid;grid-template-columns:minmax(0,2fr) 130px 190px 170px 44px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Tipo</span><span>Última preventiva</span><span>Semana</span><span></span></div>
+      <div class="pp-min" style="min-width:980px;">
+        <div class="pp-head" style="display:grid;grid-template-columns:minmax(0,2.3fr) 64px 130px 150px 110px 190px 44px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Curva</span><span>Periodicidade</span><span>Vencimento</span><span>Tipo</span><span>Semana</span><span></span></div>
         <div id="pp-lista"></div>
       </div>
     </div>
-    <p style="margin:10px 0 0;font-size:12px;color:var(--text-muted);line-height:1.6;">A última preventiva considera o que foi concluído no Painel de Atendimento (preventiva com status Feito), na Vistoria Remota e em Vistorias → Preventiva. O tipo (StreamBlink ou Rack) fica como Rack até a planilha dos clientes StreamBlink ser importada, e você pode trocar na linha.</p>
+    <p style="margin:10px 0 0;font-size:12px;color:var(--text-muted);line-height:1.6;">Obrigatórios (cadeado) entram sozinhos no mês em que vencem, e o mensal entra todo mês. Ao clicar no X, outro cliente entra no lugar até completar a meta. Acima da meta, o X só tira. Quem você tirou não volta a ser sugerido neste mês. Curva, periodicidade e tipo de cada cliente são alterados em Preventivas, Regras dos clientes. A última preventiva considera o que foi concluído no Painel de Atendimento (status Feito), na Vistoria Remota e em Vistorias, Preventiva.</p>
   </div>
+</div>
+
+<div id="page-prev-regras" class="main" style="display:none">
+  <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+    <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Regras dos clientes</h2><span class="dash-sync" id="pr-sync"></span></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span id="pr-sujo" style="display:none;font-size:12px;font-weight:600;color:#C98A00;">Alterações não salvas</span>
+      <button id="pr-btn-baixar" onclick="prBaixarPlanilha()" class="modal-btn">Baixar planilha (Excel)</button>
+      <button id="pr-btn-importar" onclick="document.getElementById('pr-arquivo').click()" class="modal-btn">Importar planilha preenchida</button>
+      <input id="pr-arquivo" type="file" accept=".xlsx,.xls" onchange="prImportar(this)" style="display:none">
+      <button id="pr-btn-salvar" onclick="prSalvar()" class="btn-new-project">Salvar regras</button>
+    </div>
+  </div>
+  <div style="padding:16px 20px;">
+    <div id="pr-aviso" style="display:none;margin-bottom:14px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-muted);"></div>
+    <div class="pp-aviso ouro" style="margin-top:0">A planilha serve só para a carga inicial. <b>Todo cliente novo é preenchido dentro do BlinTrack</b>, com curva ABC, periodicidade e tipo. A curva é A, B ou C, e quem não for A ou B fica como C. Sem periodicidade, vale o plano padrão de 6 meses. Clientes inativos não aparecem aqui.</div>
+    <div id="pr-pendencias"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;align-items:flex-end;">
+      <div><label for="pr-busca" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Buscar cliente</label><input id="pr-busca" type="text" placeholder="Nome do cliente" oninput="prRender()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:240px;max-width:100%;"></div>
+      <div><label for="pr-fcurva" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Curva</label><select id="pr-fcurva" onchange="prRender()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;"><option value="">Todas</option><option>A</option><option>B</option><option>C</option></select></div>
+      <div><label for="pr-fper" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Periodicidade</label><select id="pr-fper" onchange="prRender()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;"><option value="">Todas</option><option value="padrao">Padrão, 6 meses</option><option>Mensal</option><option>Bimestral</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);height:36px;cursor:pointer;"><input id="pr-fpend" type="checkbox" onchange="prRender()" style="width:16px;height:16px;accent-color:#111;"> Só pendentes</label>
+      <div id="pr-cont" style="font-size:13px;color:var(--text-muted);padding-bottom:9px;"></div>
+    </div>
+    <div style="margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;background:var(--surface);">
+      <div class="pr-min" style="min-width:960px;">
+        <div class="pr-head" style="display:grid;grid-template-columns:minmax(0,2fr) 140px 90px 170px 190px 150px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Tipo</span><span>Curva</span><span>Periodicidade</span><span>Última preventiva</span><span id="pr-col-mes">Neste mês</span></div>
+        <div id="pr-lista" style="max-height:640px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pr-modal" style="display:none">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;"><div id="pr-modal-corpo"></div></div>
 </div>
 
 <div id="page-vistoria-remota" class="main" style="display:none">
@@ -12717,7 +13064,7 @@ async function estEnviarEmail(reg){
 <div id="page-milplay" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">MilPlay</h2><span class="dash-sync" id="mp-sync"></span></div>
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
       <label style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;display:flex;align-items:center;">➕ Importar novo cliente<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,true)" style="display:none"></label>
       <label style="height:36px;padding:0 16px;border:1px solid #5B9EF5;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#5B9EF5;display:flex;align-items:center;">🔧 Corrigir números de quarto<input type="file" accept=".xlsx,.xls" multiple onchange="milplayCorrigirQuartos(this)" style="display:none"></label>
       <label style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;">📥 Importar planilha completa<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,false)" style="display:none"></label>
