@@ -205,7 +205,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
-.pv-faixa{margin:16px 20px 0;background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;position:relative}
+.pv-faixa{margin:20px 0;background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;position:relative}
 .pv-faixa.alerta{border-color:#C0392B;animation:pvPulsoV 1.8s ease-in-out infinite}
 .pv-faixa.conf{border-color:#5b8def;animation:pvPulsoA 1.8s ease-in-out infinite}
 .pv-faixa.plano{border-color:#e0b020;animation:pvPulsoO 1.8s ease-in-out infinite}
@@ -4973,7 +4973,7 @@ function pvSemanaAtual(mes){
 }
 function pvSemanaTexto(mes){ const n=pvSemanaAtual(mes), w=ppSemanas(mes); if(n<=0) return 'Antes da semana 1'; if(n>w.length) return 'Depois da última semana'; return 'Semana '+n+', de '+w[n-1].label; }
 // atrasada = ainda não marcada como concluída depois da sua semana (a que já foi marcada fica "a conferir")
-function pvAtrasada(it){ return (it.estado==='prevista'||it.estado==='andamento')&&it.semana<pvSemanaAtual(it.mes); }
+function pvAtrasada(it){ if(it.tipoLinha==='registro') return false; return (it.estado==='prevista'||it.estado==='andamento')&&it.semana<pvSemanaAtual(it.mes); }
 function pvLista(d){ return d?d.itens.concat(d.anteriores||[]):[]; }
 function pvSituacao(it){
   if(it.estado==='concluida') return ['conc','Concluída'];
@@ -4983,7 +4983,8 @@ function pvSituacao(it){
   return ['prev','Prevista'];
 }
 function pvPassa(it,f){ return f==='todas'||(f==='atrasadas'&&pvAtrasada(it))||(f==='conferir'&&it.estado==='conferir')||(f==='andamento'&&it.estado==='andamento')||(f==='previstas'&&it.estado==='prevista')||(f==='concluidas'&&it.estado==='concluida'); }
-function pvOrdena(a,b){ const r=x=>pvAtrasada(x)?0:(x.estado==='conferir'?1:2); return r(a)-r(b)||String(a.mes).localeCompare(String(b.mes))||a.semana-b.semana||String(a.cliente).localeCompare(String(b.cliente),'pt-BR'); }
+function pvDataOrd(it){ if(it.tipoLinha==='registro') return it.conclusao||it.abertura||''; const m=String(it.confirmada_em||it.concluida_em||'').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m?m[3]+'-'+m[2]+'-'+m[1]:(it.mes+'-01'); }
+function pvOrdena(a,b){ const r=x=>pvAtrasada(x)?0:(x.estado==='conferir'?1:(x.estado!=='concluida'?2:3)); const ra=r(a), rb=r(b); if(ra!==rb) return ra-rb; if(ra===3) return String(pvDataOrd(b)).localeCompare(String(pvDataOrd(a)))||String(a.cliente).localeCompare(String(b.cliente),'pt-BR'); return String(a.mes).localeCompare(String(b.mes))||(a.semana||0)-(b.semana||0)||String(a.cliente).localeCompare(String(b.cliente),'pt-BR'); }
 function pvCurto(dt){ const m=String(dt||'').match(/^(\d{2})\/(\d{2})\/\d{4} (\d{2}:\d{2})/); return m?m[1]+'/'+m[2]+' '+m[3]:String(dt||''); }
 function pvSemanaRotulo(it){ const w=ppSemanas(it.mes)[it.semana-1]; return w?w.label:''; }
 async function pvBuscar(mes){
@@ -5084,28 +5085,37 @@ function pvRenderFaixa(){
 }
 
 // ---------- tela Painel de preventivas ----------
+let pvReal=[], pvRealErro='';
+function pvMesRef(){ return pvPainel.mes==='todos'?ppMesAtualISO():pvPainel.mes; }
 function pvPreencherMeses(){
-  const sel=document.getElementById('pv-mes'); if(!sel) return; const atual=ppMesAtualISO(); let html='';
-  for(let i=-6;i<=1;i++){ const m=ppSomaMes(atual,i); html+='<option value="'+m+'">'+vfEsc(ppRotuloMes(m)+(i===0?' (mês atual)':''))+'</option>'; }
-  sel.innerHTML=html; sel.value=pvPainel.mes; if(sel.value!==pvPainel.mes){ pvPainel.mes=atual; sel.value=atual; }
+  const sel=document.getElementById('pv-mes'); if(!sel) return; const atual=ppMesAtualISO(); let html='<option value="todos">Últimos 12 meses</option>';
+  for(let i=-12;i<=1;i++){ const m=ppSomaMes(atual,i); html+='<option value="'+m+'">'+vfEsc(ppRotuloMes(m)+(i===0?' (mês atual)':''))+'</option>'; }
+  sel.innerHTML=html; sel.value=pvPainel.mes; if(sel.value!==pvPainel.mes){ pvPainel.mes='todos'; sel.value='todos'; }
 }
 async function pvCarregarPainel(){
   const sync=document.getElementById('pv-sync'); if(sync) sync.textContent='Carregando...';
   try{
-    pvPainel.dados=await pvBuscar(pvPainel.mes); pvPainel.erro='';
-    if(pvPainel.mes===ppMesAtualISO()) pvDados=pvPainel.dados;
+    pvPainel.dados=await pvBuscar(pvMesRef()); pvPainel.erro='';
+    if(pvMesRef()===ppMesAtualISO()) pvDados=pvPainel.dados;
     if(sync) sync.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){ pvPainel.dados=null; pvPainel.erro=(e&&e.message)?e.message:String(e); if(sync) sync.textContent='Erro ao carregar'; }
 }
+async function pvCarregarRealizadas(){
+  try{
+    const d=await fetchJsonComRetry(API+'?token='+encodeURIComponent(getToken())+'&action=getPreventivasRealizadas');
+    if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'resposta vazia');
+    pvReal=d.itens||[]; pvRealErro='';
+  }catch(e){ pvReal=[]; pvRealErro=(e&&e.message)?e.message:String(e); }
+}
 async function iniciarPrevPainel(){
-  if(!pvPainel.mes) pvPainel.mes=ppMesAtualISO();
+  if(!pvPainel.mes) pvPainel.mes='todos';
   pvPreencherMeses(); const b=document.getElementById('pv-busca'); if(b) b.value=pvPainel.busca||'';
   await prGarantirClientes();
-  await Promise.all([pvCarregarPainel(), ppCarregarUltimas()]);
+  await Promise.all([pvCarregarPainel(), pvCarregarRealizadas(), ppCarregarUltimas()]);
   pvRenderPainel();
 }
 async function pvTrocarMes(){ pvPainel.mes=document.getElementById('pv-mes').value; pvPainel.filtro='todas'; pvPainel.busca=''; document.getElementById('pv-busca').value=''; await pvCarregarPainel(); pvRenderPainel(); }
-async function pvAtualizarPainel(){ await Promise.all([pvCarregarPainel(), ppCarregarUltimas()]); pvRenderPainel(); }
+async function pvAtualizarPainel(){ await Promise.all([pvCarregarPainel(), pvCarregarRealizadas(), ppCarregarUltimas()]); pvRenderPainel(); }
 function pvPainelBusca(v){ pvPainel.busca=v; pvRenderPainel(); }
 function pvPainelFiltro(f){ pvPainel.filtro=f; pvRenderPainel(); }
 function pvHistorico(it){
@@ -5129,26 +5139,46 @@ function pvAcoesHtml(it,i){
 function pvCoberturaHtml(){
   const ativos=ppClientes(); if(!ativos.length) return '';
   const lim=ppPerDias(''); const com=ativos.filter(c=>{ const u=ppUltimaDias(c.nome); return u!==null&&u<=lim; }).length; const pct=Math.round(com/ativos.length*100);
-  return '<div class="pv-cobertura"><div style="font-size:13px;font-weight:600;color:var(--text);">Cobertura do ciclo de 6 meses</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;"><b style="color:var(--text);">'+com+' de '+ativos.length+'</b> '+(ativos.length===1?'cliente ativo':'clientes ativos')+' ('+pct+'%) tiveram preventiva nos últimos 6 meses.</div><div class="pv-barra"><i style="height:10px;background:#2fa06f;width:'+pct+'%"></i><i style="height:10px;background:#d9d6cb;width:'+(100-pct)+'%"></i></div></div>';
+  return '<div class="pv-cobertura"><div style="font-size:13px;font-weight:600;color:var(--text);">Cobertura do ciclo de 6 meses</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;"><b style="color:var(--text);">'+com+' de '+ativos.length+'</b> '+(ativos.length===1?'cliente ativo':'clientes ativos')+' ('+pct+'%) tiveram preventiva nos últimos 6 meses.</div><div class="pv-barra"><i style="height:10px;background:#2fa06f;width:'+pct+'%"></i><i style="height:10px;background:#d9d6cb;width:'+(100-pct)+'%"></i></div>'+(()=>{ const c=pvReal.filter(e=>e.estado==='concluida'); if(!c.length) return ''; return '<div style="font-size:13px;color:var(--text-muted);margin-top:10px;">Nos últimos 12 meses: <b style="color:var(--text);">'+ptN(c.length,'preventiva concluída','preventivas concluídas')+'</b> em <b style="color:var(--text);">'+ptN(new Set(c.map(e=>ppNorm(e.cliente))).size,'cliente','clientes')+'</b>.</div>'; })()+'</div>';
 }
+function pvMesmoCliente(a,b){ const x=ppNorm(a), y=ppNorm(b); if(x===y) return true; const tx=ppToks(a), ty=ppToks(b); return tx.length>0&&tx.join(' ')===ty.join(' '); }
+// preventivas já realizadas (Painel de Atendimento e Vistoria Remota) que não são o item do plano daquele cliente no mesmo mês
+function pvRegistros(){
+  const d=pvPainel.dados, mes=pvPainel.mes, plano=d?d.itens.concat(d.anteriores):[];
+  return pvReal.filter(ev=>(mes==='todos'||ev.mes===mes)&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente))).map(ev=>({tipoLinha:'registro',mes:ev.mes,cliente:ev.cliente,cidade:'',uf:ev.uf||'',tipo:'',semana:0,estado:ev.estado,origem:ev.origem,numero:ev.numero,tecnico:ev.tecnico,abertura:ev.abertura,conclusao:ev.conclusao,iniciada_por:'',iniciada_em:'',concluida_por:'',concluida_em:'',confirmada_por:'',confirmada_em:'',obs:''}));
+}
+function pvDataBr(x){ return x?x.slice(8,10)+'/'+x.slice(5,7)+'/'+x.slice(0,4):'-'; }
 function pvRenderPainel(){
   const d=pvPainel.dados, av=document.getElementById('pv-aviso');
-  if(av){ if(pvPainel.erro){ av.style.display='block'; av.textContent='Não foi possível carregar o painel: '+pvPainel.erro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; } else av.style.display='none'; }
+  if(av){
+    if(pvPainel.erro){ av.style.display='block'; av.textContent='Não foi possível carregar o painel: '+pvPainel.erro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
+    else if(pvRealErro){ av.style.display='block'; av.textContent='Não foi possível carregar as preventivas realizadas: '+pvRealErro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
+    else av.style.display='none';
+  }
   if(!d){ ppSetHTML('pv-plano-aviso',''); ppSetHTML('pv-resumo',''); ppSetHTML('pv-semanas',''); ppSetHTML('pv-cobertura',''); ppSetHTML('pv-filtros',''); ppSetHTML('pv-lista','<div class="pv-vazio">'+(pvPainel.erro?'Sem dados para mostrar.':'Carregando...')+'</div>'); return; }
-  const L=pvLista(d), rotMes=pvMesNome(pvPainel.mes).toLowerCase(), adm=ppEditavel();
-  ppSetHTML('pv-plano-aviso',d.pronto?'':'<div class="pp-aviso ouro" style="margin-top:0"><b>O plano de preventivas de '+vfEsc(rotMes)+' ainda não está pronto.</b> As preventivas do mês aparecem aqui quando o gestor marcar o plano como pronto.'+(d.anteriores.length?' Abaixo estão as de meses anteriores que ficaram sem conclusão.':'')+(adm?' <button class="modal-btn" style="height:30px;margin-left:8px;" onclick="pvIrPlano(\''+(pvPainel.mes===ppMesAtualISO()?'atual':'proximo')+'\')">Abrir Plano do mês</button>':'')+'</div>');
-  ppSetHTML('pv-resumo',d.pronto?'<div style="padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);"><div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">'+vfEsc(pvSemanaTexto(pvPainel.mes))+(d.pronto_por?'. Plano pronto por '+vfEsc(d.pronto_por)+(d.pronto_em?' em '+vfEsc(d.pronto_em):'')+'.':'')+'</div>'+pvNumerosHtml(d,'pvPainelFiltro')+'</div>':'');
-  ppSetHTML('pv-semanas',d.pronto?'<div class="pv-semanas">'+ppSemanas(pvPainel.mes).map(w=>{ const its=d.itens.filter(x=>x.semana===w.n); const t=its.length, c=its.filter(x=>x.estado==='concluida').length, cf=its.filter(x=>x.estado==='conferir').length, la=its.filter(pvAtrasada).length, rs=Math.max(0,t-c-cf-la); const seg=(n,cor)=>'<i style="height:12px;background:'+cor+';width:'+(t?(n/t*100).toFixed(2):0)+'%"></i>'; return '<div class="pv-sem-l"><span><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+')</span><div class="pv-barra">'+(t?seg(c,'#2fa06f')+seg(cf,'#5b8def')+seg(la,'#e4543f')+seg(rs,'#d9d6cb'):'<i style="height:12px;background:#ecebe4;width:100%"></i>')+'</div><span>'+c+' de '+t+'</span></div>'; }).join('')+'</div>':'');
+  const mesRef=pvMesRef(), regs=pvRegistros(), L=pvLista(d).concat(regs), rotMes=pvMesNome(mesRef).toLowerCase(), adm=ppEditavel();
+  ppSetHTML('pv-plano-aviso',d.pronto?'':'<div class="pp-aviso ouro" style="margin-top:0"><b>O plano de preventivas de '+vfEsc(rotMes)+' ainda não está pronto.</b> As preventivas planejadas do mês aparecem aqui quando o gestor marcar o plano como pronto.'+(regs.length||d.anteriores.length?' Abaixo estão as preventivas já realizadas e as pendentes de meses anteriores.':'')+(adm?' <button class="modal-btn" style="height:30px;margin-left:8px;" onclick="pvIrPlano(\''+(mesRef===ppMesAtualISO()?'atual':'proximo')+'\')">Abrir Plano do mês</button>':'')+'</div>');
+  ppSetHTML('pv-resumo',d.pronto?'<div style="padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);"><div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Plano de '+vfEsc(rotMes)+': '+vfEsc(pvSemanaTexto(mesRef))+(d.pronto_por?'. Plano pronto por '+vfEsc(d.pronto_por)+(d.pronto_em?' em '+vfEsc(d.pronto_em):'')+'.':'')+'</div>'+pvNumerosHtml(d,'pvPainelFiltro')+'</div>':'');
+  ppSetHTML('pv-semanas',d.pronto?'<div class="pv-semanas">'+ppSemanas(mesRef).map(w=>{ const its=d.itens.filter(x=>x.semana===w.n); const t=its.length, c=its.filter(x=>x.estado==='concluida').length, cf=its.filter(x=>x.estado==='conferir').length, la=its.filter(pvAtrasada).length, rs=Math.max(0,t-c-cf-la); const seg=(n,cor)=>'<i style="height:12px;background:'+cor+';width:'+(t?(n/t*100).toFixed(2):0)+'%"></i>'; return '<div class="pv-sem-l"><span><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+')</span><div class="pv-barra">'+(t?seg(c,'#2fa06f')+seg(cf,'#5b8def')+seg(la,'#e4543f')+seg(rs,'#d9d6cb'):'<i style="height:12px;background:#ecebe4;width:100%"></i>')+'</div><span>'+c+' de '+t+'</span></div>'; }).join('')+'</div>':'');
   ppSetHTML('pv-cobertura',pvCoberturaHtml());
   ppSetHTML('pv-filtros',pvChipsHtml(L,pvPainel.filtro,'pvPainelFiltro'));
   const q=ppNorm(pvPainel.busca);
   pvVisiveisPainel=L.filter(x=>pvPassa(x,pvPainel.filtro)&&(!q||ppNorm(x.cliente).includes(q))).sort(pvOrdena);
   ppSetHTML('pv-lista',pvVisiveisPainel.length?pvVisiveisPainel.map((it,i)=>{
-    const s=pvSituacao(it), local=[it.cidade,it.uf].filter(Boolean).join(' - ')+(it.tipo?' ('+it.tipo+')':'');
+    const s=pvSituacao(it);
+    if(it.tipoLinha==='registro'){
+      const dt=it.conclusao||it.abertura;
+      return '<div class="pv-row"><div class="c1"><div class="n">'+vfEsc(it.cliente)+'</div><div class="s">'+vfEsc([it.uf,it.numero?'Nº '+it.numero:''].filter(Boolean).join(' · '))+'</div></div>'+
+        '<div class="c2"><b>'+vfEsc(pvDataBr(dt))+'</b><div class="s">'+(it.estado==='concluida'?'conclusão':'abertura')+'</div></div>'+
+        '<div class="c3"><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></div>'+
+        '<div class="c4 q"><b>'+vfEsc(it.origem)+'</b>'+(it.tecnico?'<br>Técnico: '+vfEsc(it.tecnico):'')+(it.abertura&&it.conclusao&&it.abertura!==it.conclusao?'<br>Aberta em '+vfEsc(pvDataBr(it.abertura)):'')+'</div>'+
+        '<div class="c5"><div class="pv-acoes"><span class="pv-esp">Fora do plano</span></div></div></div>';
+    }
+    const local=[it.cidade,it.uf].filter(Boolean).join(' - ')+(it.tipo?' ('+it.tipo+')':'');
     return '<div class="pv-row"><div class="c1"><div class="n">'+vfEsc(it.cliente)+'</div><div class="s">'+vfEsc(local)+'</div></div>'+
-      '<div class="c2"><b>Semana '+it.semana+(it.mes!==pvPainel.mes?' de '+vfEsc(pvMesNome(it.mes).toLowerCase()):'')+'</b><div class="s">'+vfEsc(pvSemanaRotulo(it))+'</div></div>'+
+      '<div class="c2"><b>Semana '+it.semana+(it.mes!==mesRef?' de '+vfEsc(pvMesNome(it.mes).toLowerCase()):'')+'</b><div class="s">'+vfEsc(pvSemanaRotulo(it))+'</div></div>'+
       '<div class="c3"><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></div><div class="c4 q">'+pvHistorico(it)+'</div><div class="c5">'+pvAcoesHtml(it,i)+'</div></div>';
-  }).join(''):'<div class="pv-vazio">'+(L.length?'Nenhuma preventiva com esses filtros.':'Nenhuma preventiva para mostrar neste mês.')+'</div>');
+  }).join(''):'<div class="pv-vazio">'+(L.length?'Nenhuma preventiva com esses filtros.':'Nenhuma preventiva para mostrar neste período.')+'</div>');
 }
 async function pvAcao(i,acao){
   const it=pvVisiveisPainel[i]; if(!it) return; let obs='';
@@ -13195,7 +13225,7 @@ async function estEnviarEmail(reg){
     <div id="pv-filtros" class="pv-fchips"></div>
     <div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;background:var(--surface);">
       <div class="pv-pmin" style="min-width:980px;">
-        <div class="pv-phead" style="display:grid;grid-template-columns:minmax(0,2fr) 150px 150px minmax(0,1.7fr) 230px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Semana</span><span>Situação</span><span>Histórico</span><span style="text-align:right">Ações</span></div>
+        <div class="pv-phead" style="display:grid;grid-template-columns:minmax(0,2fr) 150px 150px minmax(0,1.7fr) 230px;gap:12px;padding:9px 20px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;"><span>Cliente</span><span>Semana ou data</span><span>Situação</span><span>Histórico</span><span style="text-align:right">Ações</span></div>
         <div id="pv-lista"></div>
       </div>
     </div>
