@@ -249,6 +249,7 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .pv-st.and{background:rgba(245,184,0,.22);color:#6b4f00}
 .pv-st.prev{background:#ecebe4;color:#55554e}
 .pv-st.atr{background:rgba(228,84,63,.14);color:#b8321f}
+.pv-st.abt{background:rgba(96,125,139,.2);color:#37474f}
 .pv-fh{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"tit tog pai";gap:10px 8px;align-items:center}
 .pv-fh .tit2{grid-area:tit;min-width:0}
 .pv-fh .tog{grid-area:tog}
@@ -4993,9 +4994,9 @@ function ppMarcarPronto(){
   const n=ppItens.length, N=ppMeta;
   const msg=n<N?((N-n===1?'Falta ':'Faltam ')+ptN(N-n,'cliente','clientes')+' para a meta de '+N+'. Marcar como pronto mesmo assim?'):'O plano de '+ppRotuloMes(ppMes).split(' de ')[0].toLowerCase()+', com '+ptN(n,'cliente','clientes')+', será liberado para o painel, o banner e a TV. Você pode reabrir depois. Confirmar?';
   if(!confirm(msg)) return;
-  ppSalvar(true);
+  return ppSalvar(true);
 }
-function ppReabrir(){ if(!ppEditavel()||!ppPronto) return; ppSalvar(false); }
+function ppReabrir(){ if(!ppEditavel()||!ppPronto) return; return ppSalvar(false); }
 
 // ============ PAINEL DE PREVENTIVAS E FAIXA DO PIPELINE ============
 let pvDados=null, pvErro='', pvFaixaFiltro='todas', pvFaixaAberta=true, pvVisiveisFaixa=[], pvVisiveisPainel=[];
@@ -5018,16 +5019,30 @@ function pvSemanaAtual(mes){
 }
 function pvSemanaTexto(mes){ const n=pvSemanaAtual(mes), w=ppSemanas(mes); if(n<=0) return 'Antes da semana 1'; if(n>w.length) return 'Depois da última semana'; return 'Semana '+n+', de '+w[n-1].label; }
 // atrasada = ainda não marcada como concluída depois da sua semana (a que já foi marcada fica "a conferir")
-function pvAtrasada(it){ if(it.tipoLinha==='registro') return false; return (it.estado==='prevista'||it.estado==='andamento')&&it.semana<pvSemanaAtual(it.mes); }
+function pvAtrasada(it){ if(it.tipoLinha==='registro') return false; return (it.estado==='prevista'||it.estado==='aberta'||it.estado==='andamento')&&it.semana<pvSemanaAtual(it.mes); }
+// o estado de cada cliente do plano também acompanha o que acontece na origem (Painel de Atendimento e Vistoria Remota), sem passar pelo Painel
+const PV_RANK={prevista:0,aberta:1,andamento:2,conferir:3,concluida:4}, PV_NOMES=['prevista','aberta','andamento','conferir','concluida'];
+function pvAplicarOrigem(d){
+  if(!d) return;
+  d.itens.concat(d.anteriores||[]).forEach(it=>{
+    if(it.estadoBase===undefined) it.estadoBase=it.estado;
+    const evs=pvReal.filter(ev=>ev.mes===it.mes&&pvMesmoCliente(it.cliente,ev.cliente));
+    const conc=evs.filter(ev=>ev.estado==='concluida'&&(!it.devolvida_em||String(ev.conclusao)>it.devolvida_em));   // depois de devolvida, só vale uma conclusão nova
+    const abt=evs.filter(ev=>ev.estado==='andamento');
+    it.derivado=conc.length?{tipo:'concluida',ev:conc[0]}:(abt.length?{tipo:'aberta',ev:abt[0]}:null);
+    it.estado=PV_NOMES[Math.max(PV_RANK[it.estadoBase]||0,conc.length?3:(abt.length?1:0))];
+  });
+}
 function pvLista(d){ return d?d.itens.concat(d.anteriores||[]):[]; }
 function pvSituacao(it){
   if(it.estado==='concluida') return ['conc','Concluída'];
   if(it.estado==='conferir') return ['conf','A conferir'];
   if(pvAtrasada(it)){ if(it.mes<ppMesAtualISO()) return ['atr','Atrasada, de '+pvMesNome(it.mes).toLowerCase()]; return ['atr','Atrasada, '+ptN(pvSemanaAtual(it.mes)-it.semana,'semana','semanas')]; }
   if(it.estado==='andamento') return ['and','Em andamento'];
+  if(it.estado==='aberta') return ['abt','Aberta'];
   return ['prev','Prevista'];
 }
-function pvPassa(it,f){ return f==='todas'||(f==='atrasadas'&&pvAtrasada(it))||(f==='conferir'&&it.estado==='conferir')||(f==='andamento'&&it.estado==='andamento')||(f==='previstas'&&it.estado==='prevista')||(f==='concluidas'&&it.estado==='concluida'); }
+function pvPassa(it,f){ return f==='todas'||(f==='atrasadas'&&pvAtrasada(it))||(f==='conferir'&&it.estado==='conferir')||(f==='andamento'&&it.estado==='andamento')||(f==='abertas'&&it.estado==='aberta')||(f==='previstas'&&it.estado==='prevista')||(f==='concluidas'&&it.estado==='concluida'); }
 function pvDataOrd(it){ if(it.tipoLinha==='registro') return it.conclusao||it.abertura||''; const m=String(it.confirmada_em||it.concluida_em||'').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m?m[3]+'-'+m[2]+'-'+m[1]:(it.mes+'-01'); }
 function pvOrdena(a,b){ const r=x=>pvAtrasada(x)?0:(x.estado==='conferir'?1:(x.estado!=='concluida'?2:3)); const ra=r(a), rb=r(b); if(ra!==rb) return ra-rb; if(ra===3) return String(pvDataOrd(b)).localeCompare(String(pvDataOrd(a)))||String(a.cliente).localeCompare(String(b.cliente),'pt-BR'); return String(a.mes).localeCompare(String(b.mes))||(a.semana||0)-(b.semana||0)||String(a.cliente).localeCompare(String(b.cliente),'pt-BR'); }
 function pvCurto(dt){ const m=String(dt||'').match(/^(\d{2})\/(\d{2})\/\d{4} (\d{2}:\d{2})/); return m?m[1]+'/'+m[2]+' '+m[3]:String(dt||''); }
@@ -5039,7 +5054,7 @@ async function pvBuscar(mes){
 }
 function pvChipsHtml(L,filtro,fn){
   const c=f=>L.filter(x=>pvPassa(x,f)).length;
-  return [['todas','Tudo'],['atrasadas','Atrasadas'],['conferir','A conferir'],['andamento','Em andamento'],['previstas','Previstas'],['concluidas','Concluídas']].map(f=>'<button class="pv-fch'+(filtro===f[0]?' on':'')+'" onclick="'+fn+'(\''+f[0]+'\')">'+f[1]+' ('+c(f[0])+')</button>').join('');
+  return [['todas','Tudo'],['atrasadas','Atrasadas'],['conferir','A conferir'],['andamento','Em andamento'],['abertas','Abertas'],['previstas','Previstas'],['concluidas','Concluídas']].map(f=>'<button class="pv-fch'+(filtro===f[0]?' on':'')+'" onclick="'+fn+'(\''+f[0]+'\')">'+f[1]+' ('+c(f[0])+')</button>').join('');
 }
 function pvNumerosHtml(d,fn){
   const L=pvLista(d), itens=d.itens, N=itens.length;
@@ -5066,10 +5081,9 @@ function pvGravarEstadoFaixa(o){ try{ localStorage.setItem('bt_pv_faixa',JSON.st
 
 // ---------- faixa no topo do Pipeline ----------
 async function pvCarregarFaixa(){
-  try{ pvDados=await pvBuscar(ppMesAtualISO()); pvErro=''; }catch(e){ pvDados=null; pvErro=(e&&e.message)?e.message:String(e); }
+  try{ const r=await Promise.all([pvBuscar(ppMesAtualISO()), pvCarregarRealizadas()]); pvDados=r[0]; pvErro=''; }catch(e){ pvDados=null; pvErro=(e&&e.message)?e.message:String(e); }
   pvRenderFaixa();
 }
-// a faixa volta expandida a cada dia, e se aparecer uma atrasada nova com ela recolhida, abre sozinha
 function pvAplicarEstadoFaixa(nLate){
   const hoje=pvHojeISO(); let st=pvLerEstadoFaixa();
   if(st.dia!==hoje){ st={dia:hoje,aberta:true,atrasadas:nLate}; pvGravarEstadoFaixa(st); }
@@ -5090,9 +5104,10 @@ function pvIrPlano(qual){
   const sel=document.getElementById('pp-mes'); if(sel&&sel.options.length) sel.value=alvo; switchMainTab('prev-plano');
 }
 function pvAbrirPainelFiltro(f){ pvPainel.mes=ppMesAtualISO(); pvPainel.filtro=f||'todas'; pvPainel.busca=''; switchMainTab('prev-painel'); }
-function pvAbrirPainelDaFaixa(i){ const it=pvVisiveisFaixa[i]; if(!it) return; pvPainel.mes=it.mes; pvPainel.filtro='todas'; pvPainel.busca=it.cliente; switchMainTab('prev-painel'); }
+function pvAbrirPainelDaFaixa(i){ const it=pvVisiveisFaixa[i]; if(!it) return; if(it.estado==='prevista'&&pvPodeMarcar()){ pvAbrirPreventiva(it); return; } pvPainel.mes=it.mes; pvPainel.filtro='todas'; pvPainel.busca=it.cliente; switchMainTab('prev-painel'); }
 function pvRenderFaixa(){
   if(!document.getElementById('pv-faixa')) return;
+  if(pvDados) pvAplicarOrigem(pvDados);
   if(!pvDados){
     ppSetHTML('pv-faixa',(pvErro&&ppEditavel())?'<div class="pv-faixa"><div class="pv-alt n"><div class="t"><b>Não foi possível carregar as preventivas do mês.</b><span>'+vfEsc(pvErro)+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.</span></div><button class="modal-btn" onclick="pvCarregarFaixa()">Tentar de novo</button></div></div>':'');
     return;
@@ -5119,7 +5134,7 @@ function pvRenderFaixa(){
     if(d.pronto) corpo+=pvNumerosHtml(d,'pvFiltrarFaixa');
     corpo+='<div class="pv-fchips" role="group" aria-label="Filtrar preventivas">'+pvChipsHtml(L,pvFaixaFiltro,'pvFiltrarFaixa')+'</div>';
     pvVisiveisFaixa=L.filter(x=>pvPassa(x,pvFaixaFiltro)).sort(pvOrdena);
-    const linhas=pvVisiveisFaixa.length?pvVisiveisFaixa.map((it,i)=>{ const s=pvSituacao(it); return '<button class="pv-lr" onclick="pvAbrirPainelDaFaixa('+i+')"><span><div class="n">'+vfEsc(it.cliente)+'</div><div class="s">'+vfEsc([it.cidade,it.uf].filter(Boolean).join(' - '))+'</div></span><span style="font-size:13px"><b>Semana '+it.semana+'</b><div class="s">'+vfEsc(pvSemanaRotulo(it))+'</div></span><span><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></span><span style="font-size:13px;color:#3f3f3a">'+vfEsc(it.estado==='prevista'?'Sem início':(it.iniciada_por||it.concluida_por||'-'))+'</span></button>'; }).join(''):'<div class="pv-vazio">Nenhuma preventiva neste filtro.</div>';
+    const linhas=pvVisiveisFaixa.length?pvVisiveisFaixa.map((it,i)=>{ const s=pvSituacao(it); return '<button class="pv-lr" onclick="pvAbrirPainelDaFaixa('+i+')"><span><div class="n">'+vfEsc(it.cliente)+'</div><div class="s">'+vfEsc([it.cidade,it.uf].filter(Boolean).join(' - '))+'</div></span><span style="font-size:13px"><b>Semana '+it.semana+'</b><div class="s">'+vfEsc(pvSemanaRotulo(it))+'</div></span><span><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></span><span style="font-size:13px;color:#3f3f3a">'+vfEsc(it.estado==='prevista'?'Abrir preventiva':(it.iniciada_por||it.concluida_por||(it.derivado?it.derivado.ev.origem:'-')))+'</span></button>'; }).join(''):'<div class="pv-vazio">Nenhuma preventiva neste filtro.</div>';
     corpo+='<div class="pv-lst" id="pv-f-lista"><div class="pv-lh"><span>Cliente</span><span>Semana</span><span>Situação</span><span>Responsável</span></div>'+linhas+'</div>';
   }
   ppSetHTML('pv-faixa','<div class="pv-faixa '+cls+'" role="region" aria-label="Preventivas do mês">'+
@@ -5165,17 +5180,19 @@ function pvPainelBusca(v){ pvPainel.busca=v; pvRenderPainel(); }
 function pvPainelFiltro(f){ pvPainel.filtro=f; pvRenderPainel(); }
 function pvHistorico(it){
   const l=[];
+  if(it.derivado){ const ev=it.derivado.ev, n=ev.numero?', Nº '+ev.numero:''; l.push(it.derivado.tipo==='aberta'?'Preventiva aberta em <b>'+vfEsc(pvDataBr(ev.abertura))+'</b> ('+vfEsc(ev.origem+n)+')':'Concluída na origem em <b>'+vfEsc(pvDataBr(ev.conclusao))+'</b> ('+vfEsc(ev.origem+n)+')'); }
   if(it.iniciada_por) l.push('Iniciada por <b>'+vfEsc(it.iniciada_por)+'</b>, '+vfEsc(pvCurto(it.iniciada_em)));
   if(it.concluida_por) l.push('Marcada como concluída por <b>'+vfEsc(it.concluida_por)+'</b>, '+vfEsc(pvCurto(it.concluida_em)));
   if(it.confirmada_por) l.push('Confirmada por <b>'+vfEsc(it.confirmada_por)+'</b>, '+vfEsc(pvCurto(it.confirmada_em)));
   if(it.obs&&it.estado==='andamento') l.push('Devolvida: '+vfEsc(it.obs));
-  if((it.estado==='prevista'||it.estado==='andamento')&&it.mes===ppMesAtualISO()){ const u=ppUltimaDe(it.cliente); if(u&&u.d.slice(0,7)===it.mes) l.push('Há registro de preventiva em '+vfEsc(u.d.slice(8,10)+'/'+u.d.slice(5,7))+' ('+vfEsc(u.o)+').'); }
+  if(!it.derivado&&(it.estado==='prevista'||it.estado==='andamento')&&it.mes===ppMesAtualISO()){ const u=ppUltimaDe(it.cliente); if(u&&u.d.slice(0,7)===it.mes) l.push('Há registro de preventiva em '+vfEsc(u.d.slice(8,10)+'/'+u.d.slice(5,7))+' ('+vfEsc(u.o)+').'); }
   return l.length?l.join('<br>'):'<span style="color:var(--text-light)">Sem movimento</span>';
 }
 function pvAcoesHtml(it,i){
   const pode=pvPodeMarcar(), adm=ppEditavel(), b=[];
   const btn=(rot,acao,pri)=>'<button'+(pri?' class="pri"':'')+' onclick="pvAcao('+i+',\''+acao+'\')">'+rot+'</button>';
-  if(it.estado==='prevista'&&pode){ b.push(btn('Iniciar','iniciar')); b.push(btn('Marcar concluída','concluir')); }
+  if(it.estado==='prevista'&&pode){ b.push(btn('Abrir preventiva','abrir',true)); b.push(btn('Iniciar','iniciar')); b.push(btn('Marcar concluída','concluir')); }
+  else if(it.estado==='aberta'&&pode){ b.push(btn('Iniciar','iniciar')); b.push(btn('Marcar concluída','concluir')); }
   else if(it.estado==='andamento'&&pode) b.push(btn('Marcar concluída','concluir'));
   else if(it.estado==='conferir'){ if(adm){ b.push(btn('Confirmar','confirmar',true)); b.push(btn('Devolver','devolver')); } else b.push('<span class="pv-esp">Aguardando o gestor</span>'); }
   else if(it.estado==='concluida'&&adm) b.push(btn('Reabrir','reabrir'));
@@ -5190,11 +5207,11 @@ function pvMesmoCliente(a,b){ const x=ppNorm(a), y=ppNorm(b); if(x===y) return t
 // preventivas já realizadas (Painel de Atendimento e Vistoria Remota) que não são o item do plano daquele cliente no mesmo mês
 function pvRegistros(){
   const d=pvPainel.dados, mes=pvPainel.mes, plano=d?d.itens.concat(d.anteriores):[];
-  return pvReal.filter(ev=>(mes==='todos'||ev.mes===mes)&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente))).map(ev=>({tipoLinha:'registro',mes:ev.mes,cliente:ev.cliente,cidade:'',uf:ev.uf||'',tipo:'',semana:0,estado:ev.estado,origem:ev.origem,numero:ev.numero,tecnico:ev.tecnico,abertura:ev.abertura,conclusao:ev.conclusao,iniciada_por:'',iniciada_em:'',concluida_por:'',concluida_em:'',confirmada_por:'',confirmada_em:'',obs:''}));
+  return pvReal.filter(ev=>(mes==='todos'||ev.mes===mes)&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente))).map(ev=>({tipoLinha:'registro',mes:ev.mes,cliente:ev.cliente,cidade:'',uf:ev.uf||'',tipo:'',semana:0,estado:ev.estado==='andamento'?'aberta':ev.estado,origem:ev.origem,numero:ev.numero,tecnico:ev.tecnico,abertura:ev.abertura,conclusao:ev.conclusao,iniciada_por:'',iniciada_em:'',concluida_por:'',concluida_em:'',confirmada_por:'',confirmada_em:'',obs:''}));
 }
 function pvDataBr(x){ return x?x.slice(8,10)+'/'+x.slice(5,7)+'/'+x.slice(0,4):'-'; }
 function pvRenderPainel(){
-  const d=pvPainel.dados, av=document.getElementById('pv-aviso');
+  const d=pvPainel.dados, av=document.getElementById('pv-aviso'); pvAplicarOrigem(d);
   if(av){
     if(pvPainel.erro){ av.style.display='block'; av.textContent='Não foi possível carregar o painel: '+pvPainel.erro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
     else if(pvRealErro){ av.style.display='block'; av.textContent='Não foi possível carregar as preventivas realizadas: '+pvRealErro+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.'; }
@@ -5225,23 +5242,58 @@ function pvRenderPainel(){
       '<div class="c3"><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></div><div class="c4 q">'+pvHistorico(it)+'</div><div class="c5">'+pvAcoesHtml(it,i)+'</div></div>';
   }).join(''):'<div class="pv-vazio">'+(L.length?'Nenhuma preventiva com esses filtros.':'Nenhuma preventiva para mostrar neste período.')+'</div>');
 }
+// leva ao formulário certo, com o cliente já escolhido: StreamBlink vai para a Vistoria Remota (N2, com amostragem); o resto vai para a Nova preventiva do Painel de Atendimento
+async function pvAbrirPreventiva(it){
+  const c=ppClientePorNome(it.cliente)||{nome:it.cliente,uf:it.uf};
+  if(it.tipo==='StreamBlink'){
+    switchMainTab('vistoria-remota'); await new Promise(r=>setTimeout(r,80)); vrNova();
+    const e=document.getElementById('vr-cliente'); if(e){ e.value=c.nome; vrClienteSelecionado(); }
+    return;
+  }
+  await abrirNovaPreventiva();
+  const e=document.getElementById('at-cliente'); if(e){ e.value=c.nome; onClienteInput('at'); }
+  const uf=document.getElementById('at-estado'); if(uf&&!uf.value&&(c.uf||it.uf)) uf.value=String(c.uf||it.uf).toUpperCase();
+}
+const PV_GERUNDIO={iniciar:'Iniciando...',concluir:'Marcando...',confirmar:'Confirmando...',devolver:'Devolvendo...',reabrir:'Reabrindo...',abrir:'Abrindo...'};
 async function pvAcao(i,acao){
-  const it=pvVisiveisPainel[i]; if(!it) return; let obs='';
+  const it=pvVisiveisPainel[i]; if(!it) return;
+  const ev=window.event, b=(ev&&ev.target&&ev.target.closest)?ev.target.closest('button'):null, antes=b?b.textContent:'';
+  const ocupa=()=>{ if(b){ b.disabled=true; b.textContent=PV_GERUNDIO[acao]; } };
+  const libera=()=>{ if(b&&b.isConnected){ b.disabled=false; b.textContent=antes; } };
+  if(acao==='abrir'){ ocupa(); try{ await pvAbrirPreventiva(it); }catch(e){ alert('Não foi possível abrir a preventiva: '+(e.message||e)); } libera(); return; }
+  let obs='';
   if(acao==='devolver'){ const m=prompt('Motivo da devolução (opcional):',''); if(m===null) return; obs=m; }
   if(acao==='reabrir'&&!confirm('Reabrir a preventiva de '+it.cliente+'? Ela volta para "em andamento".')) return;
+  ocupa();
   try{
     const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'savePreventivaStatus',mes:it.mes,cliente:it.cliente,acao:acao,obs:obs})});
     const d=await r.json(); if(!d||d.ok===false||d.error) throw new Error((d&&d.error)||'falha ao salvar');
     const dados=pvPainel.dados, alvo=dados.itens.concat(dados.anteriores).find(x=>x.mes===it.mes&&x.cliente===it.cliente);
-    if(alvo) Object.assign(alvo,d.item);
-    if(d.item.estado==='concluida') dados.anteriores=dados.anteriores.filter(x=>!(x.mes===it.mes&&x.cliente===it.cliente&&x.mes!==pvPainel.mes));
-    if(pvPainel.mes===ppMesAtualISO()) pvDados=dados;
+    if(alvo){ Object.assign(alvo,d.item); alvo.estadoBase=d.item.estado; }
+    if(d.item.estado==='concluida') dados.anteriores=dados.anteriores.filter(x=>!(x.mes===it.mes&&x.cliente===it.cliente&&x.mes!==pvMesRef()));
+    if(pvMesRef()===ppMesAtualISO()) pvDados=dados;
     pvRenderPainel(); pvRenderFaixa();
     ppToast({iniciar:'Preventiva de '+it.cliente+' em andamento.',concluir:'Preventiva de '+it.cliente+' marcada como concluída. Aguarda a conferência do gestor.',confirmar:'Preventiva de '+it.cliente+' confirmada.',devolver:'Preventiva de '+it.cliente+' devolvida para andamento.',reabrir:'Preventiva de '+it.cliente+' reaberta.'}[acao]);
   }catch(e){ alert('Não foi possível salvar: '+(e.message||e)); }
+  libera();
 }
+// botão ocupado fica desabilitado e em gerúndio (só quando o clique veio do próprio botão que chama a função)
+function comGerundio(nome,texto,minimo){
+  const orig=window[nome]; if(typeof orig!=='function'||orig._g) return;
+  const w=async function(){
+    const ev=window.event, b=(ev&&ev.target&&ev.target.closest)?ev.target.closest('button'):null;
+    const meu=b&&String(b.getAttribute('onclick')||'').indexOf(nome+'(')>=0&&!b.disabled, antes=meu?b.textContent:'';
+    if(meu){ b.disabled=true; b.textContent=texto; }
+    try{ const r=await orig.apply(this,arguments); if(meu&&minimo) await new Promise(x=>setTimeout(x,minimo)); return r; }
+    finally{ if(meu&&b.isConnected){ b.disabled=false; b.textContent=antes; } }
+  };
+  w._g=true; window[nome]=w;
+}
+window.addEventListener('load',function(){
+  [['ppMarcarPronto','Marcando como pronto...'],['ppReabrir','Reabrindo...'],['ppDistribuir','Distribuindo...',350],['ppAdicionar','Acrescentando...',350],['prBaixarPlanilha','Baixando...',350],['prConfirmarPadrao','Confirmando...',350],['prAplicarImportacao','Aplicando...'],['pvAtualizarPainel','Atualizando...'],['pvCarregarFaixa','Tentando...'],['pvIrPlano','Abrindo...',350],['pvAbrirPainelFiltro','Abrindo...',350],['criarClienteAvulso','Criando...'],
+   ['vrAbrirPreventiva','Abrindo...'],['vrConcluir','Concluindo...'],['vrEmitirPDF','Emitindo...'],['vrSalvarUh','Salvando...'],['vrSortearMais','Sorteando...',350],['vrLimparFiltros','Limpando...',350],['vrAddUh','Adicionando...',350],['salvarMilPlay','Salvando...']].forEach(a=>comGerundio(a[0],a[1],a[2]));
+});
 setInterval(function(){ const p=document.getElementById('page-pipeline'); if(p&&p.style.display!=='none'&&document.visibilityState==='visible'&&typeof usuarioLogado!=='undefined'&&usuarioLogado) pvCarregarFaixa(); },300000);
-
 // ============ BUSCA COM AUTOCOMPLETE (telas de Vistorias) ============
 // Usa só os dados que a tela já carregou: não faz chamada extra ao servidor.
 function ptN(n,sing,plur){ n=Number(n)||0; return n+' '+(n===1?sing:plur); }
