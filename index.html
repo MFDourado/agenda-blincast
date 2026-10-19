@@ -4749,35 +4749,90 @@ function ppSemanaPara(cidade){
   return melhor>0?melhor:cont.indexOf(Math.min.apply(null,cont))+1;
 }
 function ppChaveItem(it){ const c=ppClientePorNome(it.cliente); return prChave(c?c.cnpj:it.cnpj,it.cliente); }
-function ppCandidatos(){
-  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)), noK=new Set(ppItens.map(ppChaveItem)), vistas=new Set();
-  return ppClientes().filter(c=>{ if(no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))) return false; const k=prChave(c.cnpj,c.nome); if(noK.has(k)||vistas.has(k)) return false; vistas.add(k); return true; }).map(c=>({c:c,r:prRegraDe(c)})).filter(x=>x.r.per==='')
-    .sort((a,b)=>PP_CURVA_PESO[a.r.curva]-PP_CURVA_PESO[b.r.curva]||(ppAtraso(b.c,b.r)===ppAtraso(a.c,a.r)?0:(ppAtraso(b.c,b.r)>ppAtraso(a.c,a.r)?1:-1))||String(a.c.nome).localeCompare(String(b.c.nome),'pt-BR'));
+function ppUfDe(c){
+  const u=String(c.uf||c.estado||'').trim().toUpperCase(); if(u) return u;
+  const k=ppNorm(c.cidade||''); if(!k) return '--'; const cont={};
+  (clientes||[]).forEach(o=>{ const ou=String(o.uf||o.estado||'').trim().toUpperCase(); if(ou&&ppNorm(o.cidade||'')===k) cont[ou]=(cont[ou]||0)+1; });
+  const ks=Object.keys(cont).sort((a,b)=>cont[b]-cont[a]); return ks[0]||'--';
 }
-// clientes com periodicidade de contrato entram sozinhos no mês em que vencem; o mensal entra todo mês
-function ppSyncObrigatorios(){
-  if(!ppEditavel()||ppPronto) return 0;
-  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)), noK=new Set(ppItens.map(ppChaveItem)); let add=0;
-  ppClientes().forEach(c=>{ const r=prRegraDe(c); if(!r.definida||!ppObrigatorio(c,r,ppMes)||no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))||noK.has(r.chave)) return; noK.add(r.chave); ppItens.push(ppNovoItem(c,r,'obrigatorio')); add++; });
-  ppItens.forEach(i=>{ if(i.origem==='sugerido'){ const x=ppInfoItem(i); if(x.r.definida&&ppObrigatorio(x.c,x.r,ppMes)) i.origem='obrigatorio'; } });
-  return add;
+// clientes que podem entrar no plano: obrigatórios (contrato vencendo ou nunca feitos) e os sem contrato (sugestões)
+function ppElegiveis(){
+  const no=new Set(ppItens.map(i=>ppNorm(i.cliente))), rej=new Set(ppRejeitados.map(ppNorm)), noK=new Set(ppItens.map(ppChaveItem)), vistas=new Set(), out=[];
+  ppClientes().forEach(c=>{
+    if(no.has(ppNorm(c.nome))||rej.has(ppNorm(c.nome))) return;
+    const r=prRegraDe(c), k=r.chave; if(noK.has(k)||vistas.has(k)) return;
+    const obr=r.definida&&ppObrigatorio(c,r,ppMes);
+    if(!obr&&r.per!=='') return;   // contrato que ainda não venceu não entra sozinho
+    vistas.add(k); out.push({c:c,r:r,obr:obr,mensal:obr&&r.per==='Mensal',atraso:ppAtraso(c,r),uf:ppUfDe(c),cid:ppNorm(c.cidade||'')});
+  });
+  return out.sort(ppCmpFila);
 }
-function ppCompletar(){
-  let add=0; const novos=[];
-  while(ppNivel&&ppItens.length<ppMeta){ const nx=ppCandidatos()[0]; if(!nx) break; ppItens.push(ppNovoItem(nx.c,nx.r,'sugerido')); novos.push(nx.c.nome); add++; }
-  ppMarcarNovos(novos); return add;
+// ordem da fila: mensal, depois os demais obrigatórios, depois as sugestões; em cada grupo curva A, B e C, nunca feitos primeiro e maior atraso
+function ppCmpFila(a,b){
+  const g=x=>x.mensal?0:(x.obr?1:2);
+  return g(a)-g(b)||PP_CURVA_PESO[a.r.curva]-PP_CURVA_PESO[b.r.curva]||(a.atraso===b.atraso?0:(a.atraso>b.atraso?-1:1))||String(a.c.nome).localeCompare(String(b.c.nome),'pt-BR');
 }
+// junta por UF (a que tem mais clientes na fila primeiro) e, dentro dela, por cidade (a maior primeiro)
+function ppPorRegiao(lista){
+  const ufs={}; lista.forEach(x=>{ if(!ufs[x.uf]) ufs[x.uf]={n:0,cids:{}}; ufs[x.uf].n++; (ufs[x.uf].cids[x.cid]=ufs[x.uf].cids[x.cid]||[]).push(x); });
+  const out=[];
+  Object.keys(ufs).sort((a,b)=>(a==='--')-(b==='--')||ufs[b].n-ufs[a].n||a.localeCompare(b)).forEach(uf=>{
+    const cs=ufs[uf].cids;
+    Object.keys(cs).sort((a,b)=>cs[b].length-cs[a].length||ppCmpFila(cs[a][0],cs[b][0])).forEach(c=>cs[c].forEach(x=>out.push(x)));
+  });
+  return out;
+}
+let ppResumoFila=null;
+// preenche as vagas até o número do nível, sem nunca passar dele
+function ppPreencher(){
+  if(!ppNivel||ppPronto||!ppEditavel()) return 0;
+  let vagas=ppMeta-ppItens.length; if(vagas<=0) return 0;
+  const E=ppElegiveis(), usados=new Set(), esc=[], por={mensal:0,curvaA:0,regiao:0,sugestao:0}, ufs={};
+  const pega=(x,m)=>{ if(vagas<=0||usados.has(x)) return; usados.add(x); esc.push(x); vagas--; por[m]++; if(m==='regiao'||m==='sugestao') ufs[x.uf]=(ufs[x.uf]||0)+1; };
+  E.filter(x=>x.mensal).forEach(x=>pega(x,'mensal'));
+  E.filter(x=>x.obr&&!x.mensal&&x.r.curva==='A').forEach(x=>pega(x,'curvaA'));
+  ppPorRegiao(E.filter(x=>x.obr&&!usados.has(x))).forEach(x=>pega(x,'regiao'));
+  ppPorRegiao(E.filter(x=>!x.obr&&!usados.has(x))).forEach(x=>pega(x,'sugestao'));
+  esc.forEach(x=>ppItens.push(ppNovoItem(x.c,x.r,x.obr?'obrigatorio':'sugerido')));
+  ppMarcarNovos(esc.map(x=>x.c.nome));
+  ppResumoFila={nivel:ppNivel,entraram:esc.length,mensal:por.mensal,curvaA:por.curvaA,regiao:por.regiao,sugestao:por.sugestao,ufs:Object.keys(ufs).sort((a,b)=>ufs[b]-ufs[a]||a.localeCompare(b))};
+  return esc.length;
+}
+function ppAvisosHtml(){
+  const n=ppItens.length, N=ppNivel?ppMeta:0;
+  if(ppPronto) return '<div class="pp-aviso verde"><b>Plano pronto por '+vfEsc(ppProntoPor)+(ppProntoEm?' em '+vfEsc(ppProntoEm):'')+'.</b> Liberado para o painel de preventivas, o banner do Pipeline e a TV. Para mexer de novo, clique em Reabrir plano.</div>';
+  const fora=ppElegiveis().filter(x=>x.obr).length;
+  if(!ppNivel) return '<div class="pp-aviso ouro">'+(fora?'<b>'+ptN(fora,'cliente obrigatório','clientes obrigatórios')+' neste mês</b> (contrato vencendo ou sem nenhuma preventiva registrada). Escolha um nível de meta: entram os mais prioritários até o número do nível, e o restante fica para o mês seguinte.':'<b>Nenhum cliente obrigatório neste mês.</b> Escolha um nível de meta para ver as sugestões.')+'</div>';
+  let h=''; const r=(ppResumoFila&&ppResumoFila.nivel===ppNivel&&ppResumoFila.entraram)?ppResumoFila:null;
+  if(r){
+    const partes=[]; if(r.mensal) partes.push(ptN(r.mensal,'mensal','mensais')); if(r.curvaA) partes.push(r.curvaA+' de curva A'); if(r.regiao) partes.push(ptN(r.regiao,'obrigatório agrupado por região','obrigatórios agrupados por região')); if(r.sugestao) partes.push(ptN(r.sugestao,'sugerido','sugeridos'));
+    h+='<div class="pp-aviso ouro"><b>'+(r.entraram===1?'Entrou ':'Entraram ')+r.entraram+'</b>: '+pvJunta(partes)+'.'+((r.regiao||r.sugestao)&&r.ufs.length?' Regiões: '+vfEsc(r.ufs.slice(0,4).join(', '))+(r.ufs.length>4?' e mais '+(r.ufs.length-4):'')+'.':'')+'</div>';
+  }
+  if(fora) h+='<div class="pp-aviso ouro"><b>'+(fora===1?'Ficou':'Ficaram')+' de fora '+ptN(fora,'obrigatório','obrigatórios')+'.</b> '+(fora===1?'Ele volta':'Eles voltam')+' como prioridade no mês seguinte. <button class="modal-btn" style="height:30px;margin-left:8px;" onclick="ppVerFora()">Ver quais ficaram de fora</button></div>';
+  if(n>N) h+='<div class="pp-aviso ouro">A lista está '+ptN(n-N,'cliente','clientes')+' acima do número do nível ('+N+'). Use o X para tirar, que acima do número do nível ele só remove.</div>';
+  return h;
+}
+function ppVerFora(){
+  const L=ppElegiveis().filter(x=>x.obr); if(!L.length) return; const por={};
+  L.forEach(x=>{ (por[x.uf]=por[x.uf]||[]).push(x); });
+  const ufs=Object.keys(por).sort((a,b)=>(a==='--')-(b==='--')||por[b].length-por[a].length||a.localeCompare(b));
+  prModal('<h3>Obrigatórios que ficaram de fora</h3><p style="margin:8px 0 12px;font-size:13px;color:var(--text-muted);line-height:1.55;">Eles não entraram porque o plano está no número do nível ('+ppMeta+'). No mês seguinte voltam como prioridade, se continuarem sem preventiva ou vencidos.</p>'+
+    '<div style="max-height:52vh;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">'+ufs.map(uf=>'<div style="padding:8px 14px;background:var(--bg);font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">'+(uf==='--'?'Sem UF':vfEsc(uf))+' ('+por[uf].length+')</div>'+por[uf].map(x=>{ const v=ppVencTxt(x.c,x.r); return '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px;"><span style="min-width:0;overflow-wrap:anywhere;"><b>'+vfEsc(x.c.nome)+'</b><span style="color:var(--text-muted);"> · '+vfEsc(x.c.cidade||'')+'</span></span><span style="color:'+(v.atr?'#C0392B':'var(--text-muted)')+';">Curva '+x.r.curva+', '+vfEsc(x.r.per||'padrão')+', '+vfEsc(v.t)+'</span></div>'; }).join('')).join('')+'</div>'+
+    '<div class="modal-actions"><button class="modal-btn" onclick="prFecharModal()">Fechar</button></div>');
+}
+
+
 function ppMarcarNovos(nomes){ if(!nomes.length) return; ppNovos=nomes.map(ppNorm); setTimeout(()=>{ ppNovos=[]; ppRender(); },1800); }
 function ppEscolherNivel(k){
   if(ppPronto||!ppEditavel()) return;
-  ppNivel=k; ppMeta=ppNiveis[k]; const obr=ppSyncObrigatorios(); const add=ppCompletar(); ppDefinirSujo(true); ppRender();
-  if(add) ppToast(ptN(add,'cliente sugerido','clientes sugeridos')+' para completar '+ppMeta+'.');
-  else if(ppItens.length>ppMeta) ppToast('A lista já passou da meta de '+ppMeta+'. Use o X para tirar.');
+  ppNivel=k; ppMeta=ppNiveis[k]; const add=ppPreencher(); ppDefinirSujo(true); ppRender();
+  if(add) ppToast(ptN(add,'cliente entrou','clientes entraram')+' no plano. O número do nível é '+ppMeta+'.');
+  else if(ppItens.length>ppMeta) ppToast('A lista já passou do número do nível ('+ppMeta+'). Use o X para tirar.');
 }
 function ppAjustarMetas(){ const p=document.getElementById('pp-metas'); p.style.display=p.style.display==='flex'?'none':'flex'; ppRender(); }
 function ppMudouMetas(){
   ['simples','intermediaria','desafio'].forEach(k=>{ const v=parseInt(document.getElementById('pp-m-'+k).value,10); if(v>0) ppNiveis[k]=Math.min(300,v); });
-  if(ppNivel){ ppMeta=ppNiveis[ppNivel]; ppCompletar(); }
+  if(ppNivel){ ppMeta=ppNiveis[ppNivel]; ppPreencher(); }
   ppDefinirSujo(true); ppRender();
 }
 function ppTirar(i){
@@ -4785,7 +4840,7 @@ function ppTirar(i){
   if(it.origem==='obrigatorio'&&!confirm(it.cliente+' está no plano por contrato ('+String(ppInfoItem(it).r.per||'padrão').toLowerCase()+'). Tirar mesmo assim?')) return;
   ppItens.splice(i,1); if(!ppRejeitados.some(x=>ppNorm(x)===ppNorm(it.cliente))) ppRejeitados.push(it.cliente);
   let msg=it.cliente+' saiu do plano.';
-  if(ppNivel&&ppItens.length<ppMeta){ const nx=ppCandidatos()[0]; if(nx){ ppItens.push(ppNovoItem(nx.c,nx.r,'sugerido')); ppMarcarNovos([nx.c.nome]); msg=nx.c.nome+' entrou no lugar de '+it.cliente+'.'; } }
+  if(ppNivel&&ppItens.length<ppMeta){ const nx=ppElegiveis()[0]; if(nx){ ppItens.push(ppNovoItem(nx.c,nx.r,nx.obr?'obrigatorio':'sugerido')); ppMarcarNovos([nx.c.nome]); msg=nx.c.nome+' entrou no lugar de '+it.cliente+'.'; } }
   ppDefinirSujo(true); ppRender(); ppToast(msg);
 }
 function ppSetSemana(i,v){ if(ppPronto||!ppEditavel()||!ppItens[i]) return; ppItens[i].semana=parseInt(v,10)||1; ppDefinirSujo(true); ppRender(); }
@@ -4841,11 +4896,7 @@ async function ppCarregarUltimas(){
   }catch(e){ ppUltimas={}; }
   ppReindexarUltimas();
 }
-function ppAposCarga(){
-  const add=ppSyncObrigatorios();
-  if(add){ ppDefinirSujo(true); ppToast(ptN(add,'cliente obrigatório entrou','clientes obrigatórios entraram')+' no plano por contrato.'); }
-  ppRender();
-}
+function ppAposCarga(){ ppResumoFila=null; ppRender(); }
 async function ppCarregarMes(){
   const sync=document.getElementById('pp-sync'); if(sync) sync.textContent='Carregando...';
   ppCarregando=true;
@@ -4894,13 +4945,7 @@ function ppRender(){
   const av=document.getElementById('pp-aviso');
   if(!ed&&av&&av.style.display==='none'){ av.style.display='block'; av.textContent='Somente o gestor edita o plano. Você pode consultar os clientes e as semanas.'; }
   if(prErro&&av&&av.style.display==='none'){ av.style.display='block'; av.textContent='Não foi possível carregar as regras dos clientes: '+prErro+'. Até lá, todos contam como curva C e ciclo de 6 meses.'; }
-  const n=ppItens.length, N=ppNivel?ppMeta:0, obr=ppItens.filter(i=>i.origem==='obrigatorio').length;
-  let avs='';
-  if(ppPronto) avs='<div class="pp-aviso verde"><b>Plano pronto por '+vfEsc(ppProntoPor)+(ppProntoEm?' em '+vfEsc(ppProntoEm):'')+'.</b> Liberado para o painel de preventivas, o banner do Pipeline e a TV. Para mexer de novo, clique em Reabrir plano.</div>';
-  else if(!ppNivel) avs='<div class="pp-aviso ouro"><b>'+ptN(obr,'cliente obrigatório já está','clientes obrigatórios já estão')+' no plano</b> por contrato. Escolha um nível de meta acima para ver as sugestões do restante.</div>';
-  else if(obr>N) avs='<div class="pp-aviso verm"><b>Os obrigatórios ('+obr+') já passam do nível escolhido ('+N+').</b> Eles ficam no plano, e não entram sugestões novas.</div>';
-  else if(n>N) avs='<div class="pp-aviso ouro">A lista passou da meta em '+ptN(n-N,'cliente','clientes')+'. Use o X para tirar, que acima da meta ele só remove.</div>';
-  ppSetHTML('pp-avisos',avs);
+  ppSetHTML('pp-avisos',ppAvisosHtml());
   ppRenderResumo();
   const lista=document.getElementById('pp-lista'); if(!lista) return;
   if(!ppItens.length){ ppSetHTML('pp-lista','<div style="padding:30px 20px;text-align:center;font-size:13px;color:var(--text-muted);">'+(ppCarregando?'Carregando...':'Nenhum cliente no plano deste mês.'+(ed?' Escolha um nível de meta ou digite o nome de um cliente acima.':''))+'</div>'); return; }
@@ -13272,7 +13317,7 @@ async function estEnviarEmail(reg){
         <div id="pp-lista"></div>
       </div>
     </div>
-    <p style="margin:10px 0 0;font-size:12px;color:var(--text-muted);line-height:1.6;">Obrigatórios (cadeado) entram sozinhos no mês em que vencem, e o mensal entra todo mês. Ao clicar no X, outro cliente entra no lugar até completar a meta. Acima da meta, o X só tira. Quem você tirou não volta a ser sugerido neste mês. Curva, periodicidade e tipo de cada cliente são alterados em Preventivas, Regras dos clientes. A última preventiva considera o que foi concluído no Painel de Atendimento (status Feito), na Vistoria Remota e em Vistorias, Preventiva.</p>
+    <p style="margin:10px 0 0;font-size:12px;color:var(--text-muted);line-height:1.6;">Obrigatórios (cadeado) são os clientes com contrato que vence no mês (o mensal entra todo mês) ou que nunca tiveram preventiva registrada. O plano nunca passa do número do nível: entram primeiro os mensais e os obrigatórios de curva A, depois os demais agrupados por UF e cidade, e o que não couber volta como prioridade no mês seguinte. Ao clicar no X, outro cliente entra no lugar. Quem você tirou não volta a ser sugerido neste mês. Curva, periodicidade e tipo de cada cliente são alterados em Preventivas, Regras dos clientes. A última preventiva considera o que foi concluído no Painel de Atendimento (status Feito), na Vistoria Remota e em Vistorias, Preventiva.</p>
   </div>
 </div>
 
