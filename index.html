@@ -205,6 +205,61 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
 .modal-btn{height:36px;padding:0 20px;border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);}
 .modal-btn.primary{background:var(--black);color:var(--gold);border-color:var(--black);}
+.ov{--bg:#141922;--tx:#eef1f6;--mu:#8c96a8;--bd:#2a323f;--vd:#4cc08d;--am:#f5b800;--vm:#ef6a57;--az:#6ea8ff;--ct:#465062;background:var(--bg);color:var(--tx);border-radius:14px;padding:26px 30px;font-family:'DM Sans','Helvetica Neue',sans-serif}
+.ov.claro{--bg:#f4f1ea;--tx:#15171c;--mu:#6b6b63;--bd:#dedbd0;--vd:#2fa06f;--am:#d99a00;--vm:#c0392b;--az:#2a55b8;--ct:#bdb8a6}
+.ov-topo{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.ov-marca{font-size:14px;font-weight:700;color:var(--mu);margin-bottom:4px}
+.ov-marca span{color:#f5b800}
+.ov h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.ov-hora{font-size:38px;font-weight:600;letter-spacing:-.03em;line-height:1;text-align:right}
+.ov-sync{display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:13px;color:var(--mu);margin-top:6px}
+.ov-sync i{width:9px;height:9px;border-radius:50%;background:var(--vd)}
+.ov-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.ov-acoes button{height:32px;padding:0 14px;border:1px solid var(--bd);border-radius:8px;background:transparent;color:var(--tx);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+.ov-acoes button:disabled{opacity:.6;cursor:wait}
+.ov-kpis{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:end;margin-top:22px}
+.ov-big{font-size:104px;font-weight:700;letter-spacing:-.05em;line-height:.9}
+.ov-de{font-size:38px;font-weight:500;color:var(--mu);margin-left:8px}
+.ov-lbl{font-size:18px;color:var(--mu);margin-top:12px}
+.ov-linha{display:grid;grid-template-columns:84px minmax(0,1fr) auto;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.ov-linha b{font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.ov-linha span{font-size:16px}
+.ov-linha em{font-style:normal;font-size:13px;color:var(--mu);text-align:right}
+.ov-tiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:22px}
+.ov-t{width:30px;height:34px;border-radius:4px;box-sizing:border-box;border:2px solid transparent;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;background:transparent;font-weight:700;font-size:14px;color:var(--bg);font-family:inherit}
+.ov-t.conc{background:var(--vd)}
+.ov-t.conf{background:var(--az)}
+.ov-t.and{background:var(--am)}
+.ov-t.late{background:var(--vm)}
+.ov-t.prev{border-color:var(--ct)}
+.ov-t.fora{border:2px dashed var(--am);color:var(--am)}
+.ov-leg{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:12px;color:var(--mu)}
+.ov-leg div{display:flex;align-items:center;gap:7px}
+.ov-leg i{width:12px;height:12px;border-radius:3px;box-sizing:border-box;display:inline-block}
+.ov-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px;margin-top:24px}
+.ov-ch{display:flex;align-items:baseline;gap:10px;padding-bottom:8px;border-bottom:3px solid var(--ct)}
+.ov-ch b{font-size:20px}
+.ov-ch span{font-size:20px;color:var(--mu)}
+.ov-lista{max-height:62vh;overflow-y:auto}
+.ov-card{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 0;border:none;border-bottom:1px solid var(--bd);background:transparent;color:inherit;font-family:inherit;text-align:left;width:100%;cursor:pointer}
+.ov-card i{width:12px;height:12px;border-radius:3px;box-sizing:border-box;display:block}
+.ov-card i.conc{background:var(--vd)}
+.ov-card i.conf{background:var(--az)}
+.ov-card i.and{background:var(--am)}
+.ov-card i.late{background:var(--vm)}
+.ov-card i.prev{border:2px solid var(--ct)}
+.ov-card i.fora{border:2px dashed var(--am)}
+.ov-card .n{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.ov-card .s{font-size:12px;color:var(--mu);margin-top:2px}
+.ov-card .d{text-align:right;font-size:12px;color:var(--mu);line-height:1.35}
+.ov-card .d b{display:block;font-size:13px;color:var(--tx);font-weight:600}
+.ov-card:hover{background:rgba(127,127,127,.08)}
+.ov-vazio{padding:18px 0;font-size:13px;color:var(--mu)}
+.ov-aviso{margin-top:18px;padding:12px 16px;border-radius:10px;border:1px solid #6b5a1f;background:rgba(245,184,0,.1);font-size:14px;line-height:1.5}
+.ov-aviso button{height:30px;margin-left:8px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;background:transparent;color:var(--tx);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+@media (max-width:900px){.ov{padding:18px 16px}.ov-kpis{grid-template-columns:1fr;gap:20px}.ov-big{font-size:72px}.ov-de{font-size:26px}.ov-cols{grid-template-columns:1fr;gap:26px}.ov-lista{max-height:none}.ov-hora{font-size:30px}.ov h1{font-size:24px}}
+@media (max-width:520px){.ov-linha{grid-template-columns:64px minmax(0,1fr)}.ov-linha b{font-size:28px}.ov-linha em{grid-column:2;text-align:left}}
+@media (prefers-reduced-motion:reduce){.ov *{transition:none!important}}
 .pv-faixa{margin:20px 0;background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;position:relative}
 .pv-faixa.alerta{border-color:#C0392B;animation:pvPulsoV 1.8s ease-in-out infinite}
 .pv-faixa.conf{border-color:#5b8def;animation:pvPulsoA 1.8s ease-in-out infinite}
@@ -542,6 +597,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     </div>
     <button class="snav-btn" id="mt-prev-group" onclick="toggleSubMenu('prev-sub')">Preventivas <span id="arrow-prev-sub" style="margin-left:auto;font-size:10px;transition:transform .2s">&#9660;</span></button>
 <div id="prev-sub" style="display:none;background:rgba(0,0,0,.15)">
+<button class="snav-btn" id="mt-prev-overview" onclick="switchMainTab('prev-overview');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Overview</button>
 <button class="snav-btn" id="mt-prev-painel" onclick="switchMainTab('prev-painel');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Painel</button>
 <button class="snav-btn" id="mt-prev-plano" onclick="switchMainTab('prev-plano');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Plano do mês</button>
 <button class="snav-btn" id="mt-prev-regras" onclick="switchMainTab('prev-regras');closeSidebar()" style="padding-left:32px;font-size:12px;color:#808088;">Regras dos clientes</button>
@@ -1611,7 +1667,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-painel':'Painel de preventivas', 'prev-plano':'Plano do mês', 'prev-regras':'Regras dos clientes', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-overview':'Overview', 'prev-painel':'Painel de preventivas', 'prev-plano':'Plano do mês', 'prev-regras':'Regras dos clientes', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -3165,12 +3221,12 @@ function switchMainTab(t){
   if(t==='vistoria-preventiva') vistoriaFiltroTipo='preventiva';
   const paginaReal = (t==='vistoria-preventiva') ? 'vistoria' : t;
 
-  ['pipeline','vistoria','vistoria-remota','prev-painel','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria','vistoria-remota','prev-overview','prev-painel','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const page = document.getElementById('page-'+tab);
     if(page) page.style.display=(tab===paginaReal)?'block':'none';
   });
   // destaque dos submenus de vistoria é controlado por filtrarVistoriaTipo; demais botões:
-  ['pipeline','vistoria-remota','prev-painel','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
+  ['pipeline','vistoria-remota','prev-overview','prev-painel','prev-plano','prev-regras','agenda','dashboard','comercial','clientes','milplay','cronograma','ata','orcamento','orcamentos-salvos','distrato','implantacoes','montagem','requisicoes','entrega-material','transferencia-material','ferias','viagem','poc','estoque','arm-cadastro','arm-interno','arm-externo','rastreio-correios','rastreio-jamef','os','checklist-impl','os-relatorio','colaboradores','escala-sac','escala-tecnico','escala-n2','consulta-cnpj','operadoras','itens-locados','gestao-sky','frota'].forEach(tab=>{
     const btn = document.getElementById('mt-'+tab);
     if(btn) btn.className='snav-btn'+(t===tab?' active':'');
   });
@@ -3193,6 +3249,7 @@ function switchMainTab(t){
   if(t==='prev-plano')iniciarPrevPlano();
   if(t==='prev-regras')iniciarPrevRegras();
   if(t==='prev-painel')iniciarPrevPainel();
+  if(t==='prev-overview')iniciarPrevOverview();
   if(t==='entrega-material')iniciarEntregaMaterial();
   if(t==='transferencia-material')iniciarTransferenciaMaterial();
   if(t==='ferias')iniciarFerias();
@@ -4998,6 +5055,107 @@ function ppMarcarPronto(){
 }
 function ppReabrir(){ if(!ppEditavel()||!ppPronto) return; return ppSalvar(false); }
 
+// ============ OVERVIEW DE PREVENTIVAS ============
+let ovTemaClaro=false, ovUltimaCarga=0, ovTimer=null, ovErro='', ovItens=[];
+function ovAplicarTema(){ const r=document.getElementById('ov-raiz'); if(r) r.classList.toggle('claro',ovTemaClaro); const b=document.getElementById('ov-btn-tema'); if(b) b.textContent=ovTemaClaro?'Tema escuro':'Tema claro'; }
+function ovTema(){ ovTemaClaro=!ovTemaClaro; try{ localStorage.setItem('bt_ov_tema',ovTemaClaro?'claro':'escuro'); }catch(e){} ovAplicarTema(); }
+function ovHora(){
+  const e=document.getElementById('ov-hora'); if(e) e.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const s=document.getElementById('ov-sync'); if(!s) return;
+  if(!ovUltimaCarga){ s.textContent='carregando...'; return; }
+  const seg=Math.max(0,Math.round((Date.now()-ovUltimaCarga)/1000)); s.textContent='atualizado '+(seg<60?'há '+seg+' s':'há '+Math.floor(seg/60)+' min');
+}
+function ovTick(){ ovHora(); const p=document.getElementById('page-prev-overview'); if(p&&p.style.display!=='none'&&document.visibilityState==='visible'&&Date.now()-ovUltimaCarga>=60000) ovCarregar(); }
+async function iniciarPrevOverview(){
+  try{ ovTemaClaro=localStorage.getItem('bt_ov_tema')==='claro'; }catch(e){}
+  ovAplicarTema(); ovHora(); if(!ovTimer) ovTimer=setInterval(ovTick,30000);
+  await ovCarregar();
+}
+async function ovCarregar(){
+  try{
+    await prGarantirClientes();
+    const r=await Promise.all([pvBuscar(ppMesAtualISO()), pvCarregarRealizadas(), ppCarregarUltimas()]);
+    pvDados=r[0]; pvErro=''; ovErro='';
+  }catch(e){ ovErro=(e&&e.message)?e.message:String(e); }
+  ovUltimaCarga=Date.now(); ovHora(); ovRender();
+}
+function ovAtualizar(){ return ovCarregar(); }
+function ovQuando(iso){
+  if(!iso) return ''; const h=new Date(); h.setHours(0,0,0,0); const d=new Date(iso+'T00:00:00'); const n=Math.round((h.getTime()-d.getTime())/86400000);
+  return n<=0?'hoje':(n===1?'ontem':iso.slice(8,10)+'/'+iso.slice(5,7));
+}
+function ovAberta(iso){
+  if(!iso) return 'aberta'; const h=new Date(); h.setHours(0,0,0,0); const n=Math.round((h.getTime()-new Date(iso+'T00:00:00').getTime())/86400000);
+  return n<=0?'aberta hoje':(n===1?'aberta ontem':'aberta há '+ptN(n,'dia','dias'));
+}
+function ovOrigemCurta(o){ return o==='Vistoria Remota'?'na Vistoria Remota':'no Painel'; }
+function ovClasse(it){
+  if(it.tipoLinha==='registro') return it.estado==='concluida'?'fora':'and';
+  if(it.estado==='concluida') return 'conc'; if(it.estado==='conferir') return 'conf';
+  if(pvAtrasada(it)) return 'late'; if(it.estado==='aberta'||it.estado==='andamento') return 'and'; return 'prev';
+}
+function ovDireita(it){
+  if(it.tipoLinha==='registro'){
+    if(it.estado==='concluida') return ['Feito '+ovOrigemCurta(it.origem), ovQuando(it.conclusao)+', fora do plano'];
+    return [ovAberta(it.abertura), it.origem+', fora do plano'];
+  }
+  const ev=it.derivado?it.derivado.ev:null;
+  if(it.estado==='prevista'){
+    if(pvAtrasada(it)) return ['atrasada','semana '+it.semana+(it.mes<ppMesAtualISO()?' de '+pvMesNome(it.mes).toLowerCase():'')];
+    const u=ppUltimaInfo(it.cliente); return u.nunca?['nunca','vistoriado']:[u.t,'última preventiva'];
+  }
+  if(it.estado==='aberta'||it.estado==='andamento'){
+    const l1=it.estado==='aberta'?ovAberta(ev?ev.abertura:''):'em andamento';
+    return [l1, pvAtrasada(it)?'atrasada':(ev?ev.origem:(it.iniciada_por||''))];
+  }
+  if(it.estado==='conferir') return ['a conferir', ev?'Feito '+ovOrigemCurta(ev.origem)+', '+ovQuando(ev.conclusao):'marcada por '+(it.concluida_por||'-')];
+  return ['concluída', it.confirmada_por?'confirmada por '+it.confirmada_por:''];
+}
+function ovCard(it){
+  const i=ovItens.indexOf(it), d=ovDireita(it);
+  const sub=it.tipoLinha==='registro'?[it.uf,it.numero?'Nº '+it.numero:''].filter(Boolean).join(', '):[it.tipo,it.uf].filter(Boolean).join(', ');
+  return '<button class="ov-card" onclick="ovAbrirPainel('+i+')"><i class="'+ovClasse(it)+'"></i><span><div class="n">'+vfEsc(it.cliente)+'</div><div class="s">'+vfEsc(sub)+'</div></span><span class="d"><b>'+vfEsc(d[0])+'</b>'+vfEsc(d[1])+'</span></button>';
+}
+function ovAbrirPainel(i){ const it=ovItens[i]; if(!it) return; pvPainel.mes=it.mes||ppMesAtualISO(); pvPainel.filtro='todas'; pvPainel.busca=it.cliente; switchMainTab('prev-painel'); }
+function ovRender(){
+  if(!document.getElementById('ov-raiz')) return;
+  const mes=ppMesAtualISO(), d=pvDados; document.getElementById('ov-titulo').textContent='Preventivas de '+pvMesNome(mes).toLowerCase()+' de '+mes.slice(0,4);
+  if(!d){
+    ppSetHTML('ov-aviso',ovErro?'<div class="ov-aviso">Não foi possível carregar o Overview: '+vfEsc(ovErro)+'. Se for "ação inválida", falta atualizar o Code_completo.gs do Apps Script.</div>':'');
+    ppSetHTML('ov-kpis',''); ppSetHTML('ov-tiles',''); ppSetHTML('ov-cols',''); return;
+  }
+  pvAplicarOrigem(d);
+  const adm=ppEditavel(), itens=d.itens, L=itens.concat(d.anteriores||[]), plano=L;
+  const regs=pvReal.filter(ev=>ev.mes===mes&&!plano.some(x=>x.mes===ev.mes&&pvMesmoCliente(x.cliente,ev.cliente))).map(ev=>({tipoLinha:'registro',mes:ev.mes,cliente:ev.cliente,uf:ev.uf||'',tipo:'',semana:0,estado:ev.estado==='andamento'?'aberta':ev.estado,origem:ev.origem,numero:ev.numero,abertura:ev.abertura,conclusao:ev.conclusao}));
+  const forasC=regs.filter(x=>x.estado==='concluida'), forasA=regs.filter(x=>x.estado!=='concluida');
+  const N=d.pronto?itens.length:0, real=itens.filter(x=>x.estado==='concluida').length, conf=L.filter(x=>x.estado==='conferir').length;
+  const abertas=itens.filter(x=>x.estado==='aberta').length, emAnd=itens.filter(x=>x.estado==='aberta'||x.estado==='andamento').length, prev=itens.filter(x=>x.estado==='prevista').length, late=L.filter(pvAtrasada).length;
+  const pct=n=>N?Math.round(n/N*100):0, rotMes=pvMesNome(mes).toLowerCase();
+  ppSetHTML('ov-aviso',d.pronto?'':'<div class="ov-aviso"><b>O plano de preventivas de '+vfEsc(rotMes)+' ainda não está pronto.</b> Aqui aparecem as preventivas já realizadas no mês.'+(adm?'<button onclick="pvIrPlano(\'atual\')">Abrir Plano do mês</button>':'')+'</div>');
+  const linha=(cor,num,rot,det)=>'<div class="ov-linha"><b style="color:'+cor+'">'+num+'</b><span>'+rot+'</span><em>'+det+'</em></div>';
+  let kpi='<div class="ov-kpis"><div>';
+  if(d.pronto) kpi+='<div><span class="ov-big">'+real+'</span><span class="ov-de">de '+N+'</span></div><div class="ov-lbl">'+(real===1?'preventiva realizada':'preventivas realizadas')+', meta do mês</div>';
+  else kpi+='<div><span class="ov-big">'+forasC.length+'</span></div><div class="ov-lbl">'+(forasC.length===1?'preventiva realizada':'preventivas realizadas')+' no mês</div>';
+  kpi+='</div><div>';
+  if(d.pronto){
+    kpi+=linha('var(--vd)',pct(real)+'%',(real===1?'concluída':'concluídas'),real+' de '+N);
+    kpi+=linha('var(--am)',pct(emAnd)+'%','em andamento',ptN(abertas,'aberta','abertas'));
+    kpi+=linha('var(--tx)',N-real,(N-real===1?'falta':'faltam')+' para a meta',prev+' na fila');
+    kpi+=linha('var(--az)',conf,'a conferir','aguardando o gestor');
+  }
+  kpi+=linha('var(--vm)',late,(late===1?'atrasada':'atrasadas'),'de semanas anteriores');
+  ppSetHTML('ov-kpis',kpi+'</div></div>');
+  const ord={conc:0,conf:1,and:2,late:3,prev:4,fora:5};
+  const tiles=(d.pronto?itens:[]).concat(forasC).slice().sort((a,b)=>ord[ovClasse(a)]-ord[ovClasse(b)]);
+  ovItens=L.concat(regs);
+  const icone={conc:'&#10003;',conf:'&#10003;',late:'!',fora:'+'}, nomes={conc:'concluída',conf:'a conferir',and:'em andamento',late:'atrasada',prev:'ainda não iniciada',fora:'fora do plano'};
+  ppSetHTML('ov-tiles',(tiles.length?'<div class="ov-tiles">'+tiles.map(it=>{ const c=ovClasse(it); return '<button class="ov-t '+c+'" title="'+vfEsc(it.cliente+': '+nomes[c])+'" aria-label="'+vfEsc(it.cliente+': '+nomes[c])+'" onclick="ovAbrirPainel('+ovItens.indexOf(it)+')">'+(icone[c]||'')+'</button>'; }).join('')+'</div>':'')+
+    '<div class="ov-leg">'+[['conc','var(--vd)','concluída'],['conf','var(--az)','a conferir'],['and','var(--am)','em andamento'],['late','var(--vm)','atrasada'],['prev','','ainda não iniciada'],['fora','','fora do plano']].map(x=>'<div><i style="'+(x[0]==='prev'?'border:2px solid var(--ct)':(x[0]==='fora'?'border:2px dashed var(--am)':'background:'+x[1]))+'"></i>'+x[2]+'</div>').join('')+'</div>');
+  const fazer=L.filter(x=>x.estado==='prevista').sort(pvOrdena), andam=L.filter(x=>x.estado==='aberta'||x.estado==='andamento').concat(forasA).sort((a,b)=>(ovClasse(a)==='late'?0:1)-(ovClasse(b)==='late'?0:1)||String(b.abertura||b.iniciada_em||'').localeCompare(String(a.abertura||a.iniciada_em||''))), feitas=L.filter(x=>x.estado==='conferir'||x.estado==='concluida').concat(forasC).sort(pvOrdena);
+  const col=(tit,lst,vazio)=>'<div><div class="ov-ch"><b>'+tit+'</b><span>'+lst.length+'</span></div><div class="ov-lista">'+(lst.length?lst.map(ovCard).join(''):'<div class="ov-vazio">'+vazio+'</div>')+'</div></div>';
+  ppSetHTML('ov-cols','<div class="ov-cols">'+col('Para fazer',fazer,'Nada na fila.')+col('Em andamento',andam,'Nenhuma preventiva em andamento.')+col('Concluídas',feitas,'Nenhuma concluída ainda.')+'</div>');
+}
+
 // ============ PAINEL DE PREVENTIVAS E FAIXA DO PIPELINE ============
 let pvDados=null, pvErro='', pvFaixaFiltro='todas', pvFaixaAberta=true, pvVisiveisFaixa=[], pvVisiveisPainel=[];
 let pvPainel={mes:'',dados:null,filtro:'todas',busca:'',erro:''};
@@ -5290,7 +5448,7 @@ function comGerundio(nome,texto,minimo){
   w._g=true; window[nome]=w;
 }
 window.addEventListener('load',function(){
-  [['ppMarcarPronto','Marcando como pronto...'],['ppReabrir','Reabrindo...'],['ppDistribuir','Distribuindo...',350],['ppAdicionar','Acrescentando...',350],['prBaixarPlanilha','Baixando...',350],['prConfirmarPadrao','Confirmando...',350],['prAplicarImportacao','Aplicando...'],['pvAtualizarPainel','Atualizando...'],['pvCarregarFaixa','Tentando...'],['pvIrPlano','Abrindo...',350],['pvAbrirPainelFiltro','Abrindo...',350],['criarClienteAvulso','Criando...'],
+  [['ppMarcarPronto','Marcando como pronto...'],['ppReabrir','Reabrindo...'],['ppDistribuir','Distribuindo...',350],['ppAdicionar','Acrescentando...',350],['prBaixarPlanilha','Baixando...',350],['prConfirmarPadrao','Confirmando...',350],['prAplicarImportacao','Aplicando...'],['pvAtualizarPainel','Atualizando...'],['ovAtualizar','Atualizando...'],['pvCarregarFaixa','Tentando...'],['pvIrPlano','Abrindo...',350],['pvAbrirPainelFiltro','Abrindo...',350],['criarClienteAvulso','Criando...'],
    ['vrAbrirPreventiva','Abrindo...'],['vrConcluir','Concluindo...'],['vrEmitirPDF','Emitindo...'],['vrSalvarUh','Salvando...'],['vrSortearMais','Sorteando...',350],['vrLimparFiltros','Limpando...',350],['vrAddUh','Adicionando...',350],['salvarMilPlay','Salvando...']].forEach(a=>comGerundio(a[0],a[1],a[2]));
 });
 setInterval(function(){ const p=document.getElementById('page-pipeline'); if(p&&p.style.display!=='none'&&document.visibilityState==='visible'&&typeof usuarioLogado!=='undefined'&&usuarioLogado) pvCarregarFaixa(); },300000);
@@ -13302,6 +13460,25 @@ async function estEnviarEmail(reg){
 
 <!-- MILPLAY -->
 <!-- ===================== VISTORIA REMOTA PREVENTIVA - STREAMBLINK ===================== -->
+<div id="page-prev-overview" class="main" style="display:none">
+  <div style="padding:16px 20px;">
+    <div class="ov" id="ov-raiz">
+      <div class="ov-topo">
+        <div><div class="ov-marca">Blin<span>Track</span></div><h1 id="ov-titulo">Preventivas do mês</h1></div>
+        <div>
+          <div class="ov-hora" id="ov-hora">--:--</div>
+          <div class="ov-sync"><i></i><span id="ov-sync">carregando...</span></div>
+          <div class="ov-acoes"><button id="ov-btn-tema" onclick="ovTema()">Tema claro</button><button id="ov-btn-atualizar" onclick="ovAtualizar()">Atualizar</button></div>
+        </div>
+      </div>
+      <div id="ov-aviso"></div>
+      <div id="ov-kpis"></div>
+      <div id="ov-tiles"></div>
+      <div id="ov-cols"></div>
+    </div>
+  </div>
+</div>
+
 <div id="page-prev-painel" class="main" style="display:none">
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">Painel de preventivas</h2><span class="dash-sync" id="pv-sync"></span></div>
