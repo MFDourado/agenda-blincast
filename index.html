@@ -487,6 +487,17 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .login-forgot{font-size:12px;color:#555;text-align:center;margin-top:14px;}
 .login-forgot a{color:#888;cursor:pointer;text-decoration:underline;}
 .login-forgot a:hover{color:#F5B800;}
+.mp-hotel{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;display:inline-block}
+.mp-hotel-arte{background:#e3f4ec;color:#17734c}
+.mp-hotel-ibiuna{background:#e6edff;color:#2a45a8}
+.mp-hotel-sem{background:#ececec;color:#666}
+.mp-inativo-tag{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:4px;background:#e4e2dc;color:#6b6b63;white-space:nowrap}
+.mp-aviso{display:flex;gap:12px;align-items:flex-start;background:#fff3d6;border:1px solid #f0c15a;border-left:6px solid #e08a00;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;line-height:1.5;color:#5c3b00}
+.mp-aviso-ico{font-size:20px;line-height:1.2;color:#e08a00}
+.mp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.mp-chip{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:99px;background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.mp-chip.ativo{background:var(--text);color:#fff;border-color:var(--text)}
+#mp-hotel{width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;background:var(--surface,#fff);color:var(--text)}
 .login-info{font-size:12px;color:#9a9a9a;line-height:1.5;margin-bottom:14px;text-align:center}
 .login-ok{font-size:12px;color:#4cc08d;text-align:center;margin-top:10px;line-height:1.5}
 .login-reg{font-size:11px;color:#707070;line-height:1.5;margin:-4px 0 10px}
@@ -5912,80 +5923,72 @@ async function loadMilPlay(){
   }catch(e){ milplayLista=[]; if(s) s.textContent='Erro ao carregar'; }
   renderMilPlayLista();
 }
+const MILPLAY_GRUPO_CLARA={
+  cnpj:'52.328.702/0001-00', razao:'Pousada Clara Arte', titulo:'Clara Arte / Clara Ibiúna',
+  cnpjsBusca:['52328702000100','04823123000264'],
+  termos:['clara arte','clara ibiuna','pousada clara arte','pousada clara ibiuna','ibiuna','arte'],
+  aviso:'<b>Atenção:</b> este cartão reúne contas da <b>Clara Arte</b> e da <b>Clara Ibiúna</b>. Na plataforma MilPlay todas estão cadastradas no CNPJ da Arte. Confira a coluna <b>Hotel</b> antes de ativar, alterar ou desativar qualquer pacote.'
+};
+let milplayHotelFiltro='';
+const _mpDig=t=>String(t==null?'':t).replace(/\D/g,'');
+const _mpInativo=it=>String(it.situacao||'').trim().toLowerCase()==='inativo';
+const _mpEhGrupoClara=cnpj=>_mpDig(cnpj)!==''&&_mpDig(cnpj)===_mpDig(MILPLAY_GRUPO_CLARA.cnpj);
+const _mpArg=t=>String(t==null?'':t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+function _mpCasaBusca(c,busca){
+  const q=vfNorm(busca); if(!q) return true; const dq=_mpDig(busca);
+  if(vfNorm(c.razao_social).includes(q)||vfNorm(c.cnpj).includes(q)) return true;
+  if(dq.length>=4&&_mpDig(c.cnpj).includes(dq)) return true;
+  if(c.especial){
+    const G=MILPLAY_GRUPO_CLARA;
+    if(q.length>=2&&(G.termos.some(t=>t.includes(q))||vfNorm(G.titulo).includes(q))) return true;
+    if(dq.length>=4&&G.cnpjsBusca.some(x=>x.includes(dq))) return true;
+  }
+  return false;
+}
 function _milplayClientesUnicos(){
   const mapa={};
   milplayLista.forEach(it=>{
-    const chave=String(it.cnpj||it.razao_social||'').trim();
-    if(!chave) return;
-    if(!mapa[chave]) mapa[chave]={cnpj:it.cnpj||'',razao_social:it.razao_social||'(sem nome)',qtd:0};
-    mapa[chave].qtd++;
+    const base=String(it.cnpj||it.razao_social||'').trim(); if(!base) return;
+    const inativo=_mpInativo(it), chave=(inativo?'inativo|':'')+base;
+    if(!mapa[chave]) mapa[chave]={cnpj:it.cnpj||'',razao_social:it.razao_social||'(sem nome)',qtd:0,inativo:inativo,especial:!inativo&&_mpEhGrupoClara(it.cnpj),hoteis:{}};
+    const c=mapa[chave]; c.qtd++;
+    if(c.especial){ const h=String(it.hotel||'').trim()||'Sem hotel'; c.hoteis[h]=(c.hoteis[h]||0)+1; }
   });
-  return Object.values(mapa).sort((a,b)=>String(a.razao_social).localeCompare(String(b.razao_social)));
+  const nome=c=>vfNorm(c.especial?MILPLAY_GRUPO_CLARA.titulo:c.razao_social);
+  return Object.values(mapa).sort((a,b)=>((a.inativo?1:0)-(b.inativo?1:0))||nome(a).localeCompare(nome(b)));
 }
 function renderMilPlayLista(){
   const wrap=document.getElementById('mp-lista-clientes');
   if(!wrap) return;
-  const busca=(document.getElementById('mp-busca-cliente')?.value||'').trim().toLowerCase();
-  const clientesUnicos=_milplayClientesUnicos().filter(c=>!busca||String(c.razao_social).toLowerCase().includes(busca)||String(c.cnpj).toLowerCase().includes(busca));
+  const busca=(document.getElementById('mp-busca-cliente')?.value||'').trim();
+  // o cartão antigo (inativo) só aparece quando não há busca: na busca aparece apenas o cartão novo
+  const clientesUnicos=_milplayClientesUnicos().filter(c=>c.inativo?!busca:_mpCasaBusca(c,busca));
   if(!clientesUnicos.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">Nenhum cliente MilPlay encontrado.</div>'; return; }
-  wrap.innerHTML=clientesUnicos.map(c=>`<div onclick="milplayAbrirCliente('${String(c.cnpj).replace(/'/g,"\\'")}','${String(c.razao_social).replace(/'/g,"\\'")}')" style="border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;background:var(--surface);">
-    <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">${c.razao_social}</div>
-    <div style="font-size:11px;color:var(--text-muted);">${c.cnpj||'—'}</div>
-    <div style="font-size:11px;color:var(--gold);margin-top:8px;font-weight:600;">${ptN(c.qtd,'registro','registros')} →</div>
-  </div>`).join('');
+  wrap.innerHTML=clientesUnicos.map(c=>{
+    const titulo=c.especial?MILPLAY_GRUPO_CLARA.titulo:c.razao_social, ris=c.inativo?'text-decoration:line-through;':'';
+    const hot=c.especial?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="mp-hotel mp-hotel-arte">Arte ${c.hoteis['Arte']||0}</span><span class="mp-hotel mp-hotel-ibiuna">Ibiúna ${c.hoteis['Ibiúna']||0}</span></div>`:'';
+    return `<div onclick="milplayAbrirCliente('${_mpArg(c.cnpj)}','${_mpArg(c.razao_social)}',${c.inativo?'true':'false'})" data-mp-card="${c.inativo?'inativo':(c.especial?'clara':'normal')}" style="border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;background:${c.inativo?'#f0efec':'var(--surface)'};${c.inativo?'opacity:.75;':''}">
+ <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;"><span style="font-weight:700;font-size:14px;color:${c.inativo?'#8a8a86':'var(--text)'};${ris}">${vfEsc(titulo)}</span>${c.inativo?'<span class="mp-inativo-tag">INATIVO</span>':''}</div>
+ <div style="font-size:11px;color:var(--text-muted);${ris}">${vfEsc(c.cnpj||'—')}</div>${hot}
+ <div style="font-size:11px;color:${c.inativo?'#8a8a86':'var(--gold)'};margin-top:8px;font-weight:600;${ris}">${ptN(c.qtd,'registro','registros')} →</div>
+ </div>`;
+  }).join('');
 }
-function milplayAbrirCliente(cnpj, razao){
-  milplayClienteAtual={cnpj:cnpj||'',razao:razao||''};
+function milplayAbrirCliente(cnpj, razao, inativo){
+  const especial=!inativo&&_mpEhGrupoClara(cnpj);
+  milplayClienteAtual={cnpj:cnpj||'',razao:razao||'',inativo:!!inativo,especial:especial};
+  milplayHotelFiltro='';
   document.getElementById('mp-view-lista').style.display='none';
   document.getElementById('mp-view-detalhe').style.display='block';
-  document.getElementById('mp-detalhe-nome').textContent=razao||'(sem nome)';
-  document.getElementById('mp-detalhe-cnpj').textContent=cnpj||'—';
+  const nome=document.getElementById('mp-detalhe-nome'), cn=document.getElementById('mp-detalhe-cnpj'), tag=document.getElementById('mp-detalhe-tag');
+  nome.textContent=especial?MILPLAY_GRUPO_CLARA.titulo:(razao||'(sem nome)');
+  cn.textContent=cnpj||'—';
+  nome.style.textDecoration=cn.style.textDecoration=inativo?'line-through':'';
+  nome.style.color=inativo?'#8a8a86':'var(--text)';
+  if(tag) tag.style.display=inativo?'':'none';
   renderMilPlayDetalhe();
 }
-function milplayVoltarLista(){
-  milplayClienteAtual=null;
-  document.getElementById('mp-view-detalhe').style.display='none';
-  document.getElementById('mp-view-lista').style.display='block';
-  renderMilPlayLista();
-}
-function renderMilPlayDetalhe(){
-  if(!milplayClienteAtual) return;
-  const linhas=milplayLista.filter(it=>String(it.cnpj||'').trim()===milplayClienteAtual.cnpj.trim());
-  const wrap=document.getElementById('mp-detalhe-tabela');
-  if(!wrap) return;
-  if(!linhas.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum registro para esse cliente ainda.</div>'; return; }
-  const ordenado=[...linhas].sort((a,b)=>String(a.quarto||'').localeCompare(String(b.quarto||''),undefined,{numeric:true}));
-  wrap.innerHTML=`<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-    <thead><tr style="background:var(--bg)">
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Quarto</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Usuário</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">IP</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Pacotes</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Data de Ativação</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">Fabricante</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Rede</th>
-      <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">MAC Wifi</th>
-      <th></th>
-    </tr></thead>
-    <tbody>${ordenado.map(it=>`<tr style="border-top:1px solid var(--border)">
-      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${it.quarto||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;">${it.usuario||'—'}</span>${it.usuario?` <button onclick="milplayCopiar('${String(it.usuario).replace(/'/g,"\\'")}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
-      <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.ip||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px;">${it.pacotes||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px;">${it.data_ativacao||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px;">${it.fabricante||'—'}</td>
-      <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_rede||'—'}</td>
-      <td style="padding:7px 10px;font-size:11px;font-family:monospace;">${it.mac_wifi||'—'}</td>
-      <td style="padding:7px 10px;white-space:nowrap;"><button onclick="abrirEditarMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;" title="Editar">✎</button> <button onclick="excluirMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:#e00;font-size:13px;" title="Excluir">🗑️</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
-}
-function milplayCopiar(texto, btnEl){
-  if(!navigator.clipboard){ return; }
-  navigator.clipboard.writeText(texto).then(()=>{
-    if(btnEl){ const orig=btnEl.textContent; btnEl.textContent='✓'; setTimeout(()=>{ btnEl.textContent=orig; },1200); }
-  }).catch(()=>{});
-}
+function milplayFiltrarHotel(v){ milplayHotelFiltro=v||''; renderMilPlayDetalhe(); }
 function fecharMilPlayModal(){ document.getElementById('milplay-modal').style.display='none'; }
 function milplayClienteSelecionado(){
   const val=document.getElementById('mp-cliente-busca').value.trim().toLowerCase();
@@ -5996,6 +5999,58 @@ function milplayClienteSelecionado(){
     document.getElementById('mp-razao').value=achou.nome||'';
   }
 }
+function milplayCopiar(texto, btnEl){
+  if(!navigator.clipboard){ return; }
+  navigator.clipboard.writeText(texto).then(()=>{
+    if(btnEl){ const orig=btnEl.textContent; btnEl.textContent='✓'; setTimeout(()=>{ btnEl.textContent=orig; },1200); }
+  }).catch(()=>{});
+}
+function milplayVoltarLista(){
+  milplayClienteAtual=null;
+  document.getElementById('mp-view-detalhe').style.display='none';
+  document.getElementById('mp-view-lista').style.display='block';
+  renderMilPlayLista();
+}
+function renderMilPlayDetalhe(){
+  if(!milplayClienteAtual) return;
+  const atual=milplayClienteAtual, esp=!!atual.especial, ina=!!atual.inativo;
+  const todas=milplayLista.filter(it=>String(it.cnpj||'').trim()===atual.cnpj.trim()&&(ina?_mpInativo(it):!_mpInativo(it)));
+  const av=document.getElementById('mp-detalhe-aviso');
+  if(av) av.innerHTML=esp?`<div class="mp-aviso" role="alert"><span class="mp-aviso-ico">⚠</span><div>${MILPLAY_GRUPO_CLARA.aviso}</div></div>`:'';
+  const wrap=document.getElementById('mp-detalhe-tabela');
+  if(!wrap) return;
+  if(!todas.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;">Nenhum registro para esse cliente ainda.</div>'; return; }
+  let linhas=todas, chips='';
+  if(esp){
+    const cont={'Arte':0,'Ibiúna':0}; todas.forEach(it=>{ if(cont[it.hotel]!==undefined) cont[it.hotel]++; });
+    const mk=(v,rot,n)=>`<button class="mp-chip${milplayHotelFiltro===v?' ativo':''}" data-mp-hotel="${v}" onclick="milplayFiltrarHotel('${v}')">${rot} <b>${n}</b></button>`;
+    chips=`<div class="mp-chips">${mk('','Todos',todas.length)}${mk('Arte','Arte',cont['Arte'])}${mk('Ibiúna','Ibiúna',cont['Ibiúna'])}</div>`;
+    if(milplayHotelFiltro) linhas=todas.filter(it=>it.hotel===milplayHotelFiltro);
+  }
+  const num=(a,b)=>String(a||'').localeCompare(String(b||''),undefined,{numeric:true});
+  const ordenado=[...linhas].sort(esp?(a,b)=>num(a.usuario,b.usuario):(a,b)=>num(a.quarto,b.quarto));
+  const ris=ina?'text-decoration:line-through;color:#8a8a86;':'';
+  const th=(t)=>`<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">${t}</th>`;
+  const hotelTd=it=>esp?`<td style="padding:7px 10px;"><span class="mp-hotel mp-hotel-${it.hotel==='Arte'?'arte':(it.hotel==='Ibiúna'?'ibiuna':'sem')}">${vfEsc(it.hotel||'—')}</span></td>`:'';
+  wrap.innerHTML=chips+`<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+ <thead><tr style="background:var(--bg)">${esp?th('Hotel'):''}${th('Quarto')}${th('Usuário')}${th('IP')}${th('Pacotes')}${th('Data de Ativação')}${th('Fabricante')}${th('MAC Rede')}${th('MAC Wifi')}<th></th></tr></thead>
+ <tbody>${ordenado.length?ordenado.map(it=>`<tr style="border-top:1px solid var(--border)">${hotelTd(it)}
+ <td style="padding:7px 10px;font-size:12px;font-weight:600;${ris}">${it.quarto||'—'}</td>
+ <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;${ris}">${it.usuario||'—'}</span>${it.usuario?` <button onclick="milplayCopiar('${String(it.usuario).replace(/'/g,"\\'")}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
+ <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.ip||'—'}</td>
+ <td style="padding:7px 10px;font-size:12px;${ris}">${it.pacotes||'—'}</td>
+ <td style="padding:7px 10px;font-size:12px;${ris}">${it.data_ativacao||'—'}</td>
+ <td style="padding:7px 10px;font-size:12px;${ris}">${it.fabricante||'—'}</td>
+ <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.mac_rede||'—'}</td>
+ <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.mac_wifi||'—'}</td>
+ <td style="padding:7px 10px;white-space:nowrap;"><button onclick="abrirEditarMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;" title="Editar">✎</button> <button onclick="excluirMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:#e00;font-size:13px;" title="Excluir">🗑️</button></td>
+ </tr>`).join(''):`<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;">Nenhum registro com esse filtro.</td></tr>`}</tbody>
+ </table></div>`;
+}
+function _mpMostrarHotel(mostrar,valor){
+  const w=document.getElementById('mp-hotel-wrap'); if(w) w.style.display=mostrar?'':'none';
+  const sel=document.getElementById('mp-hotel'); if(sel) sel.value=mostrar?(valor||''):'';
+}
 function abrirNovoMilPlay(){
   document.getElementById('mp-modal-titulo').textContent='Novo registro MilPlay';
   document.getElementById('mp-edit-id').value='';
@@ -6005,6 +6060,7 @@ function abrirNovoMilPlay(){
     document.getElementById('mp-cnpj').value=milplayClienteAtual.cnpj||'';
     document.getElementById('mp-razao').value=milplayClienteAtual.razao||'';
   }
+  _mpMostrarHotel(!!(milplayClienteAtual&&milplayClienteAtual.especial),milplayHotelFiltro);
   document.getElementById('milplay-modal').style.display='flex';
 }
 function abrirEditarMilPlay(id){
@@ -6024,6 +6080,7 @@ function abrirEditarMilPlay(id){
   document.getElementById('mp-ip').value=it.ip||'';
   document.getElementById('mp-mac-wifi').value=it.mac_wifi||'';
   document.getElementById('mp-obs').value=it.obs||'';
+  _mpMostrarHotel(_mpEhGrupoClara(it.cnpj)||!!it.hotel,it.hotel);
   document.getElementById('milplay-modal').style.display='flex';
 }
 async function salvarMilPlay(){
@@ -6033,6 +6090,8 @@ async function salvarMilPlay(){
   const usuario=document.getElementById('mp-usuario').value.trim();
   if(!razao){ alert('Informe o cliente.'); return; }
   if(!usuario){ alert('Informe o usuário (login).'); return; }
+ const hotelVisivel=document.getElementById('mp-hotel-wrap').style.display!=='none', hotel=document.getElementById('mp-hotel').value;
+ if(hotelVisivel&&!hotel){ alert('Escolha o hotel desta conta (Arte ou Ibiúna).'); return; }
   const payload={
     token:getToken(), action:'saveMilPlay',
     cnpj, razao_social:razao,
@@ -6046,6 +6105,7 @@ async function salvarMilPlay(){
     mac_wifi:document.getElementById('mp-mac-wifi').value.trim(),
     obs:document.getElementById('mp-obs').value.trim()
   };
+ if(hotelVisivel) payload.hotel=hotel;
   if(id) payload.id=id;
   const btn=document.querySelector('#milplay-modal .modal-btn.primary');
   const txt=btn?btn.textContent:null;
@@ -14041,7 +14101,9 @@ async function estEnviarEmail(reg){
         <div id="mp-detalhe-nome" style="font-weight:700;font-size:15px;color:var(--text);"></div>
         <div id="mp-detalhe-cnpj" style="font-size:11px;color:var(--text-muted);"></div>
       </div>
+      <span id="mp-detalhe-tag" class="mp-inativo-tag" style="display:none">INATIVO</span>
     </div>
+    <div id="mp-detalhe-aviso" style="padding:14px 20px 0;"></div>
     <div id="mp-detalhe-tabela" style="padding:16px 20px;"></div>
   </div>
 </div>
@@ -14052,6 +14114,7 @@ async function estEnviarEmail(reg){
     <h3 id="mp-modal-titulo">Novo registro MilPlay</h3>
     <input type="hidden" id="mp-edit-id">
     <div class="modal-field"><label>Cliente *</label><input type="text" id="mp-cliente-busca" list="clientes-datalist" placeholder="Digite para buscar na base de clientes" oninput="milplayClienteSelecionado()"></div>
+    <div class="modal-field" id="mp-hotel-wrap" style="display:none"><label>Hotel *</label><select id="mp-hotel"><option value="">Escolha…</option><option value="Arte">Arte</option><option value="Ibiúna">Ibiúna</option></select></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="modal-field"><label>CNPJ</label><input type="text" id="mp-cnpj" placeholder="00.000.000/0000-00"></div>
       <div class="modal-field"><label>Razão Social</label><input type="text" id="mp-razao"></div>
