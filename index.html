@@ -487,6 +487,32 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .login-forgot{font-size:12px;color:#555;text-align:center;margin-top:14px;}
 .login-forgot a{color:#888;cursor:pointer;text-decoration:underline;}
 .login-forgot a:hover{color:#F5B800;}
+.login-info{font-size:12px;color:#9a9a9a;line-height:1.5;margin-bottom:14px;text-align:center}
+.login-ok{font-size:12px;color:#4cc08d;text-align:center;margin-top:10px;line-height:1.5}
+.login-reg{font-size:11px;color:#707070;line-height:1.5;margin:-4px 0 10px}
+.sn-resumo{font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.7}
+.sn-resumo b{color:var(--text)}
+.sn-barra{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.sn-barra button,.sn-card button,.sn-modal-b button{height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface,#fff);color:var(--text);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+.sn-barra button:disabled,.sn-card button:disabled,.sn-modal-b button:disabled{opacity:.55;cursor:not-allowed}
+.sn-busca{width:100%;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;font-family:inherit;background:var(--bg);color:var(--text)}
+.sn-aviso{font-size:12px;line-height:1.5;margin-bottom:10px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg);border:1px solid var(--border)}
+.sn-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px}
+.sn-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sn-nome{font-size:13px;overflow-wrap:anywhere}
+.sn-sub{font-size:11px;color:var(--text-muted);margin-top:2px;overflow-wrap:anywhere}
+.sn-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.sn-chip.nova{background:#e3f4ec;color:#17734c}
+.sn-chip.antiga{background:#fdf0cf;color:#8a6200}
+.sn-chip.sem_senha{background:#fbe4df;color:#b8321f}
+.sn-chip.inativo{background:#ececec;color:#666}
+.sn-mail{display:flex;gap:6px;margin-top:8px}
+.sn-mail input{flex:1;min-width:0;height:30px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;font-size:12px;font-family:inherit;background:var(--surface,#fff);color:var(--text)}
+.sn-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sn-vazio{font-size:12px;color:var(--text-muted);padding:10px 0;line-height:1.6}
+.sn-lbl{display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin:10px 0 4px}
+.sn-inp{width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;box-sizing:border-box;font-family:inherit;background:var(--surface,#fff);color:var(--text)}
+.sn-reg{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:8px}
 .login-user-badge{position:fixed;bottom:12px;left:16px;font-size:11px;font-family:"DM Mono",monospace;color:#444;z-index:100;}
 
 
@@ -559,7 +585,7 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       <img src="data:image/png;base64,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" alt="Blincast">
     </div>
     <div class="login-title">Blin<span style="color:#F5B800">Track</span> Operacional</div>
-    <div class="login-sub">Acesso restrito à equipe Blincast</div>
+    <div class="login-sub" id="login-sub">Acesso restrito à equipe Blincast</div>
     <form id="login-form" onsubmit="event.preventDefault();fazerLogin()" autocomplete="on">
     <div class="login-field">
       <label>Usuário</label>
@@ -570,9 +596,29 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
       <input type="password" id="login-senha" name="password" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="login-btn" id="login-btn" type="submit">Entrar</button>
-    </form>
+      </form>
+      <div id="login-esqueci" style="display:none">
+        <form id="login-esqueci-form" onsubmit="event.preventDefault();enviarLinkSenha()" autocomplete="on" novalidate>
+          <div class="login-info" id="esq-info"></div>
+          <div class="login-field"><label for="esq-usuario">Usuário</label><input type="text" id="esq-usuario" placeholder="seu.usuario" autocomplete="username"></div>
+          <div class="login-field"><label for="esq-email">E-mail cadastrado</label><input type="email" id="esq-email" placeholder="voce@empresa.com.br" autocomplete="email"></div>
+          <button class="login-btn" id="esq-btn" type="submit">Enviar link</button>
+        </form>
+        <div class="login-ok" id="esq-msg"></div>
+      </div>
+      <div id="login-nova" style="display:none">
+        <form id="login-nova-form" onsubmit="event.preventDefault();salvarNovaSenha()" autocomplete="off">
+          <div class="login-info" id="nova-info"></div>
+          <div class="login-field"><label for="nova-senha">Nova senha</label><input type="password" id="nova-senha" autocomplete="new-password"></div>
+          <div class="login-field"><label for="nova-senha2">Repita a nova senha</label><input type="password" id="nova-senha2" autocomplete="new-password"></div>
+          <div class="login-reg">Mínimo de 8 caracteres, com letras e números. Não use o nome da empresa nem o seu usuário.</div>
+          <button class="login-btn" id="nova-btn" type="submit">Salvar nova senha</button>
+        </form>
+      </div>
+      <div class="login-ok" id="login-aviso"></div>
     <div class="login-error" id="login-error"></div>
-    <div class="login-forgot"><a onclick="esqueceuSenha()">Esqueci minha senha</a></div>
+    <div class="login-forgot" id="login-forgot"><a onclick="esqueceuSenha()">Esqueci minha senha</a></div>
+      <div class="login-forgot" id="login-voltar" style="display:none"><a onclick="loginMostrar('entrar')">Voltar para o login</a></div>
   </div>
 </div>
 <div class="login-user-badge" id="login-user-badge" style="display:none"></div>
@@ -1555,9 +1601,10 @@ async function fazerLogin(){
   errEl.textContent='';
   btn.disabled=true;btn.textContent='Verificando...';
   try{
-    const r = await fetch(LOGIN_API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
-    const d = await r.json();
-    if(d.ok && perfilPodeOperacional(d.perfil)){
+    const r = await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'login',usuario,senha})});
+ const d = await r.json();
+ if(d.precisaCriarSenha){ document.getElementById('login-senha').value=''; btn.disabled=false; btn.textContent='Entrar'; abrirCriarSenha(d.usuario||usuario,'forcado'); return; }
+ if(d.ok && perfilPodeOperacional(d.perfil)){
       usuarioLogado = d;
       if(d.token) API_TOKEN_RUNTIME = d.token;
       d.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(d));
@@ -1585,20 +1632,150 @@ async function fazerLogin(){
   btn.disabled=false;btn.textContent='Entrar';
 }
 
-async function esqueceuSenha(){
-  const usuario = document.getElementById('login-usuario').value.trim();
-  if(!usuario){document.getElementById('login-error').textContent='Digite seu usuário primeiro.';return;}
+let loginTokenReset='';
+function loginMostrar(v){
+  const mostrar={entrar:['login-form','login-forgot'],esqueci:['login-esqueci','login-voltar'],nova:['login-nova','login-voltar']}[v]||[];
+  ['login-form','login-forgot','login-esqueci','login-nova','login-voltar'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=mostrar.indexOf(id)>=0?'':'none'; });
+  const sub={entrar:'Acesso restrito à equipe Blincast',esqueci:'Criar ou recuperar a senha',nova:'Crie a sua nova senha'}[v];
+  document.getElementById('login-sub').textContent=sub;
+  ['login-error','login-aviso','esq-msg'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=''; });
+}
+function abrirCriarSenha(usuario,modo){
+  loginMostrar('esqueci');
+  document.getElementById('esq-usuario').value=usuario||'';
+  document.getElementById('esq-email').value='';
+  document.getElementById('esq-btn').textContent='Enviar link';
+  document.getElementById('esq-info').textContent=modo==='forcado'
+    ?'Por segurança, você precisa criar uma nova senha. Confirme o seu e-mail cadastrado e enviaremos um link para isso.'
+    :'Informe o seu usuário e o e-mail cadastrado. Enviaremos um link para criar uma nova senha.';
+  const f=document.getElementById(usuario?'esq-email':'esq-usuario'); if(f) f.focus();
+}
+function esqueceuSenha(){ abrirCriarSenha(document.getElementById('login-usuario').value.trim(),'manual'); }
+async function enviarLinkSenha(){
+  const usuario=document.getElementById('esq-usuario').value.trim(), email=document.getElementById('esq-email').value.trim();
+  const btn=document.getElementById('esq-btn'), err=document.getElementById('login-error'), ok=document.getElementById('esq-msg');
+  err.textContent=''; ok.textContent='';
+  if(!usuario||!email){ err.textContent='Informe o usuário e o e-mail.'; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent='Confira o e-mail: ele parece incompleto.'; return; }
+  btn.disabled=true; btn.textContent='Enviando...';
+  let enviou=false;
   try{
-    await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({token:getToken(),action:'esqueceuSenha',usuario,sistema:'Operacional'})});
-    document.getElementById('login-error').style.color='#2ecc71';
-    document.getElementById('login-error').textContent='Solicitação enviada! O administrador foi notificado.';
-  }catch(e){document.getElementById('login-error').textContent='Erro ao enviar solicitação.';}
+    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'solicitarRedefinicaoSenha',usuario,email})});
+    const d=await r.json();
+    if(d.ok){ ok.textContent=d.mensagem; enviou=true; } else err.textContent=d.erro||'Não foi possível enviar agora.';
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent=enviou?'Enviar de novo':'Enviar link';
+}
+// quando a pessoa chega pelo link do e-mail (?reset=...)
+async function verificarLinkSenha(){
+  let tk=''; try{ tk=new URLSearchParams(location.search).get('reset')||''; }catch(e){}
+  if(!tk) return false;
+  try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
+  loginTokenReset=tk; API_TOKEN_RUNTIME='';
+  try{ localStorage.removeItem('blintrack_user'); }catch(e){}
+  document.getElementById('login-overlay').style.display='flex';
+  loginMostrar('nova');
+  const info=document.getElementById('nova-info'), btn=document.getElementById('nova-btn');
+  info.textContent='Verificando o link...'; btn.disabled=true;
+  try{
+    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'validarLinkSenha',token:tk})});
+    const d=await r.json();
+    if(d.ok){ info.textContent='Olá, '+d.nome+'. Crie a sua senha de acesso.'; btn.disabled=false; document.getElementById('nova-senha').focus(); }
+    else { loginTokenReset=''; abrirCriarSenha('','manual'); document.getElementById('login-error').textContent=d.erro||'Link inválido ou expirado. Peça um novo link.'; }
+  }catch(e){ loginTokenReset=''; abrirCriarSenha('','manual'); document.getElementById('login-error').textContent='Erro de conexão ao abrir o link. Peça um novo link.'; }
+  return true;
+}
+function senhaNovaMensagem(s){
+  if(s.length<8) return 'A senha precisa ter pelo menos 8 caracteres.';
+  if(!/[A-Za-zÀ-ÿ]/.test(s)||!/[0-9]/.test(s)) return 'Use pelo menos uma letra e um número.';
+  if(s.toLowerCase().indexOf('blincast')>=0) return 'Não use o nome da empresa na senha.';
+  return '';
+}
+async function salvarNovaSenha(){
+  const s1=document.getElementById('nova-senha').value, s2=document.getElementById('nova-senha2').value;
+  const err=document.getElementById('login-error'), btn=document.getElementById('nova-btn');
+  err.textContent='';
+  const msg=senhaNovaMensagem(s1); if(msg){ err.textContent=msg; return; }
+  if(s1!==s2){ err.textContent='As senhas não são iguais.'; return; }
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'definirNovaSenha',token:loginTokenReset,senha:s1})});
+    const d=await r.json();
+    if(d.ok){
+      loginTokenReset=''; document.getElementById('nova-senha').value=''; document.getElementById('nova-senha2').value='';
+      try{ localStorage.removeItem('blintrack_user'); }catch(e){} API_TOKEN_RUNTIME='';
+      loginMostrar('entrar'); document.getElementById('login-usuario').value=d.usuario||''; document.getElementById('login-senha').value='';
+      document.getElementById('login-aviso').textContent='Senha criada! Entre com a sua nova senha.';
+      document.getElementById('login-senha').focus();
+    } else {
+      const erro=d.erro||'Não foi possível salvar a senha.';
+      if(/Link inv/.test(erro)){ loginTokenReset=''; abrirCriarSenha('','manual'); }
+      document.getElementById('login-error').textContent=erro;
+    }
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent='Salvar nova senha';
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-  localStorage.removeItem('blintrack_user');
-  iniciarApp();
-});
+// ===== Configurações, aba Senhas (somente administrador) =====
+let snDados=null, snAlvo=-1;
+async function snChamar(action,extra){ const r=await fetch(API,{method:'POST',body:JSON.stringify(Object.assign({token:getToken(),action:action},extra||{}))}); return r.json(); }
+async function snOcupado(btn,texto,fn){ const antes=btn.textContent; btn.disabled=true; btn.textContent=texto; try{ return await fn(); } finally{ if(btn.isConnected){ btn.disabled=false; btn.textContent=antes; } } }
+function snDataBr(iso){ const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:''; }
+async function carregarSenhas(){
+  const lista=document.getElementById('sn-lista'); if(!lista) return;
+  lista.innerHTML='<div class="sn-vazio">Carregando usuários...</div>';
+  try{ const d=await snChamar('getSenhasUsuarios'); if(!d.ok) throw new Error(d.error||'Não foi possível carregar.'); snDados=d; snRender(); }
+  catch(e){ lista.innerHTML='<div class="sn-vazio" style="color:#b8321f">'+vfEsc(e.message||'Erro de conexão.')+' <a style="cursor:pointer;text-decoration:underline" onclick="carregarSenhas()">Tentar de novo</a></div>'; }
+}
+function snAtualizar(btn){ return snOcupado(btn,'Atualizando...',carregarSenhas); }
+function snRender(){
+  const d=snDados; if(!d) return;
+  const ativos=d.usuarios.filter(u=>u.ativo), n=sit=>ativos.filter(u=>u.situacao===sit).length;
+  const prazo=d.vencido?'O prazo da senha antiga terminou em <b>'+snDataBr(d.prazo)+'</b>: as senhas antigas foram apagadas.':'Prazo da senha antiga: <b>'+snDataBr(d.prazo)+'</b>. Depois dele ela deixa de funcionar e é apagada.';
+  document.getElementById('sn-resumo').innerHTML='<b>'+n('nova')+'</b> com senha nova · <b>'+n('antiga')+'</b> ainda com a antiga · <b>'+n('sem_senha')+'</b> sem senha<br>'+prazo;
+  const q=vfNorm(document.getElementById('sn-busca').value), rank={sem_senha:0,antiga:1,nova:2};
+  const itens=d.usuarios.map((u,i)=>({u,i})).filter(x=>!q||vfNorm(x.u.nome+' '+x.u.usuario).indexOf(q)>=0)
+    .sort((a,b)=>(a.u.ativo===b.u.ativo?0:(a.u.ativo?-1:1))||rank[a.u.situacao]-rank[b.u.situacao]||a.u.nome.localeCompare(b.u.nome,'pt-BR'));
+  const chip=u=>!u.ativo?'<span class="sn-chip inativo">Inativo</span>':(u.situacao==='nova'?'<span class="sn-chip nova">Senha nova'+(u.alterada_em?' em '+snDataBr(u.alterada_em):'')+'</span>':(u.situacao==='antiga'?'<span class="sn-chip antiga">Senha antiga</span>':'<span class="sn-chip sem_senha">Sem senha</span>'));
+  document.getElementById('sn-lista').innerHTML=itens.length?itens.map(x=>{ const u=x.u,i=x.i; return '<div class="sn-card"><div class="sn-top"><div><b class="sn-nome">'+vfEsc(u.nome)+'</b><div class="sn-sub">'+vfEsc(u.usuario)+' · '+vfEsc(u.perfil)+'</div></div>'+chip(u)+'</div>'
+    +'<div class="sn-mail"><input type="email" id="sn-em-'+i+'" value="'+vfEsc(u.email)+'" placeholder="e-mail cadastrado" aria-label="E-mail de '+vfEsc(u.nome)+'"><button data-gerundio-proprio onclick="snSalvarEmail('+i+',this)">Salvar e-mail</button></div>'
+    +'<div class="sn-acoes"><button data-gerundio-proprio onclick="snEnviar('+i+',this)"'+(u.email&&u.ativo?'':' disabled')+'>Enviar link</button><button data-gerundio-proprio onclick="snDefinir('+i+')">Definir senha</button></div></div>'; }).join(''):'<div class="sn-vazio">Nenhum usuário encontrado.</div>';
+}
+function snSalvarEmail(i,btn){
+  const u=snDados.usuarios[i], email=document.getElementById('sn-em-'+i).value.trim();
+  return snOcupado(btn,'Salvando...',async()=>{ try{ const d=await snChamar('saveEmailUsuario',{usuario:u.usuario,email}); if(d.ok){ u.email=email; ppToast(email?'E-mail salvo.':'E-mail removido.'); snRender(); } else ppToast(d.error||'Não foi possível salvar.'); }catch(e){ ppToast('Erro de conexão.'); } });
+}
+function snEnviar(i,btn){
+  const u=snDados.usuarios[i];
+  return snOcupado(btn,'Enviando...',async()=>{ try{ const d=await snChamar('enviarLinkSenhaUsuario',{usuario:u.usuario}); ppToast(d.ok?'Link enviado para '+d.email+'.':(d.error||'Não foi possível enviar.')); }catch(e){ ppToast('Erro de conexão.'); } });
+}
+function snDefinir(i){
+  snAlvo=i; const u=snDados.usuarios[i];
+  document.getElementById('sn-modal-titulo').textContent='Definir senha de '+u.nome;
+  ['sn-s1','sn-s2'].forEach(id=>{ document.getElementById(id).value=''; }); document.getElementById('sn-erro').textContent='';
+  document.getElementById('sn-modal').style.display='flex'; document.getElementById('sn-s1').focus();
+}
+function snFechar(){ document.getElementById('sn-modal').style.display='none'; snAlvo=-1; }
+function snConfirmarSenha(btn){
+  const u=snDados.usuarios[snAlvo], s1=document.getElementById('sn-s1').value, s2=document.getElementById('sn-s2').value, erro=document.getElementById('sn-erro');
+  erro.textContent='';
+  const msg=senhaNovaMensagem(s1); if(msg){ erro.textContent=msg; return; }
+  if(s1!==s2){ erro.textContent='As senhas não são iguais.'; return; }
+  return snOcupado(btn,'Salvando...',async()=>{ try{ const d=await snChamar('definirSenhaUsuario',{usuario:u.usuario,senha:s1}); if(d.ok){ snFechar(); ppToast('Senha definida para '+u.nome+'.'); carregarSenhas(); } else erro.textContent=d.error||'Não foi possível salvar.'; }catch(e){ erro.textContent='Erro de conexão.'; } });
+}
+function snPreencher(btn){
+  return snOcupado(btn,'Preenchendo...',async()=>{
+    const av=document.getElementById('sn-aviso'); av.style.display='';
+    try{
+      const d=await snChamar('preencherEmailsUsuarios');
+      if(!d.ok){ av.textContent=d.error||'Não foi possível preencher.'; return; }
+      av.innerHTML='<b>'+ptN(d.preenchidos,'e-mail preenchido','e-mails preenchidos')+'</b> a partir dos colaboradores.'+(d.semEmail.length?'<br>Ficaram sem e-mail: '+d.semEmail.slice(0,8).map(x=>vfEsc(x.nome)).join(', ')+(d.semEmail.length>8?' e mais '+(d.semEmail.length-8):'')+'. Cadastre o e-mail abaixo ou, nas contas de painel e box, use <b>Definir senha</b>.':'');
+      carregarSenhas();
+    }catch(e){ av.textContent='Erro de conexão.'; }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function(){ localStorage.removeItem('blintrack_user'); iniciarApp(); verificarLinkSenha(); });
 
 const API=BLINTRACK_API_URL;
 const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -6299,6 +6476,97 @@ function fecharSugestoesCliente(){
   if(box){ box.style.display='none'; }
 }
 
+// ===== Exportar clientes em Excel (o que está na tela; colunas financeiras só para o administrador) =====
+function _cliOrdenados(lista){
+  const dir=cliSort.dir, col=cliSort.col;
+  const val=(c)=>{
+    if(col==='nome') return String(c.nome||'').toLowerCase();
+    if(col==='cidade') return String(c.cidade||'').toLowerCase();
+    if(col==='produto') return _cliProdutoCanon(c);
+    if(col==='uhs') return parseInt(c.uhs)||0;
+    if(col==='status') return (c.status==='inativo')?'inativo':'ativo';
+    return '';
+  };
+  return lista.slice().sort((a,b)=>{const va=val(a),vb=val(b); return (va<vb?-1:va>vb?1:0)*dir;});
+}
+function _cliLimpaNum(v){ return String(v==null?'':v).trim().replace(/\.0+$/,''); }
+function _cliCnpjXls(v){ const s=_cliLimpaNum(v); return /^\d{14}$/.test(s)?s.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):s; }
+function _cliTelXls(v){ const s=_cliLimpaNum(v); if(/^\d{11}$/.test(s)) return s.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3'); if(/^\d{10}$/.test(s)) return s.replace(/^(\d{2})(\d{4})(\d{4})$/,'($1) $2-$3'); return s; }
+function _cliDataXls(v){ if(v==null||v==='') return ''; const t=formatDateBRCli(v); return (t==='—'||t==null)?'':String(t); }
+const CLI_XLS_COLS=[
+  {t:'Nome',w:34,v:c=>c.nome},
+  {t:'Razão social',w:36,v:c=>c.razao_social},
+  {t:'CNPJ',w:20,v:c=>_cliCnpjXls(c.cnpj),txt:true},
+  {t:'Cidade',w:22,v:c=>c.cidade},
+  {t:'UF',w:6,v:c=>_cliUF(c)},
+  {t:'Segmento',w:18,v:c=>c.segmento},
+  {t:'Grupo / rede',w:22,v:c=>c.grupo_rede},
+  {t:'Produto',w:18,v:c=>c.produto},
+  {t:'UHs',w:8,v:c=>{const n=parseInt(c.uhs); return isNaN(n)?'':n;},num:true},
+  {t:'Canais',w:10,v:c=>c.canais},
+  {t:'Status',w:10,v:c=>c.status==='inativo'?'Inativo':'Ativo'},
+  {t:'Contato',w:22,v:c=>c.contato},
+  {t:'Telefone',w:17,v:c=>_cliTelXls(c.telefone),txt:true},
+  {t:'E-mail',w:30,v:c=>c.email},
+  {t:'Endereço',w:40,v:c=>c.endereco},
+  {t:'Vendedor',w:18,v:c=>c.vendedor},
+  {t:'Vigência início',w:15,v:c=>_cliDataXls(c.vigencia_inicio)},
+  {t:'Data de instalação',w:17,v:c=>_cliDataXls(c.data_instalacao)},
+  {t:'Técnico',w:20,v:c=>c.tecnico},
+  {t:'NF de envio',w:14,v:c=>c.nf_envio},
+  {t:'OS de instalação',w:16,v:c=>c.os_instalacao},
+  {t:'Observações',w:44,v:c=>c.observacoes},
+  {t:'Contrato',w:11,link:c=>c.link_contrato},
+  {t:'Projeto',w:11,link:c=>c.link_projeto},
+  {t:'Grade',w:11,link:c=>c.link_grade},
+  {t:'Mensalidade',w:16,v:c=>c.mensalidade,fin:true},
+  {t:'Valor operadora',w:17,v:c=>c.valor_operadora,fin:true},
+  {t:'Pagamento operadora',w:20,v:c=>c.pagamento_operadora,fin:true}
+];
+function _cliFiltrosTexto(){
+  const out=[]; const b=(document.getElementById('clientes-busca')||{}).value||'';
+  if(b.trim()) out.push(['Busca',b.trim()]);
+  if(cliFiltros.status.size) out.push(['Status',[...cliFiltros.status].map(x=>x==='inativo'?'Inativo':'Ativo').join(', ')]);
+  if(cliFiltros.produto.size) out.push(['Produto',[...cliFiltros.produto].join(', ')]);
+  if(cliFiltros.uf.size) out.push(['UF',[...cliFiltros.uf].join(', ')]);
+  return out.length?out:[['Filtros','nenhum (todos os clientes)']];
+}
+function exportarClientesExcel(btn){
+  const gerar=async()=>{
+    if(typeof ExcelJS==='undefined'){ alert('Biblioteca de Excel não carregada. Recarregue a página.'); return; }
+    const lista=_cliOrdenados(getClientesFiltrados());
+    if(!lista.length){ alert('Nenhum cliente para exportar com os filtros atuais.'); return; }
+    const admin=!!(usuarioLogado&&usuarioLogado.perfil==='admin');
+    const cols=CLI_XLS_COLS.filter(c=>!c.fin||admin);
+    const wb=new ExcelJS.Workbook();
+    const ws=wb.addWorksheet('Clientes');
+    ws.columns=cols.map(c=>({width:c.w}));
+    const borda={top:{style:'thin',color:{argb:'FFD9D9D9'}},left:{style:'thin',color:{argb:'FFD9D9D9'}},bottom:{style:'thin',color:{argb:'FFD9D9D9'}},right:{style:'thin',color:{argb:'FFD9D9D9'}}};
+    cols.forEach((c,i)=>{ const h=ws.getCell(1,i+1); h.value=c.t; h.font={bold:true}; h.border=borda; h.alignment={vertical:'middle',wrapText:true}; h.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}}; });
+    lista.forEach((cli,r)=>{
+      cols.forEach((c,i)=>{
+        const cel=ws.getCell(r+2,i+1); cel.border=borda; cel.alignment={vertical:'top',wrapText:true};
+        if(c.link){ const url=String(c.link(cli)||'').trim(); if(url){ cel.value={text:'Abrir',hyperlink:url}; cel.font={color:{argb:'FF1155CC'},underline:true}; } return; }
+        let v=c.v(cli); if(v==null) v='';
+        if(c.num){ cel.value=v; return; }
+        if(c.txt) cel.numFmt='@';
+        cel.value=String(v);
+      });
+    });
+    ws.views=[{state:'frozen',xSplit:1,ySplit:1}];
+    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cols.length}};
+    const w2=wb.addWorksheet('Filtros'); w2.columns=[{width:22},{width:70}];
+    const agora=new Date(), p=n=>String(n).padStart(2,'0');
+    const linhas=[['Exportado em',p(agora.getDate())+'/'+p(agora.getMonth()+1)+'/'+agora.getFullYear()+' '+p(agora.getHours())+':'+p(agora.getMinutes())],['Exportado por',(usuarioLogado&&usuarioLogado.nome)||''],['Clientes no arquivo',lista.length+' de '+clientes.length]].concat(_cliFiltrosTexto()).concat(admin?[]:[['Observação','Colunas financeiras não incluídas (somente administrador).']]);
+    linhas.forEach((l,i)=>{ w2.getCell(i+1,1).value=l[0]; w2.getCell(i+1,1).font={bold:true}; w2.getCell(i+1,2).value=String(l[1]); w2.getCell(i+1,2).alignment={wrapText:true,vertical:'top'}; });
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='Clientes_BlinTrack_'+agora.getFullYear()+'-'+p(agora.getMonth()+1)+'-'+p(agora.getDate())+'.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  return btn?snOcupado(btn,'Gerando...',gerar):gerar();
+}
 function getClientesFiltrados(){
   const buscaEl=document.getElementById('clientes-busca');
   const buscaTxt=buscaEl?buscaEl.value.trim().toLowerCase():'';
@@ -6699,7 +6967,7 @@ let usuariosSistema = [];
 let usuarioConfigSelecionado = null;
 
 function switchConfigTab(tab){
-  ['geral','usuarios'].forEach(t => {
+  ['geral','usuarios','senhas'].forEach(t => {
     const btn = document.getElementById('cfg-tab-'+t);
     const panel = document.getElementById('cfg-panel-'+t);
     if(btn) btn.style.cssText = btn.style.cssText.replace(/border-bottom:[^;]+/,'') + ';border-bottom:2px solid '+(t===tab?'var(--gold)':'transparent');
@@ -6707,7 +6975,7 @@ function switchConfigTab(tab){
     if(btn) btn.style.fontWeight = t===tab ? '600' : '400';
     if(panel) panel.style.display = t===tab ? '' : 'none';
   });
-  if(tab==='usuarios') carregarUsuariosConfig();
+  if(tab==='usuarios') carregarUsuariosConfig(); if(tab==='senhas') carregarSenhas();
 }
 
 async function carregarUsuariosConfig(){
@@ -9212,6 +9480,7 @@ function showToast(msg){
     if(!btn) return;
     if(btn.disabled) { ev.preventDefault(); ev.stopPropagation(); return; }
     const oc = btn.getAttribute('onclick');
+    if(btn.hasAttribute('data-gerundio-proprio')) return; // quem controla o próprio estado: volta só quando o servidor responde
     if(!oc) return;                         // só botões com ação inline
     const ger = gerundioPara(btn.textContent||'');
     if(!ger) return;                        // não é botão de salvar/ação
@@ -13397,6 +13666,7 @@ async function estEnviarEmail(reg){
         <div id="cli-sugestoes" style="display:none;position:absolute;top:40px;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:280px;overflow-y:auto;z-index:50;"></div>
       </div>
       <button onclick="sincronizarClientes()" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">↻ Sincronizar</button>
+      <button id="cli-btn-excel" data-gerundio-proprio onclick="exportarClientesExcel(this)" style="padding:7px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">📊 Exportar Excel</button>
       <button onclick="abrirAnexoMassaContratos()" style="padding:7px 16px;border:1px solid var(--c-previsto);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--c-previsto)">📎 Anexar contratos em massa</button>
       <button class="btn-new-project" onclick="openNovoClienteModal()">+ Novo cliente</button>
     </div>
@@ -14351,6 +14621,7 @@ async function estEnviarEmail(reg){
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;">
       <button id="cfg-tab-geral" onclick="switchConfigTab('geral')" style="padding:8px 16px;border:none;border-bottom:2px solid var(--gold);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);font-weight:600;">Geral</button>
       <button id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')" style="padding:8px 16px;border:none;border-bottom:2px solid transparent;background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);">Permissões por usuário</button>
+      <button id="cfg-tab-senhas" onclick="switchConfigTab('senhas')" style="padding:8px 16px;border:none;border-bottom:2px solid transparent;background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);">Senhas</button>
     </div>
 
     <!-- ABA GERAL -->
@@ -14362,6 +14633,14 @@ async function estEnviarEmail(reg){
     </div>
 
     <!-- ABA PERMISSÕES POR USUÁRIO -->
+    <div id="cfg-panel-senhas" style="display:none;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Cada pessoa cria a própria senha por um link enviado ao e-mail cadastrado. A senha é gravada só como hash: ninguém, nem o administrador, consegue vê-la. Para contas sem e-mail (painel, box), use <b>Definir senha</b>.</div>
+      <div class="sn-resumo" id="sn-resumo"></div>
+      <div class="sn-barra"><button id="sn-btn-preencher" data-gerundio-proprio onclick="snPreencher(this)">Preencher e-mails dos colaboradores</button><button data-gerundio-proprio onclick="snAtualizar(this)">Atualizar</button></div>
+      <div class="sn-aviso" id="sn-aviso" style="display:none"></div>
+      <input type="search" class="sn-busca" id="sn-busca" placeholder="Buscar por nome ou usuário" oninput="snRender()" aria-label="Buscar usuário">
+      <div id="sn-lista"></div>
+    </div>
     <div id="cfg-panel-usuarios" style="display:none;">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Selecione um usuário para definir quais abas ele pode acessar. Deixe vazio para usar as configurações gerais.</div>
       <div id="cfg-usuarios-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
@@ -18880,5 +19159,17 @@ async function vrEmitirPDF(){
 
 </script>
 
+
+<div class="modal-overlay" id="sn-modal" style="display:none;z-index:10000" onclick="if(event.target===this)snFechar()">
+  <div class="modal" style="max-width:380px">
+    <h3 style="margin:0 0 6px" id="sn-modal-titulo">Definir senha</h3>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.5">Use para contas sem e-mail, como painel e box. A senha é gravada só como hash: ninguém consegue vê-la depois.</div>
+    <label class="sn-lbl" for="sn-s1">Nova senha</label><input type="password" class="sn-inp" id="sn-s1" autocomplete="new-password">
+    <label class="sn-lbl" for="sn-s2">Repita a nova senha</label><input type="password" class="sn-inp" id="sn-s2" autocomplete="new-password">
+    <div class="sn-reg">Mínimo de 8 caracteres, com letras e números. Não use o nome da empresa nem o usuário.</div>
+    <div id="sn-erro" style="color:#b8321f;font-size:12px;min-height:16px;margin-top:8px"></div>
+    <div class="sn-modal-b" style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button data-gerundio-proprio onclick="snFechar()">Cancelar</button><button id="sn-salvar" data-gerundio-proprio onclick="snConfirmarSenha(this)">Salvar senha</button></div>
+  </div>
+</div>
 </body>
 </html>
