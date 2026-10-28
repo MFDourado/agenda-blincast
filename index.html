@@ -497,6 +497,17 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .mp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .mp-chip{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:99px;background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
 .mp-chip.ativo{background:var(--text);color:#fff;border-color:var(--text)}
+.cv-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.cv-av{width:44px;height:44px;border-radius:50%;background:rgba(245,184,0,.15);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#F5B800;flex-shrink:0}
+.cv-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.cv-row{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:5px 0;font-size:13px}
+.cv-row .r{color:var(--text-muted);font-size:12px}
+.cv-row .v{color:var(--text);overflow-wrap:anywhere}
+.cv-row button{border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;min-width:30px;min-height:30px}
+.cv-nota{font-size:11px;color:var(--text-muted);margin-top:14px;line-height:1.5}
+.cv-bot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.cv-bot button{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface,#fff);color:var(--text);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+@media (max-width:480px){.cv-row{grid-template-columns:minmax(0,1fr) auto;row-gap:0}.cv-row .r{grid-column:1/-1}}
 #mp-hotel{width:100%;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;background:var(--surface,#fff);color:var(--text)}
 .login-info{font-size:12px;color:#9a9a9a;line-height:1.5;margin-bottom:14px;text-align:center}
 .login-ok{font-size:12px;color:#4cc08d;text-align:center;margin-top:10px;line-height:1.5}
@@ -18241,6 +18252,38 @@ function preencherColaboradorViagem(){
   if(c.sexo){const s=document.getElementById('viagem-sexo');if(s)s.value=c.sexo;}
 }
 
+// ===== Visualizar colaborador (somente leitura; bloco bancário só para o administrador) =====
+let cvIdAtual=null;
+function _cvVal(v){ const t=String(v==null?'':v).trim(); return t; }
+function _cvData(v){ const t=_cvVal(v); if(!t) return ''; const f=formatDateBRCli(t); return (f==='—'||f==null)?t:String(f); }
+function _cvLinha(rotulo,valor,copiar){
+  const v=_cvVal(valor);
+  return `<div class="cv-row"><div class="r">${vfEsc(rotulo)}</div><div class="v">${v?vfEsc(v):'—'}</div>${copiar&&v?`<button type="button" data-gerundio-proprio title="Copiar" aria-label="Copiar ${vfEsc(rotulo)}" onclick="_cvCopiar(this)" data-copia="${vfEsc(v)}">📋</button>`:'<span></span>'}</div>`;
+}
+function _cvCopiar(btn){
+  const t=btn.getAttribute('data-copia')||'';
+  if(!navigator.clipboard) return;
+  navigator.clipboard.writeText(t).then(()=>{ const o=btn.textContent; btn.textContent='✓'; setTimeout(()=>{ btn.textContent=o; },1200); }).catch(()=>{});
+}
+function visualizarColab(id){
+  const c=(colabLista||[]).find(x=>String(x.id)===String(id)); if(!c) return;
+  cvIdAtual=c.id;
+  const admin=!!(usuarioLogado&&usuarioLogado.perfil==='admin');
+  const cores={'Ativo':'#4CAF7D','Inativo':'#888','Férias':'#F5B800','Afastado':'#e74c3c'};
+  const st=cores[c.status]?c.status:'';   // status inválido (ex.: data gravada no campo errado) não aparece como selo
+  const ini=(c.nome||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
+  let h=`<div class="cv-top"><div class="cv-av">${vfEsc(ini)}</div><div style="flex:1;min-width:0"><div id="cv-nome" style="font-size:16px;font-weight:700;color:var(--text);overflow-wrap:anywhere">${vfEsc(c.nome||'—')}</div><div style="font-size:12px;color:var(--text-muted)">${vfEsc(c.cargo||'—')}</div></div>${st?`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${cores[st]}22;color:${cores[st]};border:1px solid ${cores[st]}44;white-space:nowrap">${st}</span>`:''}</div>`;
+  h+='<div class="cv-sec">Identificação</div>'+_cvLinha('Nome completo',c.nome)+_cvLinha('Usuário (login)',c.usuario)+_cvLinha('CPF',c.cpf,true)+_cvLinha('RG',c.rg)+_cvLinha('Data de nascimento',_cvData(c.nascimento))+_cvLinha('Sexo',c.sexo);
+  h+='<div class="cv-sec">Contato</div>'+_cvLinha('E-mail',c.email,true)+_cvLinha('Telefone / WhatsApp',c.telefone,true)+_cvLinha('Ramal',c.ramal);
+  h+='<div class="cv-sec">Trabalho</div>'+_cvLinha('Cargo / função',c.cargo)+_cvLinha('Setor',c.setor)+_cvLinha('UF de atuação',c.uf)+_cvLinha('Data de admissão',_cvData(c.admissao))+_cvLinha('Status',st)+_cvLinha('Pode dirigir',c.pode_dirigir);
+  if(admin) h+='<div class="cv-sec">Dados bancários</div>'+_cvLinha('Banco',c.banco)+_cvLinha('Agência',c.agencia,true)+_cvLinha('Conta',c.conta,true)+_cvLinha('Tipo de conta',c.tipoConta)+_cvLinha('Chave PIX',c.pix,true);
+  else h+='<div class="cv-nota">Os dados bancários são visíveis apenas para o administrador.</div>';
+  document.getElementById('cv-corpo').innerHTML=h;
+  document.getElementById('cv-editar').onclick=function(){ fecharColabView(); editarColab(c.id); };
+  document.getElementById('colab-view-modal').style.display='flex';
+}
+function fecharColabView(){ document.getElementById('colab-view-modal').style.display='none'; cvIdAtual=null; }
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ const m=document.getElementById('colab-view-modal'); if(m&&m.style.display!=='none') fecharColabView(); } });
 function renderColaboradores(){
   const busca=(document.getElementById('colab-busca')?.value||'').toLowerCase();
   const lista=colabLista.filter(c=>!busca||(c.nome||'').toLowerCase().includes(busca)||(c.cargo||'').toLowerCase().includes(busca));
@@ -18258,20 +18301,21 @@ function renderColaboradores(){
   el.innerHTML=lista.map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <div style="width:38px;height:38px;border-radius:50%;background:rgba(245,184,0,.15);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#F5B800;flex-shrink:0;">${(c.nome||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase()}</div>
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(245,184,0,.15);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#F5B800;flex-shrink:0;">${vfEsc((c.nome||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase())}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nome||'—'}</div>
-          <div style="font-size:12px;color:var(--text-muted);">${c.cargo||'—'}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${vfEsc(c.nome||'—')}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${vfEsc(c.cargo||'—')}</div>
         </div>
-        <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${statusColor[c.status]||'#888'}22;color:${statusColor[c.status]||'#888'};border:1px solid ${statusColor[c.status]||'#888'}44;white-space:nowrap;">${c.status||'Ativo'}</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${statusColor[c.status]||'#888'}22;color:${statusColor[c.status]||'#888'};border:1px solid ${statusColor[c.status]||'#888'}44;white-space:nowrap;">${vfEsc(c.status||'Ativo')}</span>
       </div>
       <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
-        ${c.email?`<div>✉ ${c.email}</div>`:''}
-        ${c.telefone?`<div>📱 ${c.telefone}</div>`:''}
-        ${c.cpf?`<div>CPF: ${c.cpf}</div>`:''}
+        ${c.email?`<div>✉ ${vfEsc(c.email)}</div>`:''}
+        ${c.telefone?`<div>📱 ${vfEsc(c.telefone)}</div>`:''}
+        ${c.cpf?`<div>CPF: ${vfEsc(c.cpf)}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;">
-        <button onclick="editarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
+        <button data-gerundio-proprio onclick="visualizarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Visualizar</button>
+ <button onclick="editarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
         <button onclick="excluirColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
       </div>
     </div>`).join('');
@@ -19232,6 +19276,13 @@ async function vrEmitirPDF(){
     <div class="sn-reg">Mínimo de 8 caracteres, com letras e números. Não use o nome da empresa nem o usuário.</div>
     <div id="sn-erro" style="color:#b8321f;font-size:12px;min-height:16px;margin-top:8px"></div>
     <div class="sn-modal-b" style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button data-gerundio-proprio onclick="snFechar()">Cancelar</button><button id="sn-salvar" data-gerundio-proprio onclick="snConfirmarSenha(this)">Salvar senha</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="colab-view-modal" style="display:none;z-index:9500" onclick="if(event.target===this)fecharColabView()">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto" role="dialog" aria-modal="true" aria-labelledby="cv-nome">
+    <div id="cv-corpo"></div>
+    <div class="cv-bot"><button data-gerundio-proprio id="cv-editar" onclick="">Editar</button><button data-gerundio-proprio onclick="fecharColabView()">Fechar</button></div>
   </div>
 </div>
 </body>
