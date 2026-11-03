@@ -505,6 +505,12 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .cv-row .v{color:var(--text);overflow-wrap:anywhere}
 .cv-row button{border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;min-width:30px;min-height:30px}
 .cv-nota{font-size:11px;color:var(--text-muted);margin-top:14px;line-height:1.5}
+.pe-sec{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin:12px 0 4px}
+.pe-inp{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface,#fff);color:var(--text)}
+textarea.pe-inp{min-height:170px;resize:vertical;line-height:1.5}
+.pe-aviso{background:#fff3d6;border:1px solid #f0c15a;border-left:5px solid #e08a00;border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;line-height:1.5;color:#5c3b00;margin-bottom:8px}
+.pe-anx{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;font-size:12px}
+.pe-bot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
 .cv-bot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 .cv-bot button{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface,#fff);color:var(--text);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
 @media (max-width:480px){.cv-row{grid-template-columns:minmax(0,1fr) auto;row-gap:0}.cv-row .r{grid-column:1/-1}}
@@ -4612,7 +4618,123 @@ function filtrarVistoriaTipo(tipo){
 }
 
 // Lista os atendimentos do Painel com status "preventiva" dentro da aba Preventiva
+let peCtx=null, peAnexos=[], peEnviados={}, peEnviadosCarregado=false;
+const PE_LIMITE=2.5*1024*1024, PE_MAX_TOTAL=12*1024*1024;
+function _peKB(n){ return n>=1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
+function _peDig(t){ return String(t==null?'':t).replace(/\D/g,''); }
+function _peAcharCliente(cnpj,nome){
+  const lista=(typeof clientes!=='undefined'&&clientes)||[];
+  const d=_peDig(cnpj);
+  let c=d.length>=11?lista.find(x=>_peDig(x.cnpj)===d):null;
+  if(!c&&nome&&typeof pvMesmoCliente==='function') c=lista.find(x=>pvMesmoCliente(x.nome,nome));
+  if(!c&&nome) c=lista.find(x=>vfNorm(x.nome)===vfNorm(nome));
+  return c||null;
+}
+function peTextoPadrao(dataBR){
+  return 'Prezado cliente,\n\nInformamos que a vistoria preventiva do seu sistema foi realizada'+(dataBR?' em '+dataBR:'')+'.\n\nAnalisamos todos os equipamentos e o funcionamento do serviço e constatamos que está tudo de acordo.\n\nSegue em anexo o relatório da vistoria.\n\nPermanecemos à disposição.\n\nAtenciosamente,\nEquipe SAC Blincast';
+}
+async function peCarregarEnviados(forcar){
+  if(peEnviadosCarregado&&!forcar) return;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'getEmailsPreventivas'})});
+    const d=await r.json();
+    if(d&&d.itens){ peEnviados={}; d.itens.forEach(x=>{ peEnviados[x.origem_id]=x; }); peEnviadosCarregado=true; }
+  }catch(e){}
+}
+function _peMarca(origemId){
+  const x=peEnviados[origemId];
+  return x?'<span style="font-size:10px;color:#2BB673;white-space:nowrap;align-self:center" title="Enviado por '+vfEsc(x.usuario)+'">E-mail enviado em '+vfEsc(x.data_hora)+'</span>':'';
+}
+function peAvisoEnviado(){
+  if(!peCtx) return;
+  const x=peEnviados[peCtx.origemId], av=document.getElementById('pe-aviso');
+  const base=document.getElementById('pe-para').value.trim()?'':'<div class="pe-aviso">Este cliente não tem e-mail no cadastro. Digite o e-mail abaixo.</div>';
+  av.innerHTML=(x?'<div class="pe-aviso">Já foi enviado e-mail desta preventiva em '+vfEsc(x.data_hora)+', por '+vfEsc(x.usuario)+'. Se enviar de novo, o cliente receberá outra cópia.</div>':'')+base;
+  document.getElementById('pe-enviar').textContent=x?'Enviar novamente':'Enviar ao cliente';
+}
+function peRenderAnexos(msg){
+  const el=document.getElementById('pe-anexos'); if(!el) return;
+  const total=peAnexos.reduce((s,a)=>s+(a.tamanho||0),0);
+  let h=peAnexos.map((a,i)=>'<div class="pe-anx"><span style="overflow-wrap:anywhere">'+vfEsc(a.nome)+' <span style="color:var(--text-muted)">('+_peKB(a.tamanho||0)+')</span></span><button type="button" class="modal-btn" data-gerundio-proprio onclick="peRemoverAnexo('+i+')" aria-label="Remover '+vfEsc(a.nome)+'">Remover</button></div>').join('');
+  if(msg) h+='<div style="font-size:12px;color:var(--text-muted);padding:4px 0">'+vfEsc(msg)+'</div>';
+  if(!peAnexos.length&&!msg) h+='<div style="font-size:12px;color:var(--text-muted);padding:4px 0">Nenhum arquivo anexado. Use Adicionar arquivo para anexar o relatório da vistoria.</div>';
+  if(total>PE_LIMITE) h+='<div class="pe-aviso" style="margin-top:6px">Os arquivos somam '+_peKB(total)+' e passam de 2,5 MB. Eles irão como link do Drive dentro do e-mail.</div>';
+  el.innerHTML=h;
+}
+function peRemoverAnexo(i){ peAnexos.splice(i,1); peRenderAnexos(''); }
+async function peAdicionarArquivos(inp){
+  const err=document.getElementById('pe-erro'); err.textContent='';
+  for(const f of [...inp.files]){
+    const total=peAnexos.reduce((s,a)=>s+(a.tamanho||0),0);
+    if(total+f.size>PE_MAX_TOTAL){ err.textContent='O total dos anexos passa de '+_peKB(PE_MAX_TOTAL)+'. Remova algum arquivo.'; break; }
+    const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(f); });
+    peAnexos.push({nome:f.name,mime:f.type||'application/octet-stream',base64:b64,tamanho:f.size});
+  }
+  inp.value=''; peRenderAnexos('');
+}
+async function abrirEmailPreventiva(ctx){
+  peCtx=ctx; peAnexos=[];
+  const cli=_peAcharCliente(ctx.cnpj,ctx.cliente);
+  if(cli&&!ctx.cnpj) ctx.cnpj=cli.cnpj||'';
+  const emailCad=cli?String(cli.email||'').trim():'';
+  document.getElementById('pe-sub').textContent=(ctx.cliente||'')+(ctx.dataBR?' | vistoria de '+ctx.dataBR:'');
+  document.getElementById('pe-para').value=emailCad;
+  document.getElementById('pe-assunto').value='Vistoria preventiva realizada | '+(ctx.cliente||'');
+  document.getElementById('pe-texto').value=peTextoPadrao(ctx.dataBR);
+  document.getElementById('pe-salvar-wrap').style.display=emailCad?'none':'';
+  document.getElementById('pe-salvar').checked=true;
+  document.getElementById('pe-erro').textContent='';
+  peAvisoEnviado();
+  document.getElementById('prev-email-modal').style.display='flex';
+  peRenderAnexos(typeof ctx.gerarAnexos==='function'?'Gerando o PDF da vistoria...':'');
+  peCarregarEnviados(true).then(()=>peAvisoEnviado());
+  if(typeof ctx.gerarAnexos==='function'){
+    try{ peAnexos=await ctx.gerarAnexos(); }
+    catch(e){ document.getElementById('pe-erro').textContent='Não foi possível gerar o PDF automaticamente ('+(e.message||e)+'). Use Adicionar arquivo para anexar o relatório.'; }
+    peRenderAnexos('');
+  }
+}
+function peFechar(){ document.getElementById('prev-email-modal').style.display='none'; peCtx=null; }
+function peEnviar(btn){
+  const c=peCtx; if(!c) return;
+  const err=document.getElementById('pe-erro'); err.textContent='';
+  const para=document.getElementById('pe-para').value.trim(), assunto=document.getElementById('pe-assunto').value.trim(), texto=document.getElementById('pe-texto').value;
+  if(!para){ err.textContent='Informe o e-mail do cliente.'; return; }
+  if(!texto.trim()){ err.textContent='O texto do e-mail está vazio.'; return; }
+  let reenvio=false; const ja=peEnviados[c.origemId];
+  if(ja){ if(!confirm('Esta preventiva já teve e-mail enviado em '+ja.data_hora+' por '+ja.usuario+'.\n\nEnviar novamente?')) return; reenvio=true; }
+  const salvar=document.getElementById('pe-salvar-wrap').style.display!=='none'&&document.getElementById('pe-salvar').checked;
+  return snOcupado(btn,'Enviando...',async()=>{
+    try{
+      const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'enviarEmailPreventivaCliente',tipo:c.tipo,origem_id:c.origemId,cliente:c.cliente,cnpj:c.cnpj||'',destinatarios:para,assunto:assunto,mensagem:texto,anexos:peAnexos,salvar_email_cadastro:salvar,reenvio:reenvio})});
+      const d=await r.json();
+      if(d.ok){
+        if(d.email_salvo_no_cadastro){ const cli=_peAcharCliente(c.cnpj,c.cliente); if(cli) cli.email=para.split(/[;,\s]+/)[0]; }
+        await peCarregarEnviados(true); peFechar();
+        ppToast(d.anexos_como_link?'E-mail enviado. Os arquivos foram como link do Drive.':'E-mail enviado ao cliente.');
+        if(typeof renderPreventivaPainel==='function') renderPreventivaPainel();
+      } else if(d.duplicado){
+        peEnviados[c.origemId]={data_hora:d.enviado_em,usuario:d.por}; peAvisoEnviado();
+        err.textContent='Este e-mail já foi enviado em '+d.enviado_em+' por '+d.por+'. Clique em Enviar novamente para confirmar.';
+      } else err.textContent=d.error||'Não foi possível enviar o e-mail.';
+    }catch(e){ err.textContent='Erro de conexão. Nada foi enviado.'; }
+  });
+}
+function _peCtxAta(reg){
+  const iso=(typeof _ataDiaNormD==='function')?_ataDiaNormD(reg.dt_conclusao||''):'';
+  return {tipo:'presencial',origemId:'ata_'+reg.id,cliente:reg.cliente||'',cnpj:'',dataBR:iso&&typeof _ataDiaFmtBR==='function'?_ataDiaFmtBR(iso):''};
+}
+function peOferecerDaAta(reg){ abrirEmailPreventiva(_peCtxAta(reg)); }
+function peAbrirDaAta(id){ const reg=(ataRegistros||[]).find(r=>String(r.id)===String(id)); if(reg) abrirEmailPreventiva(_peCtxAta(reg)); }
+function _vrCtxEmail(v){ return {tipo:'remota',origemId:String(v.id),cliente:v.cliente||'',cnpj:v.cnpj||'',dataBR:v.data||'',gerarAnexos:()=>vrAnexoEmail(v)}; }
+function vrOferecerEmail(v){ abrirEmailPreventiva(_vrCtxEmail(v)); }
+function vrAbrirEmail(){
+  const v=vrAtual; if(!v) return;
+  if(v.status!=='concluida'){ alert('Conclua a vistoria antes de enviar o e-mail ao cliente.'); return; }
+  abrirEmailPreventiva(_vrCtxEmail(v));
+}
 function renderPreventivaPainel(){
+ if(!window.__peTentou){ window.__peTentou=true; peCarregarEnviados().then(()=>renderPreventivaPainel()); }
   const box=document.getElementById('preventiva-painel-bloco');
   if(!box) return;
   if(vistoriaFiltroTipo!=='preventiva'){ box.style.display='none'; box.innerHTML=''; return; }
@@ -4653,6 +4775,7 @@ function renderPreventivaPainel(){
       +'<td style="padding:7px 8px;white-space:nowrap;display:flex;gap:6px;">'
         +'<button onclick="abrirEditarPreventiva(\''+r.id+'\')" style="padding:3px 9px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--text);font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✏️ Editar</button>'
         +(concl?'':'<button onclick="concluirPreventiva(\''+r.id+'\')" style="padding:3px 9px;border:1px solid var(--c-concluido);border-radius:4px;background:var(--c-concluido);color:#fff;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">✓ Concluir</button>')
+ +(concl?'<button onclick="peAbrirDaAta(\''+r.id+'\')" style="padding:3px 9px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--text);font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">E-mail ao cliente</button>'+_peMarca('ata_'+r.id):'')
       +'</td>'
       +'</tr>';
   });
@@ -4689,6 +4812,7 @@ async function concluirPreventiva(id){
   renderPreventivaPainel();
   if(typeof renderAta==='function') renderAta();
   alert('✅ Preventiva concluída e sincronizada com o Painel.');
+ try{ peOferecerDaAta(reg); }catch(e){}
 }
 
 // ===== Exportar preventivas (Excel / PDF) =====
@@ -14050,6 +14174,7 @@ async function estEnviarEmail(reg){
       <button class="modal-btn" onclick="vrMostrar('check')">← Voltar aos checklists</button>
       <div style="display:flex;gap:8px;">
         <button class="modal-btn" id="vr-btn-concluir" onclick="vrConcluir()">Concluir vistoria</button>
+        <button class="modal-btn" id="vr-btn-email" data-gerundio-proprio onclick="vrAbrirEmail()">Enviar e-mail ao cliente</button>
         <button class="modal-btn primary" id="vr-btn-pdf" onclick="vrEmitirPDF()">Emitir Termo (PDF)</button>
       </div>
     </div>
@@ -19177,6 +19302,7 @@ async function vrConcluir(){
     btn.textContent='Concluída';
     document.getElementById('vr-btn-concluir').style.display='none';
     renderVrLista();
+ try{ vrOferecerEmail(v); }catch(e){}
   }catch(e){ alert('Não foi possível concluir: '+e.message); btn.disabled=false; btn.textContent='Concluir vistoria'; }
 }
 
@@ -19246,23 +19372,35 @@ function vrTermoHtml(v){
     <table style="width:100%;border-collapse:collapse;margin-top:18px;"><tr><td style="${td};height:55px;vertical-align:bottom;width:50%;">Elaboração - Técnico Blincast<br><b>${vrEsc(v.tecnico)}</b></td><td style="${td};vertical-align:bottom;">Revisão / Aprovação<br>&nbsp;</td></tr></table>
     <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:6px;text-align:center;color:#666;font-size:9px;">Av. Célia Ribeiro da Silva Mendes, 132 - Barra da Tijuca, Rio de Janeiro - RJ, CEP 22793-081 | 0800-878-3962 / (21) 97147-1125 | sac@blincast.com.br<br>Gerado pelo BlinTrack em ${new Date().toLocaleString('pt-BR')}</div>`;
 }
-async function vrEmitirPDF(){
-  const v=vrAtual; if(!v) return;
+async function vrGerarPdf(v,opc){
+  opc=opc||{};
   const area=document.getElementById('vr-print-area');
   area.innerHTML=vrTermoHtml(v);
+  if(typeof html2canvas==='undefined'||!window.jspdf) throw new Error('Bibliotecas de PDF não carregaram. Recarregue a página.');
+  const canvas=await html2canvas(area,{scale:opc.scale||2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+  const { jsPDF }=window.jspdf; const pdf=new jsPDF('p','mm','a4');
+  const pagW=pdf.internal.pageSize.getWidth(), pagH=pdf.internal.pageSize.getHeight(), margem=8;
+  const imgW=pagW-margem*2, imgH=canvas.height*imgW/canvas.width; const img=canvas.toDataURL('image/jpeg',opc.qualidade||0.92);
+  if(imgH<=pagH-margem*2){ pdf.addImage(img,'JPEG',margem,margem,imgW,imgH); }
+  else { let resta=imgH, pos=margem; pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); while(resta>0){ pos=margem-(imgH-resta); pdf.addPage(); pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); } }
+  return pdf;
+}
+function vrNomePdf(v){ return 'Termo Vistoria Remota - '+String(v.cliente||'').replace(/[\\/:*?"<>|]/g,'')+' - '+String(v.data||'').replace(/\//g,'-')+'.pdf'; }
+async function vrAnexoEmail(v){
+  const pdf=await vrGerarPdf(v,{scale:1.6,qualidade:0.82});
+  const b64=String(pdf.output('datauristring')).split(',').pop();
+  return [{nome:vrNomePdf(v),mime:'application/pdf',base64:b64,tamanho:atob(b64).length}];
+}
+async function vrEmitirPDF(){
+  const v=vrAtual; if(!v) return;
   const btn=document.getElementById('vr-btn-pdf'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Gerando PDF...';
   try{
-    if(typeof html2canvas==='undefined'||!window.jspdf) throw new Error('Bibliotecas de PDF não carregaram. Recarregue a página.');
-    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
-    const { jsPDF }=window.jspdf; const pdf=new jsPDF('p','mm','a4');
-    const pagW=pdf.internal.pageSize.getWidth(), pagH=pdf.internal.pageSize.getHeight(), margem=8;
-    const imgW=pagW-margem*2, imgH=canvas.height*imgW/canvas.width; const img=canvas.toDataURL('image/jpeg',0.92);
-    if(imgH<=pagH-margem*2){ pdf.addImage(img,'JPEG',margem,margem,imgW,imgH); }
-    else { let resta=imgH, pos=margem; pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); while(resta>0){ pos=margem-(imgH-resta); pdf.addPage(); pdf.addImage(img,'JPEG',margem,pos,imgW,imgH); resta-=(pagH-margem*2); } }
-    pdf.save('Termo Vistoria Remota - '+String(v.cliente||'').replace(/[\\/:*?"<>|]/g,'')+' - '+String(v.data||'').replace(/\//g,'-')+'.pdf');
+    const pdf=await vrGerarPdf(v);
+    pdf.save(vrNomePdf(v));
   }catch(err){ alert('Não foi possível gerar o PDF: '+(err.message||err)); }
   finally{ btn.disabled=false; btn.textContent=txt; }
 }
+
 
 </script>
 
@@ -19283,6 +19421,26 @@ async function vrEmitirPDF(){
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto" role="dialog" aria-modal="true" aria-labelledby="cv-nome">
     <div id="cv-corpo"></div>
     <div class="cv-bot"><button data-gerundio-proprio id="cv-editar" onclick="">Editar</button><button data-gerundio-proprio onclick="fecharColabView()">Fechar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="prev-email-modal" style="display:none;z-index:9600" onclick="if(event.target===this)peFechar()">
+  <div class="modal" style="max-width:620px;max-height:92vh;overflow-y:auto" role="dialog" aria-modal="true" aria-labelledby="pe-titulo">
+    <h3 id="pe-titulo" style="margin:0 0 4px">Enviar e-mail ao cliente</h3>
+    <div id="pe-sub" style="font-size:12px;color:var(--text-muted);margin-bottom:10px"></div>
+    <div id="pe-aviso"></div>
+    <label class="pe-sec" for="pe-para">Para (separe vários e-mails com vírgula)</label>
+    <input class="pe-inp" id="pe-para" type="text" autocomplete="off" oninput="peAvisoEnviado()">
+    <div id="pe-salvar-wrap" style="display:none;margin-top:6px"><label style="font-size:12px"><input type="checkbox" id="pe-salvar" checked> Salvar este e-mail na ficha do cliente</label></div>
+    <label class="pe-sec" for="pe-assunto">Assunto</label>
+    <input class="pe-inp" id="pe-assunto" type="text" autocomplete="off">
+    <label class="pe-sec" for="pe-texto">Mensagem</label>
+    <textarea class="pe-inp" id="pe-texto"></textarea>
+    <div class="pe-sec">Anexos</div>
+    <div id="pe-anexos"></div>
+    <label class="modal-btn" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-top:6px;height:34px;box-sizing:border-box">Adicionar arquivo<input type="file" id="pe-arq" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.doc,.docx" style="display:none" onchange="peAdicionarArquivos(this)"></label>
+    <div id="pe-erro" role="alert" style="color:#b8321f;font-size:12px;margin-top:10px;min-height:16px"></div>
+    <div class="pe-bot"><button class="modal-btn" data-gerundio-proprio onclick="peFechar()">Agora não</button><button class="modal-btn primary" id="pe-enviar" data-gerundio-proprio onclick="peEnviar(this)">Enviar ao cliente</button></div>
   </div>
 </div>
 </body>
