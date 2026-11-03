@@ -569,6 +569,21 @@ textarea.pe-inp{min-height:170px;resize:vertical;line-height:1.5}
 .dc-prox small{color:var(--text-muted);min-width:78px;font-size:11px;padding-top:2px}
 .dc-prox span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #clock-screen.dc-ativo #clock-time{font-size:clamp(56px,10vw,150px)}
+#hb-info{display:flex;align-items:center;gap:16px;margin:0 auto 0 14px;min-width:0;max-width:calc(50vw - 215px);overflow:hidden;white-space:nowrap;font-size:12px;color:#9a9a9a}
+#hb-info .hb-item{display:flex;align-items:center;gap:6px;flex-shrink:0}
+#hb-info .hb-item+.hb-item{padding-left:16px;border-left:1px solid #2c2c2c}
+#hb-info .hb-hora{font-family:'DM Mono',monospace;color:#fff;font-size:13px}
+#hb-info .hb-ico svg{width:17px;height:17px;display:block}
+#hb-info .hb-temp{color:#fff;font-weight:700}
+#hb-info .hb-prev b{color:#fff;font-weight:700}
+#hb-info .hb-barra{width:44px;height:5px;border-radius:3px;background:#333;overflow:hidden;display:block}
+#hb-info .hb-barra i{display:block;height:100%;background:#F5B800}
+#hb-info .hb-aniv{color:#F5B800}
+#hb-info .hb-aniv.prox{color:#9a9a9a}
+#hb-info .hb-aniv svg{width:15px;height:15px;display:block;flex-shrink:0}
+#hb-info .hb-oculto{display:none!important}
+@media (max-width:879px){#hb-info{display:none!important}}
+body.modo-consulta #hb-info{display:none!important}
 @media (max-width:900px){.dc-linha{grid-template-columns:minmax(0,1fr)}.dc-corpo{grid-template-columns:minmax(0,1fr)}.dc-foto{width:100%;height:170px}}
 .pm-vazio{padding:28px;text-align:center;color:var(--text-muted);font-size:13px}
 @media (max-width:900px){.pm-row.cab{display:none}.pm-pend,.pm-env,.pm-fal{grid-template-columns:minmax(0,1fr)}.pm-row [data-l]::before{content:attr(data-l) ': ';color:var(--text-muted)}}
@@ -818,6 +833,13 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
 <!-- HEADER -->
 <header>
   <button onclick="openSidebar()" title="Menu" style="background:none;border:none;color:#888;cursor:pointer;font-size:20px;padding:4px 8px 4px 0;line-height:1;transition:color .15s;" onmouseover="this.style.color='#F5B800'" onmouseout="this.style.color='#888'">☰</button>
+    <div id="hb-info" aria-label="Informações do dia" style="display:none">
+      <span class="hb-item hb-hora" id="hb-hora"></span>
+      <span class="hb-item" id="hb-data"></span>
+      <span class="hb-item" id="hb-clima" style="display:none"></span>
+      <span class="hb-item hb-prev" id="hb-prev" style="display:none"></span>
+      <span class="hb-item hb-aniv" id="hb-aniv" style="display:none"></span>
+    </div>
   <div class="logo" style="position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;"><span style="color:#fff">Blin</span><span style="color:#F5B800">Track</span> <span style="color:#444;margin:0 8px">|</span> <span style="color:#fff">Operacional</span></div>
   <div class="status-bar">
     <button onclick="sincronizarOperacional()" title="Sincronizar todos os dados" style="height:26px;padding:0 10px;border:1px solid #333;border-radius:5px;background:none;color:#888;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-right:4px;transition:all .15s;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='#333';this.style.color='#888'">⟳ Sincronizar</button>
@@ -1582,7 +1604,7 @@ function iniciarApp(){
         usuarioLogado = u;
         if(u.token) API_TOKEN_RUNTIME = u.token;
         document.getElementById('login-overlay').style.display='none';
-        document.querySelector('header').style.display='flex';
+        document.querySelector('header').style.display='flex'; try{ hbIniciar(); }catch(e){}
         document.getElementById('sidebar').style.display='flex';
         document.getElementById('login-user-badge').style.display='block';
         document.getElementById('login-user-badge').textContent='👤 '+u.nome;
@@ -1712,7 +1734,7 @@ async function fazerLogin(){
       if(d.token) API_TOKEN_RUNTIME = d.token;
       d.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(d));
       document.getElementById('login-overlay').style.display='none';
-      document.querySelector('header').style.display='flex';
+      document.querySelector('header').style.display='flex'; try{ hbIniciar(); }catch(e){}
       document.getElementById('sidebar').style.display='flex';
       document.getElementById('login-user-badge').style.display='block';
       document.getElementById('login-user-badge').textContent='👤 '+d.nome;
@@ -2052,6 +2074,89 @@ function _tickClock(){
   if(dt){ const t = a.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); dt.textContent = t.charAt(0).toUpperCase()+t.slice(1); }
   const vs = document.getElementById('clock-versao');
   if(vs) vs.textContent = 'BlinTrack '+BLINTRACK_VERSAO;
+}
+let hbTimer=null, hbClima=null, hbClimaTs=0, hbAniv=null, hbAnivDia='', hbBuscandoClima=false, hbBuscandoAniv=false, hbIni=0, hbPrevPedido=false;
+const HB_DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], HB_MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const HB_BOLO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M12 12V8M12 3.5c1 1 1 2 0 3-1-1-1-2 0-3z"/><path d="M5 17c2 1.5 4 1.5 7 0s5-1.5 7 0"/></svg>';
+const HB_ORDEM=['cond','hb-aniv','hb-prev','hb-data','hb-clima'];
+function hbElem(id){ return id==='cond'?document.querySelector('#hb-clima .hb-cond'):document.getElementById(id); }
+function hbAjustar(){
+  const raiz=document.getElementById('hb-info'); if(!raiz||raiz.style.display==='none'||!raiz.getClientRects().length) return;
+  HB_ORDEM.forEach(id=>{ const e=hbElem(id); if(e) e.classList.remove('hb-oculto'); });
+  for(let i=0;i<HB_ORDEM.length;i++){
+    if(raiz.scrollWidth<=raiz.clientWidth+1) break;
+    const e=hbElem(HB_ORDEM[i]); if(e) e.classList.add('hb-oculto');
+  }
+}
+function hbPrimeiro(n){ return String(n||'').trim().split(/\s+/)[0]; }
+function hbLista(nomes){ const p=nomes.map(hbPrimeiro); return p.slice(0,2).join(', ')+(p.length>2?' +'+(p.length-2):''); }
+function hbPor(id,html,titulo){
+  const el=document.getElementById(id); if(!el) return;
+  if(!html){ el.style.display='none'; el.innerHTML=''; return; }
+  if(el.innerHTML!==html) el.innerHTML=html;
+  el.title=titulo||''; el.style.display='';
+}
+function hbRender(){
+  const raiz=document.getElementById('hb-info'); if(!raiz) return;
+  const a=new Date(), p=n=>String(n).padStart(2,'0');
+  const h=document.getElementById('hb-hora'), d=document.getElementById('hb-data');
+  const hora=p(a.getHours())+':'+p(a.getMinutes());
+  if(h.textContent!==hora) h.textContent=hora;
+  const dia=HB_DIAS[a.getDay()]+', '+p(a.getDate())+' '+HB_MESES[a.getMonth()];
+  if(d.textContent!==dia){ d.textContent=dia; const t=a.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); d.title=t.charAt(0).toUpperCase()+t.slice(1); }
+  const c=(descDados&&descDados.clima)||hbClima;
+  if(c&&(c.atual||c.hoje)){
+    const at=c.atual, ho=c.hoje, temp=at?at.temp:ho.max, cond=at?at.cond:ho.cond, ico=at?at.icone:ho.icone;
+    hbPor('hb-clima','<span class="hb-ico">'+descIcone(ico)+'</span><span class="hb-temp">'+temp+'°</span><span class="hb-cond">'+vfEsc(cond)+'</span>',(c.cidade||'Rio de Janeiro')+': '+cond+(ho&&ho.min!==null&&ho.max!==null?'. Mín '+ho.min+'° e máx '+ho.max+'° hoje':''));
+  } else hbPor('hb-clima','');
+  if(typeof pvDados!=='undefined'&&pvDados&&pvDados.pronto&&Array.isArray(pvDados.itens)){
+    const N=pvDados.itens.length, real=pvRealizadas(pvDados), pct=N?Math.min(100,Math.round(real*100/N)):0;
+    hbPor('hb-prev','<span>Preventivas</span><b>'+real+'/'+N+'</b><span class="hb-barra"><i style="width:'+pct+'%"></i></span>',real+' de '+N+' preventivas do mês concluídas ('+pct+'%)');
+  } else hbPor('hb-prev','');
+  const an=hbAniv, el=document.getElementById('hb-aniv');
+  if(an&&an.hoje&&an.hoje.length){
+    el.className='hb-item hb-aniv';
+    hbPor('hb-aniv',HB_BOLO+'<span>Hoje: '+vfEsc(hbLista(an.hoje))+'</span>','Aniversário hoje: '+an.hoje.join(', '));
+  } else if(an&&an.proximo&&an.proximo.nomes&&an.proximo.nomes.length){
+    const x=an.proximo; el.className='hb-item hb-aniv prox';
+    hbPor('hb-aniv',HB_BOLO+'<span>'+vfEsc(hbLista(x.nomes))+', '+p(x.dia)+' '+HB_MESES[x.mes-1]+'</span>','Próximo aniversário: '+x.nomes.join(', ')+', '+x.dia+' de '+['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][x.mes-1]+' (em '+ptN(x.em,'dia','dias')+')');
+  } else hbPor('hb-aniv','');
+  hbAjustar();
+}
+async function hbChamar(extra){
+  const r=await fetch(API,{method:'POST',body:JSON.stringify(Object.assign({token:getToken()},extra))});
+  return r.json();
+}
+async function hbCarregarClima(){
+  if(hbBuscandoClima) return; if(hbClima&&Date.now()-hbClimaTs<30*60000) return;
+  if(descDados&&descDados.clima&&Date.now()-descTs<30*60000) return;
+  hbBuscandoClima=true;
+  try{ const d=await hbChamar({action:'getInfoDescanso',parte:'clima'}); if(d&&d.ok&&d.clima){ hbClima=d.clima; hbClimaTs=Date.now(); } }catch(e){}
+  hbBuscandoClima=false; hbRender();
+}
+function hbHojeChave(){ const a=new Date(); return a.getFullYear()+'-'+(a.getMonth()+1)+'-'+a.getDate(); }
+async function hbCarregarAniv(){
+  if(hbBuscandoAniv) return; hbBuscandoAniv=true;
+  try{ const d=await hbChamar({action:'getAniversariantes'}); if(d&&d.ok){ hbAniv=d; hbAnivDia=hbHojeChave(); } }catch(e){}
+  hbBuscandoAniv=false; hbRender();
+}
+function hbTick(){
+  hbRender();
+  if(hbAnivDia!==hbHojeChave()&&!hbBuscandoAniv&&(!hbAnivDia||Date.now()-hbIni>0)) hbCarregarAniv();
+  hbCarregarClima();
+  if(!hbPrevPedido&&(typeof pvDados==='undefined'||!pvDados)&&Date.now()-hbIni>2500&&typeof pvCarregarFaixa==='function'){ hbPrevPedido=true; pvCarregarFaixa(); }
+}
+function hbIniciar(){
+  const raiz=document.getElementById('hb-info'); if(!raiz||document.body.classList.contains('modo-consulta')) return;
+  raiz.style.display=''; hbIni=Date.now(); hbPrevPedido=false;
+  hbRender(); hbCarregarClima(); hbCarregarAniv();
+  if(!hbTimer) hbTimer=setInterval(hbTick,15000);
+  if(!window.__hbResize){ window.__hbResize=true; window.addEventListener('resize',function(){ try{ hbAjustar(); }catch(e){} }); }
+}
+function hbParar(){
+  if(hbTimer){ clearInterval(hbTimer); hbTimer=null; }
+  hbClima=null; hbClimaTs=0; hbAniv=null; hbAnivDia='';
+  const raiz=document.getElementById('hb-info'); if(raiz) raiz.style.display='none';
 }
 let descDados=null, descTs=0, descIdx=0, descPausaAte=0, descHover=false, descTimerRod=null, descTimerAtu=null, descCarregando=false, descEventos=false;
 const DESC_ICONES={
@@ -5839,7 +5944,7 @@ function pvGravarEstadoFaixa(o){ try{ localStorage.setItem('bt_pv_faixa',JSON.st
 // ---------- faixa no topo do Pipeline ----------
 async function pvCarregarFaixa(){
   try{ const r=await Promise.all([pvBuscar(ppMesAtualISO()), pvCarregarRealizadas()]); pvDados=r[0]; pvErro=''; }catch(e){ pvDados=null; pvErro=(e&&e.message)?e.message:String(e); }
-  pvRenderFaixa();
+  pvRenderFaixa(); try{ hbRender(); }catch(e){}
 }
 function pvAplicarEstadoFaixa(nLate){
   const hoje=pvHojeISO(); let st=pvLerEstadoFaixa();
@@ -10123,7 +10228,7 @@ function fazerLogout(){
   limparCacheAbas();
   usuarioLogado = null;
   document.getElementById('login-overlay').style.display='flex';
-  document.querySelector('header').style.display='none';
+  document.querySelector('header').style.display='none'; try{ hbParar(); }catch(e){}
   document.getElementById('sidebar').style.display='none';
   document.getElementById('login-usuario').value='';
   document.getElementById('login-senha').value='';
