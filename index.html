@@ -648,13 +648,19 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
     <button class="login-btn" id="login-btn" type="submit">Entrar</button>
       </form>
       <div id="login-esqueci" style="display:none">
-        <form id="login-esqueci-form" onsubmit="event.preventDefault();enviarLinkSenha()" autocomplete="on" novalidate>
+        <form id="login-esqueci-form" onsubmit="event.preventDefault();enviarCodigoSenha()" autocomplete="on" novalidate>
           <div class="login-info" id="esq-info"></div>
-          <div class="login-field"><label for="esq-usuario">Usuário</label><input type="text" id="esq-usuario" placeholder="seu.usuario" autocomplete="username"></div>
           <div class="login-field"><label for="esq-email">E-mail cadastrado</label><input type="email" id="esq-email" placeholder="voce@empresa.com.br" autocomplete="email"></div>
-          <button class="login-btn" id="esq-btn" type="submit">Enviar link</button>
+          <button class="login-btn" id="esq-btn" type="submit">Enviar código</button>
         </form>
-        <div class="login-ok" id="esq-msg"></div>
+      </div>
+      <div id="login-codigo" style="display:none">
+        <form id="login-codigo-form" onsubmit="event.preventDefault();confirmarCodigoSenha()" autocomplete="off">
+          <div class="login-info" id="cod-info"></div>
+          <div class="login-field"><label for="cod-codigo">Código de 6 números</label><input type="text" id="cod-codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:20px"></div>
+          <button class="login-btn" id="cod-btn" type="submit">Confirmar código</button>
+        </form>
+        <div class="login-forgot"><a onclick="reenviarCodigoSenha()">Enviar um novo código</a></div>
       </div>
       <div id="login-nova" style="display:none">
         <form id="login-nova-form" onsubmit="event.preventDefault();salvarNovaSenha()" autocomplete="off">
@@ -1686,46 +1692,74 @@ async function fazerLogin(){
   btn.disabled=false;btn.textContent='Entrar';
 }
 
-let loginTokenReset='';
+let loginTokenReset='', loginEmailReset='', loginOrigemToken='';
 function loginMostrar(v){
-  const mostrar={entrar:['login-form','login-forgot'],esqueci:['login-esqueci','login-voltar'],nova:['login-nova','login-voltar']}[v]||[];
-  ['login-form','login-forgot','login-esqueci','login-nova','login-voltar'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=mostrar.indexOf(id)>=0?'':'none'; });
-  const sub={entrar:'Acesso restrito à equipe Blincast',esqueci:'Criar ou recuperar a senha',nova:'Crie a sua nova senha'}[v];
+  const mostrar={entrar:['login-form','login-forgot'],esqueci:['login-esqueci','login-voltar'],codigo:['login-codigo','login-voltar'],nova:['login-nova','login-voltar']}[v]||[];
+  ['login-form','login-forgot','login-esqueci','login-codigo','login-nova','login-voltar'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=mostrar.indexOf(id)>=0?'':'none'; });
+  const sub={entrar:'Acesso restrito à equipe Blincast',esqueci:'Criar ou recuperar a senha',codigo:'Digite o código recebido',nova:'Crie a sua nova senha'}[v];
   document.getElementById('login-sub').textContent=sub;
-  ['login-error','login-aviso','esq-msg'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=''; });
+  ['login-error','login-aviso'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=''; });
 }
 function abrirCriarSenha(usuario,modo){
   loginMostrar('esqueci');
-  document.getElementById('esq-usuario').value=usuario||'';
   document.getElementById('esq-email').value='';
-  document.getElementById('esq-btn').textContent='Enviar link';
+  document.getElementById('esq-btn').textContent='Enviar código';
   document.getElementById('esq-info').textContent=modo==='forcado'
-    ?'Por segurança, você precisa criar uma nova senha. Confirme o seu e-mail cadastrado e enviaremos um link para isso.'
-    :'Informe o seu usuário e o e-mail cadastrado. Enviaremos um link para criar uma nova senha.';
-  const f=document.getElementById(usuario?'esq-email':'esq-usuario'); if(f) f.focus();
+    ?'Por segurança, você precisa criar uma nova senha. Informe o seu e-mail cadastrado e enviaremos um código de 6 números.'
+    :'Informe o seu e-mail cadastrado. Enviaremos um código de 6 números para criar uma nova senha.';
+  const f=document.getElementById('esq-email'); if(f) f.focus();
 }
-function esqueceuSenha(){ abrirCriarSenha(document.getElementById('login-usuario').value.trim(),'manual'); }
-async function enviarLinkSenha(){
-  const usuario=document.getElementById('esq-usuario').value.trim(), email=document.getElementById('esq-email').value.trim();
-  const btn=document.getElementById('esq-btn'), err=document.getElementById('login-error'), ok=document.getElementById('esq-msg');
-  err.textContent=''; ok.textContent='';
-  if(!usuario||!email){ err.textContent='Informe o usuário e o e-mail.'; return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent='Confira o e-mail: ele parece incompleto.'; return; }
+function esqueceuSenha(){ abrirCriarSenha('','manual'); }
+function _loginMascara(e){ const p=String(e).split('@'); return (p[0]||'').slice(0,1)+'***@'+(p[1]||''); }
+async function enviarCodigoSenha(reenvio){
+  const err=document.getElementById('login-error'), btn=document.getElementById('esq-btn');
+  const email=(reenvio?loginEmailReset:document.getElementById('esq-email').value).trim();
+  err.textContent='';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent='Informe um e-mail válido.'; return; }
+  loginEmailReset=email;
   btn.disabled=true; btn.textContent='Enviando...';
   let enviou=false;
   try{
-    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'solicitarRedefinicaoSenha',usuario,email})});
+    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'solicitarCodigoSenha',email:email})});
     const d=await r.json();
-    if(d.ok){ ok.textContent=d.mensagem; enviou=true; } else err.textContent=d.erro||'Não foi possível enviar agora.';
+    if(d.ok) enviou=true; else err.textContent=d.erro||'Não foi possível enviar agora.';
   }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
-  btn.disabled=false; btn.textContent=enviou?'Enviar de novo':'Enviar link';
+  btn.disabled=false; btn.textContent='Enviar código';
+  if(enviou){
+    const msg='Se o e-mail '+_loginMascara(email)+' estiver cadastrado, enviamos um código de 6 números. Ele vale por 15 minutos.';
+    loginMostrar('codigo');
+    document.getElementById('cod-info').textContent=msg;
+    document.getElementById('cod-codigo').value='';
+    if(reenvio) document.getElementById('login-aviso').textContent='Enviamos um novo código.';
+    document.getElementById('cod-codigo').focus();
+  }
+}
+function reenviarCodigoSenha(){ return enviarCodigoSenha(true); }
+async function confirmarCodigoSenha(){
+  const err=document.getElementById('login-error'), btn=document.getElementById('cod-btn');
+  const cod=document.getElementById('cod-codigo').value.replace(/\D/g,'');
+  err.textContent='';
+  if(cod.length!==6){ err.textContent='Digite os 6 números do código.'; return; }
+  btn.disabled=true; btn.textContent='Confirmando...';
+  try{
+    const r=await fetch(LOGIN_API,{method:'POST',body:JSON.stringify({action:'validarCodigoSenha',email:loginEmailReset,codigo:cod})});
+    const d=await r.json();
+    if(d.ok&&d.token){
+      loginTokenReset=d.token; loginOrigemToken='codigo';
+      loginMostrar('nova');
+      document.getElementById('nova-info').textContent='Código confirmado. Crie a sua nova senha.';
+      document.getElementById('nova-btn').disabled=false;
+      document.getElementById('nova-senha').focus();
+    } else err.textContent=d.erro||'Código inválido ou expirado.';
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent='Confirmar código';
 }
 // quando a pessoa chega pelo link do e-mail (?reset=...)
 async function verificarLinkSenha(){
   let tk=''; try{ tk=new URLSearchParams(location.search).get('reset')||''; }catch(e){}
   if(!tk) return false;
   try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
-  loginTokenReset=tk; API_TOKEN_RUNTIME='';
+  loginTokenReset=tk; loginOrigemToken='link'; API_TOKEN_RUNTIME='';
   try{ localStorage.removeItem('blintrack_user'); }catch(e){}
   document.getElementById('login-overlay').style.display='flex';
   loginMostrar('nova');
@@ -1762,8 +1796,8 @@ async function salvarNovaSenha(){
       document.getElementById('login-aviso').textContent='Senha criada! Entre com a sua nova senha.';
       document.getElementById('login-senha').focus();
     } else {
-      const erro=d.erro||'Não foi possível salvar a senha.';
-      if(/Link inv/.test(erro)){ loginTokenReset=''; abrirCriarSenha('','manual'); }
+      const erro=loginOrigemToken==='codigo'?String(d.erro||'Não foi possível salvar a senha.').replace('Link inválido ou expirado. Peça um novo link.','O tempo para criar a senha acabou. Peça um novo código.'):(d.erro||'Não foi possível salvar a senha.');
+      if(/Link inv|tempo para criar/.test(erro)){ loginTokenReset=''; abrirCriarSenha('','manual'); }
       document.getElementById('login-error').textContent=erro;
     }
   }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
