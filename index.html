@@ -305,6 +305,9 @@ input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,select.fi
 .pv-st.prev{background:#ecebe4;color:#55554e}
 .pv-st.atr{background:rgba(228,84,63,.14);color:#b8321f}
 .pv-st.abt{background:rgba(96,125,139,.2);color:#37474f}
+.pv-st.vaz{background:#f1f0eb;color:#8a8982;font-weight:600}
+.pv-regiao-res{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:13px;color:var(--text)}
+.pv-regiao-sep{color:var(--border)}
 .pv-fh{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"tit tog pai";gap:10px 8px;align-items:center}
 .pv-fh .tit2{grid-area:tit;min-width:0}
 .pv-fh .tog{grid-area:tog}
@@ -1703,6 +1706,16 @@ function sincronizarFundo(){
     if(u && u.login_ts){ u.login_ts = Date.now(); localStorage.setItem('blintrack_user', JSON.stringify(u)); }
   }catch(e){}
 }
+
+// Painel de Atendimento: atualiza sozinho a cada 1 minuto enquanto estiver aberto e visível (sem atrapalhar quem está digitando)
+function ataAtualizarSozinho(){
+  if(document.visibilityState!=='visible') return;
+  const p=document.getElementById('page-ata'); if(!p||p.style.display==='none') return;
+  const a=document.activeElement; if(a&&p.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+  if(Array.prototype.some.call(document.querySelectorAll('.modal-overlay'),m=>m.style.display&&m.style.display!=='none')) return;
+  if(typeof loadAta==='function') loadAta();
+}
+setInterval(ataAtualizarSozinho,60000);
 
 // --- (b) memoria por aba ------------------------------------------------------
 // Se a aba foi carregada ha menos de ABA_TTL_MS, nao rebusca: mostra o que ja
@@ -5872,7 +5885,7 @@ function ovRender(){
 
 // ============ PAINEL DE PREVENTIVAS E FAIXA DO PIPELINE ============
 let pvDados=null, pvErro='', pvFaixaFiltro='todas', pvFaixaAberta=true, pvVisiveisFaixa=[], pvVisiveisPainel=[];
-let pvPainel={mes:'',dados:null,filtro:'todas',busca:'',erro:''};
+let pvPainel={mes:'',dados:null,filtro:'todas',busca:'',erro:'',regiao:''};
 const PV_ICONE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.5v.3"/></svg>';
 const PV_ICONE_OK='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 function pvPartes(p){ return String(p||'').toLowerCase().split(/[\/,;\s]+/).filter(Boolean); }
@@ -6055,6 +6068,56 @@ async function iniciarPrevPainel(){
 }
 async function pvTrocarMes(){ pvPainel.mes=document.getElementById('pv-mes').value; pvPainel.filtro='todas'; pvPainel.busca=''; document.getElementById('pv-busca').value=''; await pvCarregarPainel(); pvRenderPainel(); }
 async function pvAtualizarPainel(){ await Promise.all([pvCarregarPainel(), pvCarregarRealizadas(), ppCarregarUltimas()]); pvRenderPainel(); }
+function pvRegioes(){
+  const cont={};
+  ppClientes().forEach(c=>{ const u=ppUfDe(c); cont[u]=(cont[u]||0)+1; });
+  return Object.keys(cont).sort((a,b)=>((a==='--')-(b==='--'))||a.localeCompare(b)).map(u=>({uf:u,qtd:cont[u]}));
+}
+function pvPreencherRegioes(){
+  const s=document.getElementById('pv-regiao'); if(!s) return;
+  const atual=pvPainel.regiao||'';
+  s.innerHTML='<option value="">Todas as regiões</option>'+pvRegioes().map(r=>'<option value="'+vfEsc(r.uf)+'">'+vfEsc(r.uf==='--'?'Sem UF':r.uf)+' ('+r.qtd+')</option>').join('');
+  s.value=atual;
+  if(s.value!==atual){ pvPainel.regiao=''; s.value=''; }
+}
+function pvPainelRegiao(v){ pvPainel.regiao=v||''; pvRenderPainel(); }
+function pvAbrirRegiao(i){ const it=pvVisiveisPainel[i]; if(it) pvAbrirPreventiva(it); }
+function pvRenderRegiao(L,mesRef){
+  const reg=pvPainel.regiao, q=ppNorm(pvPainel.busca||''), rot=reg==='--'?'Sem UF':reg;
+  const d=pvPainel.dados, plano=d?d.itens.concat(d.anteriores||[]):[];
+  const regs=L.filter(x=>x.tipoLinha==='registro'&&x.mes===mesRef), pode=pvPodeMarcar();
+  const todas=ppClientes().filter(c=>ppUfDe(c)===reg).map(c=>{
+    const doCli=plano.filter(x=>pvMesmoCliente(x.cliente,c.nome));
+    const item=doCli.find(x=>x.mes===mesRef)||doCli.find(x=>x.estado!=='concluida')||null;
+    const rg=item?null:(regs.find(x=>pvMesmoCliente(x.cliente,c.nome))||null);
+    const r=prRegraDe(c);
+    const it=item||rg||{tipoLinha:'regiao',cliente:c.nome,cidade:c.cidade||'',uf:reg,tipo:r.tipo||'',semana:0,estado:'fora',mes:mesRef};
+    let grupo, rank;
+    if(item){ if(item.estado==='concluida'){ grupo='conc'; rank=4; } else if(pvAtrasada(item)){ grupo='aberta'; rank=0; } else if(item.estado==='prevista'){ grupo='prevista'; rank=1; } else { grupo='aberta'; rank=item.estado==='conferir'?2:3; } }
+    else if(rg){ if(rg.estado==='concluida'){ grupo='conc'; rank=4; } else { grupo='aberta'; rank=3; } }
+    else { grupo='nada'; rank=1; }
+    return {c:c,item:item,rg:rg,it:it,grupo:grupo,rank:rank};
+  });
+  const n=g=>todas.filter(x=>x.grupo===g).length;
+  ppSetHTML('pv-filtros','<div class="pv-regiao-res"><span><b>Região '+vfEsc(rot)+'</b>: '+ptN(todas.length,'cliente ativo','clientes ativos')+'</span><span class="pv-regiao-sep">|</span><span>'+ptN(n('conc'),'concluída','concluídas')+'</span><span class="pv-regiao-sep">|</span><span>'+n('aberta')+' em aberto</span><span class="pv-regiao-sep">|</span><span>'+ptN(n('prevista'),'prevista no plano','previstas no plano')+'</span><span class="pv-regiao-sep">|</span><span>'+n('nada')+' sem preventiva no mês</span><button class="modal-btn" style="height:30px;margin-left:auto;" onclick="pvPainelRegiao(\'\')">Limpar região</button></div>');
+  const vis=todas.filter(x=>!q||ppNorm(x.c.nome).includes(q)).sort((a,b)=>a.rank-b.rank||String(a.c.nome).localeCompare(String(b.c.nome),'pt-BR'));
+  pvVisiveisPainel=vis.map(x=>x.it);
+  ppSetHTML('pv-lista',vis.length?vis.map((x,i)=>{
+    const c=x.c, it=x.it, local=[c.cidade,reg==='--'?'':reg].filter(Boolean).join(' - ')+(it.tipo?' ('+it.tipo+')':'');
+    const c1='<div class="c1"><div class="n">'+vfEsc(c.nome)+'</div><div class="s">'+vfEsc(local)+'</div></div>';
+    if(x.item){
+      const s=pvSituacao(it);
+      return '<div class="pv-row">'+c1+'<div class="c2"><b>Semana '+it.semana+(it.mes!==mesRef?' de '+vfEsc(pvMesNome(it.mes).toLowerCase()):'')+'</b><div class="s">'+vfEsc(pvSemanaRotulo(it))+'</div></div><div class="c3"><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></div><div class="c4 q">'+pvHistorico(it)+'</div><div class="c5">'+pvAcoesHtml(it,i)+'</div></div>';
+    }
+    if(x.rg){
+      const s=pvSituacao(it), dt=it.conclusao||it.abertura;
+      const acao=it.estado==='concluida'?(pode?'<button onclick="pvAbrirRegiao('+i+')">Abrir outra</button>':'<span class="pv-esp">Fora do plano</span>'):'<span class="pv-esp">Já aberta</span>';
+      return '<div class="pv-row">'+c1+'<div class="c2"><b>'+vfEsc(pvDataBr(dt))+'</b><div class="s">'+(it.estado==='concluida'?'conclusão':'abertura')+', fora do plano</div></div><div class="c3"><span class="pv-st '+s[0]+'">'+vfEsc(s[1])+'</span></div><div class="c4 q"><b>'+vfEsc(it.origem)+'</b>'+(it.numero?' Nº '+vfEsc(it.numero):'')+(it.tecnico?'<br>Técnico: '+vfEsc(it.tecnico):'')+'</div><div class="c5"><div class="pv-acoes">'+acao+'</div></div></div>';
+    }
+    const u=ppUltimaDe(c.nome);
+    return '<div class="pv-row">'+c1+'<div class="c2"><b>-</b><div class="s">fora do plano</div></div><div class="c3"><span class="pv-st vaz">Sem preventiva no mês</span></div><div class="c4 q">'+(u&&u.d?'Última preventiva em <b>'+vfEsc(pvDataBr(u.d))+'</b>'+(u.o?' ('+vfEsc(u.o)+')':''):'<span style="color:var(--text-light)">Nunca feita</span>')+'</div><div class="c5"><div class="pv-acoes">'+(pode?'<button class="pri" onclick="pvAbrirRegiao('+i+')">Abrir preventiva</button>':'<span class="pv-esp">Somente leitura</span>')+'</div></div></div>';
+  }).join(''):'<div class="pv-vazio">'+(todas.length?'Nenhum cliente da região com essa busca.':'Nenhum cliente ativo nesta região.')+'</div>');
+}
 function pvPainelBusca(v){ pvPainel.busca=v; pvRenderPainel(); }
 function pvPainelFiltro(f){ pvPainel.filtro=f; pvRenderPainel(); }
 function pvHistorico(it){
@@ -6102,7 +6165,9 @@ function pvRenderPainel(){
   ppSetHTML('pv-resumo',d.pronto?'<div style="padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);"><div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Plano de '+vfEsc(rotMes)+': '+vfEsc(pvSemanaTexto(mesRef))+(d.pronto_por?'. Plano pronto por '+vfEsc(d.pronto_por)+(d.pronto_em?' em '+vfEsc(d.pronto_em):'')+'.':'')+'</div>'+pvNumerosHtml(d,'pvPainelFiltro')+'</div>':'');
   ppSetHTML('pv-semanas',d.pronto?'<div class="pv-semanas">'+ppSemanas(mesRef).map(w=>{ const its=d.itens.filter(x=>x.semana===w.n); const t=its.length, c=its.filter(x=>x.estado==='concluida').length, cf=its.filter(x=>x.estado==='conferir').length, la=its.filter(pvAtrasada).length, rs=Math.max(0,t-c-cf-la); const seg=(n,cor)=>'<i style="height:12px;background:'+cor+';width:'+(t?(n/t*100).toFixed(2):0)+'%"></i>'; return '<div class="pv-sem-l"><span><b>Semana '+w.n+'</b> ('+vfEsc(w.label)+')</span><div class="pv-barra">'+(t?seg(c,'#2fa06f')+seg(cf,'#5b8def')+seg(la,'#e4543f')+seg(rs,'#d9d6cb'):'<i style="height:12px;background:#ecebe4;width:100%"></i>')+'</div><span>'+c+' de '+t+'</span></div>'; }).join('')+'</div>':'');
   ppSetHTML('pv-cobertura',pvCoberturaHtml());
-  ppSetHTML('pv-filtros',pvChipsHtml(L,pvPainel.filtro,'pvPainelFiltro'));
+ pvPreencherRegioes();
+ if(pvPainel.regiao){ pvRenderRegiao(L,mesRef); return; }
+ ppSetHTML('pv-filtros',pvChipsHtml(L,pvPainel.filtro,'pvPainelFiltro'));
   const q=ppNorm(pvPainel.busca);
   pvVisiveisPainel=L.filter(x=>pvPassa(x,pvPainel.filtro)&&(!q||ppNorm(x.cliente).includes(q))).sort(pvOrdena);
   ppSetHTML('pv-lista',pvVisiveisPainel.length?pvVisiveisPainel.map((it,i)=>{
@@ -11390,10 +11455,10 @@ function _ataDiaDados(data){
 
 // junta técnico + ajudante num texto só ("Mozart / Rogério")
 function _ataTecAj(r){
-  const t=String(r.tecnico||'').trim();
-  const a=String(r.ajudante||'').trim();
-  if(t&&a) return t+' / '+a;
-  return t||a||'';
+ const t=normalizarNomeTecnico(String(r.tecnico||'').trim());
+ const a=normalizarNomeTecnico(String(r.ajudante||'').trim());
+ if(t&&a) return t+' / '+a;
+ return t||a||'';
 }
 
 async function gerarAtaDiaXLSX(data, tec20h){
@@ -14462,6 +14527,7 @@ async function estEnviarEmail(reg){
     <div id="pv-cobertura"></div>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;align-items:flex-end;">
       <div><label for="pv-busca" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Buscar cliente</label><input id="pv-busca" type="text" placeholder="Nome do cliente" oninput="pvPainelBusca(this.value)" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;width:240px;max-width:100%;"></div>
+    <div><label for="pv-regiao" style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Região</label><select id="pv-regiao" onchange="pvPainelRegiao(this.value)" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;min-width:200px;max-width:100%;"><option value="">Todas as regiões</option></select></div>
     </div>
     <div id="pv-filtros" class="pv-fchips"></div>
     <div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;background:var(--surface);">
@@ -17061,35 +17127,26 @@ async function _resolverAtaIdPorNumero(numero){
   }catch(e){ return ''; }
 }
 async function aceitarOSN2(btnEl, osId, ataId){
-  const nome=(usuarioLogado&&usuarioLogado.nome)||'';
-  if(!nome){ alert('Não foi possível identificar seu usuário logado.'); return; }
-  if(!confirm('Aceitar este atendimento? Ele vai passar a ser seu, com o nome "'+nome+'".')) return;
-  const txtOrig=btnEl?btnEl.textContent:null;
-  if(btnEl){ btnEl.disabled=true; btnEl.style.opacity='.7'; btnEl.style.cursor='wait'; btnEl.textContent='Aceitando...'; }
-  try{
-    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveOS',_partial:true,id:osId,tecnico:nome})});
-    const d=await r.json().catch(()=>({}));
-    if(d && d.error){
-      alert('Erro ao aceitar: '+d.error);
-      if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; }
-      return;
-    }
-    if(!ataId){
-      const osObj=(osLista||[]).find(x=>String(x.id)===String(osId));
-      if(osObj && osObj.numero) ataId = await _resolverAtaIdPorNumero(osObj.numero);
-    }
-    if(ataId){
-      try{ await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'escalarAtendimento',id:ataId,nivel:'N2',tecnico:nome,status:'em_andamento_tecnico'})}); }catch(e){}
-    }
-  }catch(e){
-    alert('Erro ao aceitar o atendimento. Verifique sua conexão.');
-    if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; }
-    return;
-  }
-  if(btnEl){ btnEl.textContent='Aceito ✓'; }
-  if(typeof loadOS==='function') loadOS();
-  if(typeof loadAta==='function') loadAta();
-  if(typeof showToast==='function') showToast('✅ Atendimento aceito — agora é com você!');
+ const nomeBruto=(usuarioLogado&&usuarioLogado.nome)||'';
+ if(!nomeBruto){ alert('Não foi possível identificar seu usuário logado.'); return; }
+ const nome=normalizarNomeTecnico(nomeBruto);
+ if(!confirm('Aceitar este atendimento? Ele vai passar a ser seu, com o nome "'+nome+'".')) return;
+ const txtOrig=btnEl?btnEl.textContent:null;
+ const volta=()=>{ if(btnEl){ btnEl.disabled=false; btnEl.style.opacity='1'; btnEl.style.cursor='pointer'; btnEl.textContent=txtOrig; } };
+ if(btnEl){ btnEl.disabled=true; btnEl.style.opacity='.7'; btnEl.style.cursor='wait'; btnEl.textContent='Aceitando...'; }
+ let d={};
+ try{
+ const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'aceitarAtendimentoN2',osId:osId,ataId:ataId||'',tecnico:nome})});
+ d=await r.json().catch(()=>({}));
+ }catch(e){
+ alert('Erro ao aceitar o atendimento. Verifique sua conexão.'); volta(); return;
+ }
+ if(!d||d.ok===false||d.error){ alert('Erro ao aceitar: '+((d&&d.error)||'não foi possível concluir.')); volta(); return; }
+ if(d.ataAtualizada===false) alert('Atendimento aceito, mas não encontrei o chamado dele no Painel de Atendimento. O SAC não vai ver o seu nome ali. Avise o responsável pelo sistema.');
+ if(btnEl){ btnEl.textContent='Aceito ✓'; }
+ if(typeof loadOS==='function') loadOS();
+ if(typeof loadAta==='function') loadAta();
+ if(typeof showToast==='function') showToast('✅ Atendimento aceito, agora é com você!');
 }
 function _mesAnoDeOS(o){
   const v=String(o.data||'').trim();
@@ -18035,7 +18092,7 @@ const TECNICOS_NOMES = {
   'daniel.sampaio': 'Daniel Sampaio',
   'rogerio.silva': 'Rogério Silva',
   'mozart.soares': 'Mozart Soares',
-  'gabriel.santos': 'Gabriel Santos',
+  'gabriel.santos': 'Gabriel Santos', 'maria.eduarda': 'Maria Eduarda', 'maria.eduarda.trajano': 'Maria Eduarda', 'maria.trajano': 'Maria Eduarda', 'marco.antonio.quintela': 'Marco Antonio', 'matheus.dourado': 'Matheus Dourado',
 };
 
 
@@ -19619,13 +19676,14 @@ async function vrAbrirPreventiva(){
 
     // 2) atendimento (Ata) para o N2
     vrOverlay('Abrindo preventiva...','Criando o atendimento para o N2');
-    const ataPayload={token:getToken(),action:'addAta',id:ataId,no:'',data:hojeIso,cliente:cliente,estado:base?(base.uf||''):'',tecnico:'',ajudante:'',problema:problema,status:'pendente',manutencao:'Preventiva',classificacao:'Remoto',obs:'Aberta pelo módulo Vistoria Remota por '+vrUsuarioNome(),solicitante:vrUsuarioNome(),tel_solicitante:'',dt_abertura:hojeIso,dt_prevista:hojeIso,dt_conclusao:'',equipamento:'StreamBlink',forma_conclusao:'',fora_base:'',fora_base_obs:'',nivel:'N2'};
+    const vrTecNorm=normalizarNomeTecnico(vrAtual.tecnico||'');
+ const ataPayload={token:getToken(),action:'addAta',id:ataId,no:'',data:hojeIso,cliente:cliente,estado:base?(base.uf||''):'',tecnico:vrTecNorm,ajudante:'',problema:problema,status:'pendente',manutencao:'Preventiva',classificacao:'Remoto',obs:'Aberta pelo módulo Vistoria Remota por '+vrUsuarioNome(),solicitante:vrUsuarioNome(),tel_solicitante:'',dt_abertura:hojeIso,dt_prevista:hojeIso,dt_conclusao:'',equipamento:'StreamBlink',forma_conclusao:'',fora_base:'',fora_base_obs:'',nivel:'N2'};
     const rA=await fetch(API,{method:'POST',body:JSON.stringify(ataPayload)}); const dA=await rA.json(); if(dA&&(dA.error||dA.ok===false)) throw new Error('atendimento: '+(dA.error||'falha'));
     ataCriada=true;
 
     // 3) OS do N2
     vrOverlay('Abrindo preventiva...','Criando a OS do N2 ('+osNum+')');
-    const osPayload={token:getToken(),action:'saveOS',id:'os-'+ataId,numero:osNum,data:hojeIso,status:'Aberta',cliente:cliente,cnpj:base?(base.cnpj||''):'',cidade:base?(base.cidade||''):'',endereco:base?(base.endereco||''):'',tipo:'Preventiva remota',produto:'StreamBlink',descricao:problema,manutencao:'Preventiva',classificacao:'Remoto',nivel:'N2',responsavel_nome:vrUsuarioNome(),responsavel_tel:'',tecnico:'',data_prevista:hojeIso,data_conclusao:'',hora_inicio:'',hora_conclusao:'',horas:'',obs:'',materiais:'',os_id_ata:ataId,criado_em:new Date().toLocaleString('pt-BR')};
+    const osPayload={token:getToken(),action:'saveOS',id:'os-'+ataId,numero:osNum,data:hojeIso,status:'Aberta',cliente:cliente,cnpj:base?(base.cnpj||''):'',cidade:base?(base.cidade||''):'',endereco:base?(base.endereco||''):'',tipo:'Preventiva remota',produto:'StreamBlink',descricao:problema,manutencao:'Preventiva',classificacao:'Remoto',nivel:'N2',responsavel_nome:vrUsuarioNome(),responsavel_tel:'',tecnico:vrTecNorm,data_prevista:hojeIso,data_conclusao:'',hora_inicio:'',hora_conclusao:'',horas:'',obs:'',materiais:'',os_id_ata:ataId,criado_em:new Date().toLocaleString('pt-BR')};
     const rO=await fetch(API,{method:'POST',body:JSON.stringify(osPayload)}); const dO=await rO.json(); if(dO&&(dO.error||dO.ok===false)) throw new Error('OS: '+(dO.error||'falha'));
 
     // pronto: mostra "aberta" e segue para a página do checklist
