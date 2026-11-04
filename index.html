@@ -2012,7 +2012,7 @@ function verificarV2Popup(){}
 function fecharV2Popup(){ setTimeout(verificarNotificacoesFerias,500); }
 // ===================== BARRA DE ABAS (estilo Chrome) =====================
 const TAB_LABELS = {
-  pipeline:'Pipeline', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-overview':'Overview', 'prev-emails':'E-mails ao cliente', 'prev-painel':'Painel de preventivas', 'prev-plano':'Plano do mês', 'prev-regras':'Regras dos clientes', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
+  pipeline:'Pipeline', milplay:'MilPlay', 'vistoria-remota':'Vistoria remota', 'orcamentos-salvos':'Orçamentos salvos', 'entrega-material':'Entrega de material', 'transferencia-material':'Transferência de material', vistoria:'Instalação', 'vistoria-preventiva':'Preventiva', 'prev-overview':'Overview', 'prev-emails':'E-mails ao cliente', 'prev-painel':'Painel de preventivas', 'prev-plano':'Plano do mês', 'prev-regras':'Regras dos clientes', operadoras:'Operadoras', 'itens-locados':'Itens Locados', 'gestao-sky':'Gestão Sky', agenda:'Agenda', dashboard:'Dashboard',
   comercial:'Comercial', clientes:'Clientes', cronograma:'Cronograma', ata:'Painel de Atendimento',
   orcamento:'Orçamento', distrato:'Distrato', implantacoes:'Implantações', montagem:'Montagem',
   requisicoes:'Requisições', ferias:'Férias', viagem:'Viagem', poc:'PoC',
@@ -6646,6 +6646,32 @@ function _mpMostrarHotel(mostrar,valor){
   const w=document.getElementById('mp-hotel-wrap'); if(w) w.style.display=mostrar?'':'none';
   const sel=document.getElementById('mp-hotel'); if(sel) sel.value=mostrar?(valor||''):'';
 }
+let milplayLogDados=[];
+async function milplayAbrirHistorico(){
+  const modal=document.getElementById('mp-log-modal'), lista=document.getElementById('mp-log-lista');
+  modal.style.display='flex';
+  document.getElementById('mp-log-busca').value='';
+  lista.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Carregando...</div>';
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'milplayLog'})});
+    const d=await r.json();
+    if(!d||!d.ok){ milplayLogDados=[]; lista.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">'+vfEsc((d&&d.error)||'Não foi possível carregar o histórico.')+'</div>'; return; }
+    milplayLogDados=Array.isArray(d.itens)?d.itens:[];
+  }catch(e){ milplayLogDados=[]; lista.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">Erro ao carregar. Verifique sua conexão.</div>'; return; }
+  milplayRenderHistorico();
+}
+function milplayRenderHistorico(){
+  const lista=document.getElementById('mp-log-lista'); if(!lista) return;
+  const q=vfNorm(document.getElementById('mp-log-busca').value||'');
+  const itens=milplayLogDados.filter(x=>!q||vfNorm([x.usuario,x.nome,x.acao,x.cliente,x.cnpj,x.detalhe].join(' ')).includes(q));
+  if(!itens.length){ lista.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:13px;">'+(milplayLogDados.length?'Nada encontrado para essa busca.':'Nenhuma alteração registrada ainda.')+'</div>'; return; }
+  const th=t=>`<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">${t}</th>`;
+  lista.innerHTML=`<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)">${th('Data e hora')}${th('Quem')}${th('Ação')}${th('Cliente')}${th('Contas')}</tr></thead><tbody>${itens.map(x=>{
+    const quem=x.nome&&x.nome!==x.usuario?vfEsc(x.nome)+' <span style="color:var(--text-muted)">('+vfEsc(x.usuario)+')</span>':vfEsc(x.usuario);
+    return `<tr style="border-top:1px solid var(--border)"><td style="padding:7px 10px;font-size:12px;white-space:nowrap;">${vfEsc(x.data_hora)}</td><td style="padding:7px 10px;font-size:12px;">${quem}</td><td style="padding:7px 10px;font-size:12px;font-weight:600;">${vfEsc(x.acao)}${x.detalhe?'<div style="font-weight:400;font-size:11px;color:var(--text-muted)">'+vfEsc(x.detalhe)+'</div>':''}</td><td style="padding:7px 10px;font-size:12px;">${vfEsc(x.cliente||'-')}${x.cnpj?'<div style="font-size:11px;color:var(--text-muted)">'+vfEsc(x.cnpj)+'</div>':''}</td><td style="padding:7px 10px;font-size:12px;">${vfEsc(x.contas||'')}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function milplayFecharHistorico(){ const m=document.getElementById('mp-log-modal'); if(m) m.style.display='none'; }
 function abrirNovoMilPlay(tipo){
   mpTipoNovo=(tipo==='poc'||tipo==='cliente')?tipo:(milplayClienteAtual?(milplayClienteAtual.tipo||'cliente'):milplayAba);
   document.getElementById('mp-modal-titulo').textContent=(mpTipoNovo==='poc'&&!milplayClienteAtual)?'Novo PoC':'Novo registro MilPlay';
@@ -14682,6 +14708,7 @@ async function estEnviarEmail(reg){
       <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;display:flex;align-items:center;">➕ Importar novo cliente<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,true)" style="display:none"></label>
       <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid #5B9EF5;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#5B9EF5;display:flex;align-items:center;">🔧 Corrigir números de quarto<input type="file" accept=".xlsx,.xls" multiple onchange="milplayCorrigirQuartos(this)" style="display:none"></label>
       <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;">📥 Importar planilha completa<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,false)" style="display:none"></label>
+      <button id="mp-btn-historico" class="mp-so-gestor" onclick="milplayAbrirHistorico()" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);align-items:center;">Histórico</button>
       <button id="mp-btn-novo" onclick="abrirNovoMilPlay()" class="btn-new-project">+ Novo registro</button>
     </div>
   </div>
@@ -14710,8 +14737,8 @@ async function estEnviarEmail(reg){
       <span id="mp-detalhe-tag" class="mp-inativo-tag" style="display:none">INATIVO</span>
     <span id="mp-detalhe-tipo" class="mp-tipo-tag" style="display:none">PoC</span>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-      <button id="mp-bt-tipo" class="mp-btn-acao mp-so-gestor" onclick="milplayTransferirCliente()"></button>
-      <button id="mp-bt-inativar" class="mp-btn-acao mp-so-gestor perigo" onclick="milplayInativarCliente()"></button>
+      <button id="mp-bt-tipo" class="mp-btn-acao" onclick="milplayTransferirCliente()"></button>
+      <button id="mp-bt-inativar" class="mp-btn-acao perigo" onclick="milplayInativarCliente()"></button>
     </div>
     </div>
     <div id="mp-detalhe-aviso" style="padding:14px 20px 0;"></div>
@@ -14743,6 +14770,16 @@ async function estEnviarEmail(reg){
   </div>
 </div>
 
+<!-- MODAL HISTÓRICO DO MILPLAY -->
+<div class="modal-overlay" id="mp-log-modal" style="display:none" onclick="if(event.target===this)milplayFecharHistorico()">
+  <div class="modal" style="max-width:900px;max-height:90vh;overflow-y:auto;">
+    <h3>Histórico do MilPlay</h3>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Inativações, reativações, transferências entre Clientes e PoC e importações de planilha. Mostra as últimas 500, da mais recente para a mais antiga.</div>
+    <input id="mp-log-busca" type="text" placeholder="Buscar por usuário, cliente ou ação" oninput="milplayRenderHistorico()" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+    <div id="mp-log-lista" style="margin-top:12px;"></div>
+    <div class="modal-actions"><button class="modal-btn" onclick="milplayFecharHistorico()">Fechar</button></div>
+  </div>
+</div>
 <!-- CRONOGRAMA -->
 <div id="page-cronograma" class="main" style="display:none">
   <div class="pipeline-header">
