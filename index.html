@@ -497,6 +497,13 @@ tr.ata-drag-over{border-top:2px solid var(--gold);}
 .mp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .mp-chip{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:99px;background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
 .mp-chip.ativo{background:var(--text);color:#fff;border-color:var(--text)}
+.mp-chip b{margin-left:4px}
+.mp-so-gestor{display:none!important}
+body.mp-gestor .mp-so-gestor{display:flex!important;align-items:center}
+.mp-tipo-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#efe6ff;color:#5b3aa8}
+.mp-btn-acao{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.mp-btn-acao.perigo{color:#b8321f;border-color:#e3b5ad}
+.mp-btn-acao:disabled{opacity:.6;cursor:default}
 .cv-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .cv-av{width:44px;height:44px;border-radius:50%;background:rgba(245,184,0,.15);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#F5B800;flex-shrink:0}
 .cv-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -6424,12 +6431,24 @@ function popularDatalistClientes(){
 // ============ MILPLAY (acessos de login por quarto/dispositivo) ============
 let milplayLista=[];
 let milplayClienteAtual=null;
+let milplayAba='cliente', milplayPodeGerir=false, milplayPermTs=0, milplayPermUser='', mpTipoNovo='cliente';
 function iniciarMilPlay(){
   milplayClienteAtual=null;
   const vd=document.getElementById('mp-view-detalhe'); if(vd) vd.style.display='none';
   const vl=document.getElementById('mp-view-lista'); if(vl) vl.style.display='block';
   if(!Array.isArray(clientes)||!clientes.length){ loadClientes().then(()=>popularDatalistClientes()); } else { popularDatalistClientes(); }
   loadMilPlay();
+}
+async function milplayCarregarPermissoes(forcar){
+  const usr=String((typeof usuarioLogado!=='undefined'&&usuarioLogado&&usuarioLogado.usuario)||'').toLowerCase();
+  if(!forcar&&milplayPermTs&&usr===milplayPermUser&&Date.now()-milplayPermTs<5*60000) return;
+  milplayPodeGerir=false;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'milplayPermissoes'})});
+    const d=await r.json();
+    if(d&&d.ok){ milplayPodeGerir=!!d.podeGerir; milplayPermTs=Date.now(); milplayPermUser=usr; }
+  }catch(e){}
+  document.body.classList.toggle('mp-gestor',milplayPodeGerir);
 }
 async function loadMilPlay(){
   const s=document.getElementById('mp-sync');
@@ -6438,8 +6457,9 @@ async function loadMilPlay(){
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMilPlay');
     const d=await r.json();
     milplayLista=Array.isArray(d.itens)?d.itens:[];
-    if(s) s.textContent='Sincronizado — '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(s) s.textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){ milplayLista=[]; if(s) s.textContent='Erro ao carregar'; }
+  milplayCarregarPermissoes();
   renderMilPlayLista();
 }
 const MILPLAY_GRUPO_CLARA={
@@ -6469,7 +6489,7 @@ function _milplayClientesUnicos(){
   milplayLista.forEach(it=>{
     const base=String(it.cnpj||it.razao_social||'').trim(); if(!base) return;
     const inativo=_mpInativo(it), chave=(inativo?'inativo|':'')+base;
-    if(!mapa[chave]) mapa[chave]={cnpj:it.cnpj||'',razao_social:it.razao_social||'(sem nome)',qtd:0,inativo:inativo,especial:!inativo&&_mpEhGrupoClara(it.cnpj),hoteis:{}};
+    if(!mapa[chave]) mapa[chave]={cnpj:it.cnpj||'',razao_social:it.razao_social||'(sem nome)',qtd:0,inativo:inativo,especial:!inativo&&_mpEhGrupoClara(it.cnpj),hoteis:{},tipo:it.tipo==='poc'?'poc':'cliente'};
     const c=mapa[chave]; c.qtd++;
     if(c.especial){ const h=String(it.hotel||'').trim()||'Sem hotel'; c.hoteis[h]=(c.hoteis[h]||0)+1; }
   });
@@ -6480,31 +6500,41 @@ function renderMilPlayLista(){
   const wrap=document.getElementById('mp-lista-clientes');
   if(!wrap) return;
   const busca=(document.getElementById('mp-busca-cliente')?.value||'').trim();
-  // o cartão antigo (inativo) só aparece quando não há busca: na busca aparece apenas o cartão novo
-  const clientesUnicos=_milplayClientesUnicos().filter(c=>c.inativo?!busca:_mpCasaBusca(c,busca));
-  if(!clientesUnicos.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">Nenhum cliente MilPlay encontrado.</div>'; return; }
+  const todos=_milplayClientesUnicos();
+  const cont={cliente:0,poc:0}; todos.forEach(c=>{ cont[c.tipo]++; });
+  const abas=document.getElementById('mp-abas');
+  if(abas) abas.innerHTML=[['cliente','Clientes'],['poc','PoC']].map(a=>`<button class="mp-chip${milplayAba===a[0]?' ativo':''}" data-mp-aba="${a[0]}" onclick="milplayTrocarAba('${a[0]}')">${a[1]} <b>${cont[a[0]]}</b></button>`).join('');
+  const bn=document.getElementById('mp-btn-novo'); if(bn) bn.textContent=milplayAba==='poc'?'+ Novo PoC':'+ Novo registro';
+  // o cartão inativo só aparece quando não há busca
+  const clientesUnicos=todos.filter(c=>c.tipo===milplayAba).filter(c=>c.inativo?!busca:_mpCasaBusca(c,busca));
+  if(!clientesUnicos.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px;grid-column:1/-1;">'+(milplayAba==='poc'?'Nenhum PoC encontrado.':'Nenhum cliente MilPlay encontrado.')+'</div>'; return; }
   wrap.innerHTML=clientesUnicos.map(c=>{
     const titulo=c.especial?MILPLAY_GRUPO_CLARA.titulo:c.razao_social, ris=c.inativo?'text-decoration:line-through;':'';
     const hot=c.especial?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="mp-hotel mp-hotel-arte">Arte ${c.hoteis['Arte']||0}</span><span class="mp-hotel mp-hotel-ibiuna">Ibiúna ${c.hoteis['Ibiúna']||0}</span></div>`:'';
     return `<div onclick="milplayAbrirCliente('${_mpArg(c.cnpj)}','${_mpArg(c.razao_social)}',${c.inativo?'true':'false'})" data-mp-card="${c.inativo?'inativo':(c.especial?'clara':'normal')}" style="border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;background:${c.inativo?'#f0efec':'var(--surface)'};${c.inativo?'opacity:.75;':''}">
  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;"><span style="font-weight:700;font-size:14px;color:${c.inativo?'#8a8a86':'var(--text)'};${ris}">${vfEsc(titulo)}</span>${c.inativo?'<span class="mp-inativo-tag">INATIVO</span>':''}</div>
- <div style="font-size:11px;color:var(--text-muted);${ris}">${vfEsc(c.cnpj||'—')}</div>${hot}
+ <div style="font-size:11px;color:var(--text-muted);${ris}">${vfEsc(c.cnpj||'-')}</div>${hot}
  <div style="font-size:11px;color:${c.inativo?'#8a8a86':'var(--gold)'};margin-top:8px;font-weight:600;${ris}">${ptN(c.qtd,'registro','registros')} →</div>
  </div>`;
   }).join('');
 }
 function milplayAbrirCliente(cnpj, razao, inativo){
   const especial=!inativo&&_mpEhGrupoClara(cnpj);
-  milplayClienteAtual={cnpj:cnpj||'',razao:razao||'',inativo:!!inativo,especial:especial};
+  const ref=milplayLista.find(it=>String(it.cnpj||'').trim()===String(cnpj||'').trim()&&(String(cnpj||'').trim()!==''||String(it.razao_social||'').trim()===String(razao||'').trim())&&(!!inativo===_mpInativo(it)));
+  const tipo=ref&&ref.tipo==='poc'?'poc':'cliente';
+  milplayClienteAtual={cnpj:cnpj||'',razao:razao||'',inativo:!!inativo,especial:especial,tipo:tipo};
   milplayHotelFiltro='';
   document.getElementById('mp-view-lista').style.display='none';
   document.getElementById('mp-view-detalhe').style.display='block';
   const nome=document.getElementById('mp-detalhe-nome'), cn=document.getElementById('mp-detalhe-cnpj'), tag=document.getElementById('mp-detalhe-tag');
   nome.textContent=especial?MILPLAY_GRUPO_CLARA.titulo:(razao||'(sem nome)');
-  cn.textContent=cnpj||'—';
+  cn.textContent=cnpj||'-';
   nome.style.textDecoration=cn.style.textDecoration=inativo?'line-through':'';
   nome.style.color=inativo?'#8a8a86':'var(--text)';
   if(tag) tag.style.display=inativo?'':'none';
+  const tt=document.getElementById('mp-detalhe-tipo'); if(tt) tt.style.display=tipo==='poc'?'':'none';
+  const bt=document.getElementById('mp-bt-tipo'); if(bt) bt.textContent=tipo==='poc'?'Transferir para Clientes':'Transferir para PoC';
+  const bi=document.getElementById('mp-bt-inativar'); if(bi) bi.textContent=inativo?'Reativar cliente':'Inativar cliente';
   renderMilPlayDetalhe();
 }
 function milplayFiltrarHotel(v){ milplayHotelFiltro=v||''; renderMilPlayDetalhe(); }
@@ -6530,10 +6560,59 @@ function milplayVoltarLista(){
   document.getElementById('mp-view-lista').style.display='block';
   renderMilPlayLista();
 }
+async function milplayInativarCliente(){
+  const c=milplayClienteAtual; if(!c) return;
+  const inativar=!c.inativo;
+  const nome=c.especial?MILPLAY_GRUPO_CLARA.titulo:(c.razao||'(sem nome)');
+  const msg=inativar?'Inativar "'+nome+'"? O cliente vai para o fim da lista, riscado, e dá para reativar depois. Nenhuma conta é apagada.':'Reativar "'+nome+'"? Ele volta para a lista normal.';
+  if(!confirm(msg)) return;
+  const btn=document.getElementById('mp-bt-inativar'), txt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent=inativar?'Inativando...':'Reativando...'; }
+  let deu=false;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'milplayInativarCliente',cnpj:c.cnpj,razao:c.razao,inativar:inativar})});
+    const d=await r.json();
+    if(d&&d.ok) deu=true; else alert('Erro: '+((d&&d.error)||'não foi possível concluir.'));
+  }catch(e){ alert('Erro de conexão. Tente novamente.'); }
+  if(btn){ btn.disabled=false; btn.textContent=txt; }
+  if(!deu) return;
+  await loadMilPlay();
+  milplayAbrirCliente(c.cnpj,c.razao,inativar);
+}
+async function milplayTransferirCliente(){
+  const c=milplayClienteAtual; if(!c) return;
+  const destino=c.tipo==='poc'?'cliente':'poc';
+  const nome=c.especial?MILPLAY_GRUPO_CLARA.titulo:(c.razao||'(sem nome)');
+  if(!confirm('Transferir "'+nome+'" para '+(destino==='poc'?'PoC':'Clientes')+'? Todas as contas dele vão junto.')) return;
+  const btn=document.getElementById('mp-bt-tipo'), txt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='Transferindo...'; }
+  let deu=false;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'milplayDefinirTipo',cnpj:c.cnpj,razao:c.razao,tipo:destino})});
+    const d=await r.json();
+    if(d&&d.ok) deu=true; else alert('Erro: '+((d&&d.error)||'não foi possível transferir.'));
+  }catch(e){ alert('Erro ao transferir. Verifique sua conexão.'); }
+  if(btn){ btn.disabled=false; btn.textContent=txt; }
+  if(!deu) return;
+  milplayAba=destino;
+  await loadMilPlay();
+  milplayVoltarLista();
+}
+function milplayTrocarAba(t){ milplayAba=t==='poc'?'poc':'cliente'; renderMilPlayLista(); }
+function _mpDataParaInput(v){
+  const s=String(v||'').trim();
+  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(m) return m[3]+'-'+m[2]+'-'+m[1];
+  m=s.match(/^(\d{4}-\d{2}-\d{2})/); return m?m[1]:'';
+}
+function _mpFmtData(v){
+  const s=String(v||'').trim(); if(!s) return '';
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:s;
+}
 function renderMilPlayDetalhe(){
   if(!milplayClienteAtual) return;
   const atual=milplayClienteAtual, esp=!!atual.especial, ina=!!atual.inativo;
-  const todas=milplayLista.filter(it=>String(it.cnpj||'').trim()===atual.cnpj.trim()&&(ina?_mpInativo(it):!_mpInativo(it)));
+  const semCnpj=atual.cnpj.trim()==='';
+  const todas=milplayLista.filter(it=>String(it.cnpj||'').trim()===atual.cnpj.trim()&&(!semCnpj||String(it.razao_social||'').trim()===String(atual.razao||'').trim())&&(ina?_mpInativo(it):!_mpInativo(it)));
   const av=document.getElementById('mp-detalhe-aviso');
   if(av) av.innerHTML=esp?`<div class="mp-aviso" role="alert"><span class="mp-aviso-ico">⚠</span><div>${MILPLAY_GRUPO_CLARA.aviso}</div></div>`:'';
   const wrap=document.getElementById('mp-detalhe-tabela');
@@ -6550,30 +6629,28 @@ function renderMilPlayDetalhe(){
   const ordenado=[...linhas].sort(esp?(a,b)=>num(a.usuario,b.usuario):(a,b)=>num(a.quarto,b.quarto));
   const ris=ina?'text-decoration:line-through;color:#8a8a86;':'';
   const th=(t)=>`<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#888">${t}</th>`;
-  const hotelTd=it=>esp?`<td style="padding:7px 10px;"><span class="mp-hotel mp-hotel-${it.hotel==='Arte'?'arte':(it.hotel==='Ibiúna'?'ibiuna':'sem')}">${vfEsc(it.hotel||'—')}</span></td>`:'';
+  const hotelTd=it=>esp?`<td style="padding:7px 10px;"><span class="mp-hotel mp-hotel-${it.hotel==='Arte'?'arte':(it.hotel==='Ibiúna'?'ibiuna':'sem')}">${vfEsc(it.hotel||'-')}</span></td>`:'';
   wrap.innerHTML=chips+`<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
- <thead><tr style="background:var(--bg)">${esp?th('Hotel'):''}${th('Quarto')}${th('Usuário')}${th('IP')}${th('Pacotes')}${th('Data de Ativação')}${th('Fabricante')}${th('MAC Rede')}${th('MAC Wifi')}<th></th></tr></thead>
+ <thead><tr style="background:var(--bg)">${esp?th('Hotel'):''}${th('Quarto')}${th('Usuário')}${th('IP')}${th('Pacote')}${th('Data de ativação')}<th></th></tr></thead>
  <tbody>${ordenado.length?ordenado.map(it=>`<tr style="border-top:1px solid var(--border)">${hotelTd(it)}
- <td style="padding:7px 10px;font-size:12px;font-weight:600;${ris}">${it.quarto||'—'}</td>
- <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;${ris}">${it.usuario||'—'}</span>${it.usuario?` <button onclick="milplayCopiar('${String(it.usuario).replace(/'/g,"\\'")}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
- <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.ip||'—'}</td>
- <td style="padding:7px 10px;font-size:12px;${ris}">${it.pacotes||'—'}</td>
- <td style="padding:7px 10px;font-size:12px;${ris}">${it.data_ativacao||'—'}</td>
- <td style="padding:7px 10px;font-size:12px;${ris}">${it.fabricante||'—'}</td>
- <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.mac_rede||'—'}</td>
- <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${it.mac_wifi||'—'}</td>
- <td style="padding:7px 10px;white-space:nowrap;"><button onclick="abrirEditarMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;" title="Editar">✎</button> <button onclick="excluirMilPlay('${it.id}')" style="border:none;background:none;cursor:pointer;color:#e00;font-size:13px;" title="Excluir">🗑️</button></td>
- </tr>`).join(''):`<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;">Nenhum registro com esse filtro.</td></tr>`}</tbody>
+ <td style="padding:7px 10px;font-size:12px;font-weight:600;${ris}">${vfEsc(it.quarto||'-')}</td>
+ <td style="padding:7px 10px;font-size:12px;white-space:nowrap;"><span style="font-family:monospace;${ris}">${vfEsc(it.usuario||'-')}</span>${it.usuario?` <button onclick="milplayCopiar('${_mpArg(it.usuario)}', this)" title="Copiar" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px;">📋</button>`:''}</td>
+ <td style="padding:7px 10px;font-size:11px;font-family:monospace;${ris}">${vfEsc(it.ip||'-')}</td>
+ <td style="padding:7px 10px;font-size:12px;${ris}">${vfEsc(it.pacotes||'-')}</td>
+ <td style="padding:7px 10px;font-size:12px;${ris}">${vfEsc(_mpFmtData(it.data_ativacao)||'-')}</td>
+ <td style="padding:7px 10px;white-space:nowrap;"><button onclick="abrirEditarMilPlay('${_mpArg(it.id)}')" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:13px;" title="Editar">✎</button> <button onclick="excluirMilPlay('${_mpArg(it.id)}')" style="border:none;background:none;cursor:pointer;color:#e00;font-size:13px;" title="Excluir">🗑️</button></td>
+ </tr>`).join(''):`<tr><td colspan="${esp?7:6}" style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;">Nenhum registro com esse filtro.</td></tr>`}</tbody>
  </table></div>`;
 }
 function _mpMostrarHotel(mostrar,valor){
   const w=document.getElementById('mp-hotel-wrap'); if(w) w.style.display=mostrar?'':'none';
   const sel=document.getElementById('mp-hotel'); if(sel) sel.value=mostrar?(valor||''):'';
 }
-function abrirNovoMilPlay(){
-  document.getElementById('mp-modal-titulo').textContent='Novo registro MilPlay';
+function abrirNovoMilPlay(tipo){
+  mpTipoNovo=(tipo==='poc'||tipo==='cliente')?tipo:(milplayClienteAtual?(milplayClienteAtual.tipo||'cliente'):milplayAba);
+  document.getElementById('mp-modal-titulo').textContent=(mpTipoNovo==='poc'&&!milplayClienteAtual)?'Novo PoC':'Novo registro MilPlay';
   document.getElementById('mp-edit-id').value='';
-  ['mp-cliente-busca','mp-cnpj','mp-razao','mp-quarto','mp-usuario','mp-data-ativacao','mp-fabricante','mp-pacotes','mp-mac-rede','mp-mac-wifi','mp-ip','mp-obs'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  ['mp-cliente-busca','mp-cnpj','mp-razao','mp-quarto','mp-usuario','mp-data-ativacao','mp-pacotes','mp-ip'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
   if(milplayClienteAtual){
     document.getElementById('mp-cliente-busca').value=milplayClienteAtual.razao||'';
     document.getElementById('mp-cnpj').value=milplayClienteAtual.cnpj||'';
@@ -6592,13 +6669,9 @@ function abrirEditarMilPlay(id){
   document.getElementById('mp-razao').value=it.razao_social||'';
   document.getElementById('mp-quarto').value=it.quarto||'';
   document.getElementById('mp-usuario').value=it.usuario||'';
-  document.getElementById('mp-data-ativacao').value=it.data_ativacao||'';
-  document.getElementById('mp-fabricante').value=it.fabricante||'';
+  document.getElementById('mp-data-ativacao').value=_mpDataParaInput(it.data_ativacao);
   document.getElementById('mp-pacotes').value=it.pacotes||'';
-  document.getElementById('mp-mac-rede').value=it.mac_rede||'';
   document.getElementById('mp-ip').value=it.ip||'';
-  document.getElementById('mp-mac-wifi').value=it.mac_wifi||'';
-  document.getElementById('mp-obs').value=it.obs||'';
   _mpMostrarHotel(_mpEhGrupoClara(it.cnpj)||!!it.hotel,it.hotel);
   document.getElementById('milplay-modal').style.display='flex';
 }
@@ -6609,30 +6682,26 @@ async function salvarMilPlay(){
   const usuario=document.getElementById('mp-usuario').value.trim();
   if(!razao){ alert('Informe o cliente.'); return; }
   if(!usuario){ alert('Informe o usuário (login).'); return; }
- const hotelVisivel=document.getElementById('mp-hotel-wrap').style.display!=='none', hotel=document.getElementById('mp-hotel').value;
- if(hotelVisivel&&!hotel){ alert('Escolha o hotel desta conta (Arte ou Ibiúna).'); return; }
+  const hotelVisivel=document.getElementById('mp-hotel-wrap').style.display!=='none', hotel=document.getElementById('mp-hotel').value;
+  if(hotelVisivel&&!hotel){ alert('Escolha o hotel desta conta (Arte ou Ibiúna).'); return; }
   const payload={
     token:getToken(), action:'saveMilPlay',
     cnpj, razao_social:razao,
     quarto:document.getElementById('mp-quarto').value.trim(),
     usuario,
     data_ativacao:document.getElementById('mp-data-ativacao').value.trim(),
-    fabricante:document.getElementById('mp-fabricante').value.trim(),
     pacotes:document.getElementById('mp-pacotes').value.trim(),
-    mac_rede:document.getElementById('mp-mac-rede').value.trim(),
-    ip:document.getElementById('mp-ip').value.trim(),
-    mac_wifi:document.getElementById('mp-mac-wifi').value.trim(),
-    obs:document.getElementById('mp-obs').value.trim()
+    ip:document.getElementById('mp-ip').value.trim()
   };
- if(hotelVisivel) payload.hotel=hotel;
-  if(id) payload.id=id;
+  if(hotelVisivel) payload.hotel=hotel;
+  if(id) payload.id=id; else payload.tipo=mpTipoNovo;
   const btn=document.querySelector('#milplay-modal .modal-btn.primary');
   const txt=btn?btn.textContent:null;
   if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   try{
     const r=await fetch(API,{method:'POST',body:JSON.stringify(payload)});
     const d=await r.json();
-    if(d && d.error){ alert('Erro: '+d.error); if(btn){btn.disabled=false;btn.textContent=txt;} return; }
+    if(d && (d.error||d.ok===false)){ alert('Erro: '+(d.error||'não foi possível salvar.')); if(btn){btn.disabled=false;btn.textContent=txt;} return; }
   }catch(e){ alert('Erro ao salvar. Verifique sua conexão.'); if(btn){btn.disabled=false;btn.textContent=txt;} return; }
   if(btn){btn.disabled=false;btn.textContent=txt;}
   fecharMilPlayModal();
@@ -6665,10 +6734,7 @@ function _milplaySerialParaData(v){
 }
 async function milplayImportarArquivo(input, ehNovoCliente){
   const file=input.files[0]; if(!file) return;
-  const msgConfirmacao = ehNovoCliente
-    ? 'Vou ler o arquivo e ADICIONAR ao MilPlay os registros dos clientes que estiverem nele. Não mexe em mais nada do que já existe. Continuar?'
-    : 'Isso vai ler todas as abas da planilha (exceto as que combinamos de ignorar) e ADICIONAR como novos registros do MilPlay. Não substitui o que já existe. Continuar?';
-  if(!confirm(msgConfirmacao)){ input.value=''; return; }
+  if(!milplayPodeGerir){ alert('A importação de planilhas é só para o gestor do MilPlay.'); input.value=''; return; }
   try{
     const data=await file.arrayBuffer();
     const wb=XLSX.read(data,{type:'array'});
@@ -6681,18 +6747,18 @@ async function milplayImportarArquivo(input, ehNovoCliente){
       const ws=wb.Sheets[nomeAba];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       // Aba de pool de licenças avulsas tem estrutura própria (Usuário/Setor/Data/Responsável/Pacotes),
-      // sem CNPJ, quarto ou MAC por linha — trata separado do padrão por cliente.
+      // sem CNPJ, quarto ou IP por linha: trata separado do padrão por cliente.
       if(chaveAba===MILPLAY_ABA_POOL){
         let linhaCabPool=-1;
         for(let i=0;i<rows.length && i<5;i++){
           const t=rows[i].map(c=>String(c||'')).join(' ').toUpperCase();
           if(t.includes('USUÁRIO')||t.includes('USUARIO')){ linhaCabPool=i; break; }
         }
-        if(linhaCabPool===-1){ avisos.push(nomeAba+': não achei cabeçalho — aba pulada.'); return; }
+        if(linhaCabPool===-1){ avisos.push(nomeAba+': não achei cabeçalho, aba pulada.'); return; }
         const headersPool=rows[linhaCabPool].map(h=>String(h||'').trim().toUpperCase());
         const idxPool=(...nomes)=>{ for(const n of nomes){ const i=headersPool.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
         const cUsu=idxPool('USUÁRIO','USUARIO'), cSetor=idxPool('SETOR'), cData=idxPool('DATA'), cResp=idxPool('RESPONS'), cPac=idxPool('PACOTE');
-        if(cUsu===-1){ avisos.push(nomeAba+': não achei coluna de usuário — aba pulada.'); return; }
+        if(cUsu===-1){ avisos.push(nomeAba+': não achei coluna de usuário, aba pulada.'); return; }
         for(let i=linhaCabPool+1;i<rows.length;i++){
           const r=rows[i];
           if(!r||r.every(c=>c==='')) continue;
@@ -6706,15 +6772,13 @@ async function milplayImportarArquivo(input, ehNovoCliente){
           if(dataUso) obsPartes.push('Data de uso: '+dataUso);
           itensImportar.push({
             cnpj:'31.952.078/0001-30',
-            razao_social: setor ? ('🔓 Licença em uso interno — '+setor) : '🔓 Licenças MilPlay disponíveis (ainda não atribuídas)',
+            razao_social: setor ? ('Licença em uso interno - '+setor) : 'Licenças MilPlay disponíveis (ainda não atribuídas)',
             quarto:'',
             usuario,
+            ip:'',
             data_ativacao:'',
-            fabricante:'',
-            mac_rede:'',
-            mac_wifi:'',
             pacotes: cPac>=0?String(r[cPac]||'').trim():'',
-            obs: obsPartes.join(' · ')
+            obs: obsPartes.join(' | ')
           });
         }
         return;
@@ -6726,7 +6790,8 @@ async function milplayImportarArquivo(input, ehNovoCliente){
         const textoUpper=textoLinha.toUpperCase();
         if(linhaCab===-1 && (textoUpper.includes('USUÁRIO')||textoUpper.includes('USUARIO'))) linhaCab=i;
       }
-      if(linhaTitulo===-1 || linhaCab===-1){ avisos.push(nomeAba+': não achei título (CNPJ) ou cabeçalho (Usuário) — aba pulada.'); return; }
+      if(linhaTitulo===-1 || linhaCab===-1){ avisos.push(nomeAba+': não achei título (CNPJ) ou cabeçalho (Usuário), aba pulada.'); return; }
+      if(linhaTitulo>linhaCab){ avisos.push(nomeAba+': o título com o CNPJ aparece depois do cabeçalho. Formato inesperado, aba pulada.'); return; }
       const textoTitulo=rows[linhaTitulo].map(c=>String(c||'')).join(' ');
       const mCnpj=textoTitulo.match(CNPJ_RE);
       const cnpj=mCnpj?mCnpj[1]:'';
@@ -6737,11 +6802,9 @@ async function milplayImportarArquivo(input, ehNovoCliente){
       const cQuarto=idx('QUARTO');
       const cUsuario=idx('USUÁRIO','USUARIO');
       const cDataAtivacao=idx('ATIVA','DATA');
-      const cFabricante=idx('FABRICANTE');
-      const cMacRede=idx('MAC REDE');
-      const cMacWifi=idx('MAC WIFI');
       const cPacotes=idx('PACOTE');
-      if(cUsuario===-1){ avisos.push(nomeAba+': não achei coluna de usuário — aba pulada.'); return; }
+      const cIp=headers.findIndex(h=>/(^|[^A-Z])IP([^A-Z]|$)/.test(h));
+      if(cUsuario===-1){ avisos.push(nomeAba+': não achei coluna de usuário, aba pulada.'); return; }
       for(let i=linhaCab+1;i<rows.length;i++){
         const r=rows[i];
         if(!r || r.every(c=>c==='')) continue;
@@ -6751,20 +6814,27 @@ async function milplayImportarArquivo(input, ehNovoCliente){
           cnpj, razao_social:razao,
           quarto: cQuarto>=0?String(r[cQuarto]||'').trim():'',
           usuario,
-          data_ativacao: cDataAtivacao>=0?String(r[cDataAtivacao]||'').trim():'',
-          fabricante: cFabricante>=0?String(r[cFabricante]||'').trim():'',
-          mac_rede: cMacRede>=0?String(r[cMacRede]||'').trim():'',
-          mac_wifi: cMacWifi>=0?String(r[cMacWifi]||'').trim():'',
+          ip: cIp>=0?String(r[cIp]||'').trim():'',
+          data_ativacao: cDataAtivacao>=0?_milplaySerialParaData(r[cDataAtivacao]):'',
           pacotes: cPacotes>=0?String(r[cPacotes]||'').trim():''
         });
       }
     });
     if(!itensImportar.length){ alert('Nenhum registro válido encontrado para importar.'+(avisos.length?'\n\nAvisos:\n'+avisos.join('\n'):'')); input.value=''; return; }
-    if(!confirm(ptN(itensImportar.length,'registro encontrado','registros encontrados')+' para importar'+(avisos.length?' (com '+ptN(avisos.length,'aba ignorada','abas ignoradas')+' por não ter o formato esperado, veja depois)':'')+'. Confirma a importação?')){ input.value=''; return; }
+    const simR=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'importMilPlayLote',itens:itensImportar,simular:true})});
+    const sim=await simR.json();
+    if(!sim||!sim.ok){ alert('Erro ao conferir a planilha: '+((sim&&sim.error)||'falha de comunicação.')); input.value=''; return; }
+    const res=sim.resumo||[];
+    const linhasRes=res.slice(0,25).map(x=>(x.suspeito?'ATENÇÃO, nome suspeito: ':'')+(x.razao_social||'(sem nome)')+(x.cnpj?' ('+x.cnpj+')':'')+': '+x.naPlanilha+' na planilha, '+x.novas+' novas, '+x.jaExistem+' já existem'+(x.suspeito?' (bloqueado)':''));
+    const mais=res.length>25?'\n... e mais '+(res.length-25)+' clientes.':'';
+    const resumo='Resumo da importação:\n\n'+linhasRes.join('\n')+mais+'\n\nTotal: '+sim.novas+' contas novas e '+sim.ignoradas+' ignoradas (já existem).'+(avisos.length?'\n\nAbas não lidas:\n'+avisos.join('\n'):'');
+    if(sim.suspeitas){ alert(resumo+'\n\nImportação bloqueada: o nome de um cliente parece ser uma conta ou um IP. Confira o formato da planilha.'); input.value=''; return; }
+    if(!sim.novas){ alert(resumo+'\n\nNada novo para gravar.'); input.value=''; return; }
+    if(!confirm(resumo+'\n\nGravar as '+sim.novas+' contas novas?')){ input.value=''; return; }
     const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'importMilPlayLote',itens:itensImportar})});
     const d=await r.json();
-    if(d && d.error){ alert('Erro ao importar: '+d.error); input.value=''; return; }
-    alert('Importação concluída: '+ptN(d.importados||itensImportar.length,'registro adicionado','registros adicionados')+'.'+(avisos.length?'\n\nAvisos (abas não importadas):\n'+avisos.join('\n'):''));
+    if(!d||!d.ok){ alert('Erro ao importar: '+((d&&d.error)||'falha de comunicação.')); input.value=''; return; }
+    alert('Importação concluída: '+ptN(d.importados||0,'conta adicionada','contas adicionadas')+' e '+ptN(d.ignoradas||0,'ignorada','ignoradas')+' (já existiam).');
     input.value='';
     await loadMilPlay();
   }catch(e){
@@ -14609,10 +14679,10 @@ async function estEnviarEmail(reg){
   <div class="pipeline-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:18px;font-weight:700;color:var(--text)">MilPlay</h2><span class="dash-sync" id="mp-sync"></span></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;">
-      <label style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;display:flex;align-items:center;">➕ Importar novo cliente<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,true)" style="display:none"></label>
-      <label style="height:36px;padding:0 16px;border:1px solid #5B9EF5;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#5B9EF5;display:flex;align-items:center;">🔧 Corrigir números de quarto<input type="file" accept=".xlsx,.xls" multiple onchange="milplayCorrigirQuartos(this)" style="display:none"></label>
-      <label style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;">📥 Importar planilha completa<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,false)" style="display:none"></label>
-      <button onclick="abrirNovoMilPlay()" class="btn-new-project">+ Novo registro</button>
+      <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid #4CAF7D;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#4CAF7D;display:flex;align-items:center;">➕ Importar novo cliente<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,true)" style="display:none"></label>
+      <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid #5B9EF5;border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:#5B9EF5;display:flex;align-items:center;">🔧 Corrigir números de quarto<input type="file" accept=".xlsx,.xls" multiple onchange="milplayCorrigirQuartos(this)" style="display:none"></label>
+      <label class="mp-so-gestor" style="height:36px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;">📥 Importar planilha completa<input type="file" accept=".xlsx,.xls" onchange="milplayImportarArquivo(this,false)" style="display:none"></label>
+      <button id="mp-btn-novo" onclick="abrirNovoMilPlay()" class="btn-new-project">+ Novo registro</button>
     </div>
   </div>
   <a href="https://logintv.milplay.com.br/" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 20px 0;padding:10px 16px;background:rgba(245,184,0,.08);border:1px solid var(--gold);border-radius:var(--radius-sm);text-decoration:none;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
@@ -14622,6 +14692,7 @@ async function estEnviarEmail(reg){
 
   <!-- VISTA: LISTA DE CLIENTES -->
   <div id="mp-view-lista">
+ <div id="mp-abas" class="mp-chips" style="padding:12px 20px 0;margin-bottom:0"></div>
     <div style="padding:12px 20px;border-bottom:1px solid var(--border);">
       <input id="mp-busca-cliente" type="text" placeholder="Buscar cliente..." oninput="renderMilPlayLista()" style="width:100%;max-width:400px;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
     </div>
@@ -14637,6 +14708,11 @@ async function estEnviarEmail(reg){
         <div id="mp-detalhe-cnpj" style="font-size:11px;color:var(--text-muted);"></div>
       </div>
       <span id="mp-detalhe-tag" class="mp-inativo-tag" style="display:none">INATIVO</span>
+    <span id="mp-detalhe-tipo" class="mp-tipo-tag" style="display:none">PoC</span>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="mp-bt-tipo" class="mp-btn-acao mp-so-gestor" onclick="milplayTransferirCliente()"></button>
+      <button id="mp-bt-inativar" class="mp-btn-acao mp-so-gestor perigo" onclick="milplayInativarCliente()"></button>
+    </div>
     </div>
     <div id="mp-detalhe-aviso" style="padding:14px 20px 0;"></div>
     <div id="mp-detalhe-tabela" style="padding:16px 20px;"></div>
@@ -14659,16 +14735,10 @@ async function estEnviarEmail(reg){
       <div class="modal-field"><label>Usuário (login) *</label><input type="text" id="mp-usuario" placeholder="Ex: CSB.0001.dtoc66"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-      <div class="modal-field"><label>Data de Ativação</label><input type="date" id="mp-data-ativacao"></div>
-      <div class="modal-field"><label>Fabricante</label><input type="text" id="mp-fabricante" placeholder="Ex: ZTE"></div>
-      <div class="modal-field"><label>Pacotes</label><input type="text" id="mp-pacotes" placeholder="Ex: Abertos+Fechados"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
       <div class="modal-field"><label>IP</label><input type="text" id="mp-ip" placeholder="Ex: 192.168.1.10"></div>
-      <div class="modal-field"><label>MAC Rede</label><input type="text" id="mp-mac-rede"></div>
-      <div class="modal-field"><label>MAC Wifi</label><input type="text" id="mp-mac-wifi"></div>
+      <div class="modal-field"><label>Pacote</label><input type="text" id="mp-pacotes" placeholder="Ex: Abertos+Fechados"></div>
+      <div class="modal-field"><label>Data de ativação</label><input type="date" id="mp-data-ativacao"></div>
     </div>
-    <div class="modal-field"><label>Observações</label><input type="text" id="mp-obs"></div>
     <div class="modal-actions"><button class="modal-btn" onclick="fecharMilPlayModal()">Cancelar</button><button class="modal-btn primary" onclick="salvarMilPlay()">Salvar</button></div>
   </div>
 </div>
