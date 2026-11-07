@@ -2153,13 +2153,14 @@ function pbTecla(e){
   if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); parabensFechar(); }
   else if(e.key==='Tab'){ e.preventDefault(); const b=document.getElementById('pb-entrar'); if(b) b.focus(); }
 }
-function parabensMostrar(nome){
+function parabensMostrar(nome,passado){
   if(pbAtivo||document.getElementById('parabens-ov')) return;
   const ov=document.createElement('div'); ov.id='parabens-ov'; ov.className='pb-ov';
   ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-labelledby','pb-titulo');
-  ov.innerHTML='<canvas id="pb-fx" aria-hidden="true"></canvas><div class="pb-tela"><div class="pb-logo">Blin<b>Track</b></div><div class="pb-sel">Feliz aniversário</div><div class="pb-linha"><div class="pb-ic pb-bolo">'+HB_BOLO+'</div><h1 id="pb-titulo">Parabéns, <span id="pb-nome"></span>!</h1><div class="pb-ic pb-popper">'+HB_POPPER+'</div></div><p class="pb-msg">A equipe Blincast te deseja um dia incrível.</p><div class="pb-data" id="pb-data"></div><button type="button" class="pb-btn" id="pb-entrar">Entrar no sistema</button></div>';
+  ov.innerHTML='<canvas id="pb-fx" aria-hidden="true"></canvas><div class="pb-tela"><div class="pb-logo">Blin<b>Track</b></div><div class="pb-sel">Feliz aniversário</div><div class="pb-linha"><div class="pb-ic pb-bolo">'+HB_BOLO+'</div><h1 id="pb-titulo">Parabéns, <span id="pb-nome"></span>!</h1><div class="pb-ic pb-popper">'+HB_POPPER+'</div></div><p class="pb-msg" id="pb-msg">A equipe Blincast te deseja um dia incrível.</p><div class="pb-data" id="pb-data"></div><button type="button" class="pb-btn" id="pb-entrar">Entrar no sistema</button></div>';
   document.body.appendChild(ov);
   document.getElementById('pb-nome').textContent=nome;
+  if(passado) document.getElementById('pb-msg').textContent='Seu aniversário foi '+passado+'. A equipe Blincast te deseja um ano incrível.';
   const t=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   document.getElementById('pb-data').textContent=t.charAt(0).toUpperCase()+t.slice(1);
   document.getElementById('pb-entrar').onclick=parabensFechar;
@@ -2187,7 +2188,7 @@ async function parabensVerificar(){
   try{
     const r=await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'meuAniversario'})});
     const d=await r.json();
-    if(d&&d.ok&&d.mostrar&&d.nome) parabensMostrar(String(d.nome));
+    if(d&&d.ok&&d.mostrar&&d.nome) parabensMostrar(String(d.nome),d.passado?String(d.passado):'');
   }catch(e){}
 }
 let hbTimer=null, hbClima=null, hbClimaTs=0, hbAniv=null, hbAnivDia='', hbBuscandoClima=false, hbBuscandoAniv=false, hbIni=0, hbPrevPedido=false;
