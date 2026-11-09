@@ -1530,6 +1530,30 @@ body.modo-consulta .modal textarea{pointer-events:none !important;opacity:.65;}
 // ===================== LOGIN =====================
 const API_TOKEN='BLINTRACK_TOKEN';
 let API_TOKEN_RUNTIME = '';
+// Sessão vencida no servidor (24 horas): volta para o login com aviso. Lê só o começo da resposta, sem custo nas respostas grandes.
+(function(){
+  const _fetchOriginal=window.fetch.bind(window);
+  window.fetch=async function(entrada,opcoes){
+    const resp=await _fetchOriginal(entrada,opcoes);
+    try{
+      const url=typeof entrada==='string'?entrada:((entrada&&entrada.url)||'');
+      if(url.indexOf('script.google.com/macros')>=0&&resp&&typeof resp.clone==='function'){
+        const c=resp.clone(), rd=c.body&&c.body.getReader?c.body.getReader():null;
+        if(rd){
+          const lido=await rd.read(); rd.cancel().catch(function(){});
+          const ini=lido&&lido.value?new TextDecoder().decode(lido.value.subarray(0,300)):'';
+          if(ini.indexOf('"codigo":"sessao_expirada"')>=0) sessaoExpirou();
+        }
+      }
+    }catch(e){}
+    return resp;
+  };
+})();
+function sessaoExpirou(){
+  if(typeof usuarioLogado==='undefined'||!usuarioLogado) return;
+  try{ fazerLogout(); }catch(e){}
+  const err=document.getElementById('login-error'); if(err) err.textContent='Sua sessão expirou. Entre novamente.';
+}
 function getToken(){ return API_TOKEN_RUNTIME || (()=>{ try{ const s=JSON.parse(localStorage.getItem('blintrack_user')); return s?.token||API_TOKEN; }catch(e){ return API_TOKEN; } })(); }
 // ⬇️⬇️  COLE AQUI A URL /exec DO APPS SCRIPT (a nova, se você reimplantar)  ⬇️⬇️
 const BLINTRACK_API_URL = 'https://script.google.com/macros/s/AKfycbz-hGEo74_eOYpShJ1iCSyvoJHmC9y19nrgM8wmsKsvh2kZXMNtK3Eo7XCUw5t5b6d-/exec';
@@ -3655,16 +3679,16 @@ function renderRastreio(tipo){
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
         <div style="flex:1;min-width:200px;">
-          <div style="font-weight:700;font-size:14px;color:var(--text);">${r.cliente||'—'} ${r.requisicao?'<span style="font-size:11px;color:var(--text-muted);font-weight:400;">· '+r.requisicao+'</span>':''}</div>
+          <div style="font-weight:700;font-size:14px;color:var(--text);">${vfEsc(r.cliente||'—')} ${r.requisicao?'<span style="font-size:11px;color:var(--text-muted);font-weight:400;">· '+vfEsc(r.requisicao)+'</span>':''}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${codLabel}: ${cod}${r.valor?' · '+r.valor:''}${r.objeto?' · '+r.objeto:''}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Pedido: ${_rtFmtData(r.data_pedido)} · Prev: ${_rtFmtData(r.previsao)} · Entrega: ${_rtFmtData(r.data_entrega)}</div>
-          ${r.info?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-style:italic;">${r.info}</div>`:''}
+          ${r.info?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-style:italic;">${vfEsc(r.info)}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${sc.bg};color:${sc.c};white-space:nowrap;">${r.situacao||'—'}</span>
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${sc.bg};color:${sc.c};white-space:nowrap;">${vfEsc(r.situacao||'—')}</span>
           <div style="display:flex;gap:6px;">
-            <button onclick="editarRastreio('${tipo}','${r.id}')" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✎ Abrir${nEv?' ('+nEv+'📍)':''}</button>
-            <button onclick="removerRastreio('${tipo}','${r.id}')" style="height:26px;width:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">✕</button>
+            <button onclick="editarRastreio('${tipo}','${_mpArg(r.id)}')" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✎ Abrir${nEv?' ('+nEv+'📍)':''}</button>
+            <button onclick="removerRastreio('${tipo}','${_mpArg(r.id)}')" style="height:26px;width:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">✕</button>
           </div>
         </div>
       </div>
@@ -3743,7 +3767,7 @@ function rtRenderEventos(){
     return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;">
       <span style="color:var(--gold);">●</span>
       <span style="font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;">${_rtFmtData(ev.data)}</span>
-      <span style="flex:1;color:var(--text);">${ev.descricao||''}</span>
+      <span style="flex:1;color:var(--text);">${vfEsc(ev.descricao||'')}</span>
       <button onclick="rastreioDelEvento(${idxReal})" style="border:none;background:none;color:#e00;cursor:pointer;font-size:12px;">✕</button>
     </div>`;
   }).join('');
@@ -4063,7 +4087,7 @@ function renderMes(){
     const evts=eventsOn(ds);
     const cls=['cal-cell',ds===todayStr?'today':'',ds===selectedDate?'selected':''].filter(Boolean).join(' ');
     html+=`<div class="${cls}" onclick="selectDay('${ds}')"><div class="day-n">${d}</div>`;
-    evts.slice(0,3).forEach(e=>{html+=`<div class="pill ${e.status}" title="${e.client}">${e.client}</div>`;});
+    evts.slice(0,3).forEach(e=>{html+=`<div class="pill ${vfEsc(e.status)}" title="${vfEsc(e.client)}">${vfEsc(e.client)}</div>`;});
     if(evts.length>3)html+=`<div class="more-tag">+${evts.length-3}</div>`;
     html+='</div>';
   }
@@ -4079,9 +4103,9 @@ function renderDia(){
   if(!evts.length)html+=`<div class="empty-state">Nenhum evento neste dia.</div>`;
   else evts.forEach(e=>{
     const ip=e.status==='pendente',ov=e.obs||'';
-    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${e.client}</div><div class="evt-actions"><span class="badge ${e.status}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${e.id}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${e.id}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${e.id}')">x</button></div></div>`;
-    html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${e.id}','${e.client}','${e.status}','${e.obs||''}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${e.id}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
-    if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${e.id}','${e.status}')">Salvar</button></div>`;
+    html+=`<div class="evt-row"><div class="evt-main"><div class="evt-client">${vfEsc(e.client)}</div><div class="evt-actions"><span class="badge ${vfEsc(e.status)}">${STATUS_LABEL[e.status]||e.status}</span><button onclick="toggleEditDate('${_mpArg(e.id)}')" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted);white-space:nowrap">Editar data</button><select class="status-sel" onchange="changeStatus('${_mpArg(e.id)}',this.value)"><option value="">Alterar</option><option value="previsto">Previsto</option><option value="andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option></select><button class="rm-btn" onclick="removeEvt('${_mpArg(e.id)}')">x</button></div></div>`;
+    html+=`<div class="edit-date-area" id="edit-area-${e.id}" style="display:none;border-top:1px solid var(--border);padding:8px 12px;align-items:center;gap:8px;background:#FAFAF7"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Nova data:</span><input type="date" id="edit-date-${e.id}" value="${e.date}" style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:DM Mono,monospace;background:#fff;color:var(--text);outline:none"><button onclick="saveNewDate('${_mpArg(e.id)}','${vfEsc(e.client)}','${vfEsc(e.status)}','${vfEsc(e.obs||'')}')" style="padding:4px 10px;background:var(--black);color:var(--gold);border:none;border-radius:4px;font-size:11px;cursor:pointer">Salvar</button><button onclick="toggleEditDate('${_mpArg(e.id)}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:none;cursor:pointer;color:var(--text-muted)">Cancelar</button></div>`;
+    if(ip)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><input type="text" id="obs-${e.id}" value="${ov.replace(/"/g,'&quot;')}" placeholder="Descricao da pendencia..."><button class="obs-save" onclick="saveObs('${_mpArg(e.id)}','${vfEsc(e.status)}')">Salvar</button></div>`;
     else if(ov)html+=`<div class="obs-area"><span class="obs-label">Obs:</span><span class="obs-text">${ov}</span></div>`;
     html+='</div>';
   });
@@ -4302,21 +4326,21 @@ function renderPipeline(){
     const concluido=pct===100;
     const abaAtivaPipe=pipeAbaAtiva[proj.id]||'etapas';
     const _telProj=extrairTelefone(proj);
-    const _contatoLinha=proj.contato?`<div style="font-size:12px;margin-top:4px"><b>Contato:</b> ${proj.contato}</div>`:'';
+    const _contatoLinha=proj.contato?`<div style="font-size:12px;margin-top:4px"><b>Contato:</b> ${vfEsc(proj.contato)}</div>`:'';
     const _telLinha=_telProj?`<div style="font-size:12px;margin-top:4px"><b>📞 Telefone:</b> <a href="tel:${_telProj.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${_telProj}</a></div>`:'';
     const _ehHDSD=(proj.produto==='HD'||proj.produto==='SD');
     const produtoInfo=(proj.produto||proj.contato||_telProj||proj.endereco)?`
   <div class="step-card" style="border-color:var(--c-previsto)">
     <div class="step-number">Dados do projeto</div>
-    ${proj.produto?`<div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${proj.produto}</div>`:''}
+    ${proj.produto?`<div style="font-size:12px;margin-top:4px"><b>Produto:</b> ${vfEsc(proj.produto)}</div>`:''}
     ${_contatoLinha}
     ${_telLinha}
-    <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${proj.endereco||'—'}</div>
+    <div style="font-size:12px;margin-top:4px"><b>Endereço:</b> ${vfEsc(proj.endereco||'—')}</div>
     ${_ehHDSD?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;">
       <b style="white-space:nowrap">Qtd. canais:</b>
       <input type="number" min="0" placeholder="Ex: 15"
-        value="${proj.canais||''}"
-        onchange="salvarCanaisPipeline('${proj.id}',this.value)"
+        value="${vfEsc(proj.canais||'')}"
+        onchange="salvarCanaisPipeline('${_mpArg(proj.id)}',this.value)"
         style="width:70px;height:26px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:12px;font-family:'DM Mono',monospace;outline:none;">
     </div>`:''}
   </div>`:'';
@@ -4324,12 +4348,12 @@ const sh=STEPS.map(s=>{
       const ps=proj.steps.find(st=>st.id===s.id)||{done:false,date:''};
       const ia=!ps.done&&cs&&cs.id===s.id;
       const ir=s.remote&&proj.uhs<50;
-      return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${proj.id}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${proj.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;
+      return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}${ir?'<span class="step-remote">Remota</span>':''}</div><div class="step-resp">${vfEsc(s.resp)}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateStepDate('${_mpArg(proj.id)}',${s.id},this.value)"><button class="step-check" onclick="toggleStep('${_mpArg(proj.id)}',${s.id})">${ps.done?'V':''}</button></div></div>`;
     }).join('');
-    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${proj.id}')"><div><div class="project-name">${proj.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.cnpj?' | CNPJ: '+formatCNPJ(proj.cnpj):''}${proj.vendedor?' | Vendedor: '+proj.vendedor:''}${_telProj?' | 📞 '+_telProj:''}${proj.moduladores?' | 📡 '+proj.moduladores+' mod.':''}${proj.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(proj.ponto_extra_qtd?' ('+proj.ponto_extra_qtd+')':''):''}${proj.pagamento_operadora&&proj.pagamento_operadora!=='N/A'?` | <span style="font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'}</span>`:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+proj.endereco+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${proj.uhs} UHs${proj.canais?" | "+proj.canais+" moduladores":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div style="display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--border)"><button id="pab-etapas-${proj.id}" onclick="pipeAbaTrocar('${proj.id}','etapas')" style="${_pipeTabStyle(abaAtivaPipe==='etapas')}">📋 Etapas</button><button id="pab-docs-${proj.id}" onclick="pipeAbaTrocar('${proj.id}','docs')" style="${_pipeTabStyle(abaAtivaPipe==='docs')}">📎 Documentos (${(proj.documentos||[]).length})</button></div><div id="pane-etapas-${proj.id}" style="display:${abaAtivaPipe==='docs'?'none':'block'}"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
+    return `<div class="project-card" style="${proj.congelado?'border-color:#5B8FC9;background:#F0F4FF':concluido?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleProject('${_mpArg(proj.id)}')"><div><div class="project-name">${vfEsc(proj.nome)}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/11 etapas${proj.produto?' — '+proj.produto:''}${proj.cnpj?' | CNPJ: '+formatCNPJ(proj.cnpj):''}${proj.vendedor?' | Vendedor: '+proj.vendedor:''}${_telProj?' | 📞 '+_telProj:''}${proj.moduladores?' | 📡 '+proj.moduladores+' mod.':''}${proj.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(proj.ponto_extra_qtd?' ('+proj.ponto_extra_qtd+')':''):''}${proj.pagamento_operadora&&proj.pagamento_operadora!=='N/A'?` | <span style="font-weight:700;color:${proj.pagamento_operadora==='Repasse'?'#e67e22':'#27ae60'}">${proj.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'}</span>`:''}${proj.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>${proj.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">📍 '+vfEsc(proj.endereco)+'</div>':''}</div><div class="project-meta">${proj.congelado?'<span class="badge" style="background:#EBF0FB;color:#1A5FC8">❄️ Congelado</span>':concluido?'<span class="badge concluido">Concluído</span>':''}<span class="uh-badge">${vfEsc(proj.uhs)} UHs${proj.canais?" | "+proj.canais+" moduladores":""}</span>${dias!==null?(proj.congelado?`<span class="days-badge ok" style="background:#EBF0FB;color:#1A5FC8">❄️ ${dias}d</span>`:`<span class="days-badge ${dc}">${dias}d / 45d</span>`):''}<span class="chevron" id="chev-${proj.id}">v</span></div></div><div class="project-body" id="proj-body-${proj.id}" style="display:none"><div style="display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--border)"><button id="pab-etapas-${proj.id}" onclick="pipeAbaTrocar('${_mpArg(proj.id)}','etapas')" style="${_pipeTabStyle(abaAtivaPipe==='etapas')}">📋 Etapas</button><button id="pab-docs-${proj.id}" onclick="pipeAbaTrocar('${_mpArg(proj.id)}','docs')" style="${_pipeTabStyle(abaAtivaPipe==='docs')}">📎 Documentos (${(proj.documentos||[]).length})</button></div><div id="pane-etapas-${proj.id}" style="display:${abaAtivaPipe==='docs'?'none':'block'}"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div class="steps-grid">${sh}</div>${proj.prazo_instalacao?`<div style="margin:8px 16px;padding:8px 14px;background:#1a1500;border-radius:8px;border:1px solid #2a2000;display:flex;align-items:center;gap:8px"><span style="color:#F5B800;font-size:13px;font-weight:700">📅 Prazo de instalação:</span><span style="color:#F5B800;font-size:15px;font-weight:800">${new Date(proj.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
 <div style="margin:8px 16px;padding:10px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <span style="font-size:13px;font-weight:600;color:var(--text-muted)">💳 Pagamento operadora:</span>
-  <select onchange="salvarPagamentoPipeline('${proj.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;cursor:pointer;">
+  <select onchange="salvarPagamentoPipeline('${_mpArg(proj.id)}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;cursor:pointer;">
     <option value="" ${!proj.pagamento_operadora?'selected':''}>— Não definido —</option>
     <option value="Repasse" ${proj.pagamento_operadora==='Repasse'?'selected':''}>💳 Repasse (Blincast paga)</option>
     <option value="Cliente PG" ${proj.pagamento_operadora==='Cliente PG'?'selected':''}>✅ Cliente PG (Cliente paga)</option>
@@ -4341,12 +4365,12 @@ const sh=STEPS.map(s=>{
   <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">📝 Observações</div>
   <div id="obs-list-${proj.id}" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">${renderObsPipelineHTML(proj.observacoes)}</div>
   <div style="display:flex;gap:8px">
-    <input type="text" id="obs-input-${proj.id}" placeholder="Adicionar observação..." style="flex:1;height:34px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarObsPipeline('${proj.id}')}">
-    <button onclick="event.stopPropagation();adicionarObsPipeline('${proj.id}')" style="height:34px;padding:0 16px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Adicionar</button>
+    <input type="text" id="obs-input-${proj.id}" placeholder="Adicionar observação..." style="flex:1;height:34px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarObsPipeline('${_mpArg(proj.id)}')}">
+    <button onclick="event.stopPropagation();adicionarObsPipeline('${_mpArg(proj.id)}')" style="height:34px;padding:0 16px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Adicionar</button>
   </div>
 </div>
 </div><div id="pane-docs-${proj.id}" style="display:${abaAtivaPipe==='docs'?'block':'none'}">${renderDocsPipelineHTML(proj)}</div>
-<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${proj.id}')">Remover projeto</button>${!proj.enviado_montagem?`<button class="proj-btn" onclick="enviarParaMontagem('${proj.id}','${proj.nome}')" style="color:#B86A00;border-color:#B86A00">🔧 Enviar para montagem</button>`:`<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ Na montagem</span>`}${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${proj.id}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${proj.id}','${proj.nome}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${proj.id}','${proj.nome}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_contrato}','${proj.nome}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}${proj.link_grade?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_grade}','${proj.nome} — Grade')" style="color:var(--c-andamento);border-color:var(--c-andamento)">📊 Ver grade</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhuma grade anexada ainda">📎 Grade pendente</button>`}</div></div></div>`;
+<div class="project-actions"><button class="proj-btn danger" onclick="deleteProject('${_mpArg(proj.id)}')">Remover projeto</button>${!proj.enviado_montagem?`<button class="proj-btn" onclick="enviarParaMontagem('${_mpArg(proj.id)}','${vfEsc(proj.nome)}')" style="color:#B86A00;border-color:#B86A00">🔧 Enviar para montagem</button>`:`<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ Na montagem</span>`}${proj.congelado?`<button class="proj-btn" onclick="retornarProjeto('${_mpArg(proj.id)}')" style="color:var(--c-andamento);border-color:var(--c-andamento)">▶ Retomar instalação</button>`:`<button class="proj-btn" onclick="abrirCongelarModal('${_mpArg(proj.id)}','${vfEsc(proj.nome)}')" style="color:#1A5FC8;border-color:#1A5FC8">❄️ Congelar instalação</button>`}<button class="proj-btn" onclick="abrirEmailConclusao('${_mpArg(proj.id)}','${vfEsc(proj.nome)}')" style="color:var(--c-concluido);border-color:var(--c-concluido)">Enviar e-mail de conclusao</button>${proj.link_contrato?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_contrato}','${vfEsc(proj.nome)}')" style="color:var(--c-previsto);border-color:var(--c-previsto)">📄 Ver contrato</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhum contrato anexado ainda">📎 Contrato pendente</button>`}${proj.link_grade?`<button class="proj-btn" onclick="abrirAnexoNovaAba('${proj.link_grade}','${vfEsc(proj.nome)} — Grade')" style="color:var(--c-andamento);border-color:var(--c-andamento)">📊 Ver grade</button>`:`<button class="proj-btn" style="color:var(--c-pendente);border-color:var(--c-pendente);cursor:default;" title="Nenhuma grade anexada ainda">📎 Grade pendente</button>`}</div></div></div>`;
   }).join('');
   // Restaurar cards que estavam abertos
   abertos.forEach(id => {
@@ -4451,14 +4475,14 @@ function _pipeExportPDF(linhas, escopo){
   const escopoLabel = escopo==='todos' ? 'Todos os projetos' : 'Projetos filtrados';
   const corStatus = s => s==='Concluído'?'#2e7d32':s==='Congelado'?'#1A5FC8':'#b8860b';
   const linhasHtml = linhas.map((l,i)=>`<tr style="${i%2===0?'background:#fafafa':''}">
-    <td>${l.cliente}</td>
-    <td style="color:${corStatus(l.status)};font-weight:600">${l.status}</td>
-    <td style="font-size:10px">${l.etapa}</td>
-    <td style="text-align:center">${l.equipamento}</td>
-    <td>${l.vendedor}</td>
-    <td style="font-size:10px">${l.cidade_uf}</td>
-    <td style="text-align:center">${l.uhs}</td>
-    <td style="text-align:center">${l.prazo}</td>
+    <td>${vfEsc(l.cliente)}</td>
+    <td style="color:${corStatus(l.status)};font-weight:600">${vfEsc(l.status)}</td>
+    <td style="font-size:10px">${vfEsc(l.etapa)}</td>
+    <td style="text-align:center">${vfEsc(l.equipamento)}</td>
+    <td>${vfEsc(l.vendedor)}</td>
+    <td style="font-size:10px">${vfEsc(l.cidade_uf)}</td>
+    <td style="text-align:center">${vfEsc(l.uhs)}</td>
+    <td style="text-align:center">${vfEsc(l.prazo)}</td>
   </tr>`).join('');
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pipeline — ${hoje}</title>
@@ -4587,9 +4611,9 @@ function renderDocsListaPipelineHTML(proj){
       <div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-word">${pipeObsEsc(d.nome_arquivo)||'(sem nome)'}</div>
       <div style="font-size:11px;color:var(--text-muted)"><b>${pipeObsEsc(d.tipo)}</b> · ${pipeObsEsc(d.enviado_por)||'—'} · ${pipeObsEsc(d.data_hora)}</div>
     </div>
-    <button onclick="event.stopPropagation();abrirDocPipeline('${proj.id}','${d.id}')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Abrir</button>
+    <button onclick="event.stopPropagation();abrirDocPipeline('${_mpArg(proj.id)}','${_mpArg(d.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--c-previsto);border-radius:5px;background:none;color:var(--c-previsto);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Abrir</button>
     <button onclick="event.stopPropagation();baixarDocPipeline('${String(d.link||'').replace(/'/g,"\\'")}')" title="Baixar o arquivo completo" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer">Baixar</button>
-    <button onclick="event.stopPropagation();removerDocPipeline('${proj.id}','${d.id}')" title="Excluir" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer">🗑️</button>
+    <button onclick="event.stopPropagation();removerDocPipeline('${_mpArg(proj.id)}','${_mpArg(d.id)}')" title="Excluir" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer">🗑️</button>
   </div>`).join('');
 }
 function renderDocsPipelineHTML(proj){
@@ -4599,7 +4623,7 @@ function renderDocsPipelineHTML(proj){
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" onclick="event.stopPropagation()">
       <select id="doc-tipo-${proj.id}" style="height:34px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none">${DOC_PIPE_TIPOS.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
       <input type="file" id="doc-file-${proj.id}" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx" style="flex:1;min-width:180px;font-size:12px;font-family:'DM Sans',sans-serif">
-      <button id="doc-btn-${proj.id}" onclick="event.stopPropagation();anexarDocPipeline('${proj.id}')" style="height:34px;padding:0 16px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Anexar</button>
+      <button id="doc-btn-${proj.id}" onclick="event.stopPropagation();anexarDocPipeline('${_mpArg(proj.id)}')" style="height:34px;padding:0 16px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--gold);color:#111;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Anexar</button>
     </div>
   </div>`;
 }
@@ -4740,7 +4764,7 @@ function renderDashTable() {
     const cs = proj.steps.find(s=>!s.done);
     const st = pct===100?'Concluído':cs?cs.id+'. '+STEPS.find(s=>s.id===cs.id)?.title:'—';
     const col = pct===100?'var(--c-concluido)':dias>=40?'var(--c-atrasado)':dias>=30?'var(--c-pendente)':'var(--text-muted)';
-    return `<tr><td style="font-weight:500">${proj.nome}</td><td>${proj.uhs}</td><td style="font-size:12px;color:var(--text-muted)">${st}</td><td><div class="pbar-wrap"><div class="pbar-fill${pct===100?' done':''}" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text-muted)">${pct}%</span></td><td style="font-weight:500;color:${col}">${dias!==null?dias+'d':'—'}</td></tr>`;
+    return `<tr><td style="font-weight:500">${vfEsc(proj.nome)}</td><td>${vfEsc(proj.uhs)}</td><td style="font-size:12px;color:var(--text-muted)">${st}</td><td><div class="pbar-wrap"><div class="pbar-fill${pct===100?' done':''}" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text-muted)">${pct}%</span></td><td style="font-weight:500;color:${col}">${dias!==null?dias+'d':'—'}</td></tr>`;
   }).join('');
 
   // Atualizar título da tabela
@@ -4845,10 +4869,10 @@ function renderComercial(){
     const badgeBg=convertido?'var(--c-concluido-bg)':'var(--c-previsto-bg)';
     const badgeLabel=convertido?'Convertido':'Prospect';
     return `<div class="project-card" style="${convertido?'border-color:var(--c-concluido)':''}">
-      <div class="project-card-header" onclick="toggleComCard('${p.id}')">
+      <div class="project-card-header" onclick="toggleComCard('${_mpArg(p.id)}')">
         <div>
-          <div class="project-name">${p.nome}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.cidade||''}${p.cidade&&p.produto?' — ':''}${p.produto||''}${p.uhs?' — '+p.uhs+' UHs':''}${p.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>
+          <div class="project-name">${vfEsc(p.nome)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${vfEsc(p.cidade||'')}${p.cidade&&p.produto?' — ':''}${vfEsc(p.produto||'')}${p.uhs?' — '+p.uhs+' UHs':''}${p.prazo_instalacao?` · <span style="color:#F5B800;font-weight:600">📅 ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span>`:''}</div>
         </div>
         <div class="project-meta">
           <span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap;background:${badgeBg};color:${badgeColor}">${badgeLabel}</span>
@@ -4859,26 +4883,26 @@ function renderComercial(){
         <div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
           <div class="step-card done">
             <div class="step-number">Dados do cliente</div>
-            ${p.cnpj?`<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${p.cnpj}</div>`:''}
-            ${p.contato?`<div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${p.contato}</div>`:''}
+            ${p.cnpj?`<div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${vfEsc(p.cnpj)}</div>`:''}
+            ${p.contato?`<div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${vfEsc(p.contato)}</div>`:''}
             ${extrairTelefone(p)?`<div style="font-size:12px;margin-top:2px"><b>📞 Telefone:</b> <a href="tel:${extrairTelefone(p).replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${extrairTelefone(p)}</a></div>`:''}
             ${p.prazo_instalacao?`<div style="font-size:12px;margin-top:6px;padding:4px 8px;background:#1a1500;border-radius:6px;border:1px solid #2a2000"><span style="color:#F5B800;font-weight:700">📅 Prazo de instalação: ${new Date(p.prazo_instalacao).toLocaleDateString('pt-BR')}</span></div>`:''}
           </div>
           <div class="step-card">
             <div class="step-number">Produto</div>
-            <div style="font-size:13px;font-weight:500;margin-top:4px">${p.produto||'—'}</div>
+            <div style="font-size:13px;font-weight:500;margin-top:4px">${vfEsc(p.produto||'—')}</div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.uhs?p.uhs+' UHs':'—'}</div>
           </div>
           ${p.conteudo_online==='Sim'?`<div class="step-card active-step">
             <div class="step-number">Conteúdo online</div>
-            <div style="font-size:12px;margin-top:4px">${p.conteudo_detalhe||'Sim'}</div>
+            <div style="font-size:12px;margin-top:4px">${vfEsc(p.conteudo_detalhe||'Sim')}</div>
           </div>`:''}
         </div>
         <div style="display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;flex-wrap:wrap;">
           ${!convertido?`
-          <button onclick="converterProspect('${p.id}')" style="padding:5px 14px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--black);color:var(--gold);border:none;font-weight:500">Converter para Pipeline</button>
-          <button onclick="editarCom('${p.id}')" class="proj-btn">Editar</button>`:'<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ No pipeline</span>'}
-          <button onclick="removerCom('${p.id}')" class="proj-btn danger">Remover</button>
+          <button onclick="converterProspect('${_mpArg(p.id)}')" style="padding:5px 14px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--black);color:var(--gold);border:none;font-weight:500">Converter para Pipeline</button>
+          <button onclick="editarCom('${_mpArg(p.id)}')" class="proj-btn">Editar</button>`:'<span style="font-size:12px;color:var(--c-concluido);font-weight:500">✓ No pipeline</span>'}
+          <button onclick="removerCom('${_mpArg(p.id)}')" class="proj-btn danger">Remover</button>
         </div>
       </div>
     </div>`;
@@ -4984,11 +5008,11 @@ function exportarVistoriasPDF(){
     const done = v.steps.filter(s=>s.done).length;
     const status = v.status==='concluida'||done===5?'Concluída':'Em andamento';
     return `<tr>
-      <td>${v.nomeCliente||'—'}</td>
-      <td>${v.cidade||v.endereco||'—'}</td>
-      <td>${v.produto||'—'}</td>
-      <td>${v.contato||'—'}</td>
-      <td>${v.telefone||'—'}</td>
+      <td>${vfEsc(v.nomeCliente||'—')}</td>
+      <td>${vfEsc(v.cidade||v.endereco||'—')}</td>
+      <td>${vfEsc(v.produto||'—')}</td>
+      <td>${vfEsc(v.contato||'—')}</td>
+      <td>${vfEsc(v.telefone||'—')}</td>
       <td>${v.data_prevista||'—'}</td>
       <td>${done}/5</td>
       <td style="color:${status==='Concluída'?'#3B6D11':'#B86A00'};font-weight:600">${status}</td>
@@ -6443,23 +6467,23 @@ function renderVistoria(){
   else if(vistoriaBoxFilter==='pendentes') lista = vistoriasFiltradas.filter(v=>v.status!=='concluida'&&!v.steps.every(s=>s.done));
   if(!lista.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhuma vistoria nesta categoria.</div>';return;}list.innerHTML=lista.map(v=>{const doneCnt=v.steps.filter(s=>s.done).length;const pct=Math.round((doneCnt/5)*100);const concluida=v.status==='concluida'||pct===100;const cs=v.steps.find(s=>!s.done);const cst=cs?STEPS_VISTORIA.find(s=>s.id===cs.id)?.title:'Concluida';const infoCard=`<div class="step-card done">
   <div class="step-number">Dados da instalação</div>
-  ${v.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+v.produto+'</div>':''}
-  ${v.uhs?'<div style="font-size:12px;margin-top:2px"><b>UHs:</b> '+v.uhs+'</div>':''}
-  ${v.cidade?'<div style="font-size:12px;margin-top:2px"><b>Cidade:</b> '+v.cidade+'</div>':''}
-  ${v.endereco?'<div style="font-size:12px;margin-top:2px"><b>Endereço:</b> '+v.endereco+'</div>':''}
-  ${v.contato?'<div style="font-size:12px;margin-top:2px"><b>Contato:</b> '+v.contato+'</div>':''}
-  ${v.telefone?'<div style="font-size:12px;margin-top:2px"><b>Telefone:</b> '+v.telefone+'</div>':''}
-  ${v.cnpj?'<div style="font-size:12px;margin-top:2px"><b>CNPJ:</b> '+v.cnpj+'</div>':''}
-  ${v.vendedor?'<div style="font-size:12px;margin-top:2px"><b>Vendedor:</b> '+v.vendedor+'</div>':''}
-  ${v.conteudo_online?'<div style="font-size:12px;margin-top:2px"><b>Conteúdo online:</b> '+v.conteudo_online+'</div>':''}
-  ${v.prazo?'<div style="font-size:12px;margin-top:2px"><b>Prazo instalação:</b> '+v.prazo+'</div>':''}
-  ${v.referencia?'<div style="font-size:12px;margin-top:2px"><b>Referência/Acesso:</b> '+v.referencia+'</div>':''}
-  ${v.observacoes?'<div style="font-size:12px;margin-top:6px;padding-top:6px;border-top:1px solid #eee"><b>Obs:</b> '+v.observacoes+'</div>':''}
+  ${v.produto?'<div style="font-size:12px;margin-top:4px"><b>Produto:</b> '+vfEsc(v.produto)+'</div>':''}
+  ${v.uhs?'<div style="font-size:12px;margin-top:2px"><b>UHs:</b> '+vfEsc(v.uhs)+'</div>':''}
+  ${v.cidade?'<div style="font-size:12px;margin-top:2px"><b>Cidade:</b> '+vfEsc(v.cidade)+'</div>':''}
+  ${v.endereco?'<div style="font-size:12px;margin-top:2px"><b>Endereço:</b> '+vfEsc(v.endereco)+'</div>':''}
+  ${v.contato?'<div style="font-size:12px;margin-top:2px"><b>Contato:</b> '+vfEsc(v.contato)+'</div>':''}
+  ${v.telefone?'<div style="font-size:12px;margin-top:2px"><b>Telefone:</b> '+vfEsc(v.telefone)+'</div>':''}
+  ${v.cnpj?'<div style="font-size:12px;margin-top:2px"><b>CNPJ:</b> '+vfEsc(v.cnpj)+'</div>':''}
+  ${v.vendedor?'<div style="font-size:12px;margin-top:2px"><b>Vendedor:</b> '+vfEsc(v.vendedor)+'</div>':''}
+  ${v.conteudo_online?'<div style="font-size:12px;margin-top:2px"><b>Conteúdo online:</b> '+vfEsc(v.conteudo_online)+'</div>':''}
+  ${v.prazo?'<div style="font-size:12px;margin-top:2px"><b>Prazo instalação:</b> '+vfEsc(v.prazo)+'</div>':''}
+  ${v.referencia?'<div style="font-size:12px;margin-top:2px"><b>Referência/Acesso:</b> '+vfEsc(v.referencia)+'</div>':''}
+  ${v.observacoes?'<div style="font-size:12px;margin-top:6px;padding-top:6px;border-top:1px solid #eee"><b>Obs:</b> '+vfEsc(v.observacoes)+'</div>':''}
 </div>`;
-const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:false,date:''};const ia=!ps.done&&cs&&cs.id===s.id;return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}</div><div class="step-resp">${s.resp}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateVistoriaStepDate('${v.id}',${s.id},this.value)"><button class="step-check" onclick="toggleVistoriaStep('${v.id}',${s.id})">${ps.done?'V':''}</button></div></div>`;}).join('');return `<div class="project-card" style="${concluida?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleVistoriaCard('${v.id}')"><div><div class="project-name">${v.nomeCliente}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/5 etapas</div>${v.produto?'<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+v.produto+(v.uhs?' — '+v.uhs+' UHs':'')+'</div>':''} ${v.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px">📍 '+v.endereco+'</div>':''}</div><div class="project-meta"><span class="badge ${concluida?'concluido':'andamento'}">${concluida?'Realizada':'Em andamento'}</span><span class="chevron" id="vst-chev-${v.id}">v</span></div></div><div class="project-body" id="vst-body-${v.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div><div class="steps-grid">${sh}</div>
+const sh=STEPS_VISTORIA.map(s=>{const ps=v.steps.find(st=>st.id===s.id)||{done:false,date:''};const ia=!ps.done&&cs&&cs.id===s.id;return `<div class="step-card${ps.done?' done':ia?' active-step':''}"><div class="step-number">Etapa ${s.id}</div><div class="step-title">${s.title}</div><div class="step-resp">${vfEsc(s.resp)}</div><div class="step-date-row"><span class="step-date-label">Data:</span><input type="date" class="step-date-input" value="${ps.date||''}" onchange="updateVistoriaStepDate('${_mpArg(v.id)}',${s.id},this.value)"><button class="step-check" onclick="toggleVistoriaStep('${_mpArg(v.id)}',${s.id})">${ps.done?'V':''}</button></div></div>`;}).join('');return `<div class="project-card" style="${concluida?'border-color:var(--c-concluido)':''}"><div class="project-card-header" onclick="toggleVistoriaCard('${_mpArg(v.id)}')"><div><div class="project-name">${vfEsc(v.nomeCliente)}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${cst} - ${doneCnt}/5 etapas</div>${v.produto?'<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+vfEsc(v.produto)+(v.uhs?' — '+vfEsc(v.uhs)+' UHs':'')+'</div>':''} ${v.endereco?'<div style="font-size:11px;color:var(--text-light,#bbb);margin-top:1px">📍 '+vfEsc(v.endereco)+'</div>':''}</div><div class="project-meta"><span class="badge ${concluida?'concluido':'andamento'}">${concluida?'Realizada':'Em andamento'}</span><span class="chevron" id="vst-chev-${v.id}">v</span></div></div><div class="project-body" id="vst-body-${v.id}" style="display:none"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;${concluida?'background:var(--c-concluido)':''}"></div></div><div class="steps-grid">${sh}</div>
 <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)">
-  <button onclick="editarVistoria('${v.id}')" style="padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted)">✎ Editar</button>
-  <button onclick="excluirVistoria('${v.id}','${v.nomeCliente||v.nome}')" style="padding:6px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00">✕ Excluir</button>
+  <button onclick="editarVistoria('${_mpArg(v.id)}')" style="padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted)">✎ Editar</button>
+  <button onclick="excluirVistoria('${_mpArg(v.id)}','${vfEsc(v.nomeCliente||v.nome)}')" style="padding:6px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00">✕ Excluir</button>
 </div>
 </div></div>`;}).join('');}
 
@@ -7445,11 +7469,11 @@ function renderClientes(){
     const precisaGrade=(c.produto||'').toUpperCase().includes('HD')||(c.produto||'').toUpperCase().includes('SD');
     const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;
     const ativo=c.status!=='inativo';
-    return `<tr onclick="toggleCliDetalhe('${c.id}')" style="border-top:1px solid var(--border);cursor:pointer;">
-      <td style="padding:9px 12px;font-size:13px;font-weight:500;">${c.nome||'—'}</td>
-      <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);">${c.cidade||'—'}${uf?' / '+uf:''}</td>
-      <td style="padding:9px 12px;font-size:12px;">${c.produto||'—'}${(precisaGrade&&!gradeAnexada)?' <span style="font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(245,184,0,.15);color:#9a6b00;">grade</span>':''}</td>
-      <td style="padding:9px 12px;font-size:12px;text-align:right;font-family:'DM Mono',monospace;">${c.uhs||'—'}</td>
+    return `<tr onclick="toggleCliDetalhe('${_mpArg(c.id)}')" style="border-top:1px solid var(--border);cursor:pointer;">
+      <td style="padding:9px 12px;font-size:13px;font-weight:500;">${vfEsc(c.nome||'—')}</td>
+      <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);">${vfEsc(c.cidade||'—')}${uf?' / '+uf:''}</td>
+      <td style="padding:9px 12px;font-size:12px;">${vfEsc(c.produto||'—')}${(precisaGrade&&!gradeAnexada)?' <span style="font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(245,184,0,.15);color:#9a6b00;">grade</span>':''}</td>
+      <td style="padding:9px 12px;font-size:12px;text-align:right;font-family:'DM Mono',monospace;">${vfEsc(c.uhs||'—')}</td>
       <td style="padding:9px 12px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_cliPatrimonios(c).replace(/"/g,'')}">${_cliPatrimonios(c)||'—'}</td>
       <td style="padding:9px 12px;text-align:center;"><span class="badge ${ativo?'concluido':'atrasado'}">${ativo?'Ativo':'Inativo'}</span></td>
     </tr>
@@ -7511,11 +7535,11 @@ function cliDetalheHTML(id){
     +`<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">`
     +(c.link_contrato?`<button onclick="event.stopPropagation();abrirAnexoNovaAba('${c.link_contrato}','${(c.nome||'').replace(/'/g,"\\'")}');" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 Ver contrato</button>`:'')
     +(c.link_grade?`<button onclick="event.stopPropagation();abrirAnexoNovaAba('${c.link_grade}','${(c.nome||'').replace(/'/g,"\\'")} — Grade');" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📊 Ver grade</button>`:'')
-    +`<input type="file" id="tab-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-contrato-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button>`
-    +`<input type="file" id="tab-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-grade-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button>`
+    +`<input type="file" id="tab-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-contrato-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button>`
+    +`<input type="file" id="tab-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('tab-grade-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button>`
     +`<span id="cli-contrato-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span><span id="cli-grade-status-${c.id}" style="font-size:11px;color:var(--text-muted);"></span>`
     +`</div>`
-    +`<div style="margin:8px 0;padding-top:8px;border-top:0.5px solid var(--border);"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div>`
+    +`<div style="margin:8px 0;padding-top:8px;border-top:0.5px solid var(--border);"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:5px 12px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div>`
     +'</div>';
   info+='</div>';
   // ---- Itens locados (somente leitura) ----
@@ -7536,10 +7560,10 @@ function cliDetalheHTML(id){
     info+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">📦 Nenhum item locado cadastrado. <span onclick="event.stopPropagation();switchMainTab(\'itens-locados\')" style="color:var(--c-previsto);cursor:pointer;">Cadastrar em Itens Locados →</span></div>';
   }
   const btns=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-    <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
-    ${ativo?`<button onclick="event.stopPropagation();iniciarDistrato('${(c.nome||'').replace(/'/g,"\\'")}','${c.cnpj||''}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
-    <button onclick="event.stopPropagation();toggleInativarCliente('${c.id}','${c.status}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${ativo?'var(--c-pendente)':'var(--c-concluido)'};">${ativo?'⊘ Inativar':'✓ Reativar'}</button>
-    <button onclick="event.stopPropagation();excluirCliente('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
+    <button onclick="event.stopPropagation();abrirEditarCliente('${_mpArg(c.id)}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
+    ${ativo?`<button onclick="event.stopPropagation();iniciarDistrato('${(c.nome||'').replace(/'/g,"\\'")}','${vfEsc(c.cnpj||'')}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
+    <button onclick="event.stopPropagation();toggleInativarCliente('${_mpArg(c.id)}','${vfEsc(c.status)}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${ativo?'var(--c-pendente)':'var(--c-concluido)'};">${ativo?'⊘ Inativar':'✓ Reativar'}</button>
+    <button onclick="event.stopPropagation();excluirCliente('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
   </div>`;
   return info+btns;
 }
@@ -7547,21 +7571,21 @@ function cliDetalheHTML(id){
 function renderClientesCards(listaFiltrada){
   const list=document.getElementById('cli-list');if(!list)return;
   if(!listaFiltrada.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cliente para os filtros.</div>';return;}
-  const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=listaFiltrada.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${c.id}')"><div><div class="project-name">${c.nome}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.cidade||''} — ${c.produto||''}${c.canais?' ('+c.canais+' mod.)':''} — ${c.uhs||''} UHs${c.moduladores?' · '+c.moduladores+' mod.':''}${c.pagamento_operadora&&c.pagamento_operadora!=='N/A'?' | '+(c.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'):''}${c.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(c.ponto_extra_qtd?' ('+c.ponto_extra_qtd+')':''):''}</div><div style="font-size:11px;color:var(--text-light,#bbb);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${c.endereco||''}</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${c.cnpj||'—'}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${c.contato||'—'}</div>${extrairTelefone(c)?`<div style="font-size:12px;margin-top:2px"><b>📞 Telefone:</b> <a href="tel:${extrairTelefone(c).replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${extrairTelefone(c)}</a></div>`:''}<div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${c.produto}${c.canais?' ('+c.canais+' moduladores)':''}</div>`:''}
+  const CAMINHO_GRADE='Z:\\CLIENTES\\GRADE DE CANAIS';list.innerHTML=listaFiltrada.map(c=>{const produto=(c.produto||'').toUpperCase();const precisaGrade=produto.includes('HD')||produto.includes('SD');const gradeAnexada=c.grade_anexada===true||c.grade_anexada==='TRUE'||c.grade_anexada===1;return `<div class="project-card"><div class="project-card-header" onclick="toggleCliCard('${_mpArg(c.id)}')"><div><div class="project-name">${vfEsc(c.nome)}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${vfEsc(c.cidade||'')} — ${vfEsc(c.produto||'')}${c.canais?' ('+c.canais+' mod.)':''} — ${vfEsc(c.uhs||'')} UHs${c.moduladores?' · '+c.moduladores+' mod.':''}${c.pagamento_operadora&&c.pagamento_operadora!=='N/A'?' | '+(c.pagamento_operadora==='Repasse'?'💳 Repasse':'✅ Cliente PG'):''}${c.ponto_extra==='Sim'?' | 🔌 Ponto extra'+(c.ponto_extra_qtd?' ('+c.ponto_extra_qtd+')':''):''}</div><div style="font-size:11px;color:var(--text-light,#bbb);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${vfEsc(c.endereco||'')}</div></div><div class="project-meta"><span class="badge ${c.status==='ativo'?'concluido':'atrasado'}">${c.status==='ativo'?'Ativo':'Inativo'}</span>${precisaGrade?`<span class="badge ${gradeAnexada?'concluido':'atrasado'}">${gradeAnexada?'Grade OK':'Grade Pendente'}</span>`:''}<span class="chevron" id="cli-chev-${c.id}">▼</span></div></div><div class="project-body" id="cli-body-${c.id}" style="display:none"><div class="steps-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"><div class="step-card done"><div class="step-number">Dados do cliente</div><div style="font-size:12px;margin-top:4px"><b>CNPJ:</b> ${vfEsc(c.cnpj||'—')}</div><div style="font-size:12px;margin-top:2px"><b>Contato:</b> ${vfEsc(c.contato||'—')}</div>${extrairTelefone(c)?`<div style="font-size:12px;margin-top:2px"><b>📞 Telefone:</b> <a href="tel:${extrairTelefone(c).replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:var(--c-previsto);text-decoration:none;font-weight:600">${extrairTelefone(c)}</a></div>`:''}<div style="font-size:12px;margin-top:2px"><b>Vigência início:</b> ${formatDateBRCli(c.vigencia_inicio)||'—'}</div>${c.produto?`<div style="font-size:12px;margin-top:2px"><b>Produto:</b> ${vfEsc(c.produto)}${c.canais?' ('+c.canais+' moduladores)':''}</div>`:''}
 <div style="font-size:12px;margin-top:6px"><b>💳 Pagamento operadora:</b>
-<select onchange="salvarPagamentoCliente('${c.id}',this.value)" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
+<select onchange="salvarPagamentoCliente('${_mpArg(c.id)}',this.value)" style="display:block;width:100%;margin-top:4px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
 <option value="" ${!c.pagamento_operadora?'selected':''}>— Não definido —</option>
 <option value="Repasse" ${c.pagamento_operadora==='Repasse'?'selected':''}>💳 Repasse (Blincast paga)</option>
 <option value="Cliente PG" ${c.pagamento_operadora==='Cliente PG'?'selected':''}>✅ Cliente PG</option>
 <option value="N/A" ${c.pagamento_operadora==='N/A'?'selected':''}>— N/A</option>
-</select></div>${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${c.uhs}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${c.tecnico||''}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label>${c.link_contrato ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_contrato+'" data-nome="'+c.nome+'" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum contrato anexado</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button><span id="cli-contrato-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><div style="margin-top:8px"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div><label style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block">Grade de canais</label>${c.link_grade ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_grade+'" data-nome="'+c.nome+' — Grade" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Ver grade</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhuma grade anexada</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-grade-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button><span id="cli-grade-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${c.id}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${c.observacoes||''}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+</select></div>${c.uhs?`<div style="font-size:12px;margin-top:2px"><b>Unidades:</b> ${vfEsc(c.uhs)}</div>`:''}</div><div class="step-card"><div class="step-number">Instalação</div><div class="step-date-row" style="margin-top:6px;flex-direction:column;gap:6px;align-items:stretch"><label style="font-size:11px;color:var(--text-muted)">Data de instalação</label><input type="date" id="cli-instalacao-${c.id}" value="${c.data_instalacao||''}" class="step-date-input" style="width:100%"><label style="font-size:11px;color:var(--text-muted)">Técnico responsável</label><input type="text" id="cli-tecnico-${c.id}" value="${vfEsc(c.tecnico||'')}" placeholder="Nome do técnico" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Documentos</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">NF de envio</label><input type="text" id="cli-nf-${c.id}" value="${c.nf_envio||''}" placeholder="Número da NF" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><label style="font-size:11px;color:var(--text-muted)">OS de instalação</label><input type="text" id="cli-os-${c.id}" value="${c.os_instalacao||''}" placeholder="Número da OS" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div><div class="step-card"><div class="step-number">Links</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Contrato assinado</label>${c.link_contrato ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_contrato+'" data-nome="'+vfEsc(c.nome)+'" style="padding:5px 12px;background:var(--c-previsto-bg);color:var(--c-previsto);border:1px solid var(--c-previsto);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📄 Ver contrato</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhum contrato anexado</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-contrato-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadContratoCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-contrato-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_contrato?'Substituir':'Anexar'} contrato</button><span id="cli-contrato-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><div style="margin-top:8px"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Aditivos</label><div id="cli-aditivos-lista-${c.id}">${_renderAditivos(c)}</div><div style="margin-top:4px"><input type="file" id="cli-aditivo-file-${c.id}" accept="application/pdf" style="display:none" onchange="uploadAditivoCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-aditivo-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--c-andamento);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--c-andamento);">➕ Anexar aditivo</button><span id="cli-aditivo-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div></div><label style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block">Grade de canais</label>${c.link_grade ? '<div style="margin-top:4px"><button onclick="event.stopPropagation();abrirAnexoNovaAba(this.dataset.link,this.dataset.nome);" data-link="'+c.link_grade+'" data-nome="'+vfEsc(c.nome)+' — Grade" style="padding:5px 12px;background:var(--c-andamento-bg);color:var(--c-andamento);border:1px solid var(--c-andamento);border-radius:4px;font-size:11px;font-family:\'DM Sans\',sans-serif;cursor:pointer;">📊 Ver grade</button></div>' : '<div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted);font-style:italic">Nenhuma grade anexada</span></div>'}${''}<div style="margin-top:4px"><input type="file" id="cli-grade-file-${c.id}" accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="uploadGradeCli('${_mpArg(c.id)}','${(c.nome||'').replace(/'/g,"\\'")}',this)"><button onclick="event.stopPropagation();document.getElementById('cli-grade-file-${c.id}').click()" style="padding:4px 10px;border:1px dashed var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">📎 ${c.link_grade?'Substituir':'Anexar'} grade</button><span id="cli-grade-status-${c.id}" style="font-size:11px;margin-left:6px;color:var(--text-muted);"></span></div><label style="font-size:11px;color:var(--text-muted)">Projeto técnico</label><input type="text" id="cli-link-projeto-${c.id}" value="${c.link_projeto||''}" placeholder="https://..." style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"></div></div>${precisaGrade?`<div class="step-card${gradeAnexada?'':' active-step'}"><div class="step-number">Grade de Canais <span style="color:#e00">*</span></div><div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin:6px 0;cursor:pointer" onclick="navigator.clipboard.writeText('Z:\\CLIENTES\\GRADE DE CANAIS').then(()=>alert('Caminho copiado!'))">${CAMINHO_GRADE} 📋</div><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="cli-grade-${c.id}" ${gradeAnexada?'checked':''} onchange="toggleGradePor('${_mpArg(c.id)}')"> Grade anexada</label><div id="cli-grade-por-wrap-${c.id}" style="display:${gradeAnexada?'block':'none'}"><label style="font-size:11px;color:var(--text-muted)">Anexado por *</label><input type="text" id="cli-grade-por-${c.id}" value="${c.grade_por||''}" placeholder="Seu nome" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;margin-top:4px"></div></div>`:''}  <div class="step-card"><div class="step-number">Status e Observações</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px"><label style="font-size:11px;color:var(--text-muted)">Status</label><select id="cli-status-${c.id}" style="width:100%;height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><option value="ativo" ${c.status==='ativo'?'selected':''}>Ativo</option><option value="inativo" ${c.status==='inativo'?'selected':''}>Inativo</option></select><label style="font-size:11px;color:var(--text-muted)">Observações</label><textarea id="cli-obs-${c.id}" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;resize:vertical;min-height:60px">${vfEsc(c.observacoes||'')}</textarea></div></div></div><div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <div style="display:flex;gap:8px;">
-    <button onclick="event.stopPropagation();abrirEditarCliente('${c.id}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
-    ${c.status!=='inativo'?`<button onclick="event.stopPropagation();iniciarDistrato('${c.nome}','${c.cnpj||''}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
-    <button onclick="event.stopPropagation();toggleInativarCliente('${c.id}','${c.status}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${c.status==='inativo'?'var(--c-concluido)':'var(--c-pendente)'};">${c.status==='inativo'?'✓ Reativar':'⊘ Inativar'}</button>
-    <button onclick="event.stopPropagation();excluirCliente('${c.id}','${c.nome}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
+    <button onclick="event.stopPropagation();abrirEditarCliente('${_mpArg(c.id)}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:var(--text-muted);">✎ Editar</button>
+    ${c.status!=='inativo'?`<button onclick="event.stopPropagation();iniciarDistrato('${vfEsc(c.nome)}','${vfEsc(c.cnpj||'')}')" style="padding:5px 14px;border:1px solid #B86A00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#B86A00;font-weight:500;">⚑ Iniciar Distrato</button>`:''}
+    <button onclick="event.stopPropagation();toggleInativarCliente('${_mpArg(c.id)}','${vfEsc(c.status)}')" style="padding:5px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:${c.status==='inativo'?'var(--c-concluido)':'var(--c-pendente)'};">${c.status==='inativo'?'✓ Reativar':'⊘ Inativar'}</button>
+    <button onclick="event.stopPropagation();excluirCliente('${_mpArg(c.id)}','${vfEsc(c.nome)}')" style="padding:5px 14px;border:1px solid #e00;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:none;color:#e00;">✕ Excluir</button>
   </div>
-  <button id="cli-save-btn-${c.id}" onclick="saveCliente('${c.id}')" class="btn-new-project">Salvar alterações</button>
+  <button id="cli-save-btn-${c.id}" onclick="saveCliente('${_mpArg(c.id)}')" class="btn-new-project">Salvar alterações</button>
 </div></div></div>`;}).join('');}
 function toggleEcCanais(){
   const prod=document.getElementById('ec-produto').value;
@@ -8583,13 +8607,13 @@ function implBoardRender(){
   wrap.innerHTML=implBoard.map(it=>{
     const cor=cores[it.status]||'#888';
     return `<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:var(--radius-sm);padding:12px 14px;position:relative;">
-      <button onclick="implBoardDelete('${it.id}')" title="Remover" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border:1px solid var(--border);border-radius:5px;background:none;color:#e00;cursor:pointer;font-size:12px;line-height:1;">✕</button>
-      <div style="font-weight:700;font-size:14px;color:var(--text);padding-right:26px;">${it.cliente||'—'}</div>
+      <button onclick="implBoardDelete('${_mpArg(it.id)}')" title="Remover" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border:1px solid var(--border);border-radius:5px;background:none;color:#e00;cursor:pointer;font-size:12px;line-height:1;">✕</button>
+      <div style="font-weight:700;font-size:14px;color:var(--text);padding-right:26px;">${vfEsc(it.cliente||'—')}</div>
       ${linha('Técnico',it.tecnico)}
       ${linha('Localidade',it.localidade)}
       ${linha('Equipamento',it.equipamento)}
       ${linha('Data',fmtData(it.data))}
-      <div style="margin-top:8px;"><span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${cor}22;color:${cor};border:1px solid ${cor}66;">${it.status||'—'}</span></div>
+      <div style="margin-top:8px;"><span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${cor}22;color:${cor};border:1px solid ${cor}66;">${vfEsc(it.status||'—')}</span></div>
     </div>`;
   }).join('');
   if(cnt) cnt.textContent=' ('+implBoard.length+')';
@@ -9403,7 +9427,7 @@ function exportarMaterialPDF(){
   const data = document.getElementById('mat-tec-data').value;
   const os   = document.getElementById('mat-tec-os').value.trim();
   const obs  = document.getElementById('mat-tec-obs').value.trim();
-  const linhas = matItens.map((it,i)=>`<tr><td>${i+1}</td><td>${it.descricao}</td><td style="text-align:center">${it.quantidade}</td><td>${it.obs||''}</td></tr>`).join('');
+  const linhas = matItens.map((it,i)=>`<tr><td>${i+1}</td><td>${vfEsc(it.descricao)}</td><td style="text-align:center">${it.quantidade}</td><td>${vfEsc(it.obs||'')}</td></tr>`).join('');
   const dataFmt = data ? new Date(data+'T12:00:00').toLocaleDateString('pt-BR') : '—';
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Material Utilizado</title>
@@ -9960,7 +9984,7 @@ function exportarChecklistPDF(){
   const tecData = document.getElementById('cl-tec-data').value||cl.tec?.data||'';
   const tecOs   = document.getElementById('cl-tec-os').value||cl.tec?.os||'';
   const itens   = clItens.length ? clItens : (cl.itens||[]);
-  const linhas  = itens.map((it,i)=>`<tr><td>${i+1}</td><td>${it.descricao}</td><td style="text-align:center">${it.quantidade}</td><td>${it.obs||''}</td><td style="text-align:center">${it.alm_ok?'✅':'—'}</td><td style="text-align:center">${it.tec_ok?'✅':'—'}</td></tr>`).join('');
+  const linhas  = itens.map((it,i)=>`<tr><td>${i+1}</td><td>${vfEsc(it.descricao)}</td><td style="text-align:center">${it.quantidade}</td><td>${vfEsc(it.obs||'')}</td><td style="text-align:center">${it.alm_ok?'✅':'—'}</td><td style="text-align:center">${it.tec_ok?'✅':'—'}</td></tr>`).join('');
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Checklist de Material</title>
   <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}h2{color:#111;border-bottom:2px solid #F5B800;padding-bottom:8px}
@@ -10224,7 +10248,7 @@ function exportarReqPDF(){
   if(!reqMatItens.length){ alert('Adicione ao menos um item.'); return; }
   const m = montagemDados.find(x=>x.id===reqMatId);
   const w = window.open('','_blank');
-  const linhas = reqMatItens.map((item,i)=>`<tr><td>${i+1}</td><td>${item.descricao}</td><td style="text-align:center">${item.quantidade}</td><td>${item.obs||''}</td></tr>`).join('');
+  const linhas = reqMatItens.map((item,i)=>`<tr><td>${i+1}</td><td>${vfEsc(item.descricao)}</td><td style="text-align:center">${item.quantidade}</td><td>${vfEsc(item.obs||'')}</td></tr>`).join('');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Requisição de Material</title>
   <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}h2{color:#111;border-bottom:2px solid #F5B800;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#111;color:#F5B800;padding:8px 12px;font-size:12px;text-align:left}td{padding:8px 12px;font-size:12px;border-bottom:1px solid #ddd}.footer{margin-top:32px;display:flex;justify-content:space-between;font-size:11px;color:#666}.assinatura{margin-top:48px;border-top:1px solid #111;padding-top:8px;min-width:200px;text-align:center;font-size:11px}</style>
   </head><body>
@@ -10744,7 +10768,7 @@ const TEMPLATE_TASKS=[{id:1,nome:'Configuração dos equipamentos',responsavel:'
 async function loadCronogramas(){document.getElementById('cron-sync').textContent='Carregando...';try{const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getCronogramas');const d=await r.json();cronogramas=Array.isArray(d)?d:[];document.getElementById('cron-sync').textContent='Sincronizado - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});renderCronogramas();}catch(e){document.getElementById('cron-sync').textContent='Erro de conexão';}}
 function openNovoCronModal(){document.getElementById('cron-nome').value='';document.getElementById('cm-edit-id').value='';document.getElementById('cron-modal-title').textContent='Novo cronograma';renderModalTasks(JSON.parse(JSON.stringify(TEMPLATE_TASKS)));document.getElementById('cron-modal').style.display='flex';}
 function closeCronModal(){document.getElementById('cron-modal').style.display='none';}
-function renderModalTasks(tasks){const list=document.getElementById('cm-tasks-list');list.innerHTML=tasks.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center"><input type="text" value="${t.nome}" placeholder="Nome da tarefa" id="ct-nome-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><input type="text" value="${t.responsavel}" placeholder="Responsável" id="ct-resp-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><button onclick="removeCronTask(${i})" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-light);font-size:13px;">✕</button></div>`).join('');list.dataset.count=tasks.length;}
+function renderModalTasks(tasks){const list=document.getElementById('cm-tasks-list');list.innerHTML=tasks.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center"><input type="text" value="${vfEsc(t.nome)}" placeholder="Nome da tarefa" id="ct-nome-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><input type="text" value="${vfEsc(t.responsavel)}" placeholder="Responsável" id="ct-resp-${i}" style="height:30px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;"><button onclick="removeCronTask(${i})" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-light);font-size:13px;">✕</button></div>`).join('');list.dataset.count=tasks.length;}
 function addCronTask(){const tasks=getModalTasks();tasks.push({id:tasks.length+1,nome:'',responsavel:'Operacional',dataInicio:'',dataFim:'',status:'previsto'});renderModalTasks(tasks);}
 function removeCronTask(idx){const tasks=getModalTasks();tasks.splice(idx,1);renderModalTasks(tasks);}
 function getModalTasks(){const list=document.getElementById('cm-tasks-list');const count=parseInt(list.dataset.count||0);const tasks=[];for(let i=0;i<count;i++){const nome=document.getElementById('ct-nome-'+i);const resp=document.getElementById('ct-resp-'+i);if(nome&&resp)tasks.push({id:i+1,nome:nome.value.trim(),responsavel:resp.value.trim(),dataInicio:'',dataFim:'',status:'previsto'});}return tasks;}
@@ -10755,8 +10779,8 @@ function toggleCronCard(id){const el=document.getElementById('cron-body-'+id);co
 function toggleCronCheck(cronId,taskIdx,checked){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;cron.tarefas[taskIdx].status=checked?'concluido':'previsto';const row=document.getElementById('ctr-'+cronId+'-'+taskIdx);if(row){const nameEl=row.querySelector('.cron-task-name');if(nameEl){nameEl.style.textDecoration=checked?'line-through':'';nameEl.style.color=checked?'var(--text-muted)':'';}}const concluidas=cron.tarefas.filter(t=>t.status==='concluido').length;const pct=cron.tarefas.length?Math.round((concluidas/cron.tarefas.length)*100):0;const barEl=document.querySelector('#cron-bar-'+cronId);if(barEl)barEl.style.width=pct+'%';const metaEl=document.querySelector('#cron-meta-'+cronId);if(metaEl)metaEl.textContent=cron.tarefas.length+' etapas — '+pct+'% concluido';updateCronTask(cronId,taskIdx,'status',cron.tarefas[taskIdx].status);}
 function updateCronTask(cronId,taskIdx,field,val){const cron=cronogramas.find(c=>c.id===cronId);if(!cron)return;if(!cron.tarefas[taskIdx])return;cron.tarefas[taskIdx][field]=val;clearTimeout(cronSaveTimer);cronSaveTimer=setTimeout(async()=>{document.getElementById('cron-sync').textContent='Salvando...';try{await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'saveCronograma',id:cron.id,clienteId:cron.clienteId||'',projetoId:cron.projetoId||'',nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'sincronizarAgenda',cronogramaId:cron.id,nomeCliente:cron.nomeCliente,tarefas:cron.tarefas})});document.getElementById('cron-sync').textContent='Salvo - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){document.getElementById('cron-sync').textContent='Erro ao salvar';}},1500);}
 async function deletarCronograma(id){if(!confirm('Remover este cronograma?'))return;await fetch(API,{method:'POST',body:JSON.stringify({token:getToken(),action:'deleteCronograma',id})});await loadCronogramas();}
-function renderCronogramas(){const list=document.getElementById('cron-list');if(!cronogramas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cronograma.</div>';return;}list.innerHTML=cronogramas.map(cron=>{const tarefas=cron.tarefas||[];const concluidas=tarefas.filter(t=>t.status==='concluido').length;const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;const link=getCronLink(cron.id);const tarefasHtml=tarefas.map((t,i)=>{const done=t.status==='concluido';return `<div class="cron-task-row" id="ctr-${cron.id}-${i}"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${cron.id}',${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)"><div><div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${t.nome}</div><div class="cron-task-resp">${t.responsavel}</div></div></label><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${cron.id}',${i},'dataInicio',this.value)" title="Inicio"><span style="color:var(--text-muted);font-size:11px">→</span><input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${cron.id}',${i},'dataFim',this.value)" title="Fim"></div></div>`;}).join('');const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));const minD=datas.length?Math.min(...datas):null;const maxD=datas.length?Math.max(...datas):null;const totalD=maxD&&minD?maxD-minD:1;const ganttMiniHtml=datas.length?`<div class="gantt-mini-wrap"><div class="gantt-mini-title">Linha do tempo</div>${tarefas.filter(t=>t.dataInicio).map(t=>{const s=new Date(t.dataInicio).getTime()-minD;const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);const left=Math.max(0,Math.round((s/totalD)*100));const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));return'<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';}).join('')}</div>`:''
-return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${cron.id}')"><div class="cron-name">${cron.nomeCliente}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas — ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluído':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${cron.id}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${cron.id}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${cron.id}')">Remover</button></div></div></div></div>`;}).join('');}
+function renderCronogramas(){const list=document.getElementById('cron-list');if(!cronogramas.length){list.innerHTML='<div class="empty-state" style="padding:3rem">Nenhum cronograma.</div>';return;}list.innerHTML=cronogramas.map(cron=>{const tarefas=cron.tarefas||[];const concluidas=tarefas.filter(t=>t.status==='concluido').length;const pct=tarefas.length?Math.round((concluidas/tarefas.length)*100):0;const link=getCronLink(cron.id);const tarefasHtml=tarefas.map((t,i)=>{const done=t.status==='concluido';return `<div class="cron-task-row" id="ctr-${cron.id}-${i}"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" ${done?'checked':''} onchange="toggleCronCheck('${_mpArg(cron.id)}',${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--black)"><div><div class="cron-task-name" style="${done?'text-decoration:line-through;color:var(--text-muted)':''}">${vfEsc(t.nome)}</div><div class="cron-task-resp">${vfEsc(t.responsavel)}</div></div></label><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><input type="date" class="cron-date-input" value="${t.dataInicio||''}" onchange="updateCronTask('${_mpArg(cron.id)}',${i},'dataInicio',this.value)" title="Inicio"><span style="color:var(--text-muted);font-size:11px">→</span><input type="date" class="cron-date-input" value="${t.dataFim||''}" onchange="updateCronTask('${_mpArg(cron.id)}',${i},'dataFim',this.value)" title="Fim"></div></div>`;}).join('');const datas=tarefas.flatMap(t=>[t.dataInicio,t.dataFim].filter(Boolean)).map(d=>new Date(d).getTime()).filter(n=>!isNaN(n));const minD=datas.length?Math.min(...datas):null;const maxD=datas.length?Math.max(...datas):null;const totalD=maxD&&minD?maxD-minD:1;const ganttMiniHtml=datas.length?`<div class="gantt-mini-wrap"><div class="gantt-mini-title">Linha do tempo</div>${tarefas.filter(t=>t.dataInicio).map(t=>{const s=new Date(t.dataInicio).getTime()-minD;const e=t.dataFim?new Date(t.dataFim).getTime()-minD:s+(7*24*60*60*1000);const left=Math.max(0,Math.round((s/totalD)*100));const width=Math.max(3,Math.min(Math.round(((e-s)/totalD)*100),100-left));return'<div class="gantt-mini-row"><div class="gantt-mini-label">'+t.nome+'</div><div class="gantt-mini-track"><div class="gantt-mini-bar '+(t.status||'previsto')+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';}).join('')}</div>`:''
+return `<div class="cron-card"><div class="cron-header"><div style="cursor:pointer;flex:1" onclick="toggleCronCard('${_mpArg(cron.id)}')"><div class="cron-name">${vfEsc(cron.nomeCliente)}</div><div class="cron-meta" id="cron-meta-${cron.id}">${tarefas.length} etapas — ${pct}% concluido</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${pct===100?'concluido':'andamento'}">${pct===100?'Concluído':'Em andamento'}</span><span class="chevron" id="cron-chev-${cron.id}" onclick="toggleCronCard('${_mpArg(cron.id)}')">▼</span></div></div><div id="cron-body-${cron.id}" style="display:none"><div class="cron-body"><div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar-fill" id="cron-bar-${cron.id}" style="width:${pct}%"></div></div>${tarefasHtml}${ganttMiniHtml}<div class="cron-link-box"><div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Link do cliente:</div><div class="cron-link-text">${link}</div></div><button class="cron-copy-btn" id="copy-btn-${cron.id}" onclick="copiarLink('${_mpArg(cron.id)}')">Copiar link</button></div><div class="cron-actions"><button class="proj-btn danger" onclick="deletarCronograma('${_mpArg(cron.id)}')">Remover</button></div></div></div></div>`;}).join('');}
 
 // ===================== ATA DO DIA =====================
 let ataRegistros=[];
@@ -10900,27 +10924,27 @@ function renderAta(){
   if(!lista.length){tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:13px;">Nenhum registro para os filtros selecionados.</td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const sc=ATA_STATUS_COLOR[r.status]||{bg:'var(--border)',c:'var(--text-muted)'};
-    return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${r.id}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${r.id}')">
+    return `<tr data-id="${r.id}" style="border-bottom:1px solid var(--border);" draggable="true" ondragstart="ataDragStart(event,'${_mpArg(r.id)}')" ondragover="ataDragOver(event)" ondragleave="ataDragLeave(event)" ondrop="ataDrop(event,'${_mpArg(r.id)}')">
       <td style="padding:3px 2px;vertical-align:middle;cursor:grab;" class="ata-drag-handle" draggable="true" title="Arrastar para reordenar">⠿</td>
       <td style="padding:3px 4px;vertical-align:middle;">
         <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
-        <button onclick="editarAta('${r.id}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
-        <button onclick="removerAta('${r.id}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
-        <button onclick="abrirEscalarAta('${r.id}')" title="Escalar (N2 / Campo)" style="padding:2px 5px;border:1px solid #5B9EF5;border-radius:3px;font-size:10px;background:rgba(91,158,245,.12);cursor:pointer;color:#5B9EF5;font-weight:700;">↗</button>
+        <button onclick="editarAta('${_mpArg(r.id)}')" title="Editar" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:var(--text-muted);">✎</button>
+        <button onclick="removerAta('${_mpArg(r.id)}')" title="Excluir" style="padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00;">✕</button>
+        <button onclick="abrirEscalarAta('${_mpArg(r.id)}')" title="Escalar (N2 / Campo)" style="padding:2px 5px;border:1px solid #5B9EF5;border-radius:3px;font-size:10px;background:rgba(91,158,245,.12);cursor:pointer;color:#5B9EF5;font-weight:700;">↗</button>
         </div>
       </td>
-      <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:5px;">${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:1px 5px;border:1px solid #F5B800;border-radius:3px;font-size:9px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;font-family:'DM Sans',sans-serif;">OS</button>`:''}<span style="overflow:hidden;text-overflow:ellipsis;">${r.no||'—'}</span></span></td>
-      <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.cliente||'—'}${r.nivel==='N2'?(r.tecnico?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(43,182,115,.15);color:#2BB673;border:1px solid #2BB67344;font-weight:700;white-space:nowrap;">✓ Em atendimento N2 — ${normalizarNomeTecnico(r.tecnico)}</span></div>`:`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(245,184,0,.15);color:#B8860B;border:1px solid #B8860B44;font-weight:700;white-space:nowrap;">⚠ Aguardando aceite N2</span></div>`):(r.nivel==='Campo'?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.15);color:#5B9EF5;border:1px solid #5B9EF544;font-weight:700;white-space:nowrap;">🔧 Campo${r.tecnico?' — '+normalizarNomeTecnico(r.tecnico):''}</span></div>`:'')}</td>
-      <td style="padding:3px 4px;font-size:11px;text-align:center;">${r.estado||'—'}</td>
-      <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${r.equipamento||'—'}</td>
-      <td style="padding:3px 4px;text-align:center;white-space:nowrap;">${r.classificacao?`<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${r.classificacao}</span>`:''}${r.manutencao?`<div style="margin-top:2px;"><span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(184,134,11,.12);color:#B8860B;border:1px solid #B8860B44;">${r.manutencao}</span></div>`:''}${(!r.classificacao&&!r.manutencao)?'<span style="color:var(--text-muted);font-size:11px;">—</span>':''}</td>
+      <td style="padding:3px 5px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:5px;">${ataTemOS(r.id)?`<button onclick="switchMainTab('os');setTimeout(()=>filtrarOSporAta('os-'+r.id),300)" title="Ver OS vinculada" style="padding:1px 5px;border:1px solid #F5B800;border-radius:3px;font-size:9px;background:rgba(245,184,0,.1);cursor:pointer;color:#F5B800;font-weight:700;font-family:'DM Sans',sans-serif;">OS</button>`:''}<span style="overflow:hidden;text-overflow:ellipsis;">${vfEsc(r.no||'—')}</span></span></td>
+      <td style="padding:3px 5px;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${vfEsc(r.cliente||'—')}${r.nivel==='N2'?(r.tecnico?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(43,182,115,.15);color:#2BB673;border:1px solid #2BB67344;font-weight:700;white-space:nowrap;">✓ Em atendimento N2 — ${vfEsc(normalizarNomeTecnico(r.tecnico))}</span></div>`:`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(245,184,0,.15);color:#B8860B;border:1px solid #B8860B44;font-weight:700;white-space:nowrap;">⚠ Aguardando aceite N2</span></div>`):(r.nivel==='Campo'?`<div style="margin-top:2px;"><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.15);color:#5B9EF5;border:1px solid #5B9EF544;font-weight:700;white-space:nowrap;">🔧 Campo${r.tecnico?' — '+normalizarNomeTecnico(r.tecnico):''}</span></div>`:'')}</td>
+      <td style="padding:3px 4px;font-size:11px;text-align:center;">${vfEsc(r.estado||'—')}</td>
+      <td style="padding:3px 4px;font-size:10px;text-align:center;color:var(--text-muted);white-space:nowrap;">${vfEsc(r.equipamento||'—')}</td>
+      <td style="padding:3px 4px;text-align:center;white-space:nowrap;">${r.classificacao?`<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${vfEsc(r.classificacao)}</span>`:''}${r.manutencao?`<div style="margin-top:2px;"><span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(184,134,11,.12);color:#B8860B;border:1px solid #B8860B44;">${vfEsc(r.manutencao)}</span></div>`:''}${(!r.classificacao&&!r.manutencao)?'<span style="color:var(--text-muted);font-size:11px;">—</span>':''}</td>
       <td class="prob-cell" style="padding:3px 5px;">
-        <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${r.id}')">${r.problema||'—'}</div>
-        <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${r.id}')">▼ ver mais</div>
+        <div class="prob-texto" id="prob-${r.id}" onclick="toggleProblema('${_mpArg(r.id)}')">${vfEsc(r.problema||'—')}</div>
+        <div class="prob-hint" id="prob-hint-${r.id}" onclick="toggleProblema('${_mpArg(r.id)}')">▼ ver mais</div>
       </td>
-      <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${normalizarNomeTecnico(r.tecnico)||'—'}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+r.ajudante+'</span>':''}</td>
+      <td style="padding:3px 5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${vfEsc(normalizarNomeTecnico(r.tecnico)||'—')}${r.ajudante?' <span style="color:var(--text-muted);font-size:10px;">/ '+vfEsc(r.ajudante)+'</span>':''}</td>
       <td style="padding:3px 4px;">
-        <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${r.id}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
+        <select data-ata-id="${r.id}" onchange="alterarAtaStatus('${_mpArg(r.id)}',this.value,this)" style="font-size:10px;font-family:'DM Sans',sans-serif;border:1px solid ${sc.c};border-radius:10px;padding:2px 4px;background:${sc.bg};color:${sc.c};cursor:pointer;outline:none;font-weight:500;width:100%;appearance:none;-webkit-appearance:none;">
           <option value="feito" ${r.status==='feito'?'selected':''}>Feito</option>
           <option value="em_andamento" ${r.status==='em_andamento'?'selected':''}>Em andamento</option>
           <option value="em_andamento_tecnico" ${r.status==='em_andamento_tecnico'?'selected':''}>Em andamento pelo técnico</option>
@@ -10933,18 +10957,18 @@ function renderAta(){
           <option value="preventiva" ${r.status==='preventiva'?'selected':''}>Preventiva</option>
         </select>
       </td>
-      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.obs||''}">
-        ${r.obs||'—'}
-        ${r.solicitante?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">👤 ${r.solicitante}${r.tel_solicitante?' · '+r.tel_solicitante:''}</div>`:''}
+      <td style="padding:3px 5px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${vfEsc(r.obs||'')}">
+        ${vfEsc(r.obs||'—')}
+        ${r.solicitante?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">👤 ${vfEsc(r.solicitante)}${r.tel_solicitante?' · '+r.tel_solicitante:''}</div>`:''}
       </td>
       <td style="padding:2px 3px;vertical-align:top;">
         <div style="font-size:9px;color:var(--text-muted);margin-bottom:1px;">Aber.</div>
-        <input type="date" value="${ataAnoFix(r.dt_abertura)}" onchange="alterarAtaData('${r.id}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
+        <input type="date" value="${ataAnoFix(r.dt_abertura)}" onchange="alterarAtaData('${_mpArg(r.id)}','dt_abertura',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--c-previsto);font-weight:600;margin-top:3px;margin-bottom:1px;">Prevista</div>
-        <input type="date" value="${ataAnoFix(r.dt_prevista)}" onchange="alterarAtaData('${r.id}','dt_prevista',this.value)" style="border:1px solid var(--c-previsto);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;height:22px;width:100%;">
+        <input type="date" value="${ataAnoFix(r.dt_prevista)}" onchange="alterarAtaData('${_mpArg(r.id)}','dt_prevista',this.value)" style="border:1px solid var(--c-previsto);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:#EBF0FB;color:var(--c-previsto);outline:none;height:22px;width:100%;">
         <div style="font-size:9px;color:var(--text-muted);margin-top:3px;margin-bottom:1px;">Concl.</div>
-        <input type="date" value="${ataAnoFix(r.dt_conclusao)}" onchange="alterarAtaData('${r.id}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
-        <select onchange="alterarAtaData('${r.id}','forma_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:9px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text-muted);outline:none;height:20px;width:100%;margin-top:3px;cursor:pointer;">
+        <input type="date" value="${ataAnoFix(r.dt_conclusao)}" onchange="alterarAtaData('${_mpArg(r.id)}','dt_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;height:22px;width:100%;">
+        <select onchange="alterarAtaData('${_mpArg(r.id)}','forma_conclusao',this.value)" style="border:1px solid var(--border);border-radius:3px;padding:1px 2px;font-size:9px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text-muted);outline:none;height:20px;width:100%;margin-top:3px;cursor:pointer;">
           <option value="" ${!r.forma_conclusao?'selected':''}>— forma —</option>
           <option value="Remoto" ${r.forma_conclusao==='Remoto'?'selected':''}>Remoto</option>
           <option value="In Loco" ${r.forma_conclusao==='In Loco'?'selected':''}>In Loco</option>
@@ -11735,7 +11759,7 @@ function fmtBRL(v){return'R$ '+(+v||0).toFixed(2).replace('.',',').replace(/\B(?
 function buildOrcTables(){
   const tb=document.getElementById('orc-custos-tbody');
   tb.innerHTML=ORC_CUSTOS.map((c,i)=>`<tr id="orc-custo-row-${i}">
-    <td style="border:1px solid #ccc;padding:3px 6px;">${c.desc?`<span style="font-size:11px">${c.desc}</span>`:`<input type="text" id="orc-c-desc-${i}" placeholder="Descrição" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;">`}</td>
+    <td style="border:1px solid #ccc;padding:3px 6px;">${c.desc?`<span style="font-size:11px">${vfEsc(c.desc)}</span>`:`<input type="text" id="orc-c-desc-${i}" placeholder="Descrição" style="width:100%;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;">`}</td>
     <td style="border:1px solid #ccc;padding:2px 4px;text-align:center;"><input type="number" id="orc-c-qtd-${i}" min="0" step="any" placeholder="0" oninput="calcOrçamento()" style="width:60px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:center;"></td>
     <td style="border:1px solid #ccc;padding:2px 4px;text-align:right;"><span style="font-size:11px;font-family:Arial,sans-serif;margin-right:2px;">R$</span><input type="number" id="orc-c-val-${i}" value="${c.valor||''}" min="0" step="0.01" oninput="calcOrçamento()" style="width:68px;border:none;outline:none;font-size:11px;font-family:Arial,sans-serif;text-align:right;"></td>
     <td style="border:1px solid #ccc;padding:3px 6px;text-align:right;" id="orc-c-tot-${i}">R$ 0,00</td>
@@ -11806,7 +11830,7 @@ function buildOrcAcList(i, q){
   const filtrados = ORC_PRODUTOS.filter(p => p.desc.toUpperCase().includes(termo)).slice(0, 12);
   if(!filtrados.length){ list.style.display='none'; return; }
   list.innerHTML = filtrados.map(p =>
-    `<div class="orc-ac-item" onmousedown="selecionarOrcProduto(${i},'${p.desc.replace(/'/g,"\'")}',${p.valor})">${p.desc} <span style="float:right;color:#888">R$ ${p.valor.toFixed(2).replace('.',',')}</span></div>`
+    `<div class="orc-ac-item" onmousedown="selecionarOrcProduto(${i},'${p.desc.replace(/'/g,"\'")}',${p.valor})">${vfEsc(p.desc)} <span style="float:right;color:#888">R$ ${p.valor.toFixed(2).replace('.',',')}</span></div>`
   ).join('');
   list.style.display = 'block';
 }
@@ -12121,7 +12145,7 @@ function iniciarEntregaMaterial(){
 async function entMatCarregarArmazens(){
   if(!Array.isArray(armazensCache)||!armazensCache.length){ try{ await _fetchArmazens(); }catch(e){} }
   const sel = document.getElementById('entmat-armazem');
-  if(sel) sel.innerHTML = '<option value="">Selecione...</option>' + armazensCache.map(a=>`<option value="${a.id}">${a.nome}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
+  if(sel) sel.innerHTML = '<option value="">Selecione...</option>' + armazensCache.map(a=>`<option value="${a.id}">${vfEsc(a.nome)}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
 }
 async function entMatCarregarItens(){
   const arm = document.getElementById('entmat-armazem')?.value||'';
@@ -12296,7 +12320,7 @@ function iniciarTransferenciaMaterial(){
 }
 async function transfCarregarArmazens(){
   if(!Array.isArray(armazensCache)||!armazensCache.length){ try{ await _fetchArmazens(); }catch(e){} }
-  const opts = '<option value="">Selecione...</option>' + armazensCache.map(a=>`<option value="${a.id}">${a.nome}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
+  const opts = '<option value="">Selecione...</option>' + armazensCache.map(a=>`<option value="${a.id}">${vfEsc(a.nome)}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
   const selO = document.getElementById('transf-origem');
   const selD = document.getElementById('transf-destino');
   if(selO) selO.innerHTML = opts;
@@ -12723,12 +12747,12 @@ function nvFiltrarClientes(){
     return;
   }
   lista.innerHTML = filtrados.map(c=>`
-    <div onclick="nvSelecionarCliente('${c.id}')"
+    <div onclick="nvSelecionarCliente('${_mpArg(c.id)}')"
       style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)"
       onmouseover="this.style.background='var(--gold)';this.style.color='#111'"
       onmouseout="this.style.background='';this.style.color='var(--text)'">
-      <div style="font-weight:600">${c.nome}</div>
-      <div style="font-size:11px;opacity:.7">${c.cidade||''}${c.produto?' — '+c.produto:''}</div>
+      <div style="font-weight:600">${vfEsc(c.nome)}</div>
+      <div style="font-size:11px;opacity:.7">${vfEsc(c.cidade||'')}${c.produto?' — '+c.produto:''}</div>
     </div>`).join('');
   lista.style.display='block';
 }
@@ -12912,9 +12936,9 @@ async function enviarEmailConclusaoMontagem(){
           <th style="padding:8px 12px;font-size:11px;color:#F5B800;text-align:left;text-transform:uppercase">Obs</th>
         </tr></thead>
         <tbody>${itens.map(i=>`<tr style="border-top:1px solid #2a2a2a">
-          <td style="padding:8px 12px;color:#fff;font-size:12px">${i.descricao}</td>
+          <td style="padding:8px 12px;color:#fff;font-size:12px">${vfEsc(i.descricao)}</td>
           <td style="padding:8px 12px;color:#F5B800;font-size:12px;text-align:center;font-weight:700">${i.quantidade}</td>
-          <td style="padding:8px 12px;color:#888;font-size:11px">${i.obs||''}</td>
+          <td style="padding:8px 12px;color:#888;font-size:11px">${vfEsc(i.obs||'')}</td>
         </tr>`).join('')}</tbody>
       </table>`
     : '<div style="padding:10px;color:#888;font-size:12px">Nenhum material registrado.</div>';
@@ -12931,8 +12955,8 @@ async function enviarEmailConclusaoMontagem(){
   </tr></table>
 </td></tr>
 <tr><td style="background:#111;padding:28px;">
-  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">${m.nome}</div>
-  <div style="font-size:14px;color:#888;margin-bottom:20px">${m.tipo||''}</div>
+  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">${vfEsc(m.nome)}</div>
+  <div style="font-size:14px;color:#888;margin-bottom:20px">${vfEsc(m.tipo||'')}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #222;margin-bottom:20px">
     <tr><td style="padding:10px 16px;border-bottom:1px solid #222;width:40%"><span style="color:#555;font-size:12px">Técnico</span></td>
         <td style="padding:10px 16px;border-bottom:1px solid #222"><span style="color:#fff;font-size:13px;font-weight:600">${tecnico}</span></td></tr>
@@ -13034,12 +13058,12 @@ function renderListaViagem(){
       const totalGeral = (parseFloat(v.total_diarias||0)||0).toFixed(2).replace('.',',');
       const sc = statusColor[v.status]||'#999';
       return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-        <td style="padding:10px 12px;font-weight:600">${v.numero_req||'-'}</td>
-        <td style="padding:10px 12px">${v.solicitante||'-'}</td>
-        <td style="padding:10px 12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(v.missao||'').replace(/"/g,'&quot;')}">${v.missao||'-'}</td>
+        <td style="padding:10px 12px;font-weight:600">${vfEsc(v.numero_req||'-')}</td>
+        <td style="padding:10px 12px">${vfEsc(v.solicitante||'-')}</td>
+        <td style="padding:10px 12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(v.missao||'').replace(/"/g,'&quot;')}">${vfEsc(v.missao||'-')}</td>
         <td style="padding:10px 12px;font-weight:600">R$ ${totalGeral}</td>
         <td style="padding:10px 12px">${(d=>{if(!d||d==='-')return'-';if(/^\d{2}\/\d{2}\/\d{4}$/.test(d))return d;const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString('pt-BR')})(v.data)}</td>
-        <td style="padding:10px 12px"><span style="background:${sc}22;color:${sc};padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">${v.status||'Pendente'}</span></td>
+        <td style="padding:10px 12px"><span style="background:${sc}22;color:${sc};padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">${vfEsc(v.status||'Pendente')}</span></td>
         <td style="padding:10px 12px;display:flex;gap:8px;">
           <button onclick="exportarViagemPDF(${i})" style="padding:4px 10px;font-size:11px;background:var(--gold);border:1px solid var(--gold-dark);border-radius:var(--radius-sm);cursor:pointer;color:#111;font-weight:600;">📄 PDF</button>
           <button onclick="abrirPrestacao(${i})" style="padding:4px 10px;font-size:11px;background:var(--surface);border:1px solid var(--c-concluido);border-radius:var(--radius-sm);cursor:pointer;color:var(--c-concluido);font-weight:600;">💰 Prestação${_prestacaoBadge(v)}</button>
@@ -13716,13 +13740,13 @@ function renderArmCadastro(){
     const lbl = tipo==='interno' ? 'Interno' : 'Externo';
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${a.nome||'—'}</div>
+        <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${vfEsc(a.nome||'—')}</div>
         <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;background:${cor}22;color:${cor};border:1px solid ${cor}66;white-space:nowrap;">${lbl}</span>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Criado em ${a.criado_em||'—'}</div>
       <div style="display:flex;gap:6px;margin-top:12px;">
-        <button onclick="armRenomear('${a.id}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✏️ Renomear</button>
-        <button onclick="armPedirSenhaExcluir('${a.id}')" style="flex:1;height:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗑️ Excluir</button>
+        <button onclick="armRenomear('${_mpArg(a.id)}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">✏️ Renomear</button>
+        <button onclick="armPedirSenhaExcluir('${_mpArg(a.id)}')" style="flex:1;height:28px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗑️ Excluir</button>
       </div>
     </div>`;
   }).join('');
@@ -13813,15 +13837,15 @@ function renderArmazens(tipo){
     const sel=armSelecionados[tipo].has(a.id);
     return `<div style="background:var(--surface);border:1px solid ${sel?'var(--gold)':'var(--border)'};border-radius:var(--radius);padding:14px;transition:border-color .15s;">
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
-        <input type="checkbox" ${sel?'checked':''} onchange="armToggleSel('${tipo}','${a.id}')" style="margin-top:3px;width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+        <input type="checkbox" ${sel?'checked':''} onchange="armToggleSel('${tipo}','${_mpArg(a.id)}')" style="margin-top:3px;width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${a.nome||'—'}</div>
+          <div style="font-weight:700;font-size:14px;color:var(--text);word-break:break-word;">${vfEsc(a.nome||'—')}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Criado em ${a.criado_em||'—'}</div>
         </div>
       </label>
       <div style="display:flex;gap:6px;margin-top:12px;">
-        <button onclick="armNovoBalanco('${a.id}')" style="flex:1;height:28px;border:1px solid var(--gold);border-radius:5px;background:rgba(245,184,0,.12);color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Balanço</button>
-        <button onclick="armVerHistorico('${a.id}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗂️ Encerrados</button>
+        <button onclick="armNovoBalanco('${_mpArg(a.id)}')" style="flex:1;height:28px;border:1px solid var(--gold);border-radius:5px;background:rgba(245,184,0,.12);color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📋 Balanço</button>
+        <button onclick="armVerHistorico('${_mpArg(a.id)}')" style="flex:1;height:28px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗂️ Encerrados</button>
       </div>
     </div>`;
   }).join('');
@@ -13892,10 +13916,10 @@ function armBalRenderTabela(){
   const tbody=document.getElementById('arm-bal-body');
   if(!tbody) return;
   tbody.innerHTML=armBalItens.map((it,i)=>`<tr style="border-top:1px solid var(--border)">
-    <td style="padding:5px 8px;font-size:11px">${it.codigo||'—'}</td>
-    <td style="padding:5px 8px;font-size:12px">${it.descricao}</td>
+    <td style="padding:5px 8px;font-size:11px">${vfEsc(it.codigo||'—')}</td>
+    <td style="padding:5px 8px;font-size:12px">${vfEsc(it.descricao)}</td>
     <td style="padding:5px 8px;text-align:center"><input type="number" min="0" value="${it.quantidade}" onchange="armBalItens[${i}].quantidade=this.value" style="width:74px;border:1px solid var(--border);border-radius:3px;padding:3px 5px;font-size:12px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);"></td>
-    <td style="padding:5px 8px;font-size:11px">${it.unidade||'—'}</td>
+    <td style="padding:5px 8px;font-size:11px">${vfEsc(it.unidade||'—')}</td>
   </tr>`).join('');
 }
 
@@ -14033,12 +14057,12 @@ function armRenderHistorico(){
   cont.innerHTML=ordenado.map(b=>`<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
       <div>
-        <div style="font-weight:700;font-size:14px;color:var(--text);">📦 ${b.referencia||'—'}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${b.total_itens||(b.itens?b.itens.length:0)} itens · Resp: ${b.resp_nome||'—'} · ${b.dt_conclusao||'—'}</div>
+        <div style="font-weight:700;font-size:14px;color:var(--text);">📦 ${vfEsc(b.referencia||'—')}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${b.total_itens||(b.itens?b.itens.length:0)} itens · Resp: ${vfEsc(b.resp_nome||'—')} · ${b.dt_conclusao||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button onclick="armBalancoPDF('${b.id}')" style="height:28px;padding:0 12px;border:1px solid var(--gold);border-radius:5px;background:none;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 PDF</button>
-        <button onclick="armPedirSenhaExcluirBalanco('${b.id}')" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">🗑️</button>
+        <button onclick="armBalancoPDF('${_mpArg(b.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--gold);border-radius:5px;background:none;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">📄 PDF</button>
+        <button onclick="armPedirSenhaExcluirBalanco('${_mpArg(b.id)}')" style="height:28px;width:30px;border:1px solid #e00;border-radius:5px;background:none;color:#e00;font-size:12px;cursor:pointer;">🗑️</button>
       </div>
     </div>
   </div>`).join('');
@@ -14047,9 +14071,9 @@ function armRenderHistorico(){
 function armBalancoPDF(id){
   const b=armBalancosCache.find(x=>x.id===id); if(!b) return;
   const itens=b.itens||[];
-  const linhas=itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${it.codigo||'—'}</td><td>${it.descricao||''}</td><td style="text-align:center">${it.quantidade||'—'}</td><td>${it.unidade||'—'}</td></tr>`).join('');
+  const linhas=itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${vfEsc(it.codigo||'—')}</td><td>${vfEsc(it.descricao||'')}</td><td style="text-align:center">${it.quantidade||'—'}</td><td>${vfEsc(it.unidade||'—')}</td></tr>`).join('');
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Balanço — ${b.referencia||''}</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Balanço — ${vfEsc(b.referencia||'')}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:900px;margin:0 auto}
@@ -14069,17 +14093,17 @@ td{padding:6px 10px;font-size:11px;border-bottom:1px solid #eee}
 </style></head><body>
 <div class="logo">Blin<span>Track</span></div>
 <div style="font-size:10px;color:#888">Blincast Media S/A — Documento Interno</div>
-<h1>📦 Balanço de Estoque — ${b.armazem_nome||''}</h1>
+<h1>📦 Balanço de Estoque — ${vfEsc(b.armazem_nome||'')}</h1>
 <div class="badge">✅ Balanço encerrado · ${(String(b.tipo).toLowerCase()==='interno'?'Interno':'Externo')}</div>
 <div class="info-grid">
-  <div class="info-box"><label>Referência</label><span>${b.referencia||'—'}</span></div>
+  <div class="info-box"><label>Referência</label><span>${vfEsc(b.referencia||'—')}</span></div>
   <div class="info-box"><label>Total de itens</label><span>${itens.length}</span></div>
   <div class="info-box"><label>Data</label><span>${b.dt_conclusao||'—'}</span></div>
 </div>
-${b.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${b.obs}</div>`:''}
+${b.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${vfEsc(b.obs)}</div>`:''}
 <table><thead><tr><th>Código</th><th>Descrição</th><th style="text-align:center;width:60px">Qtd</th><th>Unid.</th></tr></thead><tbody>${linhas}</tbody></table>
 <div class="sig-row">
-  <div class="sig-box">______________________________<br>${b.resp_nome||'___________'}<br>CPF: ${b.resp_cpf||'—'}<br>${b.resp_cargo||'Responsável'}<br>${b.dt_conclusao||''}</div>
+  <div class="sig-box">______________________________<br>${vfEsc(b.resp_nome||'___________')}<br>CPF: ${b.resp_cpf||'—'}<br>${b.resp_cargo||'Responsável'}<br>${b.dt_conclusao||''}</div>
   <div class="sig-box">______________________________<br>Gerência Operacional<br>Ciência</div>
 </div>
 <div class="footer">BlinTrack — Blincast Media S/A — gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
@@ -14178,11 +14202,11 @@ function estRenderTabela(){
   const tbody = document.getElementById('est-itens-body');
   if(!tbody) return;
   tbody.innerHTML = estoqueItens.map((it,i)=>`<tr style="border-top:1px solid var(--border)">
-    <td style="padding:5px 8px;font-size:11px">${it.codigo||'—'}</td>
-    <td style="padding:5px 8px;font-size:12px">${it.descricao}</td>
+    <td style="padding:5px 8px;font-size:11px">${vfEsc(it.codigo||'—')}</td>
+    <td style="padding:5px 8px;font-size:12px">${vfEsc(it.descricao)}</td>
     <td style="padding:5px 8px;font-size:12px;text-align:center"><input type="number" value="${it.quantidade}" onchange="estoqueItens[${i}].quantidade=this.value" style="width:60px;border:1px solid var(--border);border-radius:3px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Sans',sans-serif;"></td>
-    <td style="padding:5px 8px;font-size:11px">${it.unidade||'—'}</td>
-    <td style="padding:5px 8px;font-size:11px">${it.local||'—'}</td>
+    <td style="padding:5px 8px;font-size:11px">${vfEsc(it.unidade||'—')}</td>
+    <td style="padding:5px 8px;font-size:11px">${vfEsc(it.local||'—')}</td>
     <td style="padding:4px"><button onclick="estoqueItens.splice(${i},1);estRenderTabela();document.getElementById('est-qtd-itens').textContent=estoqueItens.length;" style="padding:1px 5px;border:1px solid #e00;border-radius:3px;font-size:10px;background:none;cursor:pointer;color:#e00">✕</button></td>
   </tr>`).join('');
 }
@@ -14307,18 +14331,18 @@ function renderListaEstoque(){
     return `<div class="project-card">
       <div class="project-card-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
         <div>
-          <div class="project-name">📦 ${e.referencia}</div>
+          <div class="project-name">📦 ${vfEsc(e.referencia)}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${e.itens.length} itens${e.responsavel?.nome?' · Resp: '+e.responsavel.nome:''} ${e.dt_conclusao?'· Concluído em '+e.dt_conclusao:''}</div>
         </div>
         <div class="project-meta">${badge}<span class="chevron">▼</span></div>
       </div>
       <div class="project-body" style="display:none;padding:14px 16px;">
         ${e.responsavel?.nome?`<div style="font-size:12px;margin-bottom:10px;"><b>Responsável:</b> ${e.responsavel.nome} — ${e.responsavel.cargo} — CPF: ${e.responsavel.cpf}</div>`:''}
-        ${e.obs?`<div style="font-size:12px;margin-bottom:10px;color:var(--text-muted);">${e.obs}</div>`:''}
+        ${e.obs?`<div style="font-size:12px;margin-bottom:10px;color:var(--text-muted);">${vfEsc(e.obs)}</div>`:''}
         <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;">
           <table style="width:100%;border-collapse:collapse;">
             <thead><tr style="background:var(--bg)"><th style="padding:6px 10px;font-size:10px;text-align:left">Código</th><th style="padding:6px 10px;font-size:10px;text-align:left">Descrição</th><th style="padding:6px 10px;font-size:10px;text-align:center">Qtd</th><th style="padding:6px 10px;font-size:10px;text-align:left">Unid.</th><th style="padding:6px 10px;font-size:10px;text-align:left">Local</th></tr></thead>
-            <tbody>${e.itens.map(i=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 10px;font-size:11px">${i.codigo||'—'}</td><td style="padding:5px 10px;font-size:12px">${i.descricao}</td><td style="padding:5px 10px;font-size:12px;text-align:center">${i.quantidade}</td><td style="padding:5px 10px;font-size:11px">${i.unidade||'—'}</td><td style="padding:5px 10px;font-size:11px">${i.local||'—'}</td></tr>`).join('')}</tbody>
+            <tbody>${e.itens.map(i=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 10px;font-size:11px">${vfEsc(i.codigo||'—')}</td><td style="padding:5px 10px;font-size:12px">${vfEsc(i.descricao)}</td><td style="padding:5px 10px;font-size:12px;text-align:center">${i.quantidade}</td><td style="padding:5px 10px;font-size:11px">${vfEsc(i.unidade||'—')}</td><td style="padding:5px 10px;font-size:11px">${vfEsc(i.local||'—')}</td></tr>`).join('')}</tbody>
           </table>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -14334,9 +14358,9 @@ function renderListaEstoque(){
 function estExportarPDF(reg){
   if(!reg) return;
   const fmtD = d => d || '—';
-  const linhas = reg.itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${it.codigo||'—'}</td><td>${it.descricao}</td><td style="text-align:center">${it.quantidade}</td><td>${it.unidade||'—'}</td><td>${it.local||'—'}</td></tr>`).join('');
+  const linhas = reg.itens.map((it,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${vfEsc(it.codigo||'—')}</td><td>${vfEsc(it.descricao)}</td><td style="text-align:center">${it.quantidade}</td><td>${vfEsc(it.unidade||'—')}</td><td>${vfEsc(it.local||'—')}</td></tr>`).join('');
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Estoque — ${reg.referencia}</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Estoque — ${vfEsc(reg.referencia)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:32px;max-width:900px;margin:0 auto}
@@ -14356,14 +14380,14 @@ function estExportarPDF(reg){
 </style></head><body>
 <div class="logo">Blin<span>Track</span></div>
 <div style="font-size:10px;color:#888">Blincast Media S/A — Documento Interno</div>
-<h1>📦 Posição de Estoque — ${reg.referencia}</h1>
+<h1>📦 Posição de Estoque — ${vfEsc(reg.referencia)}</h1>
 ${reg.concluido?'<div class="badge">✅ Lançamento Concluído</div>':'<div style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #e67e22;color:#e67e22;background:#fff3e0;margin-bottom:12px">📝 Rascunho</div>'}
 <div class="info-grid">
-  <div class="info-box"><label>Referência</label><span>${reg.referencia}</span></div>
+  <div class="info-box"><label>Referência</label><span>${vfEsc(reg.referencia)}</span></div>
   <div class="info-box"><label>Total de itens</label><span>${reg.itens.length}</span></div>
   <div class="info-box"><label>Data de conclusão</label><span>${fmtD(reg.dt_conclusao)}</span></div>
 </div>
-${reg.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${reg.obs}</div>`:''}
+${reg.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:16px;color:#555"><b>Observações:</b> ${vfEsc(reg.obs)}</div>`:''}
 <table><thead><tr><th>Código</th><th>Descrição</th><th style="text-align:center;width:60px">Qtd</th><th>Unid.</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
 <div class="sig-row">
   <div class="sig-box">______________________________<br>${reg.responsavel?.nome||'___________'}<br>CPF: ${reg.responsavel?.cpf||'—'}<br>${reg.responsavel?.cargo||'Responsável'}<br>${reg.dt_conclusao||''}</div>
@@ -14378,11 +14402,11 @@ ${reg.obs?`<div style="padding:10px 12px;border:1px solid #ddd;border-radius:4px
 async function estEnviarEmail(reg){
   if(!reg){ showToast('❌ Registro não encontrado.'); return; }
   const linhasEmail = reg.itens.map(i=>`<tr style="border-top:1px solid #2a2a2a">
-    <td style="padding:7px 12px;color:#888;font-size:11px">${i.codigo||'—'}</td>
-    <td style="padding:7px 12px;color:#fff;font-size:12px">${i.descricao}</td>
+    <td style="padding:7px 12px;color:#888;font-size:11px">${vfEsc(i.codigo||'—')}</td>
+    <td style="padding:7px 12px;color:#fff;font-size:12px">${vfEsc(i.descricao)}</td>
     <td style="padding:7px 12px;color:#F5B800;font-size:12px;text-align:center;font-weight:700">${i.quantidade}</td>
-    <td style="padding:7px 12px;color:#888;font-size:11px">${i.unidade||'—'}</td>
-    <td style="padding:7px 12px;color:#888;font-size:11px">${i.local||'—'}</td>
+    <td style="padding:7px 12px;color:#888;font-size:11px">${vfEsc(i.unidade||'—')}</td>
+    <td style="padding:7px 12px;color:#888;font-size:11px">${vfEsc(i.local||'—')}</td>
   </tr>`).join('');
 
   const htmlEmail = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
@@ -14397,7 +14421,7 @@ async function estEnviarEmail(reg){
   </tr></table>
 </td></tr>
 <tr><td style="background:#111;padding:28px;">
-  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">Lançamento: ${reg.referencia}</div>
+  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">Lançamento: ${vfEsc(reg.referencia)}</div>
   <div style="font-size:14px;color:#888;margin-bottom:20px">${reg.itens.length} itens · ${reg.dt_conclusao||'Rascunho'}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #222;margin-bottom:20px">
     <tr><td style="padding:10px 16px;border-bottom:1px solid #222;width:40%"><span style="color:#555;font-size:12px">Responsável</span></td>
@@ -14420,7 +14444,7 @@ async function estEnviarEmail(reg){
     </tr></thead>
     <tbody>${linhasEmail}</tbody>
   </table>
-  ${reg.obs?`<div style="margin-top:14px;padding:12px;background:#1a1500;border-radius:8px;border:1px solid #2a2000"><span style="color:#F5B800;font-size:11px;font-weight:600;display:block;margin-bottom:4px">Observações</span><span style="color:#ddd;font-size:12px">${reg.obs}</span></div>`:''}
+  ${reg.obs?`<div style="margin-top:14px;padding:12px;background:#1a1500;border-radius:8px;border:1px solid #2a2000"><span style="color:#F5B800;font-size:11px;font-weight:600;display:block;margin-bottom:4px">Observações</span><span style="color:#ddd;font-size:12px">${vfEsc(reg.obs)}</span></div>`:''}
 </td></tr>
 <tr><td style="background:#0a0a0a;border-radius:0 0 12px 12px;padding:18px 28px;border-top:1px solid #1a1a1a;text-align:center">
   <a href="https://mfdourado.github.io/agenda-blincast" style="display:inline-block;background:#F5B800;color:#111;text-decoration:none;font-weight:700;font-size:13px;padding:10px 24px;border-radius:8px;margin-bottom:12px">Acessar BlinTrack →</a>
@@ -17164,31 +17188,31 @@ function _cardOS(o){
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-            <span style="font-size:14px;font-weight:700;color:var(--text)">${o.numero||'—'}</span>
-            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${o.status||'—'}</span>
+            <span style="font-size:14px;font-weight:700;color:var(--text)">${vfEsc(o.numero||'—')}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${vfEsc(o.status||'—')}</span>
             ${osAgruparPorMes&&emAberto?'<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F5B80022;color:#F5B800;border:1px solid #F5B80044;font-weight:700;">⚠ Em aberto</span>':''}
             ${o.nivel==='N2'?(o.tecnico?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(43,182,115,.12);color:#2BB673;border:1px solid #2BB67344;font-weight:700;">N2 — em atendimento</span>`:`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(245,184,0,.15);color:#B8860B;border:1px solid #B8860B44;font-weight:700;">⚠ N2 — aguardando aceite</span>`):''}
-            ${o.classificacao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${o.classificacao}</span>`:''}${o.manutencao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,184,0,.12);color:#B8860B;border:1px solid #B8860B44;">${o.manutencao}</span>`:''}
-            ${o.produto?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${o.produto}</span>`:''}
+            ${o.classificacao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(91,158,245,.12);color:#5B9EF5;border:1px solid #5B9EF544;">${vfEsc(o.classificacao)}</span>`:''}${o.manutencao?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,184,0,.12);color:#B8860B;border:1px solid #B8860B44;">${vfEsc(o.manutencao)}</span>`:''}
+            ${o.produto?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border);">${vfEsc(o.produto)}</span>`:''}
           </div>
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${o.cliente||'—'}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${vfEsc(o.cliente||'—')}</div>
           <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
-            ${o.cidade?`<span>📍 ${o.cidade}</span>`:''}
-            ${o.tecnico?`<span>👤 ${normalizarNomeTecnico(o.tecnico)}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
-            ${o.responsavel_nome?`<span>📞 ${o.responsavel_nome}${o.responsavel_tel?' · '+o.responsavel_tel:''}</span>`:''}
+            ${o.cidade?`<span>📍 ${vfEsc(o.cidade)}</span>`:''}
+            ${o.tecnico?`<span>👤 ${vfEsc(normalizarNomeTecnico(o.tecnico))}</span>`:`<span style="color:#F5B800;">⚡ Pool — sem técnico</span>`}
+            ${o.responsavel_nome?`<span>📞 ${vfEsc(o.responsavel_nome)}${o.responsavel_tel?' · '+o.responsavel_tel:''}</span>`:''}
             ${o.data_prevista?`<span>📅 Previsto: ${formatarData(o.data_prevista)}</span>`:''}
           </div>
-          ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${o.descricao}</div>`:''}
+          ${o.descricao?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px;opacity:.8;">${vfEsc(o.descricao)}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
-          ${(o.nivel==='N2'&&!o.tecnico)?`<button onclick="aceitarOSN2(this,'${o.id}','${o.os_id_ata||''}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.15);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Aceitar atendimento</button>`:''}
-          ${(o.tecnico&&o.status!=='Concluída')?`<button onclick="concluirOSDireta('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #4CAF7D;border-radius:5px;background:rgba(76,175,125,.15);color:#4CAF7D;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Concluir OS</button>`:''}
-          <button onclick="visualizarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #5B9EF5;border-radius:5px;background:rgba(91,158,245,.1);color:#5B9EF5;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">👁️ Visualizar</button>
-          <button onclick="exportarOSpdf('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
-          ${o.status==='Concluída'?`<button onclick="abrirReabrirOSModal('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #F5B800;border-radius:5px;background:rgba(245,184,0,.1);color:#F5B800;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">🔁 Reabrir</button>`:''}
-          ${(o.fotos&&o.fotos!=='[]'&&o.fotos!=='""')?`<button onclick="verFotosOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.1);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📷 Fotos</button>`:''}
-          <button onclick="editarOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
-          <button onclick="excluirOS('${o.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
+          ${(o.nivel==='N2'&&!o.tecnico)?`<button onclick="aceitarOSN2(this,'${_mpArg(o.id)}','${o.os_id_ata||''}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.15);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Aceitar atendimento</button>`:''}
+          ${(o.tecnico&&o.status!=='Concluída')?`<button onclick="concluirOSDireta('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid #4CAF7D;border-radius:5px;background:rgba(76,175,125,.15);color:#4CAF7D;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">✅ Concluir OS</button>`:''}
+          <button onclick="visualizarOS('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid #5B9EF5;border-radius:5px;background:rgba(91,158,245,.1);color:#5B9EF5;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">👁️ Visualizar</button>
+          <button onclick="exportarOSpdf('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#5B9EF5';this.style.color='#5B9EF5'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">⬇ PDF</button>
+          ${o.status==='Concluída'?`<button onclick="abrirReabrirOSModal('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid #F5B800;border-radius:5px;background:rgba(245,184,0,.1);color:#F5B800;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:700;">🔁 Reabrir</button>`:''}
+          ${(o.fotos&&o.fotos!=='[]'&&o.fotos!=='""')?`<button onclick="verFotosOS('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid #2BB673;border-radius:5px;background:rgba(43,182,115,.1);color:#2BB673;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;">📷 Fotos</button>`:''}
+          <button onclick="editarOS('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
+          <button onclick="excluirOS('${_mpArg(o.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
         </div>
       </div>
     </div>`;
@@ -17366,8 +17390,8 @@ function visualizarOS(id){
   }
   document.getElementById('os-view-body').innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <span style="font-size:16px;font-weight:800;">${o.numero||'—'}</span>
-      <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${o.status||'—'}</span>
+      <span style="font-size:16px;font-weight:800;">${vfEsc(o.numero||'—')}</span>
+      <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${sc2[o.status]||'#888'}22;color:${sc2[o.status]||'#888'};border:1px solid ${sc2[o.status]||'#888'}44;">${vfEsc(o.status||'—')}</span>
     </div>
     ${linha('Cliente', o.cliente)}
     ${linha('CNPJ', o.cnpj)}
@@ -17476,7 +17500,7 @@ async function osMovInit(){
   const sel=document.getElementById('os-mov-armazem'); if(!sel) return;
   if(!Array.isArray(window.armazensCache)||!armazensCache.length){ try{await _fetchArmazens();}catch(e){} }
   const arms=Array.isArray(window.armazensCache)?armazensCache:[];
-  sel.innerHTML='<option value="">Selecione o armazém...</option>'+arms.map(a=>`<option value="${a.id}">${a.nome}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
+  sel.innerHTML='<option value="">Selecione o armazém...</option>'+arms.map(a=>`<option value="${a.id}">${vfEsc(a.nome)}${a.tipo==='externo'?' (externo)':''}</option>`).join('');
   osMovCarregarItens(); carregarMovOS();
 }
 async function osMovCarregarItens(){
@@ -17511,7 +17535,7 @@ async function carregarMovOS(){
     const r=await fetch(API+'?token='+encodeURIComponent(getToken())+'&action=getMovimentos&os_id='+encodeURIComponent(osEditId));
     const d=await r.json(); const movs=Array.isArray(d.movimentos)?d.movimentos:[];
     if(!movs.length){ div.innerHTML='<span style="opacity:.7;">Nenhuma movimentação ainda.</span>'; return; }
-    div.innerHTML=movs.map(m=>{ const ent=m.sentido==='entrada'; const cor=ent?'#2BB673':'#e74c3c'; const sig=ent?'+':'−'; return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>${m.data} · ${m.item} <span style="opacity:.6;">(${m.armazem_nome||'—'})</span></span><span style="color:${cor};font-weight:700;white-space:nowrap;">${sig}${m.quantidade} <span style="opacity:.7;font-weight:400;">${m.tipo_mov}</span></span></div>`; }).join('');
+    div.innerHTML=movs.map(m=>{ const ent=m.sentido==='entrada'; const cor=ent?'#2BB673':'#e74c3c'; const sig=ent?'+':'−'; return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>${m.data} · ${m.item} <span style="opacity:.6;">(${vfEsc(m.armazem_nome||'—')})</span></span><span style="color:${cor};font-weight:700;white-space:nowrap;">${sig}${m.quantidade} <span style="opacity:.7;font-weight:400;">${m.tipo_mov}</span></span></div>`; }).join('');
   }catch(e){ div.innerHTML='<span style="opacity:.7;">Erro ao carregar movimentos.</span>'; }
 }
 function renderFotosCampoModal(o){
@@ -17833,25 +17857,25 @@ function exportarOSpdf(id){
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr>
     <td style="padding:10px 12px;border-right:1px solid #ccc;vertical-align:top;width:50%">
-      <strong>Cliente:</strong><br>${o.cliente||'—'}<br><br>
-      <strong>Endereço:</strong><br>${o.endereco||'—'}<br>
-      <strong>Cidade:</strong> ${o.cidade||'—'}<br>
-      ${o.cnpj?'<strong>CNPJ:</strong> '+o.cnpj+'<br>':''}
-      ${o.responsavel_tel?'<strong>Fone:</strong> '+o.responsavel_tel:''}</td>
+      <strong>Cliente:</strong><br>${vfEsc(o.cliente||'—')}<br><br>
+      <strong>Endereço:</strong><br>${vfEsc(o.endereco||'—')}<br>
+      <strong>Cidade:</strong> ${vfEsc(o.cidade||'—')}<br>
+      ${o.cnpj?'<strong>CNPJ:</strong> '+vfEsc(o.cnpj)+'<br>':''}
+      ${o.responsavel_tel?'<strong>Fone:</strong> '+vfEsc(o.responsavel_tel):''}</td>
     <td style="padding:10px 12px;vertical-align:top">
-      ${o.tipo?'<strong>Tipo de Serviço:</strong> '+o.tipo+'<br>':''}
-      ${o.produto?'<strong>Produto:</strong> '+o.produto+'<br>':''}
+      ${o.tipo?'<strong>Tipo de Serviço:</strong> '+vfEsc(o.tipo)+'<br>':''}
+      ${o.produto?'<strong>Produto:</strong> '+vfEsc(o.produto)+'<br>':''}
       ${o.horas?'<strong>UHs/Horas:</strong> '+o.horas+'<br>':''}
       <br>
-      ${o.tecnico?'<strong>Técnico:</strong> '+o.tecnico+'<br>':''}
-      ${o.responsavel_nome?'<strong>Solicitante:</strong> '+o.responsavel_nome+'<br>':''}
-      ${o.responsavel_tel?'<strong>Tel. Solicitante:</strong> '+o.responsavel_tel:''}</td>
+      ${o.tecnico?'<strong>Técnico:</strong> '+vfEsc(o.tecnico)+'<br>':''}
+      ${o.responsavel_nome?'<strong>Solicitante:</strong> '+vfEsc(o.responsavel_nome)+'<br>':''}
+      ${o.responsavel_tel?'<strong>Tel. Solicitante:</strong> '+vfEsc(o.responsavel_tel):''}</td>
   </tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td class="sec-title">Observações da Abertura da OS</td></tr>
-  <tr><td style="padding:10px 12px;min-height:50px">${o.descricao||'—'}</td></tr>
+  <tr><td style="padding:10px 12px;min-height:50px">${vfEsc(o.descricao||'—')}</td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
@@ -17866,7 +17890,7 @@ function exportarOSpdf(id){
 <table style="border:1px solid #ccc;margin-bottom:8px">
   <tr><td class="sec-title">Descritivo das atividades realizadas</td></tr>
   <tr><td style="padding:10px 12px"><strong>Descrição do técnico (detalhada):</strong>
-    ${o.obs?'<br><br>'+o.obs:'<br><br><br><br><br><br>'}</td></tr>
+    ${o.obs?'<br><br>'+vfEsc(o.obs):'<br><br><br><br><br><br>'}</td></tr>
 </table>
 
 <table style="border:1px solid #ccc;margin-bottom:8px">
@@ -18121,13 +18145,13 @@ function renderOsRelatorio(){
   tbody.innerHTML=lista.sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(o=>{
     const dias=diasEntre(o.data,o.data_conclusao);
     return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 12px;color:var(--gold);font-size:11px;font-weight:600;white-space:nowrap">${o.numero||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px">${o.cliente||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${normalizarNomeTecnico(o.tecnico)||'Pool'}</td>
+      <td style="padding:8px 12px;color:var(--gold);font-size:11px;font-weight:600;white-space:nowrap">${vfEsc(o.numero||'—')}</td>
+      <td style="padding:8px 12px;font-size:12px">${vfEsc(o.cliente||'—')}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--text-muted)">${vfEsc(normalizarNomeTecnico(o.tecnico)||'Pool')}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data)||'—'}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text-muted);white-space:nowrap">${formatarData(o.data_conclusao)||'—'}</td>
       <td style="padding:8px 12px;font-size:12px;text-align:center;font-weight:600;white-space:nowrap">${fmtTempo(o)}</td>
-      <td style="padding:8px 12px;font-size:11px;font-weight:600;${sc[o.status]||''}">${o.status||'—'}</td>
+      <td style="padding:8px 12px;font-size:11px;font-weight:600;${sc[o.status]||''}">${vfEsc(o.status||'—')}</td>
     </tr>`;
   }).join('')||`<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma OS no período</td></tr>`;
 }
@@ -18149,12 +18173,12 @@ function exportarRelatorioOSpdf(){
   const rows=lista.map(o=>{
     const dias=diasEntre(o.data,o.data_conclusao);
     return `<tr>
-      <td>${o.numero||'—'}</td><td>${o.cliente||'—'}</td>
-      <td>${o.tecnico||'Pool'}</td>
+      <td>${vfEsc(o.numero||'—')}</td><td>${vfEsc(o.cliente||'—')}</td>
+      <td>${vfEsc(o.tecnico||'Pool')}</td>
       <td>${formatarData(o.data)||'—'}</td>
       <td>${formatarData(o.data_conclusao)||'—'}</td>
       <td style="text-align:center">${fmtTempo(o)}</td>
-      <td>${o.status||'—'}</td>
+      <td>${vfEsc(o.status||'—')}</td>
     </tr>`;
   }).join('');
 
@@ -18265,10 +18289,10 @@ function rodarConsulta(){
   let linhas;
   if(_consultaTipo==='os'){
     linhas=lista.map(o=>`<tr style="border-top:1px solid var(--border)">
-      <td style="padding:7px 10px;font-size:12px;font-weight:500">${o.numero||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${o.descricao||o.tipo||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${o.tecnico||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${o.status||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:500">${vfEsc(o.numero||'—')}</td>
+      <td style="padding:7px 10px;font-size:12px">${vfEsc(o.descricao||o.tipo||'—')}</td>
+      <td style="padding:7px 10px;font-size:12px">${vfEsc(o.tecnico||'—')}</td>
+      <td style="padding:7px 10px;font-size:12px">${vfEsc(o.status||'—')}</td>
       <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data)}</td>
       <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data_conclusao)}</td>
     </tr>`).join('');
@@ -18278,9 +18302,9 @@ function rodarConsulta(){
       <tbody>${linhas}</tbody></table></div>`;
   } else {
     linhas=lista.map(r=>`<tr style="border-top:1px solid var(--border)">
-      <td style="padding:7px 10px;font-size:12px;font-weight:500">${r.no||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${r.problema||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${r.tecnico||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:500">${vfEsc(r.no||'—')}</td>
+      <td style="padding:7px 10px;font-size:12px">${vfEsc(r.problema||'—')}</td>
+      <td style="padding:7px 10px;font-size:12px">${vfEsc(r.tecnico||'—')}</td>
       <td style="padding:7px 10px;font-size:12px">${(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||'—'}</td>
       <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(r.dt_abertura||r.data)}</td>
       <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(r.dt_conclusao)}</td>
@@ -18329,10 +18353,10 @@ function exportarConsultaPDF(){
   let cols, linhasHtml;
   if(_consultaTipo==='os'){
     cols='<th>OS</th><th>Descrição</th><th>Técnico</th><th>Status</th><th>Data</th><th>Conclusão</th>';
-    linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${o.numero||''}</td><td>${o.descricao||o.tipo||''}</td><td>${o.tecnico||''}</td><td>${o.status||''}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
+    linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${vfEsc(o.numero||'')}</td><td>${vfEsc(o.descricao||o.tipo||'')}</td><td>${vfEsc(o.tecnico||'')}</td><td>${vfEsc(o.status||'')}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
   } else {
     cols='<th>Nº/OS</th><th>Problema</th><th>Técnico</th><th>Status</th><th>Abertura</th><th>Conclusão</th>';
-    linhasHtml=lista.map((r,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${r.no||''}</td><td>${r.problema||''}</td><td>${r.tecnico||''}</td><td>${(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||''}</td><td>${_consFmtData(r.dt_abertura||r.data)}</td><td>${_consFmtData(r.dt_conclusao)}</td></tr>`).join('');
+    linhasHtml=lista.map((r,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${vfEsc(r.no||'')}</td><td>${vfEsc(r.problema||'')}</td><td>${vfEsc(r.tecnico||'')}</td><td>${(typeof ATA_STATUS_LABEL!=='undefined'&&ATA_STATUS_LABEL[r.status])||r.status||''}</td><td>${_consFmtData(r.dt_abertura||r.data)}</td><td>${_consFmtData(r.dt_conclusao)}</td></tr>`).join('');
   }
   const w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titulo+' — '+cli+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:28px}.logo{font-size:20px;font-weight:900}.logo span{color:#F5B800}h1{font-size:16px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:7px;margin:14px 0 6px}.meta{font-size:10px;color:#888;margin-bottom:14px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#111;color:#F5B800;padding:6px 8px;font-size:9px;text-align:left;text-transform:uppercase}td{padding:5px 8px;font-size:10px;border-bottom:1px solid #eee}.footer{margin-top:18px;font-size:9px;color:#aaa;text-align:right}@media print{body{padding:0}}</style></head><body><div class="logo">Blin<span>Track</span></div><div style="font-size:9px;color:#888">Blincast Media S/A — Documento Interno</div><h1>'+titulo+' — '+cli+'</h1><div class="meta">Período: '+_consultaPeriodoLabel()+' · '+lista.length+' registro(s) · Gerado em '+hoje+'</div><table><thead><tr>'+cols+'</tr></thead><tbody>'+linhasHtml+'</tbody></table><div class="footer">BlinTrack — Blincast Media S/A</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>');
@@ -18375,9 +18399,9 @@ function rodarMinhasConcluidas(){
   const wrap=document.getElementById('mc-resultado');
   if(!lista.length){ wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma OS concluída no período.</div>'; return; }
   const linhas=lista.map(o=>`<tr style="border-top:1px solid var(--border)">
-    <td style="padding:7px 10px;font-size:12px;font-weight:500">${o.numero||'—'}</td>
-    <td style="padding:7px 10px;font-size:12px">${o.cliente||'—'}</td>
-    <td style="padding:7px 10px;font-size:12px">${o.descricao||o.tipo||'—'}</td>
+    <td style="padding:7px 10px;font-size:12px;font-weight:500">${vfEsc(o.numero||'—')}</td>
+    <td style="padding:7px 10px;font-size:12px">${vfEsc(o.cliente||'—')}</td>
+    <td style="padding:7px 10px;font-size:12px">${vfEsc(o.descricao||o.tipo||'—')}</td>
     <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data)}</td>
     <td style="padding:7px 10px;font-size:12px;white-space:nowrap">${_consFmtData(o.data_conclusao)}</td>
   </tr>`).join('');
@@ -18404,7 +18428,7 @@ function exportarMinhasConcluidasPDF(){
   const meuNome=(usuarioLogado&&usuarioLogado.nome)||'';
   const hoje=new Date().toLocaleDateString('pt-BR');
   const cols='<th>OS</th><th>Cliente</th><th>Descrição</th><th>Abertura</th><th>Conclusão</th>';
-  const linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${o.numero||''}</td><td>${o.cliente||''}</td><td>${o.descricao||o.tipo||''}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
+  const linhasHtml=lista.map((o,i)=>`<tr style="${i%2===0?'background:#fafafa':''}"><td>${vfEsc(o.numero||'')}</td><td>${vfEsc(o.cliente||'')}</td><td>${vfEsc(o.descricao||o.tipo||'')}</td><td>${_consFmtData(o.data)}</td><td>${_consFmtData(o.data_conclusao)}</td></tr>`).join('');
   const w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Concluídas — '+meuNome+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:28px}.logo{font-size:20px;font-weight:900}.logo span{color:#F5B800}h1{font-size:16px;font-weight:800;border-bottom:3px solid #F5B800;padding-bottom:7px;margin:14px 0 6px}.meta{font-size:10px;color:#888;margin-bottom:14px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#111;color:#F5B800;padding:6px 8px;font-size:9px;text-align:left;text-transform:uppercase}td{padding:5px 8px;font-size:10px;border-bottom:1px solid #eee}.footer{margin-top:18px;font-size:9px;color:#aaa;text-align:right}@media print{body{padding:0}}</style></head><body><div class="logo">Blin<span>Track</span></div><div style="font-size:9px;color:#888">Blincast Media S/A — Documento Interno</div><h1>Concluídas — '+meuNome+'</h1><div class="meta">Período: '+_mcPeriodoLabel()+' · '+ptN(lista.length,'registro','registros')+' · Gerado em '+hoje+'</div><table><thead><tr>'+cols+'</tr></thead><tbody>'+linhasHtml+'</tbody></table><div class="footer">BlinTrack — Blincast Media S/A</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>');
   w.document.close();
@@ -18505,7 +18529,7 @@ function notificarTecnicoOS(os){
   container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;background:#18191D;border:1px solid #2a2a2a;border-radius:12px;padding:16px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);';
   
   let html = `<div style="font-size:13px;font-weight:600;color:#F0F0F0;margin-bottom:10px;">OS salva! Notificar via WhatsApp?</div>`;
-  html += `<div style="font-size:12px;color:#888;margin-bottom:10px;">OS ${os.numero} — ${os.cliente}</div>`;
+  html += `<div style="font-size:12px;color:#888;margin-bottom:10px;">OS ${vfEsc(os.numero)} — ${vfEsc(os.cliente)}</div>`;
   
   if(telTecnico){
     const msgEnc = encodeURIComponent(msg);
@@ -18578,7 +18602,7 @@ function abrirEscalarAta(id){
     const sel=document.getElementById('esc-pessoa');
     const base=(typeof colabLista!=='undefined'?colabLista:[]).filter(c=>{const st=String(c.status||'').toLowerCase();return st===''||st==='ativo';});
     let lista=base.filter(c=>/t[eé]cnic/i.test(String(c.cargo||'')+' '+String(c.setor||''))); if(!lista.length) lista=base;
-    sel.innerHTML='<option value="">Selecione...</option>'+lista.map(c=>`<option value="${(c.nome||'').replace(/"/g,'')}" data-tel="${(c.telefone||'').replace(/\D/g,'')}">${c.nome}${c.cargo?(' — '+c.cargo):''}</option>`).join('');
+    sel.innerHTML='<option value="">Selecione...</option>'+lista.map(c=>`<option value="${(c.nome||'').replace(/"/g,'')}" data-tel="${(c.telefone||'').replace(/\D/g,'')}">${vfEsc(c.nome)}${c.cargo?(' — '+c.cargo):''}</option>`).join('');
   };
   _escPopular();
   document.getElementById('esc-ok').onclick=async()=>{
@@ -19093,9 +19117,9 @@ function renderColaboradores(){
         ${c.cpf?`<div>CPF: ${vfEsc(c.cpf)}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;">
-        <button data-gerundio-proprio onclick="visualizarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Visualizar</button>
- <button onclick="editarColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
-        <button onclick="excluirColab('${c.id}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
+        <button data-gerundio-proprio onclick="visualizarColab('${_mpArg(c.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Visualizar</button>
+ <button onclick="editarColab('${_mpArg(c.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#F5B800';this.style.color='#F5B800'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Editar</button>
+        <button onclick="excluirColab('${_mpArg(c.id)}')" style="height:28px;padding:0 12px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;" onmouseover="this.style.borderColor='#e74c3c';this.style.color='#e74c3c'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Excluir</button>
       </div>
     </div>`).join('');
 }
@@ -19376,9 +19400,9 @@ function ciSearch(){
   const box=document.getElementById('ci-suggest');ciHl=-1;
   if(!q){box.classList.remove('on');box.innerHTML='';return;}
   const res=CI_ESTOQUE.filter(it=>ciNorm(it.desc).includes(q)||String(it.cod).includes(q)).slice(0,40);
-  box.innerHTML=res.length?res.map((it,i)=>`<div class="row" data-i="${i}" onclick="ciAddItem('${it.cod}')">
+  box.innerHTML=res.length?res.map((it,i)=>`<div class="row" data-i="${i}" onclick="ciAddItem('${vfEsc(it.cod)}')">
       <span class="d">${ciEsc(it.desc)}<div class="c">${ciEsc(it.cat)}</div></span>
-      <span class="m">${it.cod} · ${it.un}</span></div>`).join('')
+      <span class="m">${vfEsc(it.cod)} · ${vfEsc(it.un)}</span></div>`).join('')
     :'<div class="empty">Nenhum item encontrado</div>';
   box.classList.add('on');
 }
@@ -19414,11 +19438,11 @@ function renderCiKit(){
     html+=`<div class="ci-grp"><div class="ci-grp-h"><span class="dot"></span>${ciEsc(cat)}<span class="ct">· ${items.length}</span></div>`;
     items.forEach(k=>{
       html+=`<div class="ci-item">
-        <div class="desc">${ciEsc(k.desc)}<span class="un">${k.un}</span></div>
-        <input class="qty" type="number" min="0" value="${k.qtd}" onchange="ciSetQty('${k.cod}',this.value)">
-        <span class="ci-chk ${k.sep?'on':''}" onclick="ciToggleChk('${k.cod}','sep')"><span class="box">✓</span><small>Separado</small></span>
-        <span class="ci-chk ${k.conf?'on':''}" onclick="ciToggleChk('${k.cod}','conf')"><span class="box">✓</span><small>Conferido</small></span>
-        <button class="rm" onclick="ciRemoveItem('${k.cod}')">✕</button>
+        <div class="desc">${ciEsc(k.desc)}<span class="un">${vfEsc(k.un)}</span></div>
+        <input class="qty" type="number" min="0" value="${k.qtd}" onchange="ciSetQty('${vfEsc(k.cod)}',this.value)">
+        <span class="ci-chk ${k.sep?'on':''}" onclick="ciToggleChk('${vfEsc(k.cod)}','sep')"><span class="box">✓</span><small>Separado</small></span>
+        <span class="ci-chk ${k.conf?'on':''}" onclick="ciToggleChk('${vfEsc(k.cod)}','conf')"><span class="box">✓</span><small>Conferido</small></span>
+        <button class="rm" onclick="ciRemoveItem('${vfEsc(k.cod)}')">✕</button>
       </div>`;
     });
     html+='</div>';
@@ -19628,9 +19652,9 @@ function renderVrLista(){
       <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${vrEsc(v.data)} · ${vrEsc(v.tecnico)}${v.os_numero?' · '+vrEsc(v.os_numero):''}</div>
       <div style="font-size:12px;margin-top:8px;">${cnt.done}/${(v.uhs||[]).length} ${(v.uhs||[]).length===1?'UH':'UHs'} · <span style="color:#2BB673">${cnt.c} C</span> · <span style="color:#D9A400">${cnt.r} R</span> · <span style="color:#D9534F">${cnt.n} NC</span>${v.parecer?'<br><span style="color:var(--text-muted)">'+vrEsc(v.parecer)+'</span>':''}</div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-        <button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${v.id}')">${aberta?'Continuar':'Abrir'}</button>
-        ${!aberta?`<button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${v.id}',true)">Termo (PDF)</button>`:''}
-        <button class="modal-btn" style="height:30px;padding:0 10px;font-size:12px;color:#D9534F;" onclick="vrExcluir('${v.id}')" title="Excluir">🗑️</button>
+        <button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${_mpArg(v.id)}')">${aberta?'Continuar':'Abrir'}</button>
+        ${!aberta?`<button class="modal-btn" style="height:30px;padding:0 12px;font-size:12px;" onclick="vrAbrirExistente('${_mpArg(v.id)}',true)">Termo (PDF)</button>`:''}
+        <button class="modal-btn" style="height:30px;padding:0 10px;font-size:12px;color:#D9534F;" onclick="vrExcluir('${_mpArg(v.id)}')" title="Excluir">🗑️</button>
       </div>
     </div>`;
   }).join('');
