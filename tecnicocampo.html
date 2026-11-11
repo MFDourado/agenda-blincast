@@ -22,6 +22,12 @@ input[list].field-inp{margin-bottom:4px;}
 .btn-login{width:100%;height:42px;background:#F5B800;color:#111;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-login:disabled{opacity:.4;cursor:not-allowed;}
 .login-err{font-size:12px;color:#e74c3c;text-align:center;margin-top:10px;min-height:18px;}
+.login-info{font-size:12px;color:#9a9a9a;line-height:1.5;margin-bottom:14px;text-align:center}
+.login-ok{font-size:12px;color:#4cc08d;text-align:center;margin-top:10px;line-height:1.5}
+.login-reg{font-size:11px;color:#707070;line-height:1.5;margin:-4px 0 10px}
+.login-link{font-size:12px;color:#555;text-align:center;margin-top:14px}
+.login-link a{color:#888;text-decoration:underline;cursor:pointer;padding:11px 10px;display:inline-block;font-size:13px}
+.login-link a:hover{color:#F5B800}
 #app-screen{display:none;flex-direction:column;min-height:100vh;}
 .topbar{background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
 .topbar-logo{font-size:14px;font-weight:700;}
@@ -98,21 +104,59 @@ input[list].field-inp{margin-bottom:4px;}
   <div class="login-box">
     <div class="login-logo">
       <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;">Blin<span style="color:#F5B800">Track</span> <span style="color:#555;font-weight:400;font-size:16px;">Campo</span></div>
-      <div class="sub">Acesso restrito à equipe técnica</div>
+      <div class="sub" id="c-sub">Acesso restrito à equipe técnica</div>
     </div>
-    <form onsubmit="event.preventDefault();fazerLoginCampo()" autocomplete="on">
+    <form id="c-form" onsubmit="event.preventDefault();fazerLoginCampo()" autocomplete="on">
       <div style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Usuário</div>
-        <input class="field-inp" type="text" id="c-usuario" name="username" placeholder="seu.usuario" autocomplete="username" style="margin-bottom:0;">
+        <input class="field-inp" type="text" id="c-usuario" name="username" placeholder="seu.usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" style="margin-bottom:0;">
       </div>
       <div style="margin-bottom:6px;">
         <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Senha</div>
-        <input class="field-inp" type="password" id="c-senha" name="password" placeholder="••••••••" autocomplete="current-password" style="margin-bottom:0;">
+        <input class="field-inp" type="password" id="c-senha" name="password" placeholder="••••••••" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" style="margin-bottom:0;">
       </div>
       <button class="btn-login" type="submit" id="c-btn-login" style="margin-top:16px;">Entrar</button>
     </form>
+    <div id="c-esqueci" style="display:none">
+      <form onsubmit="event.preventDefault();enviarCodigoCampo()" autocomplete="on" novalidate>
+        <div class="login-info" id="c-esq-info"></div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">E-mail cadastrado</div>
+          <input class="field-inp" type="email" id="c-esq-email" placeholder="voce@empresa.com.br" autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" style="margin-bottom:0;">
+        </div>
+        <button class="btn-login" type="submit" id="c-esq-btn">Enviar código</button>
+      </form>
+    </div>
+    <div id="c-codigo" style="display:none">
+      <form onsubmit="event.preventDefault();confirmarCodigoCampo()" autocomplete="off">
+        <div class="login-info" id="c-cod-info"></div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Código de 6 números</div>
+          <input class="field-inp" type="text" id="c-cod-codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="margin-bottom:0;letter-spacing:8px;text-align:center;font-size:20px;">
+        </div>
+        <button class="btn-login" type="submit" id="c-cod-btn">Confirmar código</button>
+      </form>
+      <div class="login-link"><a onclick="reenviarCodigoCampo()">Enviar um novo código</a></div>
+    </div>
+    <div id="c-nova" style="display:none">
+      <form onsubmit="event.preventDefault();salvarNovaSenhaCampo()" autocomplete="off">
+        <div class="login-info" id="c-nova-info"></div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Nova senha</div>
+          <input class="field-inp" type="password" id="c-nova-senha" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" style="margin-bottom:0;">
+        </div>
+        <div style="margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Repita a nova senha</div>
+          <input class="field-inp" type="password" id="c-nova-senha2" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" style="margin-bottom:0;">
+        </div>
+        <div class="login-reg">Mínimo de 8 caracteres, com letras e números, sem espaço no começo ou no fim. Não use o nome da empresa nem o seu usuário.</div>
+        <button class="btn-login" type="submit" id="c-nova-btn">Salvar nova senha</button>
+      </form>
+    </div>
+    <div class="login-ok" id="c-aviso"></div>
     <div class="login-err" id="c-erro"></div>
-    <div style="font-size:12px;color:#555;text-align:center;margin-top:14px;"><span style="color:#888;text-decoration:underline;cursor:pointer;">Esqueci minha senha</span></div>
+    <div class="login-link" id="c-forgot"><a onclick="esqueciSenhaCampo()">Esqueci minha senha</a></div>
+    <div class="login-link" id="c-voltar" style="display:none"><a onclick="loginCampoMostrar('entrar')">Voltar para o login</a></div>
   </div>
 </div>
 
@@ -456,6 +500,31 @@ let materiaisSelecionados=[];
 let confirmTimer=null;
 let confirmCountdown=null;
 
+// Sessão vencida no servidor (24 horas): volta para o login com aviso. Lê só o começo da resposta.
+(function(){
+  const _fetchOriginal=window.fetch.bind(window);
+  window.fetch=async function(entrada,opcoes){
+    const resp=await _fetchOriginal(entrada,opcoes);
+    try{
+      const url=typeof entrada==='string'?entrada:((entrada&&entrada.url)||'');
+      if(url.indexOf('script.google.com/macros')>=0&&resp&&typeof resp.clone==='function'){
+        const c=resp.clone(), rd=c.body&&c.body.getReader?c.body.getReader():null;
+        if(rd){
+          const lido=await rd.read(); rd.cancel().catch(function(){});
+          const ini=lido&&lido.value?new TextDecoder().decode(lido.value.subarray(0,300)):'';
+          if(ini.indexOf('"codigo":"sessao_expirada"')>=0) sessaoExpiradaCampo();
+        }
+      }
+    }catch(e){}
+    return resp;
+  };
+})();
+function sessaoExpiradaCampo(){
+  if(typeof usuarioCampo==='undefined'||!usuarioCampo) return;
+  try{ fazerLogoutCampo(); }catch(e){}
+  const er=document.getElementById('c-erro'); if(er) er.textContent='Sua sessão expirou. Entre novamente.';
+}
+
 function getToken(){return usuarioCampo?.token||'';}
 
 async function fazerLoginCampo(){
@@ -464,17 +533,113 @@ async function fazerLoginCampo(){
   const usuario=document.getElementById('c-usuario').value.trim();
   const senha=document.getElementById('c-senha').value.trim();
   if(!usuario||!senha){err.textContent='Preencha usuário e senha.';return;}
-  btn.disabled=true;btn.textContent='Entrando...';err.textContent='';
+  btn.disabled=true;btn.textContent='Entrando...';err.textContent='';document.getElementById('c-aviso').textContent='';
   try{
-    const r=await fetch(API+'?action=login&usuario='+encodeURIComponent(usuario)+'&senha='+encodeURIComponent(senha));
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'login',usuario:usuario,senha:senha})});
     const d=await r.json();
+    if(d.precisaCriarSenha){
+      document.getElementById('c-senha').value='';
+      btn.disabled=false;btn.textContent='Entrar';
+      abrirCriarSenhaCampo('forcado');
+      return;
+    }
     if(d.ok){
       usuarioCampo=d;
       sessionStorage.setItem('campo_user',JSON.stringify(d));
       iniciarAppCampo();
-    }else{err.textContent=d.message||'Usuário ou senha inválidos.';}
+    }else{err.textContent=d.erro||d.message||'Usuário ou senha inválidos.';}
   }catch(e){err.textContent='Erro de conexão.';}
   btn.disabled=false;btn.textContent='Entrar';
+}
+
+let loginTokenResetCampo='', loginEmailResetCampo='';
+function loginCampoMostrar(v){
+  const mostrar={entrar:['c-form','c-forgot'],esqueci:['c-esqueci','c-voltar'],codigo:['c-codigo','c-voltar'],nova:['c-nova','c-voltar']}[v]||[];
+  ['c-form','c-forgot','c-esqueci','c-codigo','c-nova','c-voltar'].forEach(function(id){ const e=document.getElementById(id); if(e) e.style.display=mostrar.indexOf(id)>=0?'':'none'; });
+  document.getElementById('c-sub').textContent={entrar:'Acesso restrito à equipe técnica',esqueci:'Criar ou recuperar a senha',codigo:'Digite o código recebido',nova:'Crie a sua nova senha'}[v];
+  ['c-erro','c-aviso'].forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=''; });
+}
+function _mascaraEmailCampo(e){ const p=String(e).split('@'); return (p[0]||'').slice(0,1)+'***@'+(p[1]||''); }
+function esqueciSenhaCampo(){ abrirCriarSenhaCampo('manual'); }
+function abrirCriarSenhaCampo(modo){
+  loginCampoMostrar('esqueci');
+  document.getElementById('c-esq-email').value='';
+  document.getElementById('c-esq-info').textContent=modo==='forcado'
+    ?'Por segurança, você precisa criar uma nova senha. Informe o seu e-mail cadastrado e enviaremos um código de 6 números.'
+    :'Informe o seu e-mail cadastrado. Enviaremos um código de 6 números para criar uma nova senha.';
+  document.getElementById('c-esq-email').focus();
+}
+async function enviarCodigoCampo(reenvio){
+  const err=document.getElementById('c-erro'), btn=document.getElementById('c-esq-btn');
+  const email=(reenvio?loginEmailResetCampo:document.getElementById('c-esq-email').value).trim();
+  err.textContent='';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent='Informe um e-mail válido.'; return; }
+  loginEmailResetCampo=email;
+  btn.disabled=true; btn.textContent='Enviando...';
+  let enviou=false;
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'solicitarCodigoSenha',email:email})});
+    const d=await r.json();
+    if(d.ok) enviou=true; else err.textContent=d.erro||'Não foi possível enviar agora.';
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent='Enviar código';
+  if(enviou){
+    loginCampoMostrar('codigo');
+    document.getElementById('c-cod-info').textContent='Se o e-mail '+_mascaraEmailCampo(email)+' estiver cadastrado, enviamos um código de 6 números. Ele vale por 15 minutos.';
+    document.getElementById('c-cod-codigo').value='';
+    if(reenvio) document.getElementById('c-aviso').textContent='Enviamos um novo código.';
+    document.getElementById('c-cod-codigo').focus();
+  }
+}
+function reenviarCodigoCampo(){ enviarCodigoCampo(true); }
+async function confirmarCodigoCampo(){
+  const err=document.getElementById('c-erro'), btn=document.getElementById('c-cod-btn');
+  const cod=document.getElementById('c-cod-codigo').value.replace(/\D/g,'');
+  err.textContent='';
+  if(cod.length!==6){ err.textContent='Digite os 6 números do código.'; return; }
+  btn.disabled=true; btn.textContent='Confirmando...';
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'validarCodigoSenha',email:loginEmailResetCampo,codigo:cod})});
+    const d=await r.json();
+    if(d.ok&&d.token){
+      loginTokenResetCampo=d.token;
+      loginCampoMostrar('nova');
+      document.getElementById('c-nova-info').textContent='Código confirmado. Crie a sua nova senha.';
+      document.getElementById('c-nova-btn').disabled=false;
+      document.getElementById('c-nova-senha').focus();
+    } else err.textContent=d.erro||'Código inválido ou expirado.';
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent='Confirmar código';
+}
+function senhaNovaMensagemCampo(s){
+  if(s!==s.trim()) return 'A senha não pode começar nem terminar com espaço.';
+  if(s.length<8) return 'A senha precisa ter pelo menos 8 caracteres.';
+  if(!/[A-Za-zÀ-ÿ]/.test(s)||!/[0-9]/.test(s)) return 'Use pelo menos uma letra e um número.';
+  if(s.toLowerCase().indexOf('blincast')>=0) return 'Não use o nome da empresa na senha.';
+  return '';
+}
+async function salvarNovaSenhaCampo(){
+  const s1=document.getElementById('c-nova-senha').value, s2=document.getElementById('c-nova-senha2').value;
+  const err=document.getElementById('c-erro'), btn=document.getElementById('c-nova-btn');
+  err.textContent='';
+  const msg=senhaNovaMensagemCampo(s1); if(msg){ err.textContent=msg; return; }
+  if(s1!==s2){ err.textContent='As senhas não são iguais.'; return; }
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'definirNovaSenha',token:loginTokenResetCampo,senha:s1})});
+    const d=await r.json();
+    if(d.ok){
+      loginTokenResetCampo=''; document.getElementById('c-nova-senha').value=''; document.getElementById('c-nova-senha2').value='';
+      loginCampoMostrar('entrar'); document.getElementById('c-usuario').value=d.usuario||''; document.getElementById('c-senha').value='';
+      document.getElementById('c-aviso').textContent='Senha criada! Entre com a sua nova senha.';
+      document.getElementById('c-senha').focus();
+    } else {
+      const erro=String(d.erro||'Não foi possível salvar a senha.').replace('Link inválido ou expirado. Peça um novo link.','O tempo para criar a senha acabou. Peça um novo código.');
+      if(/tempo para criar/.test(erro)){ loginTokenResetCampo=''; abrirCriarSenhaCampo('manual'); }
+      document.getElementById('c-erro').textContent=erro;
+    }
+  }catch(e){ err.textContent='Erro de conexão. Tente novamente.'; }
+  btn.disabled=false; btn.textContent='Salvar nova senha';
 }
 
 function iniciarAppCampo(){
